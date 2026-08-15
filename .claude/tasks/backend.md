@@ -13,13 +13,20 @@ _none_
 
 ## Ready
 
+_none_
+
+## Blocked
+
 ### B-002 — FastAPI app factory and a served index route
 - **Scope:** `src/fce_web/app.py`, `src/fce_web/routes/__init__.py`,
   `src/fce_web/routes/pages.py`, `tests/test_app.py`
-- **Accept:** `create_app()` returns a FastAPI instance; `GET /` returns 200 and HTML;
-  static files mounted at `/static`; Jinja2 environment configured against
-  `src/fce_web/templates/`; tested via `TestClient`, no live server needed
-- **Depends on:** B-001
+- **Accept:** `create_app()` returns a FastAPI instance; `GET /` returns 200 with
+  `text/html`, rendering `templates/index.html` with `title`; `StaticFiles` mounted at
+  `/static` from `src/fce_web/static/` with `name="static"`, so `GET /static/js/app.js`
+  returns 200; `Jinja2Templates` configured against `src/fce_web/templates/`; tested via
+  `TestClient`, no live server needed
+- **Depends on:** B-001 (done) **and F-001** — `templates/` and `static/` are front-end
+  owned (shared §4) and must exist on `main` before this task can render or mount them
 - **Branch / PR:** `task/b-002-app-factory` — not yet opened
 
 ### B-003 — Playwright harness and a screenshot helper
@@ -29,13 +36,8 @@ _none_
   port and tears it down; one e2e test asserts `/` renders with zero console errors;
   `scripts/screenshot.py <route>` writes PNGs at 1440/1024/768 and prints the paths.
   This is the tool the reviewer and design role depend on, so it must work unattended.
-- **Depends on:** B-002
+- **Depends on:** B-002 (was mis-filed under `## Ready`; corrected 2026-08-15)
 - **Branch / PR:** `task/b-003-playwright-harness` — not yet opened
-
-## Blocked
-
-_none_ — the baseline blocker cleared 2026-08-15: `main` is at `bc8c7d9` with the workflow
-and B-001's output, and `origin/main` matches. Task branches can be cut from it.
 
 ## Done
 
@@ -46,7 +48,8 @@ and B-001's output, and `origin/main` matches. Task branches can be cut from it.
 - **Depends on:** nothing
 - **Branch / PR:** none — **B-001 predates the branch-per-task policy** (added
   2026-08-15, `.claude/orchestrator/CLAUDE.md` §4). Its files were written directly in the
-  working tree. B-002 is the first task to go through branch → PR → review → merge.
+  working tree. B-002 is the first back-end task to go through branch → PR → review →
+  merge.
 - **Status:** **done** (1 cycle, no rework)
 - **Review:** 0 required, 0 suggested-major, 2 suggested-minor → backlogged
 - **Notes:** venv at `.venv/bin/python` (Ubuntu system Python is PEP 668

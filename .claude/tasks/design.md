@@ -9,20 +9,22 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
-
-## Ready
-
 ### D-001 — Wireframe exploration: mission screen and recipe builder
 - **Scope:** `docs/wireframes/` (output only — no application files)
 - **Accept:** `/wireframe` run for both the mission screen and the recipe-card builder;
   options explore genuinely different information architectures, not restyles of one
   layout; each is annotated with what it optimises for; a recommendation is stated with
   reasoning. **Output goes to the user for a decision — this is an M1 checkpoint.**
-- **Depends on:** nothing (runs in parallel with B-001..B-003)
+- **Depends on:** nothing (runs in parallel with the back-end chain)
 - **Branch / PR:** `task/d-001-wireframes` — not yet opened
-- **Note:** wireframes only, black and white. No colour, no type, no visual system yet —
-  those come after the user picks a layout direction.
+- **Status:** dispatched 2026-08-15
+- **Note:** wireframes only, black and white, **phase 1 of the skill only** — the skill's
+  phase 2 spawns parallel agents, which a sub-agent cannot do. No colour, no type, no
+  visual system yet; those come after the user picks a layout direction.
+
+## Ready
+
+_none_
 
 ### D-002 — Design token foundation
 - **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
