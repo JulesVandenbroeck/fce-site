@@ -13,10 +13,6 @@ _none_
 
 ## Ready
 
-_none_
-
-## Blocked
-
 ### B-002 — FastAPI app factory and a served index route
 - **Scope:** `src/fce_web/app.py`, `src/fce_web/routes/__init__.py`,
   `src/fce_web/routes/pages.py`, `tests/test_app.py`
@@ -25,9 +21,15 @@ _none_
   `/static` from `src/fce_web/static/` with `name="static"`, so `GET /static/js/app.js`
   returns 200; `Jinja2Templates` configured against `src/fce_web/templates/`; tested via
   `TestClient`, no live server needed
-- **Depends on:** B-001 (done) **and F-001** — `templates/` and `static/` are front-end
-  owned (shared §4) and must exist on `main` before this task can render or mount them
+- **Depends on:** B-001 (done) and F-001 (**done**, merged `176f7d5`) — `templates/` and
+  `static/` are front-end owned (shared §4) and now exist on `main`
+- **Contract from F-001, not negotiable:** render `index.html` with exactly
+  `{"title": <str>}` — the templates use `StrictUndefined`-clean single-variable context and
+  reference static assets as the literal path `/static/js/app.js`, so the mount must be at
+  `/static` from `src/fce_web/static/` or the page 404s its own script.
 - **Branch / PR:** `task/b-002-app-factory` — not yet opened
+
+## Blocked
 
 ### B-003 — Playwright harness and a screenshot helper
 - **Scope:** `pyproject.toml` (dev extra), `tests/e2e/__init__.py`,

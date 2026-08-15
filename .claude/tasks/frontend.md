@@ -9,30 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-001 — Minimal page shell: base layout and index template
-- **Scope:** `src/fce_web/templates/base.html`, `src/fce_web/templates/index.html`,
-  `src/fce_web/static/js/app.js`
-- **Accept:** `base.html` is a valid HTML5 document — `<html lang="en">`, `<meta charset>`,
-  `<meta viewport>`, `<title>{{ title }}</title>`, a `<main>` landmark, a
-  `{% block content %}`; `index.html` extends it and renders `{{ title }}` in an `<h1>`
-  plus one plain sentence; `static/js/app.js` is an empty ES module referenced as
-  `<script type="module" src="/static/js/app.js" defer>`; no stylesheet link, no inline
-  `style=`, no HTMX, no CDN, no `<div>` where a semantic element exists
-- **Contract:** the templates take exactly one context variable, `title` (str). Static
-  assets are referenced by literal path under `/static/` — B-002 mounts there.
-- **Depends on:** nothing
-- **Branch / PR:** `task/f-001-page-shell` — #1
-- **Status:** in review (cycle 1), dispatched and delivered 2026-08-15
-- **Declared deviation:** no `<header>`/`<nav>`/`<footer>`, against front-end manual §3 but
-  in line with this task's "smallest correct" scope, which asked only for `<main>`. The
-  coder's argument: empty landmarks are an accessibility smell. Declared in the PR body for
-  the reviewer to judge; not pre-resolved by the orchestrator.
-- **Why this exists:** B-002 was originally scoped to serve HTML from a Jinja2 template and
-  mount `/static`, but `templates/` and `static/` belong to **frontend**, not backend
-  (shared §4). Backend cannot author them and `StaticFiles` cannot mount a directory that
-  does not exist. So the page shell is its own front-end task and B-002 now depends on it.
-  This moves the first front-end task from M3 to M1; the API contract is not needed for a
-  shell that takes one string.
+_none_
 
 ## Ready
 
@@ -50,4 +27,29 @@ _none_
 
 ## Done
 
-_none_
+### F-001 — Minimal page shell: base layout and index template
+- **Scope:** `src/fce_web/templates/base.html`, `src/fce_web/templates/index.html`,
+  `src/fce_web/static/js/app.js`
+- **Accept:** all five criteria met and independently re-verified by review
+- **Contract established, and later tasks depend on it:** the templates take exactly one
+  context variable, `title` (str). Static assets are referenced by literal path under
+  `/static/`, not `url_for` — `url_for` would force `request` into the context and break
+  the one-variable contract. B-002 must therefore mount `StaticFiles` at `/static` from
+  `src/fce_web/static/` and render `index.html` with exactly `{"title": <str>}`.
+- **Depends on:** nothing
+- **Branch / PR:** `task/f-001-page-shell` — #1, merged as `176f7d5`
+- **Status:** **done** (1 cycle, no rework)
+- **Review:** 0 required, 0 suggested-major, 1 suggested-minor → backlogged (packaging:
+  `templates/` and `static/` do not survive a wheel build). The review went past the
+  coder's own checks: it confirmed the one-variable contract genuinely raises with no
+  context rather than being satisfied by a default, and confirmed autoescaping under the
+  real `Jinja2Templates` integration — `title='<img src=x onerror=...>'` escapes in both
+  `<title>` and `<h1>`.
+- **Declared deviation, settled:** no `<header>`/`<nav>`/`<footer>`. The coder's argument —
+  empty landmarks announce content-free regions to screen readers, and the criteria asked
+  only for `<main>` — was examined by the reviewer and explicitly not raised as a finding.
+  Settled; do not re-litigate. Backlogged for when there is anything to put in them.
+- **Why this task existed:** B-002 was originally scoped to serve HTML from a Jinja2
+  template and mount `/static`, but `templates/` and `static/` belong to frontend, not
+  backend (shared §4), and `StaticFiles` cannot mount a directory that does not exist. This
+  pulled the first front-end task forward from M3 to M1.

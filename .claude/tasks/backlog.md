@@ -28,6 +28,13 @@ Entries carry the task ID they came from, so context is recoverable.
 - **No CI workflow.** `.flake8` excludes `.github`, implying one is expected. A workflow
   running `pytest` + `flake8` on push would catch regressions the reviewer currently
   catches by hand. Depends on the `.venv` exclude fix above. _(from B-001)_
+- **`templates/` and `static/` do not survive a wheel build.** `pyproject.toml:52`.
+  `[tool.setuptools.packages.find]` has no `package-data` and there is no `MANIFEST.in`, so
+  `pip wheel --no-deps --no-build-isolation .` produces a wheel containing only
+  `fce_web/__init__.py` and `dist-info/*` — an installed `fce-web` would have no page shell
+  to render. Harmless while the app runs from the source tree, but it must be fixed before
+  anyone installs this for a classroom. Verified by the reviewer, not merely suspected.
+  _(from F-001 review; needs a back-end task, `pyproject.toml` is back-end owned)_
 - **Dependencies unpinned, no lock file.** Fine now, but a scientific-Python stack drifts.
   Worth resolving before classroom deployment so a teacher's install matches the tested
   one. _(from B-001)_
