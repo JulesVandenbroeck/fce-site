@@ -17,7 +17,27 @@ IDs are `D-nnn`, allocated in order and never reused.
   reasoning. **Output goes to the user for a decision — this is an M1 checkpoint.**
 - **Depends on:** nothing
 - **Branch / PR:** `task/d-001-wireframes-clean` — #2
-- **Status:** in review — **cycle 1 aborted**, re-dispatched 2026-08-16. The first reviewer
+- **Status:** rework (cycle 2 dispatched 2026-08-16)
+- **Review, cycle 2 (the first review that completed):** 0 required, 1 suggested-major,
+  4 suggested-minor.
+  - *Suggested-major* — `base.css:17` declares
+    `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`, a named
+    system-UI stack, while the PR body and `README.md:62` both state that the browser
+    default sans is used and that the only `font-family` declarations are a mono stack on
+    numerics. Confirmed live: `getComputedStyle(document.body).fontFamily` returns that
+    stack and every heading inherits it. No visual consequence on Linux, but a documentary
+    one — a checkpoint document whose stated premise is "no type decision has been made"
+    contains one, and design manual §2 names system-UI stacks among the fonts not to use.
+  - *Suggested-minor* → backlogged, except the `README.md:60` palette omission, which sits
+    in the same "ground rules" block as the font claim and is being fixed in the same pass.
+  - **The reviewer re-ran the whole verification block and reproduced it to the decimal** —
+    contrast worst case 4.95:1, 39 screenshots, zero remote requests, reduced-motion
+    behaviour, and the git-recovery account. It also confirmed the three defects the coder
+    said it found and fixed are absent from the current render.
+- **Cycle 1 aborted** (2026-08-16): the first reviewer hit the account session limit and
+  terminated before producing any findings. Its partial output was not forwarded to the
+  replacement, which started clean from the PR alone (orchestrator manual §4 rule 3). Both
+  orphaned agent worktrees were removed; every branch kept. The first reviewer
   hit the account session limit and terminated before producing any findings; its partial
   output is not a review and is deliberately not being forwarded to the replacement, which
   starts clean from the PR alone (orchestrator manual §4 rule 3). The orphaned agent

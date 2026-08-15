@@ -24,7 +24,17 @@ IDs are `B-nnn`, allocated in order and never reused.
   reference static assets as the literal path `/static/js/app.js`, so the mount must be at
   `/static` from `src/fce_web/static/` or the page 404s its own script.
 - **Branch / PR:** `task/b-002-app-factory` — #3
-- **Status:** rework (cycle 2 dispatched 2026-08-16)
+- **Status:** in review (cycle 2), rework delivered 2026-08-16 at `b0e6674`
+- **Cycle 2 resolution:** required finding fixed — `docs_url=None, redoc_url=None`, which
+  also removed a fourth remote-asset route the review had not spotted,
+  `/docs/oauth2-redirect` (registered only when `docs_url` is set). `/openapi.json` kept
+  deliberately: its body contains no absolute URL, so it breaches nothing in §3 — the
+  offence was the two HTML pages that *render* the schema — and it is the machine-readable
+  check that `docs/api.md` matches the routes that actually exist. Making the API surface
+  non-enumerable is an API-policy call, not a §3 fix, so it was not made unilaterally →
+  backlogged. Suggested-major overruled in writing → recorded in `backlog.md`.
+  Suggested-minor left untouched as instructed, to keep the diff about the one required
+  change.
 - **Review, cycle 1:** 1 required, 1 suggested-major, 1 suggested-minor.
   - *Required* — `create_app()` left FastAPI's default `/docs` and `/redoc` enabled, and
     those pages pull Swagger UI and ReDoc from `cdn.jsdelivr.net` plus a Google-hosted font.

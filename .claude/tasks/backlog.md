@@ -35,6 +35,14 @@ Entries carry the task ID they came from, so context is recoverable.
   to render. Harmless while the app runs from the source tree, but it must be fixed before
   anyone installs this for a classroom. Verified by the reviewer, not merely suspected.
   _(from F-001 review; needs a back-end task, `pyproject.toml` is back-end owned)_
+  **Raised again as suggested-major on B-002 and overruled there, in writing** — the
+  orchestrator accepts the argument: the fix needs `[tool.setuptools.package-data]` or a
+  `MANIFEST.in`, both outside B-002's scope of "only the httpx entry"; B-002 neither
+  introduced it nor can own it, since mounting a package-relative `static/` is correct and
+  it is the build config that is incomplete; and the gap applies equally to `templates/`,
+  `static/` and `content/missions/*.yaml`, so a proper fix wants a build-a-wheel-and-inspect
+  test covering every data file type. Three independent confirmations now. Nothing is
+  blocked meanwhile: source checkouts, editable or not, are unaffected.
 - **`httpx` is deprecated for `starlette.testclient`.** Starlette 1.6.0 emits
   `StarletteDeprecationWarning: Using 'httpx' with 'starlette.testclient' is deprecated;
   install 'httpx2' instead.` One warning, no failure, so nothing is blocked. Switching the
@@ -78,6 +86,17 @@ Entries carry the task ID they came from, so context is recoverable.
   Option 5's face-down locked cards as the way to show card gating, and Option 3's per-step
   "events kept: 18 420 of 240 000" preview, which turns an abstract cut into a number that
   moves before the run is even started. _(from D-001)_
+
+- **Placeholder text below AA.** `docs/wireframes/mission-screen.css:77` —
+  `input::placeholder { color: #999 }` is 2.85:1 on white, the only text in the wireframes
+  below AA. Acceptable in a throwaway document depicting a placeholder *state*, which is why
+  it was minor — but **real placeholders must meet AA, so this pattern must not be carried
+  into D-002.** `#767676` gives 4.54:1 and still reads as washed out. _(from D-001 review)_
+- **Active tab state is class-only.** `docs/wireframes/mission-screen.html:20-25` and
+  `recipe-builder.html` — selection lives in `class="tab-btn active"`, so keyboard operation
+  and focus are fine but a screen-reader user cannot tell which option is displayed.
+  `aria-current="true"` on the active button, removed alongside the class in the click
+  handler, closes it. Worth carrying as a habit into real tabbed UI. _(from D-001 review)_
 
 ## Cross-cutting
 
