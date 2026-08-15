@@ -21,8 +21,12 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Contract:** the templates take exactly one context variable, `title` (str). Static
   assets are referenced by literal path under `/static/` — B-002 mounts there.
 - **Depends on:** nothing
-- **Branch / PR:** `task/f-001-page-shell` — not yet opened
-- **Status:** dispatched 2026-08-15
+- **Branch / PR:** `task/f-001-page-shell` — #1
+- **Status:** in review (cycle 1), dispatched and delivered 2026-08-15
+- **Declared deviation:** no `<header>`/`<nav>`/`<footer>`, against front-end manual §3 but
+  in line with this task's "smallest correct" scope, which asked only for `<main>`. The
+  coder's argument: empty landmarks are an accessibility smell. Declared in the PR body for
+  the reviewer to judge; not pre-resolved by the orchestrator.
 - **Why this exists:** B-002 was originally scoped to serve HTML from a Jinja2 template and
   mount `/static`, but `templates/` and `static/` belong to **frontend**, not backend
   (shared §4). Backend cannot author them and `StaticFiles` cannot mount a directory that

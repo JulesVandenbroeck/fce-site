@@ -100,6 +100,30 @@ only if they share no files and neither consumes the other's output. Backend and
 work is usually parallelisable; frontend and design on the same page never is. When
 running three or more in parallel, consult `superpowers:dispatching-parallel-agents`.
 
+**Parallel agents need one worktree each. This is not optional.** Sub-agents share the
+main session's working directory, and a working directory has exactly one `HEAD`. Two
+coders each running `git checkout -b` in it will fight over that `HEAD`, and the loser's
+commit lands on the winner's branch.
+
+This is not hypothetical — it happened on the very first parallel dispatch, 2026-08-15
+(F-001 and D-001). F-001's commit `9f45703` landed on `task/d-001-wireframes`. Both agents
+recovered without rebasing, force-pushing or deleting anything, and no work was lost, but
+only because both of them stopped and reasoned about it instead of reaching for
+`git reset --hard`. Do not rely on that twice.
+
+So, when dispatching two or more coders at once, either:
+
+- give each one its own worktree — pass `isolation: "worktree"` on the `Agent` call, or
+  instruct the coder to `git worktree add` its own directory as its first action; or
+- **serialise the dispatch.** One coder at a time. This costs a round trip and is the
+  right default when in doubt.
+
+The failure is silent at dispatch time and only shows up as a contaminated branch, so the
+decision has to be made *before* you dispatch, never after.
+
+A worktree is not a branch: removing one with `git worktree remove` is permitted and is
+not covered by the never-delete-a-branch rule. The branch it was checked out on stays.
+
 ---
 
 ## 4. Git and branch policy

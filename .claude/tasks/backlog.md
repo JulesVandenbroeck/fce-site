@@ -34,11 +34,30 @@ Entries carry the task ID they came from, so context is recoverable.
 
 ## Frontend
 
-_none_
+- **Skip link ("skip to main content")** plus the visually-hidden class it needs, once
+  navigation or site chrome exists. _(from F-001)_
+- **`aria-live="polite"` containers** for run progress and results, when those views are
+  built in M3. Progress that streams silently to a screen reader is progress that does not
+  exist. _(from F-001)_
+- **`<header>`/`<nav>`/`<footer>` landmarks** in `base.html`, once there is anything to put
+  in them. F-001 deliberately shipped without them rather than emit empty landmarks.
+- **Offline HTML validation.** No `tidy` or `vnu` on this machine, so template validity
+  currently rests on the browser parse. A pip-installable validator in the e2e suite would
+  make it checkable. _(from F-001; needs a backend task, `tests/` is backend-owned)_
 
 ## Design
 
-_none_
+- **`docs/wireframes/brain/design-taste.md`** is the wireframe skill's colour-phase
+  reference, copied unmodified and unused in phase 1. Keep it only if a phase-2 run is ever
+  wanted; otherwise delete. _(from D-001)_
+- **Mission-1-only layout hybrid, worth playtesting rather than assuming:** run mission 1
+  as mission-screen Option 3 (Focus Stage — its stepped rail is the best teaching device of
+  the five) and hand the student the full spread from mission 2 on. Not drawn, and not
+  recommended without evidence. _(from D-001)_
+- **Two ideas from the losing builder options**, worth carrying into whichever wins:
+  Option 5's face-down locked cards as the way to show card gating, and Option 3's per-step
+  "events kept: 18 420 of 240 000" preview, which turns an abstract cut into a number that
+  moves before the run is even started. _(from D-001)_
 
 ## Cross-cutting
 
