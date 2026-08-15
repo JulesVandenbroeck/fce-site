@@ -40,6 +40,14 @@ Entries carry the task ID they came from, so context is recoverable.
   install 'httpx2' instead.` One warning, no failure, so nothing is blocked. Switching the
   dev extra to `httpx2` is a dependency decision and needs user sign-off, exactly as `httpx`
   itself did. _(from B-002)_
+- **The module-level-state guard is allow-by-default.** `tests/test_app.py:45-48`.
+  `MUTABLE_CONTAINERS` / `PER_APP_TYPES` enumerate the types they reject, so the scan only
+  catches shapes it already knows: the reviewer showed a module-level `threading.Lock()` or
+  a custom registry object holding a `dict` passes clean. The reference repo's defect was a
+  `dict` and would be caught, but the next one need not be. Invert it to default-deny —
+  allow only inert types (`str`, `int`, `float`, `bool`, `bytes`, `tuple`, `frozenset`,
+  `Path`, module, class, function) and reject the rest — matching how the same principle is
+  applied in `safe_eval`. _(from B-002 review)_
 - **Dependencies unpinned, no lock file.** Fine now, but a scientific-Python stack drifts.
   Worth resolving before classroom deployment so a teacher's install matches the tested
   one. _(from B-001)_

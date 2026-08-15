@@ -24,7 +24,21 @@ IDs are `B-nnn`, allocated in order and never reused.
   reference static assets as the literal path `/static/js/app.js`, so the mount must be at
   `/static` from `src/fce_web/static/` or the page 404s its own script.
 - **Branch / PR:** `task/b-002-app-factory` — #3
-- **Status:** in review (cycle 1), delivered 2026-08-15
+- **Status:** rework (cycle 2 dispatched 2026-08-16)
+- **Review, cycle 1:** 1 required, 1 suggested-major, 1 suggested-minor.
+  - *Required* — `create_app()` left FastAPI's default `/docs` and `/redoc` enabled, and
+    those pages pull Swagger UI and ReDoc from `cdn.jsdelivr.net` plus a Google-hosted font.
+    That is a CDN link, a remote script and a runtime external font — three of the hard
+    prohibitions in shared §3 — on an app whose whole point is to run in a classroom with no
+    internet. Verified live by the reviewer, not inferred. Fix is inside scope:
+    `docs_url=None, redoc_url=None`.
+  - *Suggested-major* — the built wheel ships no `templates/` or `static/`, so under a
+    non-editable install `create_app()` raises at the mount. Real, and already recorded in
+    the backlog from the F-001 review; the fix needs `package-data`, which this task's
+    `pyproject.toml` scope ("only add httpx") excludes. Expected resolution: coder overrules
+    it as belonging to a follow-up packaging task.
+  - *Suggested-minor* → backlogged (the module-state guard enumerates types, so it is
+    allow-by-default).
 - **Dependency sign-off:** `httpx` added to the `dev` extra **only**, approved by the user
   2026-08-15 (`TestClient` requires it). Test tooling; it must never become a runtime
   dependency. This is the first exercise of the new-dependency gate — record future ones
