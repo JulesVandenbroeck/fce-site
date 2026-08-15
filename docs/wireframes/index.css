@@ -1,0 +1,63 @@
+/* Index page for the D-001 wireframes. Greyscale only. */
+
+.ix {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  padding: 22px 24px 28px;
+}
+.ix__lede {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  max-width: 76ch;
+  margin: 0 0 22px;
+}
+
+.ix__cards { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.ix__card {
+  flex: 1 1 420px;
+  min-width: 0;
+  border: 2px solid #000;
+  padding: 16px 18px;
+}
+.ix__n {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #666;
+}
+.ix__card h2 { margin: 4px 0 8px; font-size: 18px; }
+.ix__card h2 a { color: #000; }
+.ix__card p { font-size: 13px; line-height: 1.55; color: #333; margin: 0 0 10px; }
+
+.ix__opts { margin: 0 0 12px; padding-left: 20px; }
+.ix__opts li { font-size: 13px; color: #333; margin-bottom: 5px; line-height: 1.45; }
+.ix__rec {
+  display: inline-block;
+  border: 1px solid #000;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 0 6px;
+  margin-left: 4px;
+}
+.ix__why {
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+  background: #f7f7f7;
+  padding: 10px 12px;
+  margin: 0;
+}
+
+.ix__note { margin-top: 24px; border-top: 1px solid #ccc; padding-top: 12px; }
+.ix__note h3 { font-size: 14px; margin: 0 0 8px; }
+.ix__note ul { margin: 0; padding-left: 20px; }
+.ix__note li { font-size: 13px; color: #333; line-height: 1.5; margin-bottom: 6px; max-width: 90ch; }
+
+@media (max-width: 900px) {
+  .ix { padding: 16px; }
+  .ix__cards { flex-direction: column; }
+  .ix__card { flex: 1 1 auto; width: 100%; }
+}

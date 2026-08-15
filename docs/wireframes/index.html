@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FCE-site wireframes — D-001</title>
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <div class="title-bar">
+    <span><strong>FCE-site wireframes</strong> — task D-001 · M1 checkpoint</span>
+    <span class="rec">black &amp; white · no colour · no typeface chosen</span>
+  </div>
+
+  <main class="ix">
+
+    <p class="ix__lede">Two screens, five layout options each. The options are not five styles of
+    the same layout — they are five different answers to <em>what is the most important thing on
+    this screen, what sits next to it, and what stays out of the way until it is needed</em>.
+    Pick one per screen. Everything downstream is built on what you pick.</p>
+
+    <div class="ix__cards">
+      <section class="ix__card">
+        <span class="ix__n">Screen 1</span>
+        <h2><a href="mission-screen.html">The mission screen →</a></h2>
+        <p>Carries the brief, the objective, the analysis, the run control and its live progress,
+        the histogram, the cutflow, and — from mission 3 — μ and the significance gauge. Plus some
+        sense of the campaign around it.</p>
+        <ol class="ix__opts">
+          <li><strong>1 · Split Bench</strong> — build left, results right, newest run replaces the last.</li>
+          <li><strong>2 · Notebook Spread</strong> — method on the left page, a growing run log on the right. <span class="ix__rec">recommended</span></li>
+          <li><strong>3 · Focus Stage</strong> — one step of the loop at a time, full width.</li>
+          <li><strong>4 · Result First</strong> — the plot is the page; the analysis is one line under it.</li>
+          <li><strong>5 · Long Column</strong> — one scrolling column, sticky run bar at the bottom.</li>
+        </ol>
+        <p class="ix__why"><strong>Recommended: 2 · Notebook Spread.</strong> It is the only layout
+        where a new run does not destroy the last one, so "change one thing and compare" — the method
+        being taught — is done by the page rather than asked of a 15-year-old's memory. It is also the
+        only one where missing the objective looks like ordinary work rather than an error, and where
+        the lab-notebook direction is load-bearing rather than decorative. It costs the most to build,
+        and at 768 px it stacks into Option 5, so choosing it means building both.</p>
+      </section>
+
+      <section class="ix__card">
+        <span class="ix__n">Screen 2</span>
+        <h2><a href="recipe-builder.html">The recipe-card builder →</a></h2>
+        <p>The vertical pipeline — Data → Filter → Observable → Plot. Addable, removable,
+        reorderable where it means anything, collapsible once configured, gated per mission,
+        and readable top to bottom as a sentence.</p>
+        <ol class="ix__opts">
+          <li><strong>1 · Card Stack</strong> — a vertical list of cards, each collapsing to one line. <span class="ix__rec">recommended</span></li>
+          <li><strong>2 · Sentence Strip</strong> — the analysis written as an English sentence with clickable words.</li>
+          <li><strong>3 · Two Pane</strong> — a short step list on the left, settings for one step on the right.</li>
+          <li><strong>4 · Guided Slots</strong> — a printed skeleton of an analysis that you fill in.</li>
+          <li><strong>5 · Deck and Tray</strong> — click cards out of a tray; missions unlock new ones.</li>
+        </ol>
+        <p class="ix__why"><strong>Recommended: 1 · Card Stack, with one change borrowed from
+        Option 2</strong> — a collapsed card renders as a clause of a sentence ("Take data at 91 GeV
+        from the IDEA detector.") rather than as a settings summary. That costs nothing and is the
+        difference between a stack that reads as a sentence, which the brief requires, and one that
+        merely lists what you picked. <strong>Option 4 is the close alternative</strong> if
+        playtesting shows students floundering in mission 1 — the underlying config is identical, so
+        switching later is front-end work, not a rebuild.</p>
+      </section>
+    </div>
+
+    <section class="ix__note">
+      <h3>How to read these</h3>
+      <ul>
+        <li>Open a screen, then use the tabs across the top to move between the five options. The last
+        tab is a <strong>Summary</strong> with two comparison tables and the recommendation written out.</li>
+        <li>Under each wireframe is a list headed <em>"What this option does, and what it costs"</em>.
+        The numbered circles in the wireframe point at the numbered notes.</li>
+        <li>Everything is black and white on purpose. There is no colour, no chosen typeface and no
+        visual system yet — those come next, in D-002, built on whichever layouts you pick. The
+        browser's default font is used deliberately so that nothing here reads as a type decision.</li>
+        <li>Content is realistic, not lorem ipsum: it is mission 1, the Z peak at 91 GeV, with a real
+        cutflow and a real miss.</li>
+      </ul>
+    </section>
+
+    <section class="ix__note">
+      <h3>What was ruled out before drawing anything</h3>
+      <ul>
+        <li>A drag-and-drop node canvas — rejected in the brief, §4 and §8. Nothing here drags.</li>
+        <li>Phone layouts. The three widths that matter are 1440, 1024 and 768; 768 is the floor.</li>
+        <li>Anything that makes a run feel silent. Every option has a permanently reserved home for the
+        progress bar and its phase label, so the layout never jumps when a run starts.</li>
+        <li>Anything that makes a miss look like an error. No banners, no modal, no shouting — a miss is
+        a margin note in the flow of the page.</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<footer class="skill-footer">
+  Wireframes for FCE-site, task D-001 · structure from the <a href="https://github.com/Magdoub/claude-wireframe-skill">Wireframe skill</a> · phase 1 only
+</footer>
+
+</body>
+</html>
