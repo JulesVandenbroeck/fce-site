@@ -171,6 +171,21 @@ gh pr merge <n> --merge     # not --rebase, not --squash, not --delete-branch
 Merging is not editing source. It is the one git action reserved to you, and it does not
 conflict with §1.
 
+### The one carve-out: your own bookkeeping
+
+`.claude/tasks/*.md` and the workflow files under `.claude/` are **yours, and you commit
+them straight to `main`.** They never appear on a task branch and never go through a PR.
+
+This is not a convenience. Without it the workflow deadlocks: you merge a PR, which
+obliges you to record the task as done, which under a strict reading would need its own PR,
+which would need its own review. Bookkeeping about the process cannot be gated by the
+process.
+
+The line is sharp and you must not let it drift: **anything a coder produces goes through a
+branch and a PR — no exceptions.** Source, tests, templates, stylesheets, mission YAML,
+`docs/api.md`. If you ever find yourself committing one of those to `main` directly, you
+have broken rule 4 and you are doing a coder's job on top of it.
+
 ---
 
 ## 5. The review loop

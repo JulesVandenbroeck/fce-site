@@ -20,6 +20,7 @@ _none_
   static files mounted at `/static`; Jinja2 environment configured against
   `src/fce_web/templates/`; tested via `TestClient`, no live server needed
 - **Depends on:** B-001
+- **Branch / PR:** `task/b-002-app-factory` — not yet opened
 
 ### B-003 — Playwright harness and a screenshot helper
 - **Scope:** `pyproject.toml` (dev extra), `tests/e2e/__init__.py`,
@@ -29,14 +30,12 @@ _none_
   `scripts/screenshot.py <route>` writes PNGs at 1440/1024/768 and prints the paths.
   This is the tool the reviewer and design role depend on, so it must work unattended.
 - **Depends on:** B-002
+- **Branch / PR:** `task/b-003-playwright-harness` — not yet opened
 
 ## Blocked
 
-### B-002, B-003 — blocked on a baseline commit
-`main` is still at `51a5916 Initial commit`; the workflow scaffolding and all of B-001's
-output are uncommitted in the working tree. The branch-per-task policy requires branching
-from a `main` that contains them, so nothing can be dispatched until that baseline is
-committed and pushed. **Needs the user's go-ahead** — pushes to a public repo.
+_none_ — the baseline blocker cleared 2026-08-15: `main` is at `bc8c7d9` with the workflow
+and B-001's output, and `origin/main` matches. Task branches can be cut from it.
 
 ## Done
 

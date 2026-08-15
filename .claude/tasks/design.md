@@ -20,6 +20,7 @@ _none_
   layout; each is annotated with what it optimises for; a recommendation is stated with
   reasoning. **Output goes to the user for a decision — this is an M1 checkpoint.**
 - **Depends on:** nothing (runs in parallel with B-001..B-003)
+- **Branch / PR:** `task/d-001-wireframes` — not yet opened
 - **Note:** wireframes only, black and white. No colour, no type, no visual system yet —
   those come after the user picks a layout direction.
 
@@ -33,9 +34,7 @@ _none_
 
 ## Blocked
 
-### D-001 — blocked on a baseline commit
-Same blocker as B-002: `main` is still at `51a5916 Initial commit`, and the branch-per-task
-policy needs a `main` that contains the scaffolding. See `.claude/tasks/backend.md`.
+_none_ — the baseline blocker cleared 2026-08-15. See `.claude/tasks/backend.md`.
 
 ## Done
 
