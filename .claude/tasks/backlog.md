@@ -56,6 +56,18 @@ Entries carry the task ID they came from, so context is recoverable.
   allow only inert types (`str`, `int`, `float`, `bool`, `bytes`, `tuple`, `frozenset`,
   `Path`, module, class, function) and reject the rest — matching how the same principle is
   applied in `safe_eval`. _(from B-002 review)_
+- **The external-host sweep does not sweep what it promises.** `tests/test_app.py:100-118`.
+  `_swept_paths()` derives routes from `app.openapi()["paths"]` plus top-level `app.routes`,
+  so a route registered `include_in_schema=False` escapes entirely — the reviewer confirmed
+  by adding one serving a `fonts.googleapis.com` link and watching the test pass. Worse,
+  `SWEPT_STATIC_PATHS` (`tests/test_app.py:72`) is a hand-maintained tuple of one entry, so
+  **the `static/css/*.css` that D-002 is about to add is not swept at all** — and
+  `@import url(https://fonts.googleapis.com/…)` is the single most likely future §3 breach.
+  Fix: walk `STATIC_DIR` for text-suffixed files, and either include `include_in_schema=False`
+  routes or assert none exist. Failing that, soften the docstring, because its promise is
+  what the next coder will trust. **Partly mitigated by B-003**, whose browser-level e2e
+  assertion catches anything the page actually fetches, including `@import`. _(from B-002
+  review)_
 - **Dependencies unpinned, no lock file.** Fine now, but a scientific-Python stack drifts.
   Worth resolving before classroom deployment so a teacher's install matches the tested
   one. _(from B-001)_
