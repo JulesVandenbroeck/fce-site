@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fce-web"
+version = "0.1.0"
+description = "Browser-based learning game teaching particle-physics data analysis on simulated FCC-ee data"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["physics", "education", "fcc-ee", "particle-physics", "hep"]
+classifiers = [
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+# The fixed stack (.claude/shared/CLAUDE.md section 3). Deliberately unpinned:
+# the project targets whatever current scientific-Python wheels resolve to, and
+# a lock file is not warranted for a single-host classroom deployment.
+#
+# No desktop-UI toolkit belongs in this list: only the reference repo's physics
+# engine is vendored, never its front end. See tests/test_skeleton.py.
+dependencies = [
+    # Web server and templating
+    "fastapi",
+    "uvicorn",
+    "jinja2",
+    # Physics engine, carried over from the reference repo
+    "uproot",
+    "boost-histogram",
+    "vector",
+    "pyhf",
+    "numpy",
+    "scipy",
+    # Static plot export (the interactive chart is our own SVG)
+    "matplotlib",
+    "mplhep",
+]
+
+[project.optional-dependencies]
+# Tooling only. Never required to run the server.
+dev = [
+    "pytest",
+    "flake8",
+    "playwright",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

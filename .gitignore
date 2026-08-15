@@ -1,0 +1,45 @@
+# Datasets -- never commit these. ROOT files are large binary physics data and
+# are distributed out of band, not through git.
+*.root
+data/
+datasets/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python bytecode and build artefacts
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test and lint caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+
+# Playwright / e2e output
+test-results/
+playwright-report/
+screenshots/
+
+# Local SQLite state
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Editor and OS cruft
+.idea/
+.vscode/
+*.swp
+.DS_Store

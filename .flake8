@@ -1,0 +1,16 @@
+[flake8]
+max-line-length = 120
+
+# Carried over from the reference repo (kskovpen/fce), whose physics loops use
+# deliberate aligned-column style that PEP 8 reads as whitespace errors:
+#   E221/E222  whitespace before/after an operator, used to align assignments
+#   E272       whitespace before a keyword operator, same alignment reason
+#   E127       continuation line over-indented for a visual indent
+#   E402       module-level import not at top of file, for deliberate import
+#              ordering (a matplotlib backend has to be selected before pyplot
+#              is imported, and the engine sets env vars before heavy imports)
+#   W503/W504  line break before/after a binary operator -- mutually exclusive
+#              rules, so one of the pair always fires on multi-line formulae
+extend-ignore = E221, E222, E272, E127, E402, W503, W504
+
+exclude = .git, __pycache__, *.egg-info, build, dist, .github
