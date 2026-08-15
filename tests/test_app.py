@@ -4,7 +4,7 @@ Everything here runs the real application in-process through Starlette's
 ``TestClient``: no live server is started and no network is touched, so the
 suite works on the offline classroom machines the app itself targets.
 
-Three properties are load-bearing beyond "the page renders":
+Four properties are load-bearing beyond "the page renders":
 
 * ``create_app()`` is a *factory*. Nothing mutable exists at import time
   (``.claude/shared/CLAUDE.md`` §6) -- module-level mutable state is the defect
@@ -16,19 +16,26 @@ Three properties are load-bearing beyond "the page renders":
 * The static mount lives at ``/static``. ``templates/base.html`` hard-codes
   ``/static/js/app.js`` rather than using ``url_for``, so a mount anywhere else
   makes every page 404 its own script.
+* **Nothing the app serves reaches out to the internet.** The app has to work
+  on a classroom network with no route off the LAN, and CDN links, remote
+  scripts and externally fetched fonts are all forbidden outright
+  (``.claude/shared/CLAUDE.md`` §3). FastAPI's default ``/docs`` and ``/redoc``
+  pages breach all three, so they are switched off and the sweep below keeps
+  every other served response honest as pages are added.
 """
 
 import re
 from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
+from urllib.parse import urlsplit
 
 import pytest
 from fastapi import APIRouter, FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
-from starlette.routing import Mount
+from starlette.routing import Mount, Route
 
 import fce_web.app
 import fce_web.routes.pages
@@ -47,6 +54,23 @@ MUTABLE_CONTAINERS = (list, dict, set, bytearray)
 #: Per-app objects that must be built inside the factory, never at import time.
 PER_APP_TYPES = (FastAPI, APIRouter, Jinja2Templates, StaticFiles)
 
+#: FastAPI serves these three by default. ``/docs`` loads Swagger UI from
+#: jsdelivr, ``/redoc`` loads ReDoc from jsdelivr plus Montserrat and Roboto
+#: from Google Fonts, and both pull a favicon from fastapi.tiangolo.com;
+#: ``/docs/oauth2-redirect`` exists only to serve ``/docs``. All of them must
+#: be off.
+DOCUMENTATION_PATHS = ("/docs", "/redoc", "/docs/oauth2-redirect")
+
+#: Absolute ``http(s)`` URLs in a served response body.
+ABSOLUTE_URL_PATTERN = re.compile(r"https?://[^\s\"'<>)]+")
+
+#: Hosts that are the running server itself, so not a trip off the LAN.
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "[::1]", "testserver"})
+
+#: Static assets to sweep alongside the app's own routes. Binary files are
+#: excluded deliberately -- a URL search over decoded bytes is meaningless.
+SWEPT_STATIC_PATHS = ("/static/js/app.js",)
+
 
 @pytest.fixture(name="client")
 def _client() -> Iterator[TestClient]:
@@ -63,6 +87,35 @@ def _module_level_state(module: ModuleType) -> dict[str, str]:
         if not name.startswith("__")
         and isinstance(value, MUTABLE_CONTAINERS + PER_APP_TYPES)
     }
+
+
+def _external_urls(body: str) -> list[str]:
+    """Return the absolute URLs in ``body`` that point at another host."""
+    return [
+        url for url in ABSOLUTE_URL_PATTERN.findall(body)
+        if urlsplit(url).hostname not in LOCAL_HOSTS
+    ]
+
+
+def _swept_paths(app: FastAPI) -> list[str]:
+    """Return every fixed GET path the app serves, for the external-URL sweep.
+
+    Derived from the app, so a page added later is swept without anyone
+    remembering to extend a list. Two sources, because no single one is
+    complete: the OpenAPI schema names the routes *we* declare, wherever
+    ``include_router`` nested them, and ``app.routes`` names the ones FastAPI
+    adds itself -- the schema endpoint and any documentation page. Paths with
+    a parameter are skipped, having no single URL to fetch.
+    """
+    declared = {
+        path for path, operations in app.openapi()["paths"].items()
+        if "get" in operations and "{" not in path
+    }
+    framework = {
+        route.path for route in app.routes
+        if isinstance(route, Route) and "GET" in (route.methods or ())
+    }
+    return sorted(declared | framework) + list(SWEPT_STATIC_PATHS)
 
 
 def _static_mount(app: FastAPI) -> Mount:
@@ -149,6 +202,31 @@ def test_app_works_from_an_unrelated_working_directory(
     with TestClient(create_app()) as client:
         assert client.get("/").status_code == 200
         assert client.get("/static/js/app.js").status_code == 200
+
+
+@pytest.mark.parametrize("path", DOCUMENTATION_PATHS)
+def test_generated_documentation_pages_are_not_served(
+    client: TestClient, path: str
+) -> None:
+    """``/docs`` and friends are off: their HTML loads assets from the internet."""
+    assert client.get(path).status_code == 404
+
+
+def test_openapi_schema_is_still_served(client: TestClient) -> None:
+    """The schema stays on -- it is generated locally and fetches nothing."""
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    assert response.json()["info"]["title"] == "FCE-site"
+
+
+def test_no_served_response_references_an_external_host(client: TestClient) -> None:
+    """Every fixed GET path the app serves is free of off-host URLs (§3)."""
+    swept = _swept_paths(client.app)
+    # Guard against a sweep that has quietly stopped finding the pages and so
+    # passes on nothing; the landing page must always be in it.
+    assert "/" in swept, swept
+    offenders = {path: _external_urls(client.get(path).text) for path in swept}
+    assert {path: urls for path, urls in offenders.items() if urls} == {}
 
 
 def test_index_title_is_a_plain_string() -> None:

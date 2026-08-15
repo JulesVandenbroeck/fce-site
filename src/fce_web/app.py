@@ -8,7 +8,19 @@ applications in one process never share state
 
 Paths are resolved from this file's location, not from the current working
 directory, so the server behaves identically whether it is started from the
-repo root, from a systemd unit, or from a teacher's home directory.
+repo root or from a teacher's home directory.
+
+Resolving off the package is not by itself enough to make an *installed*
+copy work: ``pyproject.toml`` currently ships no ``package-data``, so a wheel
+carries the Python modules and neither ``templates/`` nor ``static/``, and
+the static mount below raises on a non-editable install. Running from a
+source checkout, editable or not, is unaffected. Fixing that is a packaging
+task of its own -- it is recorded in ``.claude/tasks/backlog.md`` -- so do
+not read this module as a claim that ``pip install fce-web`` yields a
+runnable server yet.
+
+Nothing here reaches the network, and nothing it serves asks a browser to.
+That is a requirement, not a coincidence: see ``docs_url`` below.
 
 Run it with::
 
@@ -42,6 +54,12 @@ STATIC_URL_PATH = "/static"
 #: Route name of the static mount, so ``url_path_for("static", ...)`` resolves.
 STATIC_MOUNT_NAME = "static"
 
+#: Path of the generated OpenAPI schema. Kept on -- unlike the pages that
+#: render it, the schema is produced by this process and references nothing
+#: outside it, and it is how the endpoint contract in ``docs/api.md`` gets
+#: checked against the routes that actually exist.
+OPENAPI_URL = "/openapi.json"
+
 
 def create_app() -> FastAPI:
     """Build and return the FCE-site application.
@@ -56,6 +74,17 @@ def create_app() -> FastAPI:
             "analysis on simulated FCC-ee data"
         ),
         version=__version__,
+        openapi_url=OPENAPI_URL,
+        # FastAPI's interactive docs are off, not styled or vendored. The HTML
+        # it generates for /docs pulls Swagger UI from cdn.jsdelivr.net, /redoc
+        # pulls ReDoc from the same CDN plus Montserrat and Roboto from Google
+        # Fonts, and both fetch a favicon from fastapi.tiangolo.com. A CDN
+        # link, a remote script and an external font: the three things
+        # `.claude/shared/CLAUDE.md` §3 forbids outright, in an app whose whole
+        # point is to run in a classroom with no internet, where those requests
+        # would hang rather than fail fast.
+        docs_url=None,
+        redoc_url=None,
     )
 
     # Per-application, so nothing is shared between instances. Routes reach it
