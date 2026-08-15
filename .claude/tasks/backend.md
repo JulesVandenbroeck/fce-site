@@ -9,10 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
-
-## Ready
-
 ### B-002 — FastAPI app factory and a served index route
 - **Scope:** `src/fce_web/app.py`, `src/fce_web/routes/__init__.py`,
   `src/fce_web/routes/pages.py`, `tests/test_app.py`
@@ -27,7 +23,16 @@ _none_
   `{"title": <str>}` — the templates use `StrictUndefined`-clean single-variable context and
   reference static assets as the literal path `/static/js/app.js`, so the mount must be at
   `/static` from `src/fce_web/static/` or the page 404s its own script.
-- **Branch / PR:** `task/b-002-app-factory` — not yet opened
+- **Branch / PR:** `task/b-002-app-factory` — #3
+- **Status:** in review (cycle 1), delivered 2026-08-15
+- **Dependency sign-off:** `httpx` added to the `dev` extra **only**, approved by the user
+  2026-08-15 (`TestClient` requires it). Test tooling; it must never become a runtime
+  dependency. This is the first exercise of the new-dependency gate — record future ones
+  the same way.
+
+## Ready
+
+_none_
 
 ## Blocked
 

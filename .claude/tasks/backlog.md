@@ -35,6 +35,11 @@ Entries carry the task ID they came from, so context is recoverable.
   to render. Harmless while the app runs from the source tree, but it must be fixed before
   anyone installs this for a classroom. Verified by the reviewer, not merely suspected.
   _(from F-001 review; needs a back-end task, `pyproject.toml` is back-end owned)_
+- **`httpx` is deprecated for `starlette.testclient`.** Starlette 1.6.0 emits
+  `StarletteDeprecationWarning: Using 'httpx' with 'starlette.testclient' is deprecated;
+  install 'httpx2' instead.` One warning, no failure, so nothing is blocked. Switching the
+  dev extra to `httpx2` is a dependency decision and needs user sign-off, exactly as `httpx`
+  itself did. _(from B-002)_
 - **Dependencies unpinned, no lock file.** Fine now, but a scientific-Python stack drifts.
   Worth resolving before classroom deployment so a teacher's install matches the tested
   one. _(from B-001)_

@@ -17,7 +17,11 @@ IDs are `D-nnn`, allocated in order and never reused.
   reasoning. **Output goes to the user for a decision — this is an M1 checkpoint.**
 - **Depends on:** nothing
 - **Branch / PR:** `task/d-001-wireframes-clean` — #2
-- **Status:** in review (cycle 1), dispatched and delivered 2026-08-15
+- **Status:** in review — **cycle 1 aborted**, re-dispatched 2026-08-16. The first reviewer
+  hit the account session limit and terminated before producing any findings; its partial
+  output is not a review and is deliberately not being forwarded to the replacement, which
+  starts clean from the PR alone (orchestrator manual §4 rule 3). The orphaned agent
+  worktree was removed; its branch, like every branch, was kept.
 - **Branch note:** the planned branch `task/d-001-wireframes` was contaminated by F-001's
   commit `9f45703` during the shared-worktree collision (see the orchestrator manual §3).
   Design cherry-picked its own commit onto a fresh branch from `origin/main` rather than
