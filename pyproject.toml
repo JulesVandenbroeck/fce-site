@@ -47,6 +47,7 @@ dev = [
     "pytest",
     "flake8",
     "playwright",
+    "httpx",
 ]
 
 [tool.setuptools.packages.find]
