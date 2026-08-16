@@ -125,6 +125,18 @@ Entries carry the task ID they came from, so context is recoverable.
   "events kept: 18 420 of 240 000" preview, which turns an abstract cut into a number that
   moves before the run is even started. _(from D-001)_
 
+- **D-001's self-describing claims are exhaustive, and therefore fragile.** `README.md:65-66`
+  and `base.css:21-25` state "no third value exists anywhere in the directory" / "two stacks
+  across the whole directory", but a computed `font-family` sweep finds three: `sans-serif`
+  (8329 elements), `ui-monospace, "DejaVu Sans Mono", monospace` (156), and bare `monospace`
+  (1) on the `<code>sans-serif</code>` element at `index.html:80`, which no author rule
+  covers. **This was a `Required` finding on cycle 4, merged over on the user's explicit
+  override** — see `design.md` D-001. The acceptance criterion is unharmed (`monospace` is a
+  generic keyword, not a typeface), so only the sentence is false.
+  Fix, if these files are ever touched again: add a `code` rule to `base.css`, **and** strip
+  the exhaustiveness from every self-describing claim, since it is the "anywhere in the
+  directory" phrasing that keeps manufacturing defects. Four review cycles found four of
+  these; a fifth would likely find a fifth. _(from D-001 review, cycle 4)_
 - **Placeholder text below AA.** `docs/wireframes/mission-screen.css:77` —
   `input::placeholder { color: #999 }` is 2.85:1 on white, the only text in the wireframes
   below AA. Acceptable in a throwaway document depicting a placeholder *state*, which is why

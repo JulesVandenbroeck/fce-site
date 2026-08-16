@@ -9,6 +9,27 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
+_none_
+
+## Ready
+
+_none_
+
+## Blocked
+
+### D-002 — Design token foundation
+- **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
+- **Accept:** every colour, spacing, type-scale, radius, and timing value defined as a
+  custom property; the lab-notebook palette committed with measured AA contrast ratios
+  documented in the file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that
+  are explicitly not Inter/Roboto/system-ui/Space Grotesk
+- **Depends on:** D-001 **and the user's layout decision** — the M1 checkpoint
+- **Owed from D-001:** the wireframe contrast ratios were measured against wireframe white,
+  because no paper colour exists yet. AA must be re-measured against the real paper token.
+- **Branch / PR:** not yet opened
+
+## Done
+
 ### D-001 — Wireframe exploration: mission screen and recipe builder
 - **Scope:** `docs/wireframes/` (output only — no application files)
 - **Accept:** `/wireframe` run for both the mission screen and the recipe-card builder;
@@ -17,8 +38,10 @@ IDs are `D-nnn`, allocated in order and never reused.
   reasoning. **Output goes to the user for a decision — this is an M1 checkpoint.**
 - **Depends on:** nothing
 - **Branch / PR:** `task/d-001-wireframes-clean` — #2
-- **Status:** in review (cycle 3) — **the cycle-2 rework is done and pushed**, though the
-  list said otherwise until the next session checked git. Commit `6457911` addresses the
+- **Status:** **done** (4 cycles) — merged as `b580729`, on the user's override; the full
+  resolution is at the end of this entry. What follows is the cycle-by-cycle record.
+- **Cycle 2 rework** — done and pushed, though the list said otherwise until a later session
+  checked git rather than trusting it. Commit `6457911` addresses the
   suggested-major and two of the minors: `base.css` body drops the named
   `-apple-system/BlinkMacSystemFont/Segoe UI` stack for the generic `sans-serif` keyword,
   making the PR's stated "no type decision has been made" premise true; `.tab-btn` gains
@@ -82,6 +105,20 @@ IDs are `D-nnn`, allocated in order and never reused.
   found. Making the next claim true is not the fix — **not making unfalsifiable-by-inspection
   claims is.** Escalated to the user 2026-08-16 rather than dispatching cycle 5 unilaterally,
   having already told both the user and the coder there would be none.
+- **Resolution — merged on the user's explicit override, 2026-08-16, with the `Required`
+  finding open.** This is a deliberate exception to orchestrator manual §5 ("Required — must
+  be fixed. Not negotiable, not deferrable") and §4 rule 4, recorded here because the rule is
+  otherwise absolute and a silent exception would corrode it. The user was shown that the
+  option broke the approval gate and chose it anyway; the finding is in `backlog.md` with its
+  reproduction and its fix.
+  The grounds, for the record: `docs/wireframes/` is a throwaway decision document that
+  ships nothing and that no application file imports, the acceptance criterion itself is
+  unharmed, and the defect is one false sentence. Four cycles had produced four findings of
+  the same shape, with no sign of the sequence terminating.
+  **This override does not generalise.** It applies to a non-shipping document whose only
+  consumer is the user. A `Required` finding on anything under `src/`, `tests/` or
+  `content/` is not merge-able on the same reasoning.
+- **Status:** **done** (4 cycles) — merged as `b580729`.
 - **Review, cycle 3:** 1 required, 1 suggested-major, 2 suggested-minor. **Loop limit
   reached — escalated to the user 2026-08-16, no fourth cycle dispatched.**
   - *Required* — `mission-screen.html:16`, `recipe-builder.html:16`: the `← index` anchor is
@@ -161,23 +198,3 @@ IDs are `D-nnn`, allocated in order and never reused.
     students floundering in mission 1; the underlying config is identical, so switching
     later is front-end work, not a rebuild.
 
-## Ready
-
-_none_
-
-## Blocked
-
-### D-002 — Design token foundation
-- **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
-- **Accept:** every colour, spacing, type-scale, radius, and timing value defined as a
-  custom property; the lab-notebook palette committed with measured AA contrast ratios
-  documented in the file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that
-  are explicitly not Inter/Roboto/system-ui/Space Grotesk
-- **Depends on:** D-001 **and the user's layout decision** — the M1 checkpoint
-- **Owed from D-001:** the wireframe contrast ratios were measured against wireframe white,
-  because no paper colour exists yet. AA must be re-measured against the real paper token.
-- **Branch / PR:** not yet opened
-
-## Done
-
-_none_
