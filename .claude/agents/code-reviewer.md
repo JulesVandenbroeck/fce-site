@@ -1,6 +1,7 @@
 ---
 name: code-reviewer
 description: Reviews and tests work produced by the backend, frontend, or design coder on FCE-site. Runs the tests, lints, and drives the app in a browser, then reports findings split into Required, Suggested-major, and Suggested-minor. Dispatched by the orchestrator after every completed coder task. Reports findings only — never edits code.
+effort: dynamic based on task complexity (medium to high)
 tools: Read, Bash, Grep, Glob, Skill
 ---
 

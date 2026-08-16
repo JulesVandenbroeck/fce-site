@@ -17,7 +17,18 @@ IDs are `D-nnn`, allocated in order and never reused.
   reasoning. **Output goes to the user for a decision — this is an M1 checkpoint.**
 - **Depends on:** nothing
 - **Branch / PR:** `task/d-001-wireframes-clean` — #2
-- **Status:** rework (cycle 2 dispatched 2026-08-16)
+- **Status:** in review (cycle 3) — **the cycle-2 rework is done and pushed**, though the
+  list said otherwise until the next session checked git. Commit `6457911` addresses the
+  suggested-major and two of the minors: `base.css` body drops the named
+  `-apple-system/BlinkMacSystemFont/Segoe UI` stack for the generic `sans-serif` keyword,
+  making the PR's stated "no type decision has been made" premise true; `.tab-btn` gains
+  `font: inherit`, so every element on all three pages now computes to one of exactly two
+  `font-family` values instead of falling back to the UA default; `README.md`'s palette is
+  replaced with the exhaustive twelve-grey list plus the grep that proves it; and
+  `brain/design-taste.md` is deleted rather than kept unused.
+  **Cycle 3 is the loop limit** (orchestrator manual §5) — if this review does not converge,
+  the orchestrator stops and hands the disagreement to the user rather than dispatching a
+  fourth cycle.
 - **Review, cycle 2 (the first review that completed):** 0 required, 1 suggested-major,
   4 suggested-minor.
   - *Suggested-major* — `base.css:17` declares

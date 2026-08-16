@@ -1,6 +1,8 @@
 ---
 name: design-coder
 description: Executes a single design task on FCE-site — stylesheets, design tokens, typography, motion, and the lab-notebook visual system that carries the game feel. Dispatched by the orchestrator with an explicit file scope and acceptance criteria. Use for CSS and visual treatment, never for markup structure, JavaScript, or Python.
+model: sonnet
+effort: dynamic based on task complexity (medium to high)
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 ---
 

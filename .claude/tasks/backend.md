@@ -9,10 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
-
-## Ready
-
 ### B-003 — Playwright harness and a screenshot helper
 - **Scope:** `pyproject.toml` (dev extra), `tests/e2e/__init__.py`,
   `tests/e2e/conftest.py`, `tests/e2e/test_smoke.py`, `scripts/screenshot.py`
@@ -26,7 +22,20 @@ _none_
   breach, arriving with D-002's stylesheets — would pass it. A browser-level assertion
   catches whatever the page actually fetches, which is the guarantee shared §3 needs.
 - **Depends on:** B-002 (**done**, merged `ff801fa`)
-- **Branch / PR:** `task/b-003-playwright-harness` — not yet opened
+- **Branch / PR:** `task/b-003-playwright-harness` — pushed at `1a6ff77`, **PR not yet opened**
+- **Status:** in progress — **the 2026-08-16 dispatch was interrupted before the coder
+  reported.** Discovered by the next session reading git rather than the list: two commits
+  (`8e4c039`, `1a6ff77`) were already written and pushed, adding all four in-scope files
+  (662 lines, 20 tests, including the off-origin assertion and mutation-style guard tests),
+  but no `gh pr create` ran and no report came back, so the review could not start. The
+  main working directory was also left checked out on this branch; returned to `main`.
+  `pyproject.toml` was correctly untouched — `playwright` was already in the `dev` extra
+  from B-001, so that part of the scope was satisfied before the task began.
+  Re-dispatched 2026-08-16 to verify the existing work against the criteria and open the PR.
+
+## Ready
+
+_none_
 
 ## Blocked
 
