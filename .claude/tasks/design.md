@@ -13,8 +13,34 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** in review (cycle 2). `verify.py --all` → **83 PASS, 0 FAIL**, exit 0;
-  `flake8 docs/design-explorations/verify.py` → exit 0.
+- **Status:** **cycle 3 dispatched 2026-08-16** — applying the user's two checkpoint
+  rulings, plus a PR-body refresh. The cycle-2 *review was never dispatched*; the previous
+  session recorded "back in review" and was interrupted before the reviewer ran, so the
+  cycle-2 fixes have been verified by their author and by nobody else. Cycle 3's review
+  therefore covers cycles 2 and 3 together.
+- **The user's two rulings, 2026-08-16 — both settled at the checkpoint.**
+  1. *Legend placement:* **outside the axes.** Not the coder's recommendation, which was to
+     keep parity and defer. The legend is to move to the right of the plot area so it never
+     occludes the Z peak, at all three widths.
+  2. *Sample colour mapping:* **frozen per-sample map, X1 pinned to vermillion** — the
+     coder's recommendation, taken. Both schemes stay wired via `data-palette`; only the
+     default flips.
+- **These rulings narrow the D-001 pivot's "full plot parity" ruling, and that must not be
+  lost.** Parity remains the rule for the figure's anatomy — panels, ratio, ticks, frame,
+  stacking, band, header. It now carries **two named exceptions, both user-ruled**: legend
+  position and sample colour assignment. Any later claim that this figure is "at parity with
+  `engine/plotter.py`" is false unless it names both. **B-004 and D-004 read this entry** —
+  neither should re-derive parity from the pivot text alone.
+- **Cycle-2 numbers, for the record, unverified by review:** `verify.py --all` →
+  **83 PASS, 0 FAIL**, exit 0; `flake8 docs/design-explorations/verify.py` → exit 0. The
+  legend anatomy assertion among those 83 asserts *inside-axes* and is expected to be
+  rewritten by cycle 3, not merely to keep passing.
+- **PR body was stale when cycle 3 was dispatched** — it still carried the cycle-1
+  verification block (`76 PASS`, and the line `ink-45 on paper: 12.75:1`, which is the exact
+  falsehood cycle 1 raised as `Required`). Since the PR is the reviewer's only context
+  (orchestrator §4 rule 3), dispatching a review against it would have handed the reviewer
+  evidence contradicting the code and invited a re-report of a fixed defect. Refreshing it is
+  part of cycle 3's scope. Caught by reading the PR body rather than the task list.
 - **Cycle 2 resolution — every finding fixed, nothing overruled.**
   - *Required, fixed.* `parse_rgb` → `parse_rgba` (keeps alpha), plus `composite_over` to
     alpha-blend foreground over its real background before computing luminance. Verified two
