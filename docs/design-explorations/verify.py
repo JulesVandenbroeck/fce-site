@@ -479,32 +479,47 @@ def check_anatomy(page: Page) -> CheckResult:
         )
     )
 
+    # Legend geometry — rewritten this cycle for the user's 2026-08-16 ruling
+    # (design.md D-003 entry): the legend moves outside the axes, to their
+    # right, and that is what this assertion must now require to be able to
+    # fail. Queried as `#hist-svg > .legend` (a sibling of `.panel-main`
+    # and `.panel-ratio`, appended directly to the SVG root by plot.js) —
+    # not `.panel-main .legend`, which was the old inside-axes structure and
+    # would simply not match after the move, silently reporting "legend not
+    # found" rather than a real geometric verdict. `noOverlap` is a true
+    # rectangle-intersection test, independent of and in addition to
+    # `rightOfAxes`, so a legend that happened to sit to the right in x but
+    # still overlapped the axes box vertically would still fail this.
     legend_geo = page.evaluate(
         """() => {
-            const legend = document.querySelector('#hist-svg .panel-main .legend');
+            const legend = document.querySelector('#hist-svg > .legend');
             const frame = legend ? legend.querySelector('.legend-frame') : null;
             const axesFrame = document.querySelector('#hist-svg .panel-main .plot-frame');
             if (!legend || !frame || !axesFrame) return null;
             const lb = frame.getBoundingClientRect();
             const ab = axesFrame.getBoundingClientRect();
+            const noOverlap = (
+                lb.x >= ab.x + ab.width || ab.x >= lb.x + lb.width ||
+                lb.y >= ab.y + ab.height || ab.y >= lb.y + lb.height
+            );
             return {
                 framed: true,
                 legendBox: { x: lb.x, y: lb.y, w: lb.width, h: lb.height },
                 axesBox: { x: ab.x, y: ab.y, w: ab.width, h: ab.height },
-                insideAxes: lb.x >= ab.x - 0.5 && (lb.x + lb.width) <= (ab.x + ab.width) + 0.5 &&
-                            lb.y >= ab.y - 0.5 && (lb.y + lb.height) <= (ab.y + ab.height) + 0.5,
-                upperRight: (lb.x - ab.x) > (ab.width * 0.5) && (lb.y - ab.y) < (ab.height * 0.5),
-                widthPctOfAxes: 100 * lb.width / ab.width,
+                rightOfAxes: lb.x >= (ab.x + ab.width) - 0.5,
+                noOverlap,
             };
         }"""
     )
     results.append(("Legend is framed", legend_geo is not None and legend_geo["framed"], ""))
     results.append(
         (
-            "Legend sits inside the axes, upper-right",
-            legend_geo is not None and legend_geo["insideAxes"] and legend_geo["upperRight"],
+            "Legend sits outside the axes, to the right (the user's 2026-08-16 ruling; "
+            "not the reference's inside-axes convention)",
+            legend_geo is not None and legend_geo["rightOfAxes"] and legend_geo["noOverlap"],
             f"legend box {legend_geo['legendBox']} vs axes box {legend_geo['axesBox']}, "
-            f"legend is {legend_geo['widthPctOfAxes']:.1f}% of axes width" if legend_geo else "legend not found",
+            f"rightOfAxes={legend_geo['rightOfAxes']}, noOverlap={legend_geo['noOverlap']}"
+            if legend_geo else "legend not found",
         )
     )
 
@@ -1025,6 +1040,64 @@ def check_measurements(pw: Playwright) -> bool:
     return all_ok
 
 
+def check_legend_layout(pw: Playwright) -> bool:
+    """At each width in WIDTHS, measure the histogram legend's frame box and
+    the main axes' frame box in real viewport pixels, and assert the legend
+    sits entirely outside the axes box, to its right — acceptance criterion
+    1 of the 2026-08-16 cycle-3 task, and the user's ruling it encodes (see
+    design.md's D-003 entry). `rightOfAxes` and `noOverlap` are independent
+    tests of the same geometric fact (see check_anatomy's version of this
+    assertion for why both are checked, not just one) so a legend that is
+    to the right in x but still overlapping in y cannot pass by accident.
+
+    Falsifiability for this exact assertion is not demonstrated in this
+    file — it is demonstrated once, live, by mutation-testing plot.js (put
+    the legend back at its old inside-axes coordinates, rerun, watch this
+    fail; restore, rerun, watch it pass again) — see the PR body for both
+    transcripts, since a checker script asserting its own checker is
+    correct is exactly the kind of self-referential proof this task's
+    history warns against.
+    """
+    section("Legend layout — outside the axes, to the right, every width")
+    all_ok = True
+    for width in WIDTHS:
+        browser, context, page, *_ = load_page(pw, width)
+        geo = page.evaluate(
+            """() => {
+                const legend = document.querySelector('#hist-svg > .legend');
+                const frame = legend ? legend.querySelector('.legend-frame') : null;
+                const axesFrame = document.querySelector('#hist-svg .panel-main .plot-frame');
+                if (!legend || !frame || !axesFrame) return null;
+                const lb = frame.getBoundingClientRect();
+                const ab = axesFrame.getBoundingClientRect();
+                const noOverlap = (
+                    lb.x >= ab.x + ab.width || ab.x >= lb.x + lb.width ||
+                    lb.y >= ab.y + ab.height || ab.y >= lb.y + lb.height
+                );
+                return {
+                    legendBox: { x: lb.x, y: lb.y, w: lb.width, h: lb.height },
+                    axesBox: { x: ab.x, y: ab.y, w: ab.width, h: ab.height },
+                    rightOfAxes: lb.x >= (ab.x + ab.width) - 0.5,
+                    noOverlap,
+                };
+            }"""
+        )
+        ok = geo is not None and geo["rightOfAxes"] and geo["noOverlap"]
+        all_ok = all_ok and ok
+        line(
+            f"width={width}px: legend outside axes, to the right",
+            ok,
+            (
+                f"legend box {geo['legendBox']}, axes box {geo['axesBox']}, "
+                f"rightOfAxes={geo['rightOfAxes']}, noOverlap={geo['noOverlap']}"
+            )
+            if geo
+            else "legend or axes frame not found",
+        )
+        browser.close()
+    return all_ok
+
+
 def check_paint_sweep(pw: Playwright) -> bool:
     """At each width in WIDTHS, resolve tokens.css's :root into an allowed
     set of computed colours, then check every element's color/
@@ -1153,11 +1226,40 @@ def composite_over(
 
 def check_contrast(pw: Playwright) -> bool:
     """Check every text-bearing element's computed colour, alpha-composited
-    over its real background (paper or panel), against the WCAG AA
-    threshold for its font size/weight — plus named ratios for `--ink`,
-    `--ink-70` and `--ink-45` specifically, since the token set is what a
-    reviewer will actually ask about."""
-    section("WCAG AA contrast — text against the real paper background")
+    over its real background, against the WCAG AA threshold for its font
+    size/weight — plus named ratios for `--ink`, `--ink-70` and `--ink-45`
+    specifically, since the token set is what a reviewer will actually ask
+    about.
+
+    Two things this rewrite adds for the 2026-08-16 cycle-3 task (the
+    frozen per-sample palette, X1 on vermillion, is now the default):
+
+    1. **Paint property.** SVG text in this figure never sets CSS `color`
+       — plot.css paints it with `fill` (`.plot-tick-label`,
+       `.legend-label`, `.plot-axis-label`, `.plot-header`,
+       `.plot-eff-label` are all `fill:` rules). `getComputedStyle(el).color`
+       on such an element resolves to whatever `color` it inherits — here,
+       `--ink` from `<body>`, unconditionally — regardless of what `fill`
+       actually paints. Checking `.color` on these elements was measuring
+       an inherited property that is never rendered, not the one that is.
+       Confirmed live: a `.plot-tick-label` (fill: var(--ink-70)) resolves
+       `color` to opaque `--ink` (12.75:1) and `fill` to `--ink-70`
+       (5.18:1) — two different numbers for the one thing actually visible.
+       Fixed by reading `fill` for SVG text whose resolved fill is a real
+       paint (not `none`/empty), `color` otherwise.
+    2. **Text on a saturated fill.** The frozen palette puts a real hue
+       (X1's vermillion, X2's, X3's) behind every sample swatch and stacked
+       band. A geometric overlap probe (text element's bounding-box centre
+       point inside a solid-fill shape's bounding box: `.hist-band`,
+       `.legend-swatch`, or a cutflow bar, all matched by their
+       `sample-x*` class, `url()`-paint shapes like the hatch band
+       excluded) finds any label sitting on one of those fills and
+       composites it over *that* fill — itself composited over the panel,
+       since fills carry their own `fill-opacity` — rather than over
+       plain paper/panel. Reported below as its own count, not folded
+       silently into the general text sweep.
+    """
+    section("WCAG AA contrast — text against its real background, alpha-composited")
     browser, context, page, *_ = load_page(pw, 1024)
     # Read the resolved var(--paper)/var(--panel) directly for the real
     # ground colours text sits on, rather than trusting the shorthand
@@ -1185,30 +1287,97 @@ def check_contrast(pw: Playwright) -> bool:
     )
     panel = parse_rgba(panel_token)[:3]
 
-    samples = page.evaluate(
-        """() => {
-            const nodes = [];
-            document.querySelectorAll('body :not(script):not(style)').forEach(el => {
-                const direct = Array.from(el.childNodes).some(n => n.nodeType === 3 && n.textContent.trim().length > 0);
-                if (!direct) return;
+    # Both tabs are rendered into the DOM on load (plot.js draws both
+    # figures up front); only one `.option-panel` is `display:block` at a
+    # time. A single measurement pass therefore only sees one figure's text
+    # actually laid out — the other's `getBoundingClientRect()` collapses
+    # to (0,0,0,0), same as check_paint_sweep's reason for sweeping both
+    # tabs (see that function). GATHER_JS excludes zero-area elements at
+    # the source (both from the shapes list a label could sit on, and from
+    # the elements it measures), so running it once per tab and
+    # concatenating the results checks every real, rendered piece of text
+    # on the page exactly once, with no double-count and no spurious
+    # (0,0)-vs-(0,0) overlap match between two different hidden panels.
+    gather_js = """() => {
+        const isSvg = (el) => el.namespaceURI === 'http://www.w3.org/2000/svg';
+        // Solid-fill shapes a label could sit on: sample bands, sample
+        // legend swatches, cutflow bars — all carry a `sample-x*` class.
+        // `url()`-paint shapes (the hatch band) are excluded by the
+        // `startsWith('rgb')` filter below, since they have no single
+        // resolved colour to composite against.
+        const shapes = Array.from(document.querySelectorAll('[class*="sample-x"]'))
+            .map(el => {
                 const cs = getComputedStyle(el);
-                const onPanel = !!el.closest('.browser-frame, .figure-scroll, .wf-annotations, .plot-controls');
-                nodes.push({
-                    tag: el.tagName, cls: el.getAttribute('class'), color: cs.color,
-                    fontSize: parseFloat(cs.fontSize), fontWeight: cs.fontWeight, onPanel,
-                    text: el.textContent.trim().slice(0, 30),
-                });
+                if (!cs.fill || !cs.fill.startsWith('rgb')) return null;
+                const r = el.getBoundingClientRect();
+                if (r.width === 0 || r.height === 0) return null; // not currently rendered
+                return {
+                    fill: cs.fill,
+                    fillOpacity: cs.fillOpacity || '1',
+                    x0: r.x, y0: r.y, x1: r.x + r.width, y1: r.y + r.height,
+                };
+            })
+            .filter(Boolean);
+
+        const nodes = [];
+        document.querySelectorAll('body :not(script):not(style)').forEach(el => {
+            const direct = Array.from(el.childNodes).some(n => n.nodeType === 3 && n.textContent.trim().length > 0);
+            if (!direct) return;
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return; // not currently rendered
+            const cs = getComputedStyle(el);
+            // The paint property that actually renders this element's
+            // text: SVG text in this figure is painted via `fill`
+            // (plot.css), never `color`; HTML text is painted via `color`.
+            // See the docstring above for why this matters.
+            const svgText = isSvg(el) && el.tagName.toLowerCase() === 'text';
+            const usesFill = svgText && cs.fill && cs.fill !== 'none' && cs.fill !== '';
+            const paintProp = usesFill ? 'fill' : 'color';
+            const paint = cs[paintProp];
+            const onPanel = !!el.closest('.browser-frame, .figure-scroll, .wf-annotations, .plot-controls');
+
+            // Geometric overlap probe: does this text element's centre
+            // point fall inside a solid-fill shape's box? If several match
+            // (nested/overlapping shapes), the last one in document order
+            // wins, matching SVG's own paint order (later == on top ==
+            // what a viewer actually sees behind the text).
+            const cx = rect.x + rect.width / 2;
+            const cy = rect.y + rect.height / 2;
+            let onShape = null;
+            for (const s of shapes) {
+                if (cx >= s.x0 && cx <= s.x1 && cy >= s.y0 && cy <= s.y1) onShape = s;
+            }
+
+            nodes.push({
+                tag: el.tagName, cls: el.getAttribute('class'), paint, paintProp,
+                fontSize: parseFloat(cs.fontSize), fontWeight: cs.fontWeight, onPanel,
+                onShapeFill: onShape ? onShape.fill : null,
+                onShapeOpacity: onShape ? parseFloat(onShape.fillOpacity) : null,
+                text: el.textContent.trim().slice(0, 30),
             });
-            return nodes;
-        }"""
-    )
+        });
+        return nodes;
+    }"""
+    samples = page.evaluate(gather_js)  # histogram tab active (the page's default)
+    page.click("#tab-cutflow")
+    page.wait_for_timeout(1700)  # let the cutflow reveal animation finish before measuring it
+    samples += page.evaluate(gather_js)  # cutflow tab active — the histogram is now the hidden one
+    page.click("#tab-hist")
+    page.wait_for_timeout(300)
+
     checked = 0
+    on_shape_count = 0
     failures = []
     for s in samples:
-        rgba = parse_rgba(s["color"])
+        rgba = parse_rgba(s["paint"])
         if not rgba:
             continue
-        ground = panel if s["onPanel"] else paper
+        if s["onShapeFill"]:
+            on_shape_count += 1
+            shape_rgba = parse_rgba(s["onShapeFill"])
+            ground = composite_over((*shape_rgba[:3], s["onShapeOpacity"]), panel)
+        else:
+            ground = panel if s["onPanel"] else paper
         composited = composite_over(rgba, ground)
         ratio = contrast_ratio(composited, ground)
         large = s["fontSize"] >= 24 or (s["fontSize"] >= 18.66 and s["fontWeight"] in ("700", "bold"))
@@ -1218,12 +1387,18 @@ def check_contrast(pw: Playwright) -> bool:
             failures.append((s, ratio, threshold))
     ok = len(failures) == 0
     line(
-        f"{checked} text-bearing elements checked against their real background (paper {paper} or panel {panel})",
+        f"{checked} text-bearing elements checked against their real background "
+        f"(paint property read per-element: fill for SVG text, color otherwise; "
+        f"{on_shape_count} of {checked} sit on a solid sample/legend fill and were composited "
+        f"against that fill rather than paper {paper} or panel {panel})",
         ok,
         f"{len(failures)} below AA threshold",
     )
     for s, ratio, threshold in failures[:10]:
-        print(f"       below AA: <{s['tag']} class={s['cls']!r}> {ratio:.2f}:1 (needs {threshold}) text={s['text']!r}")
+        print(
+            f"       below AA: <{s['tag']} class={s['cls']!r}> {s['paintProp']}={s['paint']} "
+            f"{ratio:.2f}:1 (needs {threshold}) text={s['text']!r}"
+        )
     # explicit named ratios for the report, as required — composited over
     # paper, since --ink-70/--ink-45 are alpha washes, not opaque greys, and
     # an un-composited reading overstates their contrast (see composite_over).
@@ -1482,6 +1657,7 @@ def main() -> None:
         if args.all:
             all_results.append(("payload-consistency", check_payload_consistency(pw)))
             all_results.append(("measurements", check_measurements(pw)))
+            all_results.append(("legend-layout", check_legend_layout(pw)))
             all_results.append(("paint-sweep", check_paint_sweep(pw)))
             all_results.append(("contrast", check_contrast(pw)))
             all_results.append(("focus-walk", check_focus_walk(pw)))

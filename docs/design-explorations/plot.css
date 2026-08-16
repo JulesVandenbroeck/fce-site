@@ -2,8 +2,10 @@
  * below sets an inline style attribute or a bare hex value. Sample identity
  * colour is deliberately NOT set here on the `.sample-x*` classes directly —
  * it is set per `data-palette` on <body>, in the "sample identity" block
- * near the bottom, so the parity/frozen toggle is pure CSS and needs no
- * re-render from plot.js.
+ * near the bottom, so the tab10/frozen toggle is pure CSS and needs no
+ * re-render from plot.js. `frozen` is the default (see plot.html's
+ * <body data-palette>) since the user's 2026-08-16 ruling; `tab10` stays
+ * selectable via the on-page toggle.
  */
 
 body {
@@ -74,8 +76,8 @@ code, .num { font-family: var(--font-mono); }
 
 /* Wide content scrolls inside its own container; the page body never
  * scrolls horizontally (design working rule). This is also the mechanism
- * that lets the figure keep its fixed, reference-parity bin width instead
- * of shrinking its anatomy to fit a narrow viewport. */
+ * that lets the figure keep its fixed reference bin width instead of
+ * shrinking its anatomy to fit a narrow viewport. */
 .figure-scroll {
   overflow-x: auto;
   border: 1px solid var(--paper-line);

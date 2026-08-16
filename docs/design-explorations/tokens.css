@@ -15,9 +15,12 @@
  *
  * Direction: `.claude/design/CLAUDE.md` §2 — lab notebook, warm paper, ink,
  * and a saturated palette where every hue is answerable. Two sample-colour
- * schemes are declared side by side (tab10 parity vs. a frozen per-sample
- * map) because which one ships is an open question for the user, not a
- * decision made here — see plot.html's annotations panel.
+ * schemes are declared side by side: tab10 (colour by sample draw order,
+ * matching engine/plotter.py) and a frozen per-sample map (X1 pinned to
+ * the vermillion accent). The user ruled `frozen` the default at the
+ * 2026-08-16 checkpoint — see plot.html's rulings panel — but both stay
+ * wired via `data-palette` on <body> so the alternative remains
+ * inspectable, toggled with no re-render.
  */
 
 :root {
@@ -51,20 +54,23 @@
    * discovery note — see plot.js. */
   --vermillion: #c0392b;
 
-  /* ---- sample identity: option A, tab10 parity ---------------------------
+  /* ---- sample identity: option A, tab10 (reference draw-order) -----------
    * matplotlib's tab10, indexed by sample order — exactly what
    * engine/plotter.py and engine/cutflow_plotter.py assign. Only the first
    * three entries are used (X1, X2, X3); the rest of tab10 is not declared
-   * because nothing in this payload uses it. */
+   * because nothing in this payload uses it. Not the default — see option B
+   * and plot.html's rulings panel. */
   --tab10-x1: #1f77b4;
   --tab10-x2: #ff7f0e;
   --tab10-x3: #2ca02c;
 
-  /* ---- sample identity: option B, frozen per-sample map -------------------
-   * X1 is the signal in missions 1 and 2, so it takes the reserved accent —
-   * on-brief per design-brief.md §7 ("the signal sample"). X2 and X3 get
-   * fixed hues that do not collide with tab10 parity or with graphite-blue's
-   * chrome duty. This mapping does not shift if a fourth sample is added. */
+  /* ---- sample identity: option B, frozen per-sample map — DEFAULT --------
+   * Ruled the default at the 2026-08-16 checkpoint (plot.html's rulings
+   * panel). X1 is the signal in missions 1 and 2, so it takes the reserved
+   * accent — on-brief per design-brief.md §7 ("the signal sample"). X2 and
+   * X3 get fixed hues that do not collide with tab10 or with
+   * graphite-blue's chrome duty. This mapping does not shift if a fourth
+   * sample is added. */
   --frozen-x1: var(--vermillion);
   --frozen-x2: #6b8f5e;
   --frozen-x3: #b5883a;

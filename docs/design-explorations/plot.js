@@ -1,18 +1,27 @@
-// plot.js — D-003 exploration. Renders the reference-parity histogram (with
-// ratio panel) and the cutflow figure as hand-written SVG, driven entirely
-// by the hard-coded payload embedded in plot.html (#payload-data). No
-// fetch(), so it also runs correctly from a file:// URL.
+// plot.js — D-003 exploration. Renders the histogram (with ratio panel) and
+// the cutflow figure as hand-written SVG, driven entirely by the
+// hard-coded payload embedded in plot.html (#payload-data). No fetch(), so
+// it also runs correctly from a file:// URL.
+//
+// This figure's anatomy is at parity with the reference python figure
+// (engine/plotter.py / engine/cutflow_plotter.py) — panels, ratio split,
+// ticks, frame, stacking, systematic band, header. It carries two named,
+// user-ruled exceptions, both settled 2026-08-16: legend placement (outside
+// the axes, not the reference's framed inside-axes convention) and
+// sample-colour assignment (a frozen per-sample map is the default, not
+// tab10-by-draw-order). See plot.html's rulings panel for both.
 //
 // This file is a one-task carve-out from the JS/CSS ownership split (see the
-// D-003 task body) so the design role can build the reference-parity chart
-// end to end. It is not imported by the app.
+// D-003 task body) so the design role can build this chart end to end. It is
+// not imported by the app.
 //
 // Colour policy: every SVG element that carries paint sets a `class` that
 // keys into a CSS rule in plot.css, which resolves to a var() in
 // tokens.css. Nothing here writes a hex value or a `style=` attribute —
 // the one exception is the tick/reveal geometry, which is layout, not
-// paint. The two sample-colour schemes (tab10 parity vs. a frozen
-// per-sample map) are both wired up permanently via the `data-palette`
+// paint. The two sample-colour schemes (tab10, colour-by-draw-order
+// matching the reference, vs. a frozen per-sample map, the default since
+// 2026-08-16) are both wired up permanently via the `data-palette`
 // attribute on <body>; the toggle button flips the attribute, the CSS
 // decides what each scheme looks like.
 //
@@ -65,15 +74,18 @@ function niceCeilingAndStep(dataMax) {
 
 // ---------------------------------------------------------------------
 // Figure geometry — the numbers verify.py measures against the derived
-// floor (≈480 x 460 CSS px for the two-panel histogram). This figure is a
-// fixed-size SVG, not a responsive one: physics figures keep a fixed
-// aspect and bin width the way a printed plot would, and the surrounding
-// .figure-scroll container scrolls horizontally rather than the figure
-// shrinking its anatomy to fit a narrow viewport. See plot.html's
-// annotations panel for the reasoning.
+// floor. This figure is a fixed-size SVG, not a responsive one: physics
+// figures keep a fixed aspect and bin width the way a printed plot would,
+// and the surrounding .figure-scroll container scrolls horizontally rather
+// than the figure shrinking its anatomy to fit a narrow viewport. See
+// plot.html's rulings panel for the reasoning.
+//
+// The axes box itself (axesLeft..axesRight, 412px wide) is unchanged from
+// before this cycle — legend placement is the user's first named exception
+// to parity (2026-08-16), built by widening the SVG canvas and drawing the
+// legend in that new right-hand margin, past axesRight, rather than by
+// shrinking the axes to make room inside them.
 const FIG = {
-  w: 480,
-  h: 460,
   left: 56,
   right: 12,
   headerH: 26,
@@ -81,13 +93,17 @@ const FIG = {
   mainH: 288,
   ratioH: 96,
   xLabelH: 42,
+  axesW: 412,
+  legendGap: 20, // gutter between the axes' right edge and the legend
+  legendW: 150,
 };
+FIG.h = 460;
 FIG.axesTop = FIG.headerH + FIG.gap; // 34
 FIG.mainBottom = FIG.axesTop + FIG.mainH; // 322 = ratio top (hspace: 0)
 FIG.ratioBottom = FIG.mainBottom + FIG.ratioH; // 418
 FIG.axesLeft = FIG.left;
-FIG.axesRight = FIG.w - FIG.right; // 468
-FIG.axesW = FIG.axesRight - FIG.axesLeft; // 412
+FIG.axesRight = FIG.axesLeft + FIG.axesW; // 468
+FIG.w = FIG.axesRight + FIG.legendGap + FIG.legendW + FIG.right; // 650
 
 const CUTFLOW = {
   w: 460,
@@ -388,10 +404,13 @@ function renderHistogramFigure(root, payload) {
     { showXLabels: false, showYLabel: true, yLabel: "Events / Bin" }
   );
 
-  // legend — framed, inside axes, upper right; stack order reversed (X3
-  // first) to read top-to-bottom the way the stack reads bottom-to-top,
-  // then "Syst. unc.", then "Pseudo-data" — matches mplhep's stacked-plot
-  // legend ordering.
+  // legend — framed, outside the axes to the right (the user's 2026-08-16
+  // ruling; not the reference's inside-axes convention — see plot.html's
+  // rulings panel). Stack order reversed (X3 first) to read top-to-bottom
+  // the way the stack reads bottom-to-top, then "Syst. unc.", then
+  // "Pseudo-data" — matches mplhep's stacked-plot legend ordering. Drawn on
+  // `svg` directly, a sibling of `mainG`/`ratioG` rather than a child of
+  // either, since it is no longer part of either panel's own box.
   const legendItems = [...samples].reverse().map((s) => ({
     kind: "swatch",
     cls: `sample-${s.name.toLowerCase()}`,
@@ -399,10 +418,10 @@ function renderHistogramFigure(root, payload) {
   }));
   legendItems.push({ kind: "hatch", label: "Syst. unc." });
   legendItems.push({ kind: "marker", label: "Pseudo-data" });
-  drawLegend(mainG, {
-    x: FIG.axesRight - 158,
-    y: FIG.axesTop + 6,
-    w: 152,
+  drawLegend(svg, {
+    x: FIG.axesRight + FIG.legendGap,
+    y: FIG.axesTop,
+    w: FIG.legendW,
     h: legendItems.length * 15 + 10,
     framed: true,
     items: legendItems,
@@ -663,7 +682,9 @@ function initPaletteToggle() {
     document.body.dataset.palette = next;
     btn.setAttribute("aria-pressed", next === "frozen" ? "true" : "false");
     btn.textContent =
-      next === "tab10" ? "Sample colours: tab10 (parity)" : "Sample colours: frozen per-sample map";
+      next === "tab10"
+        ? "Sample colours: tab10 (reference draw-order)"
+        : "Sample colours: frozen per-sample map (default)";
   });
 }
 
