@@ -13,7 +13,47 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** in review (cycle 1), dispatched 2026-08-16
+- **Status:** in rework (cycle 2) — cycle-1 review returned 1 required, 2 suggested-major,
+  6 suggested-minor. Not approved.
+- **Review, cycle 1.** The reviewer mutation-tested the checker rather than reading it, which
+  is the only reason the required finding exists — every one of `verify.py`'s 76 assertions
+  passes, and one of them cannot fail.
+  - *Required* — `verify.py:767`, `parse_rgb` matches `rgba?\((\d+),\s*(\d+),\s*(\d+)` and
+    **discards the alpha channel**, so every translucent text colour is measured as if
+    opaque. That is exactly the token family this palette uses (`--ink-70`, `--ink-45`).
+    Demonstrated, not inferred: on a copy with `.fit-readout { color: rgba(43,38,32,0.30) }`
+    — truly ≈1.9:1 — `verify.py` reported it passing. The PR body prints
+    `ink-45 on paper: 12.75:1`; composited it is **2.60:1**, below AA. Criterion 4's "0 below
+    AA" therefore rests on a check that cannot see the most likely way this palette fails.
+    **No live failure today** — recomposited, `--ink-70` is 5.18:1 and `--ink-45` is declared
+    but unused — so this is a broken instrument, not a broken page.
+  - *Suggested-major* — `plot.js:281-302`, `payload.json:137`: the band combines `lumiUnc`
+    with `systUp` in quadrature and never reads `weightsSquared`, so either the reference
+    omits the MC-stat term too (making `weightsSquared` a dead field that should not be
+    proposed as contract) or the band is not at parity. `cutflow.totalRaw` and
+    `fit.thresholds` are likewise declared and never consumed. This is the finding that
+    matters most, because **B-004 is about to land these field names.**
+  - *Suggested-major* — `verify.py`: 45 flake8 violations under the repo's own `.flake8`
+    (`F401`, 42×`E501`, 2×`E741`, `E203`); no type hints or function docstrings on ~30
+    functions, against shared §6. The reviewer named the legitimate counter-argument itself:
+    if `docs/` is outside the lint gate, `.flake8`'s `exclude` should say so — and that file
+    is back-end owned, so it needs raising, not assuming.
+  - *Suggested-minor ×6* → backlog, except two the coder was asked to fix in this pass
+    because they are about the honesty of the checker itself: `verify.py:649` hard-codes the
+    floor to the figure's own fixed size so `meets_floor` cannot fail, and `verify.py:965`
+    runs `git diff` with no revision, comparing worktree to index rather than the branch.
+  - **What the review independently confirmed rather than took on trust:** scope compliance
+    (`gh pr diff 5 --name-only` = exactly the 7 files), 49 pytest passes, its own Playwright
+    audit at three widths with **alpha-composited** contrast over 76 + 52 elements finding 0
+    below AA, screenshots examined for real, the palette toggle repainting via CSS alone
+    (`.sample-x1` → `rgb(192,57,43)`), and a CDP accessibility tree showing all 40 bin nodes
+    announcing with full labels. It also mutation-tested three of the checker's other sweeps
+    and found them genuinely sound (paint 32 violations caught, focus 41 of 43 caught,
+    reduced-motion 18 caught).
+  - **One limit the reviewer declared:** it could not compare against `engine/plotter.py`,
+    because the reference engine is not vendored into this repo yet. Anatomy is verified
+    against the rendered DOM only. Worth knowing — parity to the *reference* is currently
+    asserted by the coder and checked by nobody.
 - **Coder reports:** `verify.py --all` → 76 PASS, 0 FAIL, exit 0. Anatomy read from the live
   DOM, 3/3 sections. Paint sweep 0 violations over 5158 property reads per width across 9
   properties including `fill`/`stroke`. 71 text elements contrast-checked, 0 below AA. Tab
