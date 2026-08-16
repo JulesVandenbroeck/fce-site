@@ -24,7 +24,6 @@ between the options, not in the polish of any one of them.
 | `index.css`, `mission-screen.css`, `recipe-builder.css` | Per-page wireframe CSS. |
 | `base.css` | Shared framework CSS (tabs, panels, the browser frame, annotation styling). Adapted from the `wireframe` skill's template. |
 | `brain/design-context.md` | The persistent design context the `wireframe` skill keeps. Written from `docs/design-brief.md` and the role manuals, because there is no existing UI to research or screenshot. |
-| `brain/design-taste.md` | The skill's bundled craft-principles reference, copied unmodified. Not used in phase 1; it feeds the colour phase, which was not run. |
 
 Nothing in this directory is application code. No CSS, template, token, font or Python file was
 created or touched outside `docs/wireframes/`.
@@ -57,19 +56,35 @@ Both recommendations are written out at length, with what they cost, in each pag
 
 ## Ground rules these were drawn under
 
-- **Black and white only.** `#000 #333 #666 #ccc #eee #f7f7f7 #fff`, plus `#999` for placeholder
-  text inside simulated form fields. No colour anywhere, including in the CSS files.
-- **No typeface has been chosen.** The browser's default sans is used deliberately, so nothing here
-  reads as a type decision. Numerics use a generic monospace stack to show where tabular figures
-  belong, not to propose a font.
+- **Black and white only.** Twelve greys, exhaustively: `#000 #333 #666 #999 #ccc #eee #f0f0f0
+  #f5f5f5 #f7f7f7 #f9f9f9 #fafafa #fff`. The five near-whites separate page ground from panel
+  ground from hover state. `#999` appears only as placeholder text inside simulated form fields;
+  every other piece of text clears WCAG AA. No hue anywhere, in any file.
+  (`grep -rhoiE '#[0-9a-f]{3,8}' *.css *.html | sort -u` returns exactly that list, plus one
+  `#ffe5c0` inside a CSS comment recording a value that was **removed**.)
+- **No typeface has been chosen.** Every element on all three pages computes to one of exactly two
+  `font-family` values, and no third value exists anywhere in the directory:
+  - `sans-serif` on `body` (`base.css`), inherited by every heading, paragraph, button, control
+    and table cell, so all prose falls to the browser default and nothing here reads as a type
+    decision. `getComputedStyle(document.body).fontFamily` returns `sans-serif`.
+  - `ui-monospace, "DejaVu Sans Mono", monospace` on numerics and simulated code fields (four
+    declarations, in `mission-screen.css` and `recipe-builder.css`). Generic keyword at both ends;
+    the one named face in the middle is the stock Linux mono, present only as a fallback for
+    browsers without `ui-monospace`. It marks where tabular figures belong; it is not a proposal.
+
+  The real type decision — a distinctive serif for prose and a warm mono for numerics — is D-002's,
+  and is deliberately absent here.
 - **No external requests.** No CDN, no remote fonts, no images, no `@import`. Every file loads from
   this directory. `docs/wireframes/` copied to a machine with no network renders identically.
 - **Laptop and tablet only** — 1440, 1024 and 768 px. 768 is the floor, not a phone breakpoint.
-- **Phase 1 of the `wireframe` skill only.** The skill's phase 2 renders colour variants via five
-  parallel agents; it was not run, deliberately. Colour is premature before a layout is chosen, and
-  the sub-agent that produced this cannot reliably dispatch parallel agents. The dead phase-2 UI
-  (Clean / Polished sub-tabs, badges, completion banner) was stripped from the template rather than
-  left in place pointing at nothing.
+- **Phase 1 of the `wireframe` skill only, and phase 2 will not be run.** The skill's phase 2
+  renders colour variants via five parallel agents. Colour is premature before a layout is chosen,
+  and the real visual system is D-002's job, built from `docs/design-brief.md` and the committed
+  lab-notebook direction rather than from a generic craft reference — so phase 2 has been dropped,
+  not deferred. Its dead UI (Clean / Polished sub-tabs, badges, completion banner) was stripped
+  from the template rather than left in place pointing at nothing, and the skill's bundled taste
+  reference was removed with it so that nothing in this directory can be mistaken for project
+  design guidance.
 
 ## Constraints that bounded the options
 
