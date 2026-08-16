@@ -13,10 +13,25 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** **LOOP LIMIT — escalated to the user 2026-08-16, no cycle 4 dispatched.**
-  Review of cycle 3 returned **2 required, 2 suggested-major, 3 suggested-minor**. Three
-  coder passes have now happened (initial, cycle-2 fixes, cycle-3 rulings) against two
-  completed reviews, so orchestrator §5's limit is reached. Head `4d4f4e4`, PR #5 open.
+- **Status:** **cycle 4 dispatched 2026-08-16 on the user's tie-break.** The loop limit was
+  reached and escalated rather than dispatched through (orchestrator §5); the user ruled.
+  Head at escalation `4d4f4e4`, PR #5 open.
+- **The user's tie-break, 2026-08-16: fix the y-scale and the colours only.**
+  - *Fix:* the y-axis (a real visual defect — the Z peak renders at ~40% of panel height)
+    and the tab10 X2/X3 values (a factual error that **D-002 would inherit**).
+  - *Accept as further user-ruled deviations:* the ratio panel's missing `xerr` bin-width
+    bars, the main panel's 31 bottom tick marks, and the x major spacing. These join legend
+    placement and sample colour as things this figure knowingly does differently.
+  - *Not chosen:* full parity repair, and dropping parity as the governing rule. Parity still
+    governs the anatomy; the deviation list is now longer than the figure's own prose claimed.
+  - **Coupling the dispatch names explicitly:** x major spacing and the y-scale come from the
+    *same* tick-step algorithm (`plot.js:62-73`), so fixing y may correct x for free. The
+    coder is told to report which, not to hold x wrong on purpose.
+- **The instruction that matters most in cycle 4, and it is a D-001 lesson:** the figure's
+  prose must **list** its deviations and never **count** them. "Two named exceptions" is what
+  made Required 1 a finding rather than a footnote — the claim was falsifiable by arithmetic
+  the moment a third was found. No counts, no "exhaustive", no "only". D-001 burned four
+  cycles on exactly this shape.
 - **Review, cycle 3 — the first review that checked parity against the reference itself.**
   Cycle 1's reviewer declared it *could not*, because the engine is not vendored here. This
   one found `fce-project/fce/engine/plotter.py` outside the repo, rendered it **from this
