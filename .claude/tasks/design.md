@@ -26,9 +26,42 @@ IDs are `D-nnn`, allocated in order and never reused.
   `font-family` values instead of falling back to the UA default; `README.md`'s palette is
   replaced with the exhaustive twelve-grey list plus the grep that proves it; and
   `brain/design-taste.md` is deleted rather than kept unused.
-  **Cycle 3 is the loop limit** (orchestrator manual §5) — if this review does not converge,
-  the orchestrator stops and hands the disagreement to the user rather than dispatching a
-  fourth cycle.
+  **Cycle 3 was the loop limit** (orchestrator manual §5). It did not converge, so the
+  orchestrator stopped and handed it to the user rather than dispatching a fourth. See below.
+- **Review, cycle 3:** 1 required, 1 suggested-major, 2 suggested-minor. **Loop limit
+  reached — escalated to the user 2026-08-16, no fourth cycle dispatched.**
+  - *Required* — `mission-screen.html:16`, `recipe-builder.html:16`: the `← index` anchor is
+    unstyled and renders `rgb(0, 0, 238)`, the UA default link blue. It sits in the page
+    header and is the **first tab stop** on both main screens. Acceptance criterion 1
+    ("black and white only — no colour") is therefore not met, and `README.md:62` ("No hue
+    anywhere, in any file") is false as rendered. `index.html` escapes only incidentally,
+    because `index.css:32` happens to set `.ix__card h2 a { color: #000 }`.
+  - *Suggested-major* — `index.html:80` and `README.md:68` still claim prose falls to *the
+    browser's default font*. Chromium's default is Times New Roman; these pages declare
+    `font-family: sans-serif`, which resolves to the default **sans** (Arial here).
+    Criterion 1 still holds — a generic keyword is not a typeface — but this is the *same*
+    claim-versus-render mismatch cycle 2 was opened to fix, surviving in the one file the
+    reader is told to open first.
+- **Why it did not converge — the task was underspecified, and in a nameable way.** Both
+  cycle-3 findings are one defect: **claims about the rendering, verified by grepping the
+  source.** The coder's check was `grep -rhoiE '#[0-9a-f]{3,8}'` over the files, which
+  structurally cannot see a UA default — no hex literal exists for the blue link or the
+  Times fallback, so the grep was clean while the render was not. Cycle 2 fixed the one
+  instance it was shown (`base.css`) rather than the class, so cycle 3 found the rest.
+  "Black and white only" was never operationalised into a check, and that omission is the
+  orchestrator's, not the coder's. Any future criterion of this shape must name the
+  verification method: *enumerate computed styles in a browser*, never grep hex literals.
+- **The reviewer measured rather than sampled**, which is why it caught what two passes
+  missed: 891 text nodes resolved against their first opaque ancestor background for
+  contrast (66 distinct combinations, 0 failures), `getComputedStyle` over every element on
+  every option tab at every width rather than a grep, 37 screenshots, a real `Tab` walk
+  (40 stops, 0 without a visible ring), horizontal-overflow probes in all 36
+  page×tab×width combinations, and reduced-motion verified by re-rendering under
+  `prefers-reduced-motion: reduce`.
+- **One backlog entry is wrong and must be corrected when this resumes:** the cycle-2 record
+  says `aria-current="true"` on the active option tab was "left in place and backlogged",
+  but `grep -rn 'aria-current' docs/wireframes/` returns nothing — the entry describes markup
+  that does not exist.
 - **Review, cycle 2 (the first review that completed):** 0 required, 1 suggested-major,
   4 suggested-minor.
   - *Suggested-major* — `base.css:17` declares
