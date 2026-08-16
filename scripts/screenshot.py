@@ -35,7 +35,15 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import uvicorn
-from playwright.sync_api import Browser, Error as PlaywrightError, Playwright, sync_playwright
+from playwright.sync_api import (
+    Browser,
+    Error as PlaywrightError,
+    Page,
+    Playwright,
+    Response,
+    TimeoutError as PlaywrightTimeoutError,
+    sync_playwright,
+)
 
 from fce_web.app import create_app
 
@@ -63,6 +71,12 @@ WIDTHS = (1440, 1024, 768)
 #: Viewport height. Only the starting height -- every capture is full-page, so
 #: a taller page produces a taller image.
 VIEWPORT_HEIGHT = 900
+
+#: Milliseconds a navigation is given to reach ``networkidle`` before it is
+#: treated as stuck rather than merely slow. Playwright's own default -- named
+#: here so the failure message can state it, rather than a person reading a
+#: bare ``TimeoutError`` having to know what Playwright would have waited for.
+NAVIGATION_TIMEOUT_MS = 30_000
 
 #: Prefix for the generated output directory, so stray runs are recognisable
 #: in the system temp directory.
@@ -189,6 +203,25 @@ def image_name(route: str, width: int) -> str:
     return f"{slug}-{width}.png"
 
 
+def _goto_or_raise(page: Page, url: str, timeout_ms: float) -> Response | None:
+    """Navigate ``page`` to ``url``; turn a stuck load into the tool's own words.
+
+    ``networkidle`` never fires while something on the page keeps a request
+    open -- a long ``fetch()``, an SSE stream, a WebSocket that never closes.
+    Left unguarded, that surfaces after ``timeout_ms`` as a bare Playwright
+    ``TimeoutError`` -- no PNG, no explanation, and every caller of this tool
+    catches only ``ScreenshotError``. Converting it here keeps that promise:
+    a stuck page is reported the same way a 404 or a missing browser is.
+    """
+    try:
+        return page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+    except PlaywrightTimeoutError as exc:
+        raise RouteNotServedError(
+            f"{url} did not settle within {timeout_ms / 1000:g}s -- is something on the page "
+            "holding a request open?"
+        ) from exc
+
+
 def capture(route: str, output_dir: Path, widths: Sequence[int] = WIDTHS) -> list[Path]:
     """Photograph ``route`` at each width and return the files written.
 
@@ -204,7 +237,7 @@ def capture(route: str, output_dir: Path, widths: Sequence[int] = WIDTHS) -> lis
             for width in widths:
                 page = browser.new_page(viewport={"width": width, "height": VIEWPORT_HEIGHT})
                 try:
-                    response = page.goto(url, wait_until="networkidle")
+                    response = _goto_or_raise(page, url, NAVIGATION_TIMEOUT_MS)
                     if response is None or not response.ok:
                         status = "no response" if response is None else response.status
                         raise RouteNotServedError(

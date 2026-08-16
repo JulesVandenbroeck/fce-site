@@ -9,22 +9,28 @@ assumed. The screenshot tool is driven the way its callers drive it: as a
 command line, in a subprocess, from an unrelated working directory.
 """
 
+import http.server
 import json
 import socket
 import subprocess
 import sys
 import threading
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
-from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import Error as PlaywrightError, Page
 
 from scripts.screenshot import (
     HOST,
     SERVER_THREAD_NAME,
     WIDTHS,
     ChromiumUnavailableError,
+    RouteNotServedError,
+    _goto_or_raise,
     launch_chromium,
     resolve_output_dir,
     serve_app,
@@ -129,6 +135,76 @@ def test_serve_app_stops_the_server_thread_even_when_the_body_raises() -> None:
 def _server_threads() -> set[threading.Thread]:
     """Return the live server threads, by the name ``serve_app`` gives them."""
     return {thread for thread in threading.enumerate() if thread.name == SERVER_THREAD_NAME}
+
+
+#: How long the ``/hang`` handler holds the connection open for. Comfortably
+#: longer than any timeout a test below passes to ``_goto_or_raise``, so the
+#: request is still outstanding when that timeout fires; short enough that a
+#: daemon thread left running past the end of a test does not linger.
+STUCK_FETCH_HOLD_SECONDS = 5.0
+
+
+class _StuckFetchHandler(http.server.BaseHTTPRequestHandler):
+    """Serves a page whose own script starts a ``fetch()`` it never lets finish.
+
+    This is the review's own repro for the navigation-timeout guard: the
+    document at ``/`` loads immediately -- ``wait_until="load"`` would be
+    satisfied at once -- but the request its inline script starts against
+    ``/hang`` never completes, so ``networkidle`` specifically never fires.
+    """
+
+    def do_GET(self) -> None:
+        if self.path == "/hang":
+            time.sleep(STUCK_FETCH_HOLD_SECONDS)
+            return
+        body = b"<!doctype html><title>stuck</title><script>fetch('/hang')</script>"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args: object) -> None:
+        pass  # Keep test output free of one line per request.
+
+
+@contextmanager
+def _stuck_fetch_server() -> Iterator[str]:
+    """Serve a page holding an open request, on a port the kernel picks."""
+    server = http.server.ThreadingHTTPServer((HOST, 0), _StuckFetchHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://{HOST}:{server.server_port}/"
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+
+
+def test_goto_or_raise_reports_a_stuck_page_as_a_screenshot_error(page: Page) -> None:
+    """A held-open request is reported in the tool's own words, not Playwright's.
+
+    Without the guard, this is a bare ``playwright._impl._errors.TimeoutError``
+    after the full navigation timeout: no PNG, no explanation, and a design
+    role staring at a traceback the first time it screenshots a page with a
+    run in progress.
+    """
+    with _stuck_fetch_server() as base_url:
+        with pytest.raises(RouteNotServedError, match="did not settle"):
+            _goto_or_raise(page, base_url, timeout_ms=500)
+
+
+def test_goto_or_raise_names_the_url_that_did_not_settle(page: Page) -> None:
+    """The failure names which URL got stuck, not just that one did."""
+    with _stuck_fetch_server() as base_url:
+        with pytest.raises(RouteNotServedError, match=r"^http://127\.0\.0\.1:\d+/ did not settle"):
+            _goto_or_raise(page, base_url, timeout_ms=500)
+
+
+def test_goto_or_raise_returns_the_response_for_a_page_that_settles(page: Page, live_server: str) -> None:
+    """The guard is a narrowing, not a rewrite: an ordinary page still succeeds."""
+    response = _goto_or_raise(page, f"{live_server}/", timeout_ms=5_000)
+    assert response is not None and response.ok
 
 
 @pytest.fixture(name="screenshot_run", scope="module")
