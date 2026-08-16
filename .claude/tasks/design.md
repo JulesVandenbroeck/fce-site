@@ -13,8 +13,39 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** in rework (cycle 2) — cycle-1 review returned 1 required, 2 suggested-major,
-  6 suggested-minor. Not approved.
+- **Status:** in review (cycle 2). `verify.py --all` → **83 PASS, 0 FAIL**, exit 0;
+  `flake8 docs/design-explorations/verify.py` → exit 0.
+- **Cycle 2 resolution — every finding fixed, nothing overruled.**
+  - *Required, fixed.* `parse_rgb` → `parse_rgba` (keeps alpha), plus `composite_over` to
+    alpha-blend foreground over its real background before computing luminance. Verified two
+    ways rather than one: the coder re-injected **the reviewer's own exact failing rule** on a
+    scratch copy and watched it now fail at 1.84:1 where it had silently passed; and the real
+    page's numbers now match the reviewer's independent hand-recomputation to the decimal —
+    `--ink-70` 5.18:1, `--ink-45` 2.60:1. **New fact the fix surfaced:** `--ink-45` is used by
+    **0 elements**, so the live verdict is unchanged, exactly as the review predicted.
+  - *Suggested-major 1, settled from source — this is the one that mattered.* The coder read
+    `engine/plotter.py:89-125` rather than reasoning about it: `frac2` is seeded with
+    `LUMI_UNC**2` alone and never combines an MC-stat term, so **the reference itself omits
+    it**. `weightsSquared` is therefore genuinely dead for this band in both implementations —
+    not a parity gap — and it is kept only because it is pre-existing fixed contract, now with
+    a structural length check. `totalRaw` and `thresholds` *were* dead, and were made
+    load-bearing rather than dropped: `totalRaw` is cross-checked against `efficiencyPct`, and
+    `thresholds` now drives the Z readout's evidence/discovery text and its vermillion
+    styling. **This is the answer B-004 needs, and it is now evidenced against exact line
+    numbers rather than asserted.**
+  - *Suggested-major 2, fixed, counter-argument deliberately not invoked.* The coder could
+    have overruled on the `.flake8`-exclude argument I left open to it, and chose not to:
+    cheaper to fix than to spend a back-end task on a carve-out nobody has asked for. All 53
+    violations fixed, type hints and docstrings on every function per shared §6.
+  - *Suggested-minor ×2, fixed.* The figure floor is no longer copied from `plot.js`'s own
+    `FIG` constants — it is derived independently from a live DOM bin count against the
+    task's stated 9 px/56 px minimums, so it is falsifiable now and lands at 416×454 against
+    a measured 480×460, two different numbers rather than one. `check_git_diff` now runs
+    `main...HEAD`.
+  - The denylist limitation of the exhaustive-claim lint is now stated in
+    `check_no_exhaustive_prose`'s own docstring rather than left for a reader to discover.
+- **Owed to D-002:** `--ink-45` composites to 2.60:1 against paper and fails AA if ever used
+  for text. Currently unused. Do not inherit it into the real token file unstated.
 - **Review, cycle 1.** The reviewer mutation-tested the checker rather than reading it, which
   is the only reason the required finding exists — every one of `verify.py`'s 76 assertions
   passes, and one of them cannot fail.
