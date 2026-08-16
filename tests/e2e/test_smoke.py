@@ -1,24 +1,47 @@
 """Smoke tests: what a real browser does with the real server.
 
-The last group tests the harness itself. A test server that picked a fixed
-port would fail whenever a colleague, a stale process, or a second run of this
+The later groups test the harness itself, because the reviewer and the design
+role depend on it running unattended. A test server that picked a fixed port
+would fail whenever a colleague, a stale process, or a second run of this
 suite already held it, and one that outlived its ``with`` block would leak a
 listening socket per failure -- so both properties are asserted rather than
-assumed.
+assumed. The screenshot tool is driven the way its callers drive it: as a
+command line, in a subprocess, from an unrelated working directory.
 """
 
 import json
 import socket
+import subprocess
+import sys
 import threading
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
+from playwright.sync_api import Error as PlaywrightError
 
-from scripts.screenshot import HOST, SERVER_THREAD_NAME, serve_app
-from tests.e2e.conftest import LoadedPage, off_origin_requests
+from scripts.screenshot import (
+    HOST,
+    SERVER_THREAD_NAME,
+    WIDTHS,
+    ChromiumUnavailableError,
+    launch_chromium,
+    resolve_output_dir,
+    serve_app,
+)
+from tests.e2e.conftest import REPO_ROOT, LoadedPage, off_origin_requests
 
 #: Seconds to wait when probing a port that should no longer be listening.
 CONNECT_TIMEOUT = 2.0
+
+#: The screenshot tool, invoked by path exactly as a person would invoke it.
+SCREENSHOT_SCRIPT = REPO_ROOT / "scripts" / "screenshot.py"
+
+#: Generous ceiling for one scripted run: boot, launch Chromium, three shots.
+SCRIPT_TIMEOUT = 180.0
+
+#: First eight bytes of any PNG file.
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 #: A host reserved by RFC 2606 to never resolve, used to prove the off-origin
 #: check fires. Chromium reports the attempt whether or not it can be made, so
@@ -106,3 +129,120 @@ def test_serve_app_stops_the_server_thread_even_when_the_body_raises() -> None:
 def _server_threads() -> set[threading.Thread]:
     """Return the live server threads, by the name ``serve_app`` gives them."""
     return {thread for thread in threading.enumerate() if thread.name == SERVER_THREAD_NAME}
+
+
+@pytest.fixture(name="screenshot_run", scope="module")
+def _screenshot_run(tmp_path_factory: pytest.TempPathFactory) -> "ScriptRun":
+    """Run ``scripts/screenshot.py /`` once, and let the tests read the result.
+
+    Invoked from an unrelated working directory: the design role runs this
+    from wherever it happens to be standing, so nothing may resolve off cwd.
+    """
+    output_dir = tmp_path_factory.mktemp("screenshots")
+    elsewhere = tmp_path_factory.mktemp("elsewhere")
+    completed = subprocess.run(
+        [sys.executable, str(SCREENSHOT_SCRIPT), "/", "--out", str(output_dir)],
+        capture_output=True,
+        text=True,
+        cwd=elsewhere,
+        timeout=SCRIPT_TIMEOUT,
+        check=False,
+    )
+    return ScriptRun(completed=completed, output_dir=output_dir)
+
+
+class ScriptRun:
+    """One invocation of the screenshot tool, and where it was told to write."""
+
+    def __init__(self, completed: "subprocess.CompletedProcess[str]", output_dir: Path) -> None:
+        self.completed = completed
+        self.output_dir = output_dir
+
+    @property
+    def printed_paths(self) -> list[Path]:
+        """The paths the tool printed on stdout, one per line."""
+        return [Path(line) for line in self.completed.stdout.split()]
+
+
+def test_screenshot_script_exits_cleanly(screenshot_run: ScriptRun) -> None:
+    """A run with no browser open and no server running succeeds by itself."""
+    assert screenshot_run.completed.returncode == 0, screenshot_run.completed.stderr
+
+
+def test_screenshot_script_prints_an_absolute_path_per_width(screenshot_run: ScriptRun) -> None:
+    """Callers read stdout to find the images, so each line is a usable path."""
+    printed = screenshot_run.printed_paths
+    assert len(printed) == len(WIDTHS)
+    assert [path for path in printed if not path.is_absolute()] == []
+
+
+def test_screenshot_script_writes_a_non_empty_png_per_width(screenshot_run: ScriptRun) -> None:
+    """Every printed path is a real PNG with bytes in it."""
+    for path in screenshot_run.printed_paths:
+        assert path.read_bytes()[:8] == PNG_SIGNATURE, path
+
+
+def test_screenshot_script_captures_each_requested_width(screenshot_run: ScriptRun) -> None:
+    """The images are the widths asked for, read from the PNG header, not the filename."""
+    assert sorted(_png_width(path) for path in screenshot_run.printed_paths) == sorted(WIDTHS)
+
+
+def test_screenshot_script_writes_only_where_it_was_told(screenshot_run: ScriptRun) -> None:
+    """Nothing lands outside the requested output directory."""
+    for path in screenshot_run.printed_paths:
+        assert path.parent == screenshot_run.output_dir
+
+
+def test_screenshot_output_defaults_outside_the_repository() -> None:
+    """With no ``--out``, images go to a temp directory: no PNG may be committed."""
+    default = resolve_output_dir(None)
+    assert REPO_ROOT not in default.parents and default != REPO_ROOT
+
+
+def test_screenshot_script_refuses_an_output_directory_inside_the_repository() -> None:
+    """An explicit ``--out`` into the checkout is refused, for the same reason."""
+    completed = subprocess.run(
+        [sys.executable, str(SCREENSHOT_SCRIPT), "/", "--out", str(REPO_ROOT / "docs")],
+        capture_output=True,
+        text=True,
+        timeout=SCRIPT_TIMEOUT,
+        check=False,
+    )
+    assert completed.returncode != 0
+    assert "repository" in completed.stderr
+
+
+def test_launch_chromium_names_the_install_command_when_it_is_missing() -> None:
+    """A missing browser fails loudly and actionably; the suite never skips over it."""
+    with pytest.raises(ChromiumUnavailableError, match="playwright install chromium"):
+        launch_chromium(_PlaywrightWithoutChromium())
+
+
+class _PlaywrightWithoutChromium:
+    """Stands in for Playwright on a machine where no browser was installed."""
+
+    @property
+    def chromium(self) -> "_PlaywrightWithoutChromium":
+        return self
+
+    def launch(self, **_: object) -> None:
+        raise PlaywrightError("Executable doesn't exist at /nowhere/headless_shell")
+
+
+def _png_width(path: Path) -> int:
+    """Return the pixel width recorded in a PNG's IHDR chunk."""
+    return int.from_bytes(path.read_bytes()[16:20], "big")
+
+
+def test_screenshot_script_reports_a_route_the_app_does_not_serve(tmp_path: Path) -> None:
+    """A mistyped route fails loudly rather than yielding a photograph of a 404 page."""
+    completed = subprocess.run(
+        [sys.executable, str(SCREENSHOT_SCRIPT), "/no-such-route", "--out", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        timeout=SCRIPT_TIMEOUT,
+        check=False,
+    )
+    assert completed.returncode != 0
+    assert "404" in completed.stderr
+    assert list(tmp_path.iterdir()) == []

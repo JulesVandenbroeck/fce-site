@@ -1,4 +1,14 @@
-"""Fixtures that put a real browser in front of a real server."""
+"""Fixtures that put a real browser in front of a real server.
+
+One server and one browser per session, a fresh browser context per test.
+Contexts are cheap and isolated -- no cookie, no cache entry and no service
+worker crosses from one test to the next -- while relaunching Chromium per
+test would cost more than the whole suite.
+
+Nothing here skips. A missing browser fails the run with the command that
+installs one: a harness that quietly reports success on a machine where it
+never ran is worse than no harness, because the next person believes it.
+"""
 
 from __future__ import annotations
 
@@ -9,14 +19,16 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
-from playwright.sync_api import Browser, ConsoleMessage, Error, Page, Playwright, sync_playwright
+from playwright.sync_api import Browser, ConsoleMessage, Error, Page, sync_playwright
 
-#: Repo root, so ``scripts/`` is importable when pytest is run from elsewhere.
+#: The checkout. Put on ``sys.path`` so ``scripts/`` is importable however
+#: pytest was invoked: the server helper the browser tests need is the same
+#: one the screenshot tool uses, and it is defined there.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.screenshot import ChromiumUnavailableError, serve_app  # noqa: E402
+from scripts.screenshot import ChromiumUnavailableError, launch_chromium, serve_app  # noqa: E402
 
 #: URL schemes that carry their payload inside the document and so cannot
 #: reach another machine: ``data:`` inlines the bytes, ``blob:`` names an
@@ -96,21 +108,20 @@ def _live_server() -> Iterator[str]:
 
 @pytest.fixture(name="browser", scope="session")
 def _browser() -> Iterator[Browser]:
-    """Launch one headless Chromium for the whole session."""
+    """Launch one headless Chromium for the whole session.
+
+    ``pytest.fail`` rather than ``pytest.skip``: without a browser these tests
+    have not passed, and saying so is the whole point of the fixture.
+    """
     with sync_playwright() as playwright:
-        browser = _launch(playwright)
+        try:
+            browser = launch_chromium(playwright)
+        except ChromiumUnavailableError as exc:
+            pytest.fail(str(exc), pytrace=False)
         try:
             yield browser
         finally:
             browser.close()
-
-
-def _launch(playwright: Playwright) -> Browser:
-    """Return a headless Chromium."""
-    try:
-        return playwright.chromium.launch()
-    except Exception as exc:  # pragma: no cover - exercised only without a browser
-        raise ChromiumUnavailableError(str(exc)) from exc
 
 
 @pytest.fixture(name="page")
