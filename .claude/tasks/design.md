@@ -10,15 +10,38 @@ IDs are `D-nnn`, allocated in order and never reused.
 ## In progress
 
 ### D-003 — Interactive plot component at reference parity
-- **Dispatched 2026-08-16**, alone, in its own worktree. Status: coding, no PR yet.
-- Full entry below under Ready until it reports; moved here so an interrupted session sees
-  that an agent is live on `task/d-003-plot-component`.
+- **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
+  `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
+- **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
+- **Status:** in review (cycle 1), dispatched 2026-08-16
+- **Coder reports:** `verify.py --all` → 76 PASS, 0 FAIL, exit 0. Anatomy read from the live
+  DOM, 3/3 sections. Paint sweep 0 violations over 5158 property reads per width across 9
+  properties including `fill`/`stroke`. 71 text elements contrast-checked, 0 below AA. Tab
+  walk 43 stops, 43 with a visible ring. 18 reveal-animated elements, 0 still animating under
+  reduced motion. 0 non-local requests, 0 console errors. `git diff --stat -- src/ tests/
+  content/` empty.
+- **PR body checked before dispatching review** (orchestrator §4 rule 3): carries the task ID,
+  goal, verbatim scope, verbatim criteria each marked with evidence, and the real verify
+  output. Stands alone.
+- **Declared deviations, for the reviewer to weigh independently:** data marker `r=3` CSS px
+  rather than a literal `markersize=4`; "black" furniture uses `--ink` not `#000`, per the
+  token rule; the figure is a **fixed intrinsic 480×460** rather than responsive; `frame.css`
+  is ~142 lines rather than ~120 after the token rewrite.
+- **Two rulings owed to the user at the checkpoint, built but not decided** — both live in
+  `plot.html`'s open-questions panel:
+  1. *Legend placement.* Parity ships (framed, inside, upper-right) at all widths. Measured at
+     1024: legend 152×85 against a 412 px plot area, 36.9% of axes width, over the Z peak.
+     Coder's recommendation: keep parity as default, add an outside-axes position for narrow
+     embeddings later.
+  2. *Sample colour mapping.* Both wired for real via `data-palette` on `<body>`, CSS-only
+     switch. Coder's recommendation: **frozen** per-sample map, X1 pinned to vermillion —
+     X1 changing colour between missions is a teaching bug. Breaks parity with the reference.
+- **Backlog candidates raised:** hover readout + legend sample-toggle (design-brief §5, not
+  built); a sub-768 legend reflow; the reference's green "Discovered:" badge.
 
 ## Ready
 
-### D-003 — Interactive plot component at reference parity
-- **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
-  `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
+_none_
 - **Accept:** (1) `verify.py --plot` prints each named anatomy feature present/absent from
   the DOM; (2) figure `getBoundingClientRect` reported as measured numbers at 1440/1024/768
   against a ~480×460 floor; (3) cutflow figure complete, efficiency-% count = stage count;
