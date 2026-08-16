@@ -1,0 +1,234 @@
+/* === Base framework CSS — shared by both wireframe pages ===
+ *
+ * Adapted from the `wireframe` skill's bundled template. Trimmed for FCE-site:
+ *   - the Phase-2 colour-variant machinery (sub-tab bar, badges, completion
+ *     banner) is removed — this task is wireframes only, phase 1
+ *   - the banner's #ffe5c0 was the only non-greyscale value in the file; gone
+ *   - #999 body/chrome text lifted to #666, so every piece of text on the page
+ *     clears WCAG AA (#666 on #fff = 5.74:1)
+ *   - the template's `-apple-system, BlinkMacSystemFont, "Segoe UI"` stack on
+ *     `body` is replaced by the generic `sans-serif` keyword. A wireframe must
+ *     carry no type decision, and a named system-UI stack is one — it is also
+ *     among the faces `.claude/design/CLAUDE.md` §2 rules out by name.
+ *
+ * Greys used across the whole directory, exhaustively:
+ *   #000 #333 #666 #999 #ccc #eee #f0f0f0 #f5f5f5 #f7f7f7 #f9f9f9 #fafafa #fff.
+ * The five near-whites separate page ground from panel ground from hover state;
+ * no other hue appears anywhere. #999 is used only as placeholder text inside
+ * simulated form fields, which is what a real placeholder state looks like and
+ * is not product copy. Every other piece of text clears WCAG AA.
+ *
+ * Type: two stacks across the whole directory. `sans-serif` below, inherited
+ * by all prose; and `ui-monospace, "DejaVu Sans Mono", monospace` on numerics
+ * and simulated code fields (four declarations, in mission-screen.css and
+ * recipe-builder.css) — generic at both ends, the one named face a fallback
+ * for browsers without `ui-monospace`. No type decision is proposed here.
+ */
+
+/* Reset & Layout */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: sans-serif; background: #f5f5f5; color: #333; }
+
+/* Blanket link colour. Author-origin rules beat the user-agent stylesheet's
+ * `:link`/`:visited` defaults (rgb(0, 0, 238) / purple) regardless of
+ * specificity, so this one low-specificity rule is enough to keep every
+ * anchor in the directory greyscale, including ones added later that carry
+ * no class of their own — e.g. the "← index" link in the title bar, which
+ * rendered UA-default blue until this rule existed. Underline is left to the
+ * UA default so it still reads as a link; more specific selectors (e.g.
+ * `.ix__card h2 a`, `.wf-index__tab`) override the colour where a component
+ * needs its own treatment. */
+a { color: #333; }
+a:hover { color: #000; }
+
+.page-wrapper {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Title Bar */
+.title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px 8px 0 0;
+  font-size: 14px;
+  color: #333;
+}
+.title-bar .rec { color: #666; font-size: 13px; }
+
+/* Main Tabs */
+.main-tabs {
+  display: flex;
+  background: #fff;
+  border-left: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+  overflow-x: auto;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: #fff;
+  cursor: pointer;
+  /* `font: inherit` before `font-size`, or the shorthand would undo it. Without
+   * this the UA stylesheet's own font applies to the tab bar (Arial on Linux
+   * Chromium) — a named face, and the one place in the directory type was not
+   * inherited. Every control in mission-screen.css and recipe-builder.css
+   * already does this; the template's own chrome did not. */
+  font: inherit;
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-btn:hover { color: #333; background: #f9f9f9; }
+.tab-btn.active { color: #000; border-bottom-color: #000; font-weight: 600; }
+
+/* Option Panels */
+.option-panel {
+  display: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  padding: 20px;
+}
+.option-panel.active { display: block; }
+
+.option-panel h2 { margin: 0 0 4px 0; font-size: 18px; color: #000; }
+.option-description { margin: 0 0 16px 0; font-size: 13px; color: #666; }
+
+/* Browser Frame */
+.browser-frame {
+  max-width: 1160px;
+  margin: 0 auto;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.browser-chrome {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  gap: 8px;
+}
+.browser-dots {
+  display: flex;
+  gap: 6px;
+}
+.browser-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ccc;
+}
+.browser-url {
+  flex: 1;
+  font-size: 12px;
+  color: #666;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+.browser-controls {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+}
+.browser-content {
+  padding: 16px;
+  overflow: hidden;
+  min-height: 400px;
+}
+
+/* Mobile Frame Variant */
+.browser-frame.mobile-frame {
+  max-width: 390px;
+  border-radius: 24px;
+  border: 3px solid #333;
+}
+.mobile-frame .browser-chrome {
+  justify-content: center;
+  padding: 6px 12px;
+  background: #fafafa;
+}
+.mobile-frame .browser-chrome .browser-dots,
+.mobile-frame .browser-chrome .browser-controls { display: none; }
+.mobile-frame .browser-url {
+  text-align: center;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+}
+
+/* Annotation System */
+.wf-annotations {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  background: #fafafa;
+}
+.wf-annotations h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #333;
+}
+.wf-annotations ul { margin: 0; padding-left: 20px; }
+.wf-annotations li { font-size: 12px; color: #666; margin-bottom: 4px; }
+
+/* Annotation Markers (inline) */
+.wf-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-size: 10px;
+  color: #666;
+  vertical-align: super;
+  margin-left: 2px;
+}
+
+/* Footer */
+.skill-footer {
+  text-align: center;
+  font-size: 11px;
+  color: #666;
+  padding: 16px;
+  margin-top: 8px;
+}
+.skill-footer a { color: #333; }
+.skill-footer a:hover { text-decoration: none; }
+
+/* Reduced motion. There is exactly one piece of motion in these wireframes —
+ * the .tab-btn colour transition above — and no keyframe animation anywhere,
+ * so this needs no blanket `*` override and no !important. The end state is
+ * identical; only the transit is removed. (.wf-stamp's rotate is a static
+ * transform, not an animation, so reduced motion leaves it alone.) */
+@media (prefers-reduced-motion: reduce) {
+  .tab-btn { transition: none; }
+}
+
+/* Focus — visible on every interactive element, never removed */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}

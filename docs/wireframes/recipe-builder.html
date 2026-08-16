@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipe-card builder — FCE-site wireframes</title>
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="recipe-builder.css">
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <div class="title-bar">
+    <span><strong>Recipe-card builder</strong> — FCE-site &nbsp;·&nbsp; wireframes, black &amp; white, no visual system</span>
+    <span class="rec">★ Recommended: Option <span id="rec-number">1</span> &nbsp;·&nbsp; <a href="index.html">← index</a></span>
+  </div>
+
+  <nav class="main-tabs" aria-label="Wireframe options">
+    <button class="tab-btn active" data-tab="option-1" aria-current="true">1: Card Stack</button>
+    <button class="tab-btn" data-tab="option-2">2: Sentence Strip</button>
+    <button class="tab-btn" data-tab="option-3">3: Two Pane</button>
+    <button class="tab-btn" data-tab="option-4">4: Guided Slots</button>
+    <button class="tab-btn" data-tab="option-5">5: Deck and Tray</button>
+    <button class="tab-btn" data-tab="summary">Summary</button>
+  </nav>
+
+  <!-- ===== OPTION 1 — CARD STACK ===== -->
+  <div class="option-panel active" id="option-1">
+    <h2>Option 1: <span class="opt-name">Card Stack</span></h2>
+    <p class="option-description">The brief's own model, drawn literally: a vertical stack of cards, one per step, each collapsing to a single line once it is configured.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt1">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <p class="rb-context">M-1 · First Light — the builder, in the context it sits in</p>
+
+        <section class="rb-builder">
+          <header class="rb-head">
+            <h3>Your analysis</h3>
+            <p class="rb-lede">Read it downwards. It says what you are about to do. <span class="wf-marker">1</span></p>
+          </header>
+
+          <ol class="rb-stack">
+            <li class="rb-card">
+              <div class="rb-card__bar">
+                <span class="rb-card__n">1</span>
+                <span class="rb-card__kind">Data</span>
+                <span class="rb-card__clause">Take data at <strong>91 GeV</strong> from the <strong>IDEA</strong> detector.</span>
+                <span class="rb-card__ops"><button class="rb-ic" aria-label="edit">edit</button></span>
+              </div>
+              <span class="wf-marker">2</span>
+            </li>
+
+            <li class="rb-ins"><button class="rb-ins__btn">+ insert a step here</button></li>
+
+            <li class="rb-card rb-card--open">
+              <div class="rb-card__bar">
+                <span class="rb-card__n">2</span>
+                <span class="rb-card__kind">Filter</span>
+                <span class="rb-card__clause">Keep only events with <strong>at least 2 leptons</strong>.</span>
+                <span class="rb-card__ops">
+                  <button class="rb-ic" aria-label="move up">↑</button>
+                  <button class="rb-ic" aria-label="move down">↓</button>
+                  <button class="rb-ic" aria-label="remove">✕</button>
+                  <button class="rb-ic" aria-label="collapse">collapse</button>
+                </span>
+              </div>
+              <div class="rb-card__body">
+                <label class="rb-field"><span class="rb-lab">keep events with</span>
+                  <select><option>at least 2 leptons</option><option>at least 1 lepton</option><option>at least 2 jets</option></select>
+                </label>
+                <label class="rb-field"><span class="rb-lab">or write the condition yourself</span>
+                  <input type="text" value="n_leptons &gt;= 2">
+                </label>
+                <p class="rb-help">You can write things like <code>l1.pt &gt; 20</code> or <code>(l1.p4 + l2.p4).mass &gt; 80</code>.</p>
+                <p class="rb-kept"><span class="rb-lab">events kept</span> <strong class="rb-num">18 420</strong> of <span class="rb-num">240 000</span></p>
+                <span class="wf-marker">3</span>
+              </div>
+            </li>
+
+            <li class="rb-ins"><button class="rb-ins__btn">+ insert a step here</button></li>
+
+            <li class="rb-card">
+              <div class="rb-card__bar">
+                <span class="rb-card__n">3</span>
+                <span class="rb-card__kind">Observable</span>
+                <span class="rb-card__clause">Measure the <strong>mass of lepton 1 + lepton 2</strong>.</span>
+                <span class="rb-card__ops"><button class="rb-ic" aria-label="edit">edit</button></span>
+              </div>
+            </li>
+
+            <li class="rb-card">
+              <div class="rb-card__bar">
+                <span class="rb-card__n">4</span>
+                <span class="rb-card__kind">Plot</span>
+                <span class="rb-card__clause">Plot it in <strong>40 bins</strong> from <strong>0 to 120 GeV</strong>.</span>
+                <span class="rb-card__ops"><button class="rb-ic" aria-label="edit">edit</button></span>
+              </div>
+            </li>
+          </ol>
+
+          <div class="rb-add">
+            <button class="rb-btn">+ Add a step</button>
+            <div class="rb-picker">
+              <p class="rb-lab">what would you like to add?</p>
+              <ul class="rb-picker__list">
+                <li><button class="rb-picker__it"><strong>Filter</strong><span>keep only some events</span></button></li>
+                <li><button class="rb-picker__it"><strong>Observable</strong><span>measure something in each event</span></button></li>
+                <li><button class="rb-picker__it"><strong>Plot</strong><span>put it in a histogram</span></button></li>
+                <li class="rb-picker__locked"><strong>Fit</strong><span>opens in mission 3</span></li>
+              </ul>
+              <span class="wf-marker">4</span>
+            </div>
+          </div>
+
+          <div class="rb-foot">
+            <p class="rb-sentence-read">Reads as: <em>take data at 91 GeV, keep events with at least 2 leptons, measure the mass of lepton 1 + lepton 2, plot it in 40 bins from 0 to 120 GeV.</em> <span class="wf-marker">5</span></p>
+            <button class="rb-btn rb-btn--go">▶ Run analysis</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① One stack, one direction, no second place to look.</strong> There is exactly one mental model to learn: steps happen in the order they are written. That is also the structural lesson the brief wants kept from the node canvas it replaced.</li>
+        <li><strong>② A collapsed card is a clause, not a settings summary.</strong> "Take data at 91 GeV from the IDEA detector." — a whole sentence with the chosen values in bold. This is the single change worth making to the obvious version of this design: it costs nothing and it is what makes the stack readable as prose rather than as a form.</li>
+        <li><strong>③ Expression entry sits under the dropdown, not behind a mode switch.</strong> A student who is ready to type sees that they can; a student who is not sees a dropdown that already works. The live "events kept" count turns an abstract condition into a number that moves.</li>
+        <li><strong>④ Gating is visible but not offered.</strong> Three types are addable; "Fit — opens in mission 3" is printed but inert. One greyed line is not the wall of controls the brief warns about, and it tells a student the game gets bigger.</li>
+        <li><strong>⑤ Reorder is explicit, with buttons, not drag.</strong> Arrows work on a trackpad, work on a tablet, and are reachable by keyboard. No drag-and-drop anywhere, per the brief.</li>
+        <li><strong>Optimises for:</strong> directness and teachability, and it is the cheapest of the five to build correctly with HTMX — each card is a fragment, and the stack is a list.</li>
+        <li><strong>Gives up:</strong> vertical space. Mission 3 with four cuts is a long column, and an open card pushes everything below it down the page. The "sentence" is also broken up by chrome — numbers, buttons and borders sit between the words.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 2 — SENTENCE STRIP ===== -->
+  <div class="option-panel" id="option-2">
+    <h2>Option 2: <span class="opt-name">Sentence Strip</span></h2>
+    <p class="option-description">The analysis is written out as an actual English sentence. Every choice is an underlined word in it; clicking a word opens a small editor under the line.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt2">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <p class="rb-context">M-1 · First Light — the builder, in the context it sits in</p>
+
+        <section class="rb-builder">
+          <header class="rb-head">
+            <h3>Your analysis</h3>
+            <p class="rb-lede">Click any underlined word to change it. <span class="wf-marker">1</span></p>
+          </header>
+
+          <p class="rb-sentence">
+            Take data at <button class="rb-slot">91 GeV</button> from the <button class="rb-slot">IDEA</button> detector,
+            keep only events with <button class="rb-slot rb-slot--on">at least 2 leptons</button>,
+            measure the <button class="rb-slot">mass of lepton 1 + lepton 2</button>,
+            and plot it in <button class="rb-slot">40 bins</button> from <button class="rb-slot">0</button> to <button class="rb-slot">120 GeV</button>.
+            <button class="rb-slot rb-slot--add">+ and then…</button>
+            <span class="wf-marker">2</span>
+          </p>
+
+          <div class="rb-editor">
+            <p class="rb-lab">at least 2 leptons <span class="rb-editor__x">✕</span></p>
+            <div class="rb-editor__row">
+              <label class="rb-field"><span class="rb-lab">keep events with</span>
+                <select><option>at least 2 leptons</option><option>at least 1 lepton</option><option>at least 2 jets</option></select>
+              </label>
+              <label class="rb-field"><span class="rb-lab">or write it yourself</span>
+                <input type="text" value="n_leptons &gt;= 2">
+              </label>
+              <p class="rb-kept"><span class="rb-lab">events kept</span><br><strong class="rb-num">18 420</strong> of <span class="rb-num">240 000</span></p>
+            </div>
+            <p class="rb-help">You can write things like <code>l1.pt &gt; 20</code>. <button class="rb-ic">remove this step</button> <button class="rb-ic">move it earlier</button></p>
+            <span class="wf-marker">3</span>
+          </div>
+
+          <div class="rb-foot">
+            <p class="rb-alt"><button class="rb-ic">show it as cards instead</button> <span class="wf-marker">4</span></p>
+            <button class="rb-btn rb-btn--go">▶ Run analysis</button>
+          </div>
+        </section>
+
+        <div class="rb-growth">
+          <p class="rb-lab">the same design, in mission 3, with four cuts <span class="wf-marker">5</span></p>
+          <p class="rb-sentence rb-sentence--long">
+            Take data at <button class="rb-slot">91 GeV</button> from the <button class="rb-slot">IDEA</button> detector,
+            keep only events with <button class="rb-slot">at least 2 leptons</button>, and with
+            <button class="rb-slot">leading lepton pt &gt; 20 GeV</button>, and with
+            <button class="rb-slot">MET &lt; 30 GeV</button>, and with
+            <button class="rb-slot">at least 1 b-tagged jet</button>,
+            measure the <button class="rb-slot">mass of lepton 1 + lepton 2</button>,
+            plot it in <button class="rb-slot">40 bins</button> from <button class="rb-slot">0</button> to <button class="rb-slot">120 GeV</button>,
+            and fit for <button class="rb-slot">signal strength</button>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① Nothing to learn.</strong> There is no widget vocabulary at all — a student reads an English sentence and clicks the words they want to change. For a 15-year-old meeting the app in the first five minutes of a lesson, this is the lowest possible barrier of the five options.</li>
+        <li><strong>② It is the brief's requirement taken literally.</strong> "The stack reads top to bottom as a sentence… a student should be able to point at it and say what it does." Here it does not read <em>like</em> a sentence; it <em>is</em> one. Very compact — the whole analysis is three lines instead of half a screen.</li>
+        <li><strong>③ Editing happens under the line, in place.</strong> The sentence never moves and never reflows while you work, so a student does not lose their place.</li>
+        <li><strong>④ It needs an escape hatch,</strong> and that is a warning sign: "show it as cards instead" exists because some students will want to see the structure. If you need a second view to explain the first, the first is doing less work than it looks.</li>
+        <li><strong>⑤ Look at what happens in mission 3.</strong> Four cuts and a fit, and the sentence becomes a dense paragraph of underlined fragments. This is the failure case, and mission 3 is the payoff the whole app is built towards. Reordering inside a sentence is also genuinely awkward — there is no obvious grab point and no obvious drop target.</li>
+        <li><strong>Optimises for:</strong> readability, compactness, and a completely unintimidating first contact. It is also the most distinctive design here — it looks like nothing else.</li>
+        <li><strong>Gives up:</strong> scale. It is excellent at four steps and poor at nine. Reorder and remove have no natural home, expression entry has to be smuggled into a popover, and localising or rewording a mission's copy becomes a grammar problem.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 3 — TWO PANE ===== -->
+  <div class="option-panel" id="option-3">
+    <h2>Option 3: <span class="opt-name">Two Pane</span></h2>
+    <p class="option-description">A short numbered list of steps on the left, and the settings for the selected step on the right. The list never grows past a screen, however long the analysis gets.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt3">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <p class="rb-context">M-1 · First Light — the builder, in the context it sits in</p>
+
+        <section class="rb-builder rb-two">
+          <nav class="rb-list" aria-label="Steps">
+            <h3 class="rb-list__h">Your analysis</h3>
+            <ol class="rb-list__ol">
+              <li class="rb-row"><span class="rb-row__n">1</span><span class="rb-row__k">Data</span><span class="rb-row__s">91 GeV · IDEA</span></li>
+              <li class="rb-row rb-row--on"><span class="rb-row__n">2</span><span class="rb-row__k">Filter</span><span class="rb-row__s">≥ 2 leptons</span></li>
+              <li class="rb-row"><span class="rb-row__n">3</span><span class="rb-row__k">Observable</span><span class="rb-row__s">m(l1,l2)</span></li>
+              <li class="rb-row"><span class="rb-row__n">4</span><span class="rb-row__k">Plot</span><span class="rb-row__s">40 bins, 0–120</span></li>
+            </ol>
+            <div class="rb-list__ops">
+              <button class="rb-ic">↑</button><button class="rb-ic">↓</button><button class="rb-ic">✕ remove</button>
+            </div>
+            <button class="rb-btn rb-btn--wide">+ Add a step</button>
+            <p class="rb-locked">Fit · opens in mission 3</p>
+            <span class="wf-marker">1</span>
+          </nav>
+
+          <div class="rb-detail">
+            <header class="rb-detail__h">
+              <span class="rb-lab">step 2 of 4</span>
+              <h3>Filter — keep only some events</h3>
+              <p class="rb-lede">Every event that does not match is dropped. Everything after this step only sees what survived.</p>
+              <span class="wf-marker">2</span>
+            </header>
+
+            <label class="rb-field"><span class="rb-lab">keep events with</span>
+              <select><option>at least 2 leptons</option><option>at least 1 lepton</option><option>at least 2 jets</option></select>
+            </label>
+
+            <label class="rb-field"><span class="rb-lab">or write the condition yourself</span>
+              <textarea rows="2">l1.pt &gt; 20 and (l1.p4 + l2.p4).mass &gt; </textarea>
+            </label>
+            <p class="rb-reject"><strong>Not finished.</strong> After <code>&gt;</code> there should be a number — try <code>80</code>. Nothing has been run, so nothing is broken. <span class="wf-marker">3</span></p>
+
+            <div class="rb-preview">
+              <p class="rb-lab">what this step would do</p>
+              <table class="rb-table">
+                <tr><th>events arriving</th><td class="rb-num">240 000</td></tr>
+                <tr><th>events kept</th><td class="rb-num">18 420</td></tr>
+                <tr><th>share kept</th><td class="rb-num">7.7%</td></tr>
+              </table>
+              <span class="wf-marker">4</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① The list stays short forever.</strong> Nine steps is still nine short rows. This is the only option here that does not get worse as the analysis gets bigger, which makes it the best fit for mission 3 and for the sandbox that unlocks after it.</li>
+        <li><strong>② The detail pane has room to teach.</strong> There is space for a real explanation of what a Filter <em>is</em> — "everything after this step only sees what survived" — which none of the compact options can afford. Physics vocabulary is the thing being taught, and this is where it can be taught.</li>
+        <li><strong>③ Room for a proper rejection message.</strong> A half-written expression gets a plain-English correction and a reassurance that nothing is broken. The brief calls these part of the learning experience; here they have somewhere to live that is not a tooltip.</li>
+        <li><strong>④ A per-step preview of what the cut costs.</strong> Because there is room, each filter can show its own contribution to the cutflow before the analysis is even run.</li>
+        <li><strong>The cost is the one that matters:</strong> you can only see one step's settings at a time, and the "sentence" survives only as four abbreviated row summaries — <em>≥ 2 leptons</em>, <em>m(l1,l2)</em>. That is notation, not prose, and it is the thing the brief explicitly asked for.</li>
+        <li><strong>Optimises for:</strong> scale, explanation, and expression entry. This is what a professional tool would look like.</li>
+        <li><strong>Gives up:</strong> readability as a whole, and simplicity. It needs a stacking rule at 768 px, it is the most machinery for what mission 1 actually needs, and it is the option most likely to feel like software rather than like a notebook.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 4 — GUIDED SLOTS ===== -->
+  <div class="option-panel" id="option-4">
+    <h2>Option 4: <span class="opt-name">Guided Slots</span></h2>
+    <p class="option-description">The shape of an analysis is printed on the page before the student does anything. Fixed labelled slots in pipeline order; you fill them in. Only the filter slot takes more than one entry.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt4">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <p class="rb-context">M-1 · First Light — the builder, in the context it sits in</p>
+
+        <section class="rb-builder rb-sheet">
+          <header class="rb-head">
+            <h3>Your analysis</h3>
+            <p class="rb-lede">Every analysis has these parts, always in this order. Fill them in. <span class="wf-marker">1</span></p>
+          </header>
+
+          <div class="rb-slotrow">
+            <span class="rb-slotrow__lab">Data</span>
+            <div class="rb-slotrow__body">
+              <div class="rb-filled"><strong>91 GeV · IDEA detector · all samples</strong><button class="rb-ic">change</button></div>
+              <p class="rb-hint">which collisions you are looking at</p>
+            </div>
+            <span class="wf-marker">2</span>
+          </div>
+
+          <div class="rb-slotrow">
+            <span class="rb-slotrow__lab">Filters</span>
+            <div class="rb-slotrow__body">
+              <div class="rb-filled"><strong>at least 2 leptons</strong><button class="rb-ic">change</button><button class="rb-ic">✕</button></div>
+              <div class="rb-filled"><strong>leading lepton pt &gt; 20 GeV</strong><button class="rb-ic">change</button><button class="rb-ic">✕</button></div>
+              <button class="rb-empty">+ add a cut</button>
+              <p class="rb-hint">this is the only part that takes more than one — they apply in the order written</p>
+              <span class="wf-marker">3</span>
+            </div>
+          </div>
+
+          <div class="rb-slotrow">
+            <span class="rb-slotrow__lab">Observable</span>
+            <div class="rb-slotrow__body">
+              <div class="rb-filled"><strong>mass of lepton 1 + lepton 2</strong><button class="rb-ic">change</button></div>
+              <p class="rb-hint">the one number you measure in every event</p>
+            </div>
+          </div>
+
+          <div class="rb-slotrow">
+            <span class="rb-slotrow__lab">Plot</span>
+            <div class="rb-slotrow__body">
+              <div class="rb-empty rb-empty--wait">not chosen yet — pick how to draw it</div>
+              <p class="rb-hint">how many bins, and from where to where</p>
+              <span class="wf-marker">4</span>
+            </div>
+          </div>
+
+          <div class="rb-slotrow rb-slotrow--locked">
+            <span class="rb-slotrow__lab">Fit</span>
+            <div class="rb-slotrow__body">
+              <div class="rb-filled rb-filled--locked">opens in mission 3 — this is where μ and Z come from</div>
+              <span class="wf-marker">5</span>
+            </div>
+          </div>
+
+          <div class="rb-foot">
+            <p class="rb-sentence-read">Reads as: <em>at 91 GeV, keep events with at least 2 leptons and a leading lepton above 20 GeV, measure the mass of lepton 1 + lepton 2, and — once you have chosen how — plot it.</em></p>
+            <button class="rb-btn rb-btn--go" aria-disabled="true">▶ Run analysis — choose a plot first</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① The teaching happens before the student acts.</strong> The four parts of an analysis are printed on the page whether or not anything is filled in, so a student learns the shape of the thing by looking at an empty one. No other option here teaches before the first click.</li>
+        <li><strong>② An invalid pipeline is impossible to build.</strong> There is no way to put the plot before the data or to end up with two observables. The order is printed, not chosen. Everything the app has to validate, and every confusing error message, disappears — a real reduction in what can go wrong for a student who clicks things in the wrong order.</li>
+        <li><strong>③ Only the filters slot repeats,</strong> which is honest: filter order is the only ordering in this pipeline that a student actually controls, and even that barely matters to the result.</li>
+        <li><strong>④ An unfilled slot is a visible gap, not a missing thing.</strong> "Not chosen yet" is a to-do a student can see and finish, and the run button says why it is not ready instead of just being dead.</li>
+        <li><strong>⑤ Gating becomes free.</strong> A locked slot is printed and shaded with the reason. Mission 3's fit is visible as a promise from mission 1 onwards, which is exactly the anticipation the campaign wants.</li>
+        <li><strong>Optimises for:</strong> a student's first fifteen minutes, and for making mistakes impossible rather than recoverable.</li>
+        <li><strong>Gives up:</strong> authorship. Filling in a form is not the same feeling as building something, and the brief's structural lesson — an analysis <em>is</em> a pipeline you assemble — is weaker when the pipeline came pre-assembled. It is also the worst fit for the free sandbox that unlocks after mission 3, where a fixed skeleton is exactly the wrong shape.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 5 — DECK AND TRAY ===== -->
+  <div class="option-panel" id="option-5">
+    <h2>Option 5: <span class="opt-name">Deck and Tray</span></h2>
+    <p class="option-description">The cards you own are laid out in a tray. Click one and it is placed into the pipeline above, in the only position where it makes sense. Missions unlock new cards into the tray.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt5">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+        <p class="rb-context">M-1 · First Light — the builder, in the context it sits in</p>
+
+        <section class="rb-builder">
+          <header class="rb-head">
+            <h3>Your analysis</h3>
+            <p class="rb-lede">Four cards placed. <span class="wf-marker">1</span></p>
+          </header>
+
+          <ol class="rb-pipe">
+            <li class="rb-pc"><span class="rb-pc__k">Data</span><span class="rb-pc__s">91 GeV · IDEA</span><button class="rb-ic">edit</button><button class="rb-ic">✕</button></li>
+            <li class="rb-pc"><span class="rb-pc__k">Filter</span><span class="rb-pc__s">at least 2 leptons</span><button class="rb-ic">edit</button><button class="rb-ic">✕</button></li>
+            <li class="rb-pc"><span class="rb-pc__k">Observable</span><span class="rb-pc__s">mass of l1 + l2</span><button class="rb-ic">edit</button><button class="rb-ic">✕</button></li>
+            <li class="rb-pc"><span class="rb-pc__k">Plot</span><span class="rb-pc__s">40 bins, 0–120 GeV</span><button class="rb-ic">edit</button><button class="rb-ic">✕</button></li>
+          </ol>
+
+          <div class="rb-foot">
+            <button class="rb-btn rb-btn--go">▶ Run analysis</button>
+          </div>
+        </section>
+
+        <section class="rb-tray">
+          <header class="rb-tray__h">
+            <h4>Your cards</h4>
+            <p class="rb-lede">Click a card to add it. It goes where it belongs — you cannot put it in the wrong place. <span class="wf-marker">2</span></p>
+          </header>
+          <ul class="rb-deck">
+            <li class="rb-dc"><span class="rb-dc__k">Filter</span><span class="rb-dc__d">keep only some events</span><span class="rb-dc__n">×3 used</span></li>
+            <li class="rb-dc"><span class="rb-dc__k">Observable</span><span class="rb-dc__d">measure one number per event</span></li>
+            <li class="rb-dc"><span class="rb-dc__k">Plot</span><span class="rb-dc__d">draw the histogram</span></li>
+            <li class="rb-dc rb-dc--back"><span class="rb-dc__lock">locked</span><span class="rb-dc__d">a new card in mission 2</span><span class="wf-marker">3</span></li>
+            <li class="rb-dc rb-dc--back"><span class="rb-dc__lock">locked</span><span class="rb-dc__d">a new card in mission 3</span></li>
+          </ul>
+        </section>
+
+        <p class="rb-warn">⚠ note for review: clicking places a card — there is no dragging anywhere in this design. The brief rules out a drag-and-drop node canvas, and this must not drift into one. <span class="wf-marker">4</span></p>
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① The pipeline is compact,</strong> because the controls are not in it. Each placed card is one row; editing opens elsewhere. Nine steps still fit on a screen.</li>
+        <li><strong>② Unlocks become an artefact you own.</strong> This is the only option where card gating is a reward rather than an absence. Finishing mission 1 visibly puts a new card in your tray; the two face-down cards are a promise. That is real game feel, and it costs no colour — which is exactly the constraint the design direction sets.</li>
+        <li><strong>③ Locked cards are face-down, not greyed-out controls.</strong> A student is never shown a control they cannot use; they are shown that one exists. That threads the brief's needle between "no wall of controls" and "make progression legible".</li>
+        <li><strong>④ Click to place, never drag.</strong> Trackpad-safe, tablet-safe, keyboard-reachable. But it is close enough to the rejected node canvas that it will need watching in review — the moment a card can be dragged, this is the thing the brief said not to build.</li>
+        <li><strong>Optimises for:</strong> progression made tangible, and a compact pipeline.</li>
+        <li><strong>Gives up:</strong> immediacy and vertical space. The tray takes a permanent slice of the screen — expensive on a tablet in portrait — and there are now two zones to look at instead of one. Where a clicked card lands is a guess until it lands, and the "sentence" is reduced to abbreviated row labels, as in Option 3.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== SUMMARY ===== -->
+  <div class="option-panel" id="summary">
+    <h2>Summary — recipe-card builder</h2>
+    <p class="option-description">Five different answers to: what is a step, where do its settings live, and how does the whole thing stay readable.</p>
+
+    <h3 class="rb-h">Where each option puts things</h3>
+    <div class="rb-scroll">
+      <table class="rb-matrix">
+        <thead>
+          <tr><th>Option</th><th>The pipeline is…</th><th>Settings live…</th><th>Reorder by…</th><th>Gating shown as…</th><th>Reads as a sentence?</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>1 · Card Stack</th><td>a vertical list of cards</td><td>inside the card, when opened</td><td>up / down buttons on the card</td><td>a locked row in the add-step picker</td><td>Yes — each collapsed card is one clause</td></tr>
+          <tr><th>2 · Sentence Strip</th><td>an English sentence</td><td>in an editor under the line</td><td>awkward — no natural grab point</td><td>absent; nothing to show</td><td>It <em>is</em> one</td></tr>
+          <tr><th>3 · Two Pane</th><td>a short numbered list</td><td>in a permanent right-hand pane</td><td>arrows under the list</td><td>a line under the list</td><td>No — the list is notation, not prose</td></tr>
+          <tr><th>4 · Guided Slots</th><td>a printed skeleton you fill in</td><td>in the slot, inline</td><td>nothing to reorder except cuts</td><td>a printed, shaded slot</td><td>Yes, once filled — but the words are the app's, not the student's</td></tr>
+          <tr><th>5 · Deck and Tray</th><td>compact rows, fed from a tray</td><td>opened from the row</td><td>arrows on the row</td><td>face-down cards in the tray</td><td>Partly — rows are abbreviated</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="rb-h">Scored against the brief</h3>
+    <div class="rb-scroll">
+      <table class="rb-matrix">
+        <thead>
+          <tr><th>Option</th><th>First 5 minutes, age 15</th><th>Still works at 9 steps (M-3)</th><th>Room for expression entry</th><th>Carries card gating well</th><th>Works at 768 px</th><th>Overall</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>1 · Card Stack</th><td>★★★★☆</td><td>★★★☆☆</td><td>★★★★☆</td><td>★★★★☆</td><td>★★★★★</td><td>★★★★★</td></tr>
+          <tr><th>2 · Sentence Strip</th><td>★★★★★</td><td>★☆☆☆☆</td><td>★★☆☆☆</td><td>★☆☆☆☆</td><td>★★★★☆</td><td>★★★☆☆</td></tr>
+          <tr><th>3 · Two Pane</th><td>★★☆☆☆</td><td>★★★★★</td><td>★★★★★</td><td>★★★☆☆</td><td>★★☆☆☆</td><td>★★★☆☆</td></tr>
+          <tr><th>4 · Guided Slots</th><td>★★★★★</td><td>★★★☆☆</td><td>★★★☆☆</td><td>★★★★★</td><td>★★★★★</td><td>★★★★☆</td></tr>
+          <tr><th>5 · Deck and Tray</th><td>★★★☆☆</td><td>★★★★☆</td><td>★★★☆☆</td><td>★★★★★</td><td>★★☆☆☆</td><td>★★★☆☆</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rb-rec">
+      <h3>Recommendation — Option 1, Card Stack, with one change borrowed from Option 2</h3>
+      <p><strong>The change:</strong> a collapsed card must render as a clause of a sentence, not as a settings summary. "Take data at 91 GeV from the IDEA detector." rather than "Data · 91 GeV · IDEA". It costs nothing to build, and it is the difference between a stack that <em>reads</em> as a sentence — which the brief requires — and a stack that merely lists what you picked. Everything else about Option 1 is the brief's own model drawn straight.</p>
+      <p><strong>Why not the more interesting ones.</strong> Option 2 is the best first five minutes of the five and collapses in mission 3, which is the payoff the whole campaign is built towards — an option that fails at the finish is not a candidate. Option 3 is what this should become <em>if</em> the sandbox ever grows big analyses, but it buys scale a student does not need yet at the cost of the readability they do. Option 5 has the single best idea here — unlocks as cards you own — and pays for it with a permanent tray, two zones, and a family resemblance to the node canvas the brief rejected.</p>
+      <p><strong>Option 4 is the real alternative, and it is close.</strong> It teaches the shape of an analysis before the student touches anything, it makes an invalid pipeline impossible, and it carries gating better than Option 1 does. It loses on one thing only: filling in a form does not feel like building something, and "an analysis is a pipeline you assemble" is the structural lesson the brief kept when it dropped the node canvas. If playtesting shows students floundering in mission 1, switch to Option 4 — the underlying config is identical, so it is a front-end change, not a rebuild.</p>
+      <p class="rb-rec__cost"><strong>Two ideas to carry into Option 1 whichever way this goes:</strong> take Option 5's face-down locked cards as the way to show gating in the add-step picker, and take Option 3's per-step "events kept: 18 420 of 240 000" preview, which turns an abstract cut into a number that moves before the run even starts.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer class="skill-footer">
+  Wireframes for FCE-site, task D-001 · structure from the <a href="https://github.com/Magdoub/claude-wireframe-skill">Wireframe skill</a> · phase 1 only, no colour and no type chosen
+</footer>
+
+<script>
+(function() {
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var panels = document.querySelectorAll('.option-panel');
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      tabBtns.forEach(function(b) { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      btn.setAttribute('aria-current', 'true');
+      var target = document.getElementById(btn.dataset.tab);
+      if (target) target.classList.add('active');
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

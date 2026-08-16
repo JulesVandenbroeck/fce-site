@@ -1,0 +1,246 @@
+/* Mission screen wireframes — content CSS only.
+ * Framework (tabs, panels, browser frame, annotations) lives in base.css.
+ * Strictly greyscale: #000 #333 #666 #ccc #eee #f7f7f7 #fff.
+ * #999 appears only as input placeholder text.
+ * No type choice is expressed here — the browser's default sans is used
+ * deliberately, so that nothing in these wireframes reads as a font decision.
+ */
+
+/* ---- shared primitives ---------------------------------------------- */
+.wf-label { display: inline-block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #666; }
+.wf-muted { color: #666; font-size: 12px; margin: 4px 0; }
+.wf-num { font-variant-numeric: tabular-nums; font-family: ui-monospace, "DejaVu Sans Mono", monospace; }
+.wf-h { font-size: 14px; margin: 20px 0 8px; color: #000; }
+.wf-count { border: 1px solid #ccc; border-radius: 10px; padding: 0 6px; font-size: 11px; color: #666; }
+.wf-scroll { overflow-x: auto; }
+
+.wf-btn {
+  font: inherit; font-size: 12px; padding: 6px 12px; cursor: pointer;
+  background: #fff; color: #000; border: 1px solid #333; border-radius: 3px;
+}
+.wf-btn:hover { background: #eee; }
+.wf-btn--go { background: #000; color: #fff; border-color: #000; font-weight: 600; }
+.wf-btn--go:hover { background: #333; }
+.wf-btn--ghost { border-style: solid; border-color: #ccc; color: #666; }
+.wf-btn--wide { display: block; width: 100%; margin-top: 8px; }
+.wf-btn--tiny { font-size: 11px; padding: 2px 8px; border-color: #ccc; }
+
+/* ---- top bar and campaign ------------------------------------------- */
+.wf-topbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 10px; border: 1px solid #ccc; background: #f7f7f7;
+}
+.wf-topbar--slim { padding: 6px 10px; }
+.wf-wordmark { font-weight: 700; letter-spacing: .1em; font-size: 13px; }
+.wf-who { margin-left: auto; font-size: 12px; color: #666; }
+.wf-back { font-size: 12px; color: #333; }
+.wf-campaign { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.wf-chip { font-size: 12px; padding: 3px 10px; border: 1px solid #ccc; border-radius: 12px; color: #666; background: #fff; }
+.wf-chip--current { border-color: #000; color: #000; font-weight: 600; }
+.wf-chip--locked { border-style: solid; color: #666; background: #eee; }
+.wf-campaign--dots .wf-chip { min-width: 26px; text-align: center; padding: 3px 0; }
+.wf-lock { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ---- brief and objective -------------------------------------------- */
+.wf-brief { display: flex; gap: 16px; border: 1px solid #ccc; border-top: none; padding: 12px; }
+.wf-brief__text { flex: 1 1 60%; }
+.wf-brief__text h3, .wf-page__h { margin: 0 0 6px; font-size: 16px; }
+.wf-brief p { margin: 0; font-size: 13px; color: #333; line-height: 1.5; max-width: 62ch; }
+.wf-objective { flex: 0 1 300px; border: 2px solid #000; padding: 8px 10px; }
+.wf-objective p { margin: 4px 0 0; font-size: 13px; color: #000; }
+.wf-objective--inline { margin: 10px 0; }
+
+/* ---- two-column bench ------------------------------------------------ */
+.wf-cols { display: flex; gap: 16px; margin-top: 16px; align-items: flex-start; }
+.wf-col--build { flex: 0 0 34%; }
+.wf-col--result { flex: 1 1 auto; min-width: 0; }
+.wf-colhead { margin: 0 0 8px; font-size: 13px; }
+
+/* ---- recipe card stack (summary form) -------------------------------- */
+.wf-stack { list-style: none; margin: 0; padding: 0; }
+.wf-card {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  border: 1px solid #333; border-bottom: none; padding: 8px 10px; background: #fff;
+}
+.wf-card:last-child { border-bottom: 1px solid #333; }
+.wf-card__n { font-size: 11px; color: #666; min-width: 12px; }
+.wf-card__t { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; min-width: 78px; }
+.wf-card__s { font-size: 13px; color: #333; flex: 1 1 140px; }
+.wf-card__x { font-size: 11px; color: #666; text-decoration: underline; cursor: pointer; }
+.wf-card--open { background: #f7f7f7; }
+.wf-card__body { flex: 1 1 100%; margin-top: 8px; border-top: 1px solid #ccc; padding-top: 8px; }
+.wf-field { display: block; margin-bottom: 6px; }
+.wf-field select, .wf-field input {
+  font: inherit; font-size: 12px; display: block; width: 100%; max-width: 340px;
+  padding: 5px 6px; border: 1px solid #ccc; border-radius: 2px; background: #fff; color: #000;
+}
+.wf-field input::placeholder { color: #999; }
+.wf-stack--roomy .wf-card { padding: 12px; }
+
+/* ---- run control and progress ---------------------------------------- */
+.wf-run { margin-top: 14px; border-top: 1px solid #ccc; padding-top: 12px; }
+.wf-progress { height: 10px; border: 1px solid #333; background: #fff; margin: 8px 0 4px; }
+.wf-progress__fill { display: block; height: 100%; background: #333; }
+.wf-w62 { width: 62%; }
+.wf-phase { margin: 0; font-size: 12px; color: #666; }
+
+/* ---- result: tabs, plot, table, readout ------------------------------ */
+.wf-tabs { display: flex; gap: 4px; align-items: center; border-bottom: 1px solid #333; }
+.wf-tab { font: inherit; font-size: 12px; padding: 6px 12px; cursor: pointer; background: #eee; color: #333; border: 1px solid #ccc; border-bottom: none; }
+.wf-tab--on { background: #fff; color: #000; font-weight: 600; border-color: #333; }
+.wf-tab--off { color: #666; }
+
+.wf-plot { margin: 0; border: 1px solid #ccc; border-top: none; padding: 10px; }
+.wf-plot__ylab { font-size: 10px; color: #666; }
+.wf-plot__area { position: relative; border-left: 1px solid #333; border-bottom: 1px solid #333; height: 190px; padding: 0 4px; }
+.wf-plot--sm .wf-plot__area { height: 120px; }
+.wf-plot--big .wf-plot__area { height: 260px; }
+.wf-hist { display: flex; align-items: flex-end; gap: 2px; height: 100%; }
+.wf-hist span { flex: 1 1 0; background: #ccc; border-top: 2px solid #333; }
+.wf-hist .b1 { height: 6%; } .wf-hist .b2 { height: 11%; } .wf-hist .b3 { height: 17%; }
+.wf-hist .b4 { height: 24%; } .wf-hist .b5 { height: 32%; } .wf-hist .b6 { height: 42%; }
+.wf-hist .b7 { height: 52%; } .wf-hist .b8 { height: 64%; } .wf-hist .b9 { height: 82%; }
+.wf-hist .b10 { height: 96%; background: #666; }
+.wf-hist--mini { height: 44px; }
+.wf-plot__xlab { font-size: 10px; color: #666; text-align: center; margin-top: 4px; }
+.wf-legend { display: flex; gap: 14px; list-style: none; margin: 6px 0 0; padding: 0; font-size: 11px; color: #666; flex-wrap: wrap; }
+.wf-legend li::before { content: "▪ "; color: #333; }
+.wf-target { position: absolute; left: 62%; top: 0; bottom: 0; border-left: 2px solid #000; }
+.wf-target__lab { position: absolute; top: 2px; left: 4px; font-size: 10px; color: #333; white-space: nowrap; }
+
+.wf-table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12px; }
+.wf-table th { text-align: left; font-weight: 400; color: #333; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+.wf-table td { text-align: right; color: #333; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+
+.wf-readout { border: 1px solid #ccc; border-top: none; padding: 10px; }
+.wf-readout p { margin: 2px 0; font-size: 13px; }
+.wf-readout__line { margin: 6px 0; font-size: 13px; }
+.wf-num--big { font-size: 30px; }
+.wf-unit { font-size: 13px; color: #666; }
+.wf-verdict { font-weight: 600; }
+.wf-stamp { display: inline-block; border: 2px solid #333; color: #333; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 1px 6px; transform: rotate(-2deg); }
+.wf-note { border-left: 3px solid #333; background: #f7f7f7; margin: 8px 0; padding: 8px 10px; font-size: 12px; color: #333; font-style: italic; }
+
+/* ---- option 2: notebook spread --------------------------------------- */
+.wf-spread-wrap { display: flex; gap: 0; }
+.wf-index { flex: 0 0 46px; border: 1px solid #ccc; border-right: none; background: #f7f7f7; padding: 8px 0; text-align: center; }
+.wf-index__t { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #666; margin-bottom: 8px; }
+.wf-index__tab { display: block; margin: 0 0 4px; padding: 10px 0; font-size: 13px; color: #666; background: #eee; border: 1px solid #ccc; border-right: none; text-decoration: none; }
+.wf-index__tab--on { background: #fff; color: #000; font-weight: 700; }
+.wf-index__tab--locked { color: #666; }
+.wf-spread { display: flex; flex: 1 1 auto; min-width: 0; }
+.wf-page { border: 1px solid #ccc; padding: 12px 14px; min-width: 0; }
+.wf-page--left { flex: 0 0 44%; }
+.wf-page--right { flex: 1 1 auto; border-left: 2px solid #333; background: #fff; max-height: 720px; overflow-y: auto; }
+.wf-page__sub { font-size: 13px; margin: 14px 0 6px; }
+.wf-ruled { font-size: 13px; line-height: 1.6; color: #333; margin: 0; background-image: linear-gradient(#eee 1px, transparent 1px); background-size: 100% 1.6em; }
+.wf-stack--written .wf-card { border-color: #ccc; }
+.wf-entry { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+.wf-entry--running { border-style: solid; border-color: #333; background: #f7f7f7; }
+.wf-entry--past { background: #f7f7f7; }
+.wf-entry__h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 6px; }
+.wf-entry__n { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.wf-entry__d { font-size: 12px; color: #666; flex: 1 1 auto; }
+.wf-entry__x { font-size: 11px; color: #666; text-decoration: underline; }
+
+/* ---- option 3: focus stage ------------------------------------------- */
+.wf-rail { display: flex; list-style: none; margin: 12px 0; padding: 0; border: 1px solid #ccc; }
+.wf-rail__step { flex: 1 1 0; padding: 8px 10px; border-right: 1px solid #ccc; }
+.wf-rail__step:last-of-type { border-right: none; }
+.wf-rail__mk { display: flex; align-items: center; padding-right: 6px; }
+.wf-rail__n { display: inline-block; width: 18px; height: 18px; line-height: 17px; text-align: center; border: 1px solid #666; border-radius: 50%; font-size: 11px; color: #666; }
+.wf-rail__t { font-size: 13px; margin-left: 6px; color: #666; }
+.wf-rail__s { display: block; font-size: 11px; color: #666; margin-top: 4px; }
+.wf-rail__step--done .wf-rail__n { background: #333; color: #fff; border-color: #333; }
+.wf-rail__step--done .wf-rail__t { color: #333; }
+.wf-rail__step--on { background: #f7f7f7; border-bottom: 3px solid #000; }
+.wf-rail__step--on .wf-rail__t { color: #000; font-weight: 700; }
+.wf-rail__step--on .wf-rail__n { border-color: #000; color: #000; }
+.wf-stage { border: 1px solid #333; padding: 16px; max-width: 720px; margin: 0 auto; }
+.wf-stage__h { margin: 0 0 4px; font-size: 17px; }
+.wf-stage__lede { margin: 0 0 12px; font-size: 13px; color: #666; }
+.wf-stage__foot { display: flex; justify-content: space-between; margin-top: 16px; border-top: 1px solid #ccc; padding-top: 12px; }
+.wf-strip { margin-top: 16px; border-top: 1px solid #ccc; padding-top: 10px; }
+.wf-strip__lab { font-size: 11px; color: #666; }
+.wf-strip__row { display: flex; gap: 10px; margin-top: 8px; }
+.wf-strip__cell { flex: 1 1 0; border: 1px solid #ccc; padding: 8px; min-height: 92px; }
+.wf-strip__t { display: block; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+.wf-strip__p { display: block; font-size: 11px; color: #666; margin-top: 4px; }
+.wf-ph { display: block; height: 8px; background: #eee; margin-bottom: 5px; }
+.wf-ph--l { width: 70%; height: 12px; background: #ccc; }
+.wf-ph--s { width: 40%; }
+
+/* ---- option 4: result first ------------------------------------------ */
+.wf-rf { display: flex; gap: 12px; }
+.wf-spines { flex: 0 0 44px; border: 1px solid #ccc; background: #f7f7f7; padding: 8px 0; text-align: center; }
+.wf-spine { display: block; margin: 0 6px 6px; padding: 14px 0; font-size: 13px; color: #666; background: #eee; border: 1px solid #ccc; text-decoration: none; }
+.wf-spine--on { background: #000; color: #fff; border-color: #000; font-weight: 700; }
+.wf-rf__main { flex: 1 1 auto; min-width: 0; }
+.wf-rf__head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.wf-rf__head h3 { margin: 0; font-size: 16px; }
+.wf-objchip { font-size: 12px; border: 2px solid #000; padding: 4px 10px; display: flex; gap: 10px; align-items: center; }
+.wf-rf__body { display: flex; gap: 12px; align-items: flex-start; }
+.wf-rf__body .wf-plot { flex: 1 1 auto; min-width: 0; border-top: 1px solid #ccc; }
+.wf-side { flex: 0 0 220px; border: 1px solid #ccc; padding: 10px; }
+.wf-gauge { margin-top: 10px; border-top: 1px solid #ccc; padding-top: 8px; }
+.wf-gauge__bar { position: relative; height: 22px; border: 1px solid #333; background: #fff; margin: 6px 0 4px; }
+.wf-gauge__t { position: absolute; top: -1px; bottom: -1px; border-left: 2px solid #333; font-size: 9px; color: #333; padding-left: 2px; }
+.wf-gauge__t--3 { left: 45%; }
+.wf-gauge__t--5 { left: 75%; }
+.wf-gauge--off .wf-gauge__bar { background: #eee; }
+.wf-sentence { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border: 1px solid #333; padding: 10px; margin-top: 12px; }
+.wf-sentence p { margin: 0; flex: 1 1 320px; font-size: 13px; color: #333; }
+.wf-runbar { display: flex; gap: 12px; align-items: center; border: 1px solid #ccc; border-top: none; padding: 10px; }
+.wf-runbar .wf-progress { flex: 1 1 auto; margin: 0; }
+.wf-inset { margin-top: 14px; border-top: 1px solid #ccc; padding-top: 8px; }
+.wf-inset__lab { font-size: 11px; color: #666; }
+.wf-inset__box { display: flex; gap: 0; margin-top: 6px; border: 1px solid #ccc; height: 96px; }
+.wf-inset__drawer { flex: 0 0 34%; border-right: 2px solid #333; background: #f7f7f7; padding: 8px; }
+.wf-inset__rest { flex: 1 1 auto; padding: 8px; }
+.wf-inset__t { display: block; font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+
+/* ---- option 5: long column ------------------------------------------- */
+.wf-lc-wrap { position: relative; padding-bottom: 56px; }
+.wf-lc { max-width: 660px; margin: 0 auto; }
+.wf-lc__sec { border-bottom: 1px solid #eee; padding: 14px 0; }
+.wf-lc__sec h3 { margin: 0 0 6px; font-size: 16px; }
+.wf-lc__sec h4 { margin: 0 0 8px; font-size: 13px; }
+.wf-lc__sec p { font-size: 13px; color: #333; line-height: 1.5; }
+.wf-lc__next { border-bottom: none; }
+.wf-acc summary { font-size: 13px; cursor: pointer; }
+.wf-stickybar {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; gap: 12px; align-items: center;
+  border-top: 2px solid #333; background: #f7f7f7; padding: 10px 12px;
+}
+.wf-stickybar__s { font-size: 12px; color: #333; }
+.wf-stickybar .wf-progress { flex: 1 1 auto; margin: 0; }
+
+/* ---- summary tables and recommendation ------------------------------- */
+.wf-matrix { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 12px; }
+.wf-matrix th, .wf-matrix td { border: 1px solid #ccc; padding: 7px 9px; text-align: left; vertical-align: top; color: #333; }
+.wf-matrix thead th { background: #eee; color: #000; }
+.wf-matrix tbody th { white-space: nowrap; color: #000; }
+.wf-rec { border: 2px solid #000; padding: 14px 16px; margin-top: 22px; }
+.wf-rec h3 { margin: 0 0 8px; font-size: 15px; }
+.wf-rec p { font-size: 13px; line-height: 1.55; color: #333; margin: 0 0 10px; max-width: 74ch; }
+.wf-rec__cost, .wf-rec__alt { border-top: 1px solid #ccc; padding-top: 10px; }
+
+/* ---- narrow widths: 1024 and 768 ------------------------------------- */
+@media (max-width: 1080px) {
+  .wf-brief { flex-wrap: wrap; }
+  .wf-objective { flex: 1 1 100%; }
+  .wf-rf__body { flex-wrap: wrap; }
+  .wf-side { flex: 1 1 100%; }
+}
+@media (max-width: 900px) {
+  .wf-cols { flex-direction: column; }
+  .wf-col--build, .wf-col--result { flex: 1 1 auto; width: 100%; }
+  .wf-spread { flex-direction: column; }
+  .wf-page--left, .wf-page--right { flex: 1 1 auto; }
+  .wf-page--right { border-left: 1px solid #ccc; border-top: 2px solid #333; max-height: none; }
+  .wf-rail { flex-wrap: wrap; }
+  .wf-rail__step { flex: 1 1 40%; }
+  .wf-strip__row { flex-direction: column; }
+  .wf-legend { gap: 8px; }
+}

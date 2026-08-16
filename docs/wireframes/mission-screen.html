@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission screen — FCE-site wireframes</title>
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="mission-screen.css">
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <div class="title-bar">
+    <span><strong>Mission screen</strong> — FCE-site &nbsp;·&nbsp; wireframes, black &amp; white, no visual system</span>
+    <span class="rec">★ Recommended: Option <span id="rec-number">2</span> &nbsp;·&nbsp; <a href="index.html">← index</a></span>
+  </div>
+
+  <nav class="main-tabs" aria-label="Wireframe options">
+    <button class="tab-btn active" data-tab="option-1" aria-current="true">1: Split Bench</button>
+    <button class="tab-btn" data-tab="option-2">2: Notebook Spread</button>
+    <button class="tab-btn" data-tab="option-3">3: Focus Stage</button>
+    <button class="tab-btn" data-tab="option-4">4: Result First</button>
+    <button class="tab-btn" data-tab="option-5">5: Long Column</button>
+    <button class="tab-btn" data-tab="summary">Summary</button>
+  </nav>
+
+  <!-- ===== OPTION 1 — SPLIT BENCH ===== -->
+  <div class="option-panel active" id="option-1">
+    <h2>Option 1: <span class="opt-name">Split Bench</span></h2>
+    <p class="option-description">The conventional two-column workspace: you build on the left, results appear on the right, and the newest run replaces the last one.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt1">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+
+        <div class="wf-topbar">
+          <span class="wf-wordmark">FCE</span>
+          <ul class="wf-campaign">
+            <li class="wf-chip wf-chip--current">1 · First Light</li>
+            <li class="wf-chip wf-chip--locked">2 · Cleaning the Signal <span class="wf-lock">locked</span></li>
+            <li class="wf-chip wf-chip--locked">3 · The Unknown <span class="wf-lock">locked</span></li>
+          </ul>
+          <span class="wf-who">kwark_42</span>
+          <span class="wf-marker">1</span>
+        </div>
+
+        <div class="wf-brief">
+          <div class="wf-brief__text">
+            <h3>M-1 · First Light</h3>
+            <p>A Z boson lives for a moment and then falls apart into two leptons. Those two leptons still carry its mass between them. Add them together, take the mass, and plot it.</p>
+          </div>
+          <div class="wf-objective">
+            <span class="wf-label">Objective</span>
+            <p>Find the peak, and read its position within <strong>±2 GeV of 91.2 GeV</strong>.</p>
+            <span class="wf-marker">2</span>
+          </div>
+        </div>
+
+        <div class="wf-cols">
+          <section class="wf-col wf-col--build">
+            <h4 class="wf-colhead">Your analysis <span class="wf-marker">3</span></h4>
+
+            <ol class="wf-stack">
+              <li class="wf-card"><span class="wf-card__n">1</span><span class="wf-card__t">Data</span><span class="wf-card__s">91 GeV · IDEA · all samples</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">2</span><span class="wf-card__t">Filter</span><span class="wf-card__s">at least 2 leptons</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">3</span><span class="wf-card__t">Observable</span><span class="wf-card__s">mass of lepton 1 + lepton 2</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">4</span><span class="wf-card__t">Plot</span><span class="wf-card__s">40 bins, 0–120 GeV</span><span class="wf-card__x">edit</span></li>
+            </ol>
+            <button class="wf-btn wf-btn--ghost wf-btn--wide">+ Add a step</button>
+
+            <div class="wf-run">
+              <button class="wf-btn wf-btn--go wf-btn--wide">▶ Run analysis</button>
+              <div class="wf-progress"><span class="wf-progress__fill wf-w62"></span></div>
+              <p class="wf-phase">Reading events — 62% · sample 3 of 6</p>
+              <span class="wf-marker">4</span>
+            </div>
+          </section>
+
+          <section class="wf-col wf-col--result">
+            <div class="wf-tabs" role="tablist">
+              <button class="wf-tab wf-tab--on" role="tab" aria-selected="true">Plot</button>
+              <button class="wf-tab" role="tab" aria-selected="false">Cutflow</button>
+              <button class="wf-tab wf-tab--off" role="tab" aria-selected="false" aria-disabled="true">Fit · μ and Z</button>
+              <span class="wf-marker">5</span>
+            </div>
+
+            <figure class="wf-plot">
+              <span class="wf-plot__ylab">events</span>
+              <div class="wf-plot__area">
+                <div class="wf-hist"><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b2"></span><span class="b2"></span><span class="b2"></span><span class="b3"></span><span class="b3"></span><span class="b4"></span><span class="b5"></span><span class="b6"></span><span class="b8"></span><span class="b10"></span><span class="b9"></span><span class="b5"></span><span class="b3"></span><span class="b2"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span></div>
+              </div>
+              <figcaption class="wf-plot__xlab">m(l1,l2) &nbsp;[GeV]&nbsp; 0 · 30 · 60 · 90 · 120</figcaption>
+              <ul class="wf-legend"><li>data</li><li>Z → 2 leptons</li><li>Z → 2 quarks</li><li>Z → 2 leptons + γ</li></ul>
+            </figure>
+
+            <div class="wf-readout">
+              <p><span class="wf-label">Peak position</span> <strong class="wf-num">90.8 GeV</strong></p>
+              <p class="wf-verdict">Objective met — mission 2 is now open. <span class="wf-stamp">stamp</span></p>
+              <span class="wf-marker">6</span>
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① Campaign as a top strip.</strong> The three missions sit in the header as chips. Cheap, always visible, and it never competes with the work — but it is also the weakest expression of "the logbook fills in", because there is no room to show anything about a finished mission except a tick.</li>
+        <li><strong>② The objective is a fixed box, not prose.</strong> Pulling the checkable statement out of the brief means a student can re-read "what am I trying to do" without re-reading the story. This is worth keeping in every option.</li>
+        <li><strong>③ Build on the left, always.</strong> The card stack never moves and never hides. A student who has lost the thread can always find their analysis in the same place.</li>
+        <li><strong>④ Progress lives under the run button.</strong> It has a permanently reserved slot, so the layout does not jump when a run starts. It is, however, in the corner of the screen furthest from where the student is looking once the plot exists.</li>
+        <li><strong>⑤ Cutflow and fit are behind tabs.</strong> This is the big trade. It keeps the plot large at every width, but in mission 2 the whole lesson is "this cut removed that many events" — and the cut and its consequence are then never on screen together.</li>
+        <li><strong>⑥ One result at a time.</strong> Running again overwrites what you had. The student has no way to see whether their change helped, except by remembering. That is a real cost in a subject where the entire method is "change one thing and compare".</li>
+        <li><strong>Optimises for:</strong> familiarity, and build-then-look adjacency. Nobody has to be taught this layout.</li>
+        <li><strong>Gives up:</strong> run history, and cut/consequence co-visibility. At 768 px the two columns must stack, at which point it becomes Option 5 with extra chrome.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 2 — NOTEBOOK SPREAD ===== -->
+  <div class="option-panel" id="option-2">
+    <h2>Option 2: <span class="opt-name">Notebook Spread</span></h2>
+    <p class="option-description">Two facing pages. The left page is the method — brief and analysis as one continuous written thing. The right page is the run log, and every run is added to it instead of replacing the last.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt2">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content wf-spread-wrap">
+
+        <nav class="wf-index" aria-label="Missions">
+          <span class="wf-index__t">log</span>
+          <a href="#" class="wf-index__tab wf-index__tab--on">1</a>
+          <a href="#" class="wf-index__tab wf-index__tab--locked">2</a>
+          <a href="#" class="wf-index__tab wf-index__tab--locked">3</a>
+          <a href="#" class="wf-index__tab wf-index__tab--locked">S</a>
+          <span class="wf-marker">1</span>
+        </nav>
+
+        <div class="wf-spread">
+
+          <section class="wf-page wf-page--left">
+            <h3 class="wf-page__h">M-1 · First Light</h3>
+            <p class="wf-ruled">A Z boson lives for a moment and then falls apart into two leptons. Those two leptons still carry its mass between them. Add them together, take the mass, and plot it.</p>
+            <div class="wf-objective wf-objective--inline">
+              <span class="wf-label">Objective</span>
+              <p>Find the peak, and read its position within <strong>±2 GeV of 91.2 GeV</strong>.</p>
+            </div>
+
+            <h4 class="wf-page__sub">Method <span class="wf-marker">2</span></h4>
+            <ol class="wf-stack wf-stack--written">
+              <li class="wf-card"><span class="wf-card__n">1</span><span class="wf-card__t">Data</span><span class="wf-card__s">91 GeV · IDEA · all samples</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">2</span><span class="wf-card__t">Filter</span><span class="wf-card__s">at least 2 leptons</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">3</span><span class="wf-card__t">Observable</span><span class="wf-card__s">mass of lepton 1 + lepton 2</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">4</span><span class="wf-card__t">Plot</span><span class="wf-card__s">40 bins, 0–120 GeV</span><span class="wf-card__x">edit</span></li>
+            </ol>
+            <button class="wf-btn wf-btn--ghost wf-btn--wide">+ Add a step</button>
+            <div class="wf-run">
+              <button class="wf-btn wf-btn--go wf-btn--wide">▶ Run and write it down</button>
+            </div>
+          </section>
+
+          <section class="wf-page wf-page--right">
+            <h4 class="wf-page__sub">Runs <span class="wf-count">3 entries</span> <span class="wf-marker">3</span></h4>
+
+            <article class="wf-entry wf-entry--running">
+              <header class="wf-entry__h"><span class="wf-entry__n">run 3</span><span class="wf-entry__d">writing…</span></header>
+              <div class="wf-progress"><span class="wf-progress__fill wf-w62"></span></div>
+              <p class="wf-phase">Reading events — 62% · sample 3 of 6</p>
+              <span class="wf-marker">4</span>
+            </article>
+
+            <article class="wf-entry">
+              <header class="wf-entry__h"><span class="wf-entry__n">run 2</span><span class="wf-entry__d">added: at least 2 leptons</span></header>
+              <figure class="wf-plot wf-plot--sm">
+                <div class="wf-plot__area">
+                  <div class="wf-hist"><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b2"></span><span class="b2"></span><span class="b2"></span><span class="b3"></span><span class="b3"></span><span class="b4"></span><span class="b5"></span><span class="b6"></span><span class="b8"></span><span class="b10"></span><span class="b9"></span><span class="b5"></span><span class="b3"></span><span class="b2"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span></div>
+                </div>
+                <figcaption class="wf-plot__xlab">m(l1,l2) [GeV] · 0 · 30 · 60 · 90 · 120</figcaption>
+              </figure>
+              <table class="wf-table">
+                <tr><th>all events</th><td class="wf-num">240 000</td><td></td></tr>
+                <tr><th>≥ 2 leptons</th><td class="wf-num">18 420</td><td class="wf-num">7.7%</td></tr>
+              </table>
+              <p class="wf-readout__line"><span class="wf-label">peak</span> <strong class="wf-num">90.8 GeV</strong> — objective met <span class="wf-stamp">stamp</span></p>
+              <span class="wf-marker">5</span>
+            </article>
+
+            <article class="wf-entry wf-entry--past">
+              <header class="wf-entry__h"><span class="wf-entry__n">run 1</span><span class="wf-entry__d">no filter — peak at 88.4 GeV, 2.8 low</span><span class="wf-entry__x">open</span></header>
+              <p class="wf-note">You measured the peak a bit low. Something carried energy away before you measured it — look at the left side of your plot.</p>
+              <span class="wf-marker">6</span>
+            </article>
+          </section>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① Campaign as an edge index.</strong> The missions are tabs on the edge of the book, the way a real lab book has tabs. It costs about 48 px of width and it makes the campaign feel like one object rather than a menu — and a finished mission's tab can carry its result.</li>
+        <li><strong>② Brief and method are one continuous page.</strong> The mission text and the analysis are not two panels; they read as one written argument — "here is the problem, here is what I did about it". This is the layout that makes the card stack read as a sentence, because there is prose immediately above it doing the same thing.</li>
+        <li><strong>③ Results accumulate downward.</strong> The single most important difference from Option 1. Run 3 pushes run 2 down; nothing is destroyed. A student can see their last three attempts and say "that cut helped". Comparison is the method being taught, and here the layout does it for free.</li>
+        <li><strong>④ A run in progress is a half-written entry.</strong> Progress has a real home at the top of the log, at full page width, right where the student is already looking. Silence is impossible.</li>
+        <li><strong>⑤ Plot, cutflow, and numbers are one entry, not three tabs.</strong> Cut and consequence are on screen together, which is exactly what mission 2 asks a student to reason about.</li>
+        <li><strong>⑥ A miss becomes an entry, not an error.</strong> Run 1 missed. It sits in the log looking like a normal piece of work, with a margin note next to it. Nothing about it reads as a failure state — which is what the brief asks for.</li>
+        <li><strong>Optimises for:</strong> iteration and comparison; framing a miss as ordinary; and making the notebook idea structural rather than decorative.</li>
+        <li><strong>Gives up:</strong> vertical room — the right page grows and scrolls, and old entries can distract. It carries the most state of any option here, so it is the most work to build. At 768 px the two pages stack, so the tablet layout is effectively Option 5 and has to be designed too.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 3 — FOCUS STAGE ===== -->
+  <div class="option-panel" id="option-3">
+    <h2>Option 3: <span class="opt-name">Focus Stage</span></h2>
+    <p class="option-description">One step of the loop at a time, full width. A rail across the top shows the four steps and collapses the others to a single line each.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt3">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1/build</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content">
+
+        <div class="wf-topbar wf-topbar--slim">
+          <a href="#" class="wf-back">← Contents</a>
+          <span class="wf-who">M-1 · First Light</span>
+          <span class="wf-marker">1</span>
+        </div>
+
+        <ol class="wf-rail">
+          <li class="wf-rail__step wf-rail__step--done"><span class="wf-rail__n">1</span><span class="wf-rail__t">Brief</span><span class="wf-rail__s">peak within ±2 GeV of 91.2</span></li>
+          <li class="wf-rail__step wf-rail__step--on"><span class="wf-rail__n">2</span><span class="wf-rail__t">Build</span><span class="wf-rail__s">4 steps</span></li>
+          <li class="wf-rail__step"><span class="wf-rail__n">3</span><span class="wf-rail__t">Run</span><span class="wf-rail__s">—</span></li>
+          <li class="wf-rail__step"><span class="wf-rail__n">4</span><span class="wf-rail__t">Result</span><span class="wf-rail__s">—</span></li>
+          <li class="wf-rail__mk"><span class="wf-marker">2</span></li>
+        </ol>
+
+        <section class="wf-stage">
+          <h3 class="wf-stage__h">Build your analysis <span class="wf-marker">3</span></h3>
+          <p class="wf-stage__lede">Four steps. Read them downwards — they say what you are about to do.</p>
+
+          <ol class="wf-stack wf-stack--roomy">
+            <li class="wf-card"><span class="wf-card__n">1</span><span class="wf-card__t">Data</span><span class="wf-card__s">91 GeV · IDEA · all samples</span><span class="wf-card__x">edit</span></li>
+            <li class="wf-card wf-card--open">
+              <span class="wf-card__n">2</span><span class="wf-card__t">Filter</span><span class="wf-card__s">at least 2 leptons</span><span class="wf-card__x">close</span>
+              <div class="wf-card__body">
+                <label class="wf-field"><span class="wf-label">keep events with</span><select><option>at least 2 leptons</option></select></label>
+                <label class="wf-field"><span class="wf-label">or write it yourself</span><input type="text" placeholder="n_leptons &gt;= 2"></label>
+              </div>
+            </li>
+            <li class="wf-card"><span class="wf-card__n">3</span><span class="wf-card__t">Observable</span><span class="wf-card__s">mass of lepton 1 + lepton 2</span><span class="wf-card__x">edit</span></li>
+            <li class="wf-card"><span class="wf-card__n">4</span><span class="wf-card__t">Plot</span><span class="wf-card__s">40 bins, 0–120 GeV</span><span class="wf-card__x">edit</span></li>
+          </ol>
+          <button class="wf-btn wf-btn--ghost">+ Add a step</button>
+
+          <div class="wf-stage__foot">
+            <button class="wf-btn wf-btn--ghost">← Back to the brief</button>
+            <button class="wf-btn wf-btn--go">Run it →</button>
+          </div>
+        </section>
+
+        <div class="wf-strip">
+          <span class="wf-strip__lab">the same stage, in its other three states <span class="wf-marker">4</span></span>
+          <div class="wf-strip__row">
+            <div class="wf-strip__cell"><span class="wf-strip__t">1 · Brief</span><span class="wf-ph wf-ph--l"></span><span class="wf-ph"></span><span class="wf-ph wf-ph--s"></span></div>
+            <div class="wf-strip__cell"><span class="wf-strip__t">3 · Run</span><div class="wf-progress"><span class="wf-progress__fill wf-w62"></span></div><span class="wf-strip__p">Reading events — 62%</span><span class="wf-ph wf-ph--s"></span></div>
+            <div class="wf-strip__cell"><span class="wf-strip__t">4 · Result</span><div class="wf-hist wf-hist--mini"><span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="b5"></span><span class="b8"></span><span class="b10"></span><span class="b6"></span><span class="b3"></span><span class="b1"></span><span class="b1"></span></div><span class="wf-strip__p">peak 90.8 GeV</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① Campaign is a separate page.</strong> "← Contents" leaves the mission entirely. The mission screen carries no campaign at all, which is the cleanest possible working surface and the weakest sense of progress while you are working.</li>
+        <li><strong>② The loop is drawn on the page.</strong> The four steps of the core loop are literally the navigation. A student learns the shape of an analysis just by using the app — read, build, run, look. This is the strongest teaching device of the five options.</li>
+        <li><strong>③ One thing at a time, at comfortable size.</strong> Controls can be large, helper text can be generous, and the expression field has room to explain itself. It is the least intimidating option for a 15-year-old on day one, and the only one that needs no compromise at 768 px — the tablet layout is the laptop layout.</li>
+        <li><strong>④ The stage has four states.</strong> Run gets the whole screen, so progress is impossible to miss. Result gets the whole screen, so the plot is big.</li>
+        <li><strong>The cost, and it is a serious one:</strong> you can never see your cuts and your plot at the same time. Mission 2 is entirely about the relationship between the two, and this layout puts a click between them. Iterating means stepping back and forward repeatedly, and the run history is nowhere.</li>
+        <li><strong>Optimises for:</strong> comprehension on first contact, tablet portrait, and teaching the loop explicitly.</li>
+        <li><strong>Gives up:</strong> co-visibility, iteration speed, and any sense of accumulated work. It can start to feel like a slideshow by the fourth run.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 4 — RESULT FIRST ===== -->
+  <div class="option-panel" id="option-4">
+    <h2>Option 4: <span class="opt-name">Result First</span></h2>
+    <p class="option-description">The plot is the page. The analysis that produced it is compressed to one readable line under it, and opens as a drawer when you want to change something.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt4">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content wf-rf">
+
+        <nav class="wf-spines" aria-label="Missions">
+          <a href="#" class="wf-spine wf-spine--on">1</a>
+          <a href="#" class="wf-spine wf-spine--locked">2</a>
+          <a href="#" class="wf-spine wf-spine--locked">3</a>
+          <span class="wf-marker">1</span>
+        </nav>
+
+        <div class="wf-rf__main">
+          <div class="wf-rf__head">
+            <h3>M-1 · First Light</h3>
+            <span class="wf-objchip">Objective · peak within ±2 GeV of 91.2 <button class="wf-btn wf-btn--tiny">read the brief</button></span>
+            <span class="wf-marker">2</span>
+          </div>
+
+          <div class="wf-rf__body">
+            <figure class="wf-plot wf-plot--big">
+              <span class="wf-plot__ylab">events</span>
+              <div class="wf-plot__area">
+                <div class="wf-target"><span class="wf-target__lab">91.2 GeV — where the peak should be</span></div>
+                <div class="wf-hist"><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b2"></span><span class="b2"></span><span class="b2"></span><span class="b3"></span><span class="b3"></span><span class="b4"></span><span class="b5"></span><span class="b6"></span><span class="b8"></span><span class="b10"></span><span class="b9"></span><span class="b5"></span><span class="b3"></span><span class="b2"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span></div>
+              </div>
+              <figcaption class="wf-plot__xlab">m(l1,l2) [GeV] · 0 · 30 · 60 · 90 · 120</figcaption>
+              <ul class="wf-legend"><li>data</li><li>Z → 2 leptons</li><li>Z → 2 quarks</li><li>Z → 2 leptons + γ</li></ul>
+              <span class="wf-marker">3</span>
+            </figure>
+
+            <aside class="wf-side">
+              <p class="wf-readout__line"><span class="wf-label">peak</span><br><strong class="wf-num wf-num--big">90.8</strong> <span class="wf-unit">GeV</span></p>
+              <table class="wf-table">
+                <tr><th>all events</th><td class="wf-num">240 000</td></tr>
+                <tr><th>≥ 2 leptons</th><td class="wf-num">18 420</td></tr>
+                <tr><th>in window</th><td class="wf-num">12 108</td></tr>
+              </table>
+              <div class="wf-gauge wf-gauge--off">
+                <span class="wf-label">significance Z</span>
+                <div class="wf-gauge__bar"><span class="wf-gauge__t wf-gauge__t--3">3σ</span><span class="wf-gauge__t wf-gauge__t--5">5σ</span></div>
+                <p class="wf-muted">no fit in this mission</p>
+              </div>
+              <span class="wf-marker">4</span>
+            </aside>
+          </div>
+
+          <div class="wf-sentence">
+            <span class="wf-label">your analysis</span>
+            <p><strong>91 GeV, IDEA</strong> → keep events with <strong>at least 2 leptons</strong> → measure <strong>mass of lepton 1 + lepton 2</strong> → plot in <strong>40 bins, 0–120 GeV</strong></p>
+            <button class="wf-btn">Change it</button>
+            <span class="wf-marker">5</span>
+          </div>
+
+          <div class="wf-runbar">
+            <button class="wf-btn wf-btn--go">▶ Run</button>
+            <div class="wf-progress"><span class="wf-progress__fill wf-w62"></span></div>
+            <span class="wf-phase">Reading events — 62% · sample 3 of 6</span>
+            <span class="wf-marker">6</span>
+          </div>
+
+          <div class="wf-inset">
+            <span class="wf-inset__lab">"Change it" opens the builder as a drawer over the left of the page:</span>
+            <div class="wf-inset__box">
+              <div class="wf-inset__drawer">
+                <span class="wf-inset__t">Your analysis ✕</span>
+                <span class="wf-ph"></span><span class="wf-ph"></span><span class="wf-ph"></span><span class="wf-ph wf-ph--s"></span>
+              </div>
+              <div class="wf-inset__rest"><span class="wf-inset__t">plot stays visible</span><div class="wf-hist wf-hist--mini"><span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="b5"></span><span class="b8"></span><span class="b10"></span><span class="b6"></span><span class="b3"></span><span class="b1"></span><span class="b1"></span></div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① Campaign as book spines.</strong> A 48 px rail of numbered spines down the left edge. Compact, permanent, and almost invisible — it costs nothing but says very little.</li>
+        <li><strong>② The brief is behind a button.</strong> Only the objective stays on screen. That is a real bet: it assumes the student has read the story once and now needs only the target. It frees a lot of vertical space, and it will strand any student who did not read it.</li>
+        <li><strong>③ The plot gets the most area of any option here, at every width.</strong> The objective is drawn on the plot itself as a target line, so "am I there yet" is answered by looking, not by reading a number.</li>
+        <li><strong>④ Cutflow and the significance gauge are permanently adjacent to the plot,</strong> not behind a tab. The gauge is present but inert in mission 1 — it shows students where the score will eventually appear, which builds anticipation for mission 3.</li>
+        <li><strong>⑤ The analysis is literally one sentence.</strong> This is the brief's stated goal for the card stack taken to its conclusion: you can point at one line and say what your analysis does. It is also the most compressed, so it is the option where a student is least likely to understand that they built a pipeline.</li>
+        <li><strong>⑥ A permanent run bar.</strong> Progress has a fixed home across the full width, directly under the plot it is about to fill.</li>
+        <li><strong>Optimises for:</strong> the payoff. The thing the student came for is the biggest thing on screen, and tuning-and-watching is fast. It is the best of the five for mission 3.</li>
+        <li><strong>Gives up:</strong> mission 1, which is where every student starts and where there <em>is</em> no plot yet — this page opens as a large empty rectangle. Building is demoted to a hidden act, and a drawer over the page is the most fragile thing here to get right on a tablet.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== OPTION 5 — LONG COLUMN ===== -->
+  <div class="option-panel" id="option-5">
+    <h2>Option 5: <span class="opt-name">Long Column</span></h2>
+    <p class="option-description">No columns at all. One scrolling column in the order of the loop, with a run bar stuck to the bottom of the window.</p>
+
+    <div class="browser-frame wireframe" id="frame-opt5">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">fce.local/mission/1</div>
+        <div class="browser-controls">─ □ ✕</div>
+      </div>
+      <div class="browser-content wf-lc-wrap">
+
+        <div class="wf-topbar wf-topbar--slim">
+          <span class="wf-wordmark">FCE</span>
+          <ul class="wf-campaign wf-campaign--dots">
+            <li class="wf-chip wf-chip--current">1</li>
+            <li class="wf-chip wf-chip--locked">2</li>
+            <li class="wf-chip wf-chip--locked">3</li>
+          </ul>
+          <span class="wf-who">kwark_42</span>
+          <span class="wf-marker">1</span>
+        </div>
+
+        <div class="wf-lc">
+          <section class="wf-lc__sec">
+            <h3>M-1 · First Light</h3>
+            <p>A Z boson lives for a moment and then falls apart into two leptons. Those two leptons still carry its mass between them. Add them together, take the mass, and plot it.</p>
+            <div class="wf-objective wf-objective--inline">
+              <span class="wf-label">Objective</span>
+              <p>Find the peak, and read its position within <strong>±2 GeV of 91.2 GeV</strong>.</p>
+            </div>
+          </section>
+
+          <section class="wf-lc__sec">
+            <h4>Your analysis <span class="wf-marker">2</span></h4>
+            <ol class="wf-stack">
+              <li class="wf-card"><span class="wf-card__n">1</span><span class="wf-card__t">Data</span><span class="wf-card__s">91 GeV · IDEA · all samples</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">2</span><span class="wf-card__t">Filter</span><span class="wf-card__s">at least 2 leptons</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">3</span><span class="wf-card__t">Observable</span><span class="wf-card__s">mass of lepton 1 + lepton 2</span><span class="wf-card__x">edit</span></li>
+              <li class="wf-card"><span class="wf-card__n">4</span><span class="wf-card__t">Plot</span><span class="wf-card__s">40 bins, 0–120 GeV</span><span class="wf-card__x">edit</span></li>
+            </ol>
+            <button class="wf-btn wf-btn--ghost wf-btn--wide">+ Add a step</button>
+          </section>
+
+          <section class="wf-lc__sec">
+            <h4>Result <span class="wf-marker">3</span></h4>
+            <figure class="wf-plot">
+              <span class="wf-plot__ylab">events</span>
+              <div class="wf-plot__area">
+                <div class="wf-hist"><span class="b1"></span><span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="b4"></span><span class="b6"></span><span class="b8"></span><span class="b10"></span><span class="b8"></span><span class="b5"></span><span class="b3"></span><span class="b2"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span><span class="b1"></span></div>
+              </div>
+              <figcaption class="wf-plot__xlab">m(l1,l2) [GeV] · 0 · 30 · 60 · 90 · 120</figcaption>
+            </figure>
+            <p class="wf-readout__line"><span class="wf-label">peak</span> <strong class="wf-num">88.4 GeV</strong> — 2.8 GeV below the target</p>
+            <p class="wf-note">Not there yet, and that is interesting. Something carried energy away before you measured it. Look at the left side of your plot. <span class="wf-marker">4</span></p>
+            <table class="wf-table">
+              <tr><th>all events</th><td class="wf-num">240 000</td><td></td></tr>
+              <tr><th>≥ 2 leptons</th><td class="wf-num">18 420</td><td class="wf-num">7.7%</td></tr>
+            </table>
+          </section>
+
+          <details class="wf-lc__sec wf-acc">
+            <summary>Previous runs <span class="wf-count">2</span> <span class="wf-marker">5</span></summary>
+            <p class="wf-muted">run 2 · no filter · peak 87.9 GeV</p>
+            <p class="wf-muted">run 1 · no filter · no peak found</p>
+          </details>
+
+          <section class="wf-lc__sec wf-lc__next">
+            <h4>Next</h4>
+            <p class="wf-muted">2 · Cleaning the Signal — opens when you meet this objective.</p>
+          </section>
+        </div>
+
+        <div class="wf-stickybar">
+          <span class="wf-stickybar__s">≥ 2 leptons · m(l1,l2) · 40 bins</span>
+          <div class="wf-progress"><span class="wf-progress__fill wf-w62"></span></div>
+          <span class="wf-phase">62%</span>
+          <button class="wf-btn wf-btn--go">▶ Run</button>
+          <span class="wf-marker">6</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="wf-annotations">
+      <h3>What this option does, and what it costs</h3>
+      <ul>
+        <li><strong>① Campaign as three dots in the header.</strong> The smallest treatment of the five. It says "there are three of these and you are on the first" and nothing more.</li>
+        <li><strong>② Scroll position is progress through the loop.</strong> The document order <em>is</em> the loop order: brief, analysis, result, next. There is no layout to learn, and at 1440, 1024 and 768 px it is the same layout — only the column gets a little wider. That is a real advantage when the class is on mixed hardware.</li>
+        <li><strong>③ The result section exists before the first run,</strong> holding an empty plot frame and the words "nothing yet". Reserving the space stops the page from jumping when results land, and shows a first-time student what is about to happen.</li>
+        <li><strong>④ A miss is a margin note in the flow of the page.</strong> No banner, no colour, no modal — the note is simply the next thing written after the numbers.</li>
+        <li><strong>⑤ History is real but folded away.</strong> Previous runs are one closed accordion. Cheaper to build than Option 2's log and much weaker at comparison — you can read what you did, but you cannot see two plots at once.</li>
+        <li><strong>⑥ The sticky bar is what makes this work.</strong> It carries a one-line summary of the analysis, the run button, and the progress, so you can run from anywhere in the column and always know what you are running. Without it, this option fails: you would have to scroll back up to run.</li>
+        <li><strong>Optimises for:</strong> simplicity and hardware-independence. One layout for laptop and tablet, no reflow to design, the least code of the five, and the most obvious reading order.</li>
+        <li><strong>Gives up:</strong> co-visibility of anything with anything. By the fourth iteration a student is scrolling up and down a long page, and on a 1440 px laptop most of the screen is empty margin.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== SUMMARY ===== -->
+  <div class="option-panel" id="summary">
+    <h2>Summary — mission screen</h2>
+    <p class="option-description">Five different answers to: what is primary, what is next to it, and what is hidden until it is needed.</p>
+
+    <h3 class="wf-h">Where each option puts things</h3>
+    <div class="wf-scroll">
+      <table class="wf-matrix">
+        <thead>
+          <tr><th>Option</th><th>Primary</th><th>Adjacent</th><th>Hidden until needed</th><th>Where the campaign lives</th><th>Where progress lives</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>1 · Split Bench</th><td>Build column and result column, side by side</td><td>Brief in a full-width band; objective as a box</td><td>Cutflow and fit behind tabs; previous runs discarded</td><td>Chips in the header</td><td>Under the run button, left column</td></tr>
+          <tr><th>2 · Notebook Spread</th><td>The method (brief + cards) and the run log, facing</td><td>Every earlier run, stacked below the newest</td><td>Older entries collapse to one line; other missions behind edge tabs</td><td>Tabs on the edge of the book</td><td>Top of the log, as a half-written entry</td></tr>
+          <tr><th>3 · Focus Stage</th><td>Exactly one step of the loop, full width</td><td>The loop rail, with one-line summaries of the other steps</td><td>Everything not in the current step</td><td>A separate contents page</td><td>Its own full-screen stage state</td></tr>
+          <tr><th>4 · Result First</th><td>The histogram</td><td>Cutflow and significance gauge in a right column; objective drawn on the plot</td><td>The whole builder, in a drawer; the brief, behind a button</td><td>Numbered spines down the left edge</td><td>A permanent run bar under the plot</td></tr>
+          <tr><th>5 · Long Column</th><td>One column in loop order</td><td>Nothing — the column is the whole layout</td><td>Configured cards collapse; previous runs in an accordion</td><td>Three dots in the header</td><td>The sticky bottom bar</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="wf-h">Scored against the brief</h3>
+    <div class="wf-scroll">
+      <table class="wf-matrix">
+        <thead>
+          <tr><th>Option</th><th>In one line</th><th>Fits one class period</th><th>Works at 768 px</th><th>Serves M-2 (cut ↔ plot)</th><th>Makes a miss feel normal</th><th>Overall</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>1 · Split Bench</th><td>Familiar workspace, newest run wins</td><td>★★★★☆</td><td>★★☆☆☆</td><td>★★☆☆☆</td><td>★★★☆☆</td><td>★★★☆☆</td></tr>
+          <tr><th>2 · Notebook Spread</th><td>Method on the left, a growing run log on the right</td><td>★★★★☆</td><td>★★★☆☆</td><td>★★★★★</td><td>★★★★★</td><td>★★★★★</td></tr>
+          <tr><th>3 · Focus Stage</th><td>One step at a time</td><td>★★★★★</td><td>★★★★★</td><td>★☆☆☆☆</td><td>★★★★☆</td><td>★★★☆☆</td></tr>
+          <tr><th>4 · Result First</th><td>The plot is the page</td><td>★★★☆☆</td><td>★★★☆☆</td><td>★★★★☆</td><td>★★★☆☆</td><td>★★★☆☆</td></tr>
+          <tr><th>5 · Long Column</th><td>One scrolling column, sticky run bar</td><td>★★★★☆</td><td>★★★★★</td><td>★★☆☆☆</td><td>★★★★☆</td><td>★★★★☆</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="wf-rec">
+      <h3>Recommendation — Option 2, Notebook Spread</h3>
+      <p><strong>Because a run that overwrites the last one breaks the thing being taught.</strong> The method students are here to learn is "change one thing and compare". Options 1, 3 and 4 all throw the previous result away, so comparison happens in the student's memory — and a 15-year-old four runs deep will not remember. Option 2 keeps every run on the page, so the comparison the brief cares about is done by the layout rather than asked of the student.</p>
+      <p>It is also the option where <strong>missing the objective looks like ordinary work</strong>. A miss is just an entry in the log with a note beside it. The brief is explicit that failure is the normal case and must not read as an error state; this is the only layout where that is structurally true rather than a matter of restraint in the copy.</p>
+      <p>And it is the only one where the committed lab-notebook direction is <strong>load-bearing rather than decorative</strong>: the page fills up as the student works, which is exactly the "logbook fills in" progression device, delivered for free by the information architecture.</p>
+      <p class="wf-rec__cost"><strong>What it costs, stated plainly:</strong> it is the most work to build and the most state to manage, and the right page scrolls. At 768 px the two pages must stack — and when they do, the result is Option 5, so <em>Option 5 is not a rival to Option 2 so much as its tablet layout</em>. Picking Option 2 means committing to build both.</p>
+      <p class="wf-rec__alt"><strong>If that is too much for V1:</strong> take Option 5, Long Column. It is one layout at every width, it is the least code, and it keeps most of Option 2's virtues in a weaker form — history is folded into an accordion instead of laid out for comparison. It is the safe answer. <strong>Option 1 is the one to avoid</strong> despite being the most familiar: it looks like a professional tool and quietly removes the one thing students most need to do.</p>
+      <p class="wf-rec__alt"><strong>Option 3 is worth revisiting for the first five minutes only.</strong> Its stepped rail is the best teaching device here. A plausible hybrid — not drawn, and not recommended without playtesting — is to run mission 1 as Focus Stage and then hand the student the full spread from mission 2 onwards.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer class="skill-footer">
+  Wireframes for FCE-site, task D-001 · structure from the <a href="https://github.com/Magdoub/claude-wireframe-skill">Wireframe skill</a> · phase 1 only, no colour and no type chosen
+</footer>
+
+<script>
+(function() {
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  var panels = document.querySelectorAll('.option-panel');
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      tabBtns.forEach(function(b) { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+      panels.forEach(function(p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      btn.setAttribute('aria-current', 'true');
+      var target = document.getElementById(btn.dataset.tab);
+      if (target) target.classList.add('active');
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

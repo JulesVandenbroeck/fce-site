@@ -1,0 +1,156 @@
+/* Recipe-card builder wireframes — content CSS only.
+ * Framework (tabs, panels, browser frame, annotations) lives in base.css.
+ * Strictly greyscale: #000 #333 #666 #ccc #eee #f7f7f7 #fff.
+ * No type choice is expressed here — the generic `sans-serif` keyword resolves
+ * to the browser's default sans-serif face, used deliberately so nothing here
+ * reads as a font decision.
+ */
+
+/* ---- shared primitives ---------------------------------------------- */
+.rb-lab { display: inline-block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #666; }
+.rb-num { font-variant-numeric: tabular-nums; font-family: ui-monospace, "DejaVu Sans Mono", monospace; }
+.rb-h { font-size: 14px; margin: 20px 0 8px; color: #000; }
+.rb-scroll { overflow-x: auto; }
+.rb-context { font-size: 11px; color: #666; border-bottom: 1px solid #eee; padding-bottom: 6px; margin: 0 0 14px; }
+.rb-lede { font-size: 12px; color: #666; margin: 2px 0 0; }
+.rb-hint { font-size: 11px; color: #666; margin: 4px 0 0; }
+.rb-help { font-size: 12px; color: #666; margin: 6px 0 0; }
+.rb-help code, .rb-reject code { font-family: ui-monospace, "DejaVu Sans Mono", monospace; background: #eee; padding: 0 3px; }
+
+.rb-btn { font: inherit; font-size: 12px; padding: 6px 12px; cursor: pointer; background: #fff; color: #000; border: 1px solid #333; border-radius: 3px; }
+.rb-btn:hover { background: #eee; }
+.rb-btn--go { background: #000; color: #fff; border-color: #000; font-weight: 600; }
+.rb-btn--go[aria-disabled="true"] { background: #666; border-color: #666; }
+.rb-btn--wide { display: block; width: 100%; margin-top: 8px; }
+.rb-ic { font: inherit; font-size: 11px; color: #666; background: none; border: 1px solid #ccc; border-radius: 3px; padding: 1px 6px; cursor: pointer; }
+.rb-ic:hover { color: #000; background: #eee; }
+
+.rb-builder { border: 1px solid #ccc; padding: 14px; max-width: 780px; }
+.rb-head h3 { margin: 0; font-size: 15px; }
+.rb-foot { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; border-top: 1px solid #ccc; margin-top: 14px; padding-top: 12px; }
+.rb-sentence-read { font-size: 12px; color: #666; margin: 0; flex: 1 1 340px; }
+
+.rb-field { display: block; margin: 8px 0; }
+.rb-field select, .rb-field input, .rb-field textarea {
+  font: inherit; font-size: 12px; display: block; width: 100%; max-width: 380px;
+  padding: 5px 6px; border: 1px solid #ccc; border-radius: 2px; background: #fff; color: #000;
+}
+.rb-field textarea { font-family: ui-monospace, "DejaVu Sans Mono", monospace; resize: vertical; }
+.rb-kept { font-size: 12px; color: #333; margin: 8px 0 0; }
+
+.rb-table { border-collapse: collapse; width: 100%; max-width: 320px; font-size: 12px; margin-top: 4px; }
+.rb-table th { text-align: left; font-weight: 400; color: #333; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+.rb-table td { text-align: right; color: #333; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+
+/* ---- option 1: card stack -------------------------------------------- */
+.rb-stack { list-style: none; margin: 12px 0 0; padding: 0; }
+.rb-card { border: 1px solid #333; margin-bottom: 6px; background: #fff; }
+.rb-card__bar { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 9px 11px; }
+.rb-card__n { font-size: 11px; color: #666; min-width: 12px; }
+.rb-card__kind { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; min-width: 82px; }
+.rb-card__clause { font-size: 13px; color: #333; flex: 1 1 200px; }
+.rb-card__ops { display: flex; gap: 4px; }
+.rb-card--open { background: #f7f7f7; border-width: 2px; }
+.rb-card__body { border-top: 1px solid #ccc; padding: 10px 11px 12px; }
+.rb-ins { list-style: none; text-align: center; margin: -3px 0 3px; }
+.rb-ins__btn { font: inherit; font-size: 10px; color: #666; background: #fff; border: 1px solid #ccc; border-radius: 10px; padding: 1px 10px; cursor: pointer; }
+.rb-ins__btn:hover { color: #000; background: #eee; }
+
+.rb-add { margin-top: 10px; display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.rb-picker { border: 1px solid #333; background: #fff; padding: 8px 10px; min-width: 300px; }
+.rb-picker__list { list-style: none; margin: 6px 0 0; padding: 0; }
+.rb-picker__list li { border-bottom: 1px solid #eee; }
+.rb-picker__it { display: block; width: 100%; text-align: left; font: inherit; background: none; border: none; padding: 6px 2px; cursor: pointer; }
+.rb-picker__it:hover { background: #eee; }
+.rb-picker__it strong, .rb-picker__locked strong { display: inline-block; min-width: 92px; font-size: 12px; }
+.rb-picker__it span, .rb-picker__locked span { font-size: 12px; color: #666; }
+.rb-picker__locked { padding: 6px 2px; background: #eee; color: #666; }
+.rb-picker__locked strong { color: #666; }
+
+/* ---- option 2: sentence strip ---------------------------------------- */
+.rb-sentence { font-size: 17px; line-height: 2.1; color: #333; margin: 14px 0 0; max-width: 62ch; }
+.rb-sentence--long { font-size: 15px; line-height: 2.0; }
+.rb-slot {
+  font: inherit; font-size: inherit; color: #000; background: #fff; cursor: pointer;
+  border: none; border-bottom: 2px solid #333; padding: 0 3px;
+}
+.rb-slot:hover { background: #eee; }
+.rb-slot--on { background: #eee; border-bottom-width: 3px; font-weight: 600; }
+.rb-slot--add { border-bottom-style: solid; border-bottom-color: #ccc; color: #666; font-size: 13px; }
+.rb-editor { border: 2px solid #333; background: #f7f7f7; padding: 10px 12px; margin-top: 8px; max-width: 620px; }
+.rb-editor__x { float: right; cursor: pointer; color: #666; margin-left: 10px; }
+.rb-editor__row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.rb-editor__row .rb-field { flex: 1 1 220px; margin-top: 4px; }
+.rb-alt { margin: 0; }
+.rb-growth { margin-top: 22px; border-top: 1px solid #ccc; padding-top: 10px; }
+
+/* ---- option 3: two pane ---------------------------------------------- */
+.rb-two { display: flex; gap: 0; padding: 0; max-width: none; }
+.rb-list { flex: 0 0 250px; border-right: 1px solid #333; padding: 12px; background: #f7f7f7; }
+.rb-list__h { margin: 0 0 8px; font-size: 13px; }
+.rb-list__ol { list-style: none; margin: 0; padding: 0; }
+.rb-row { display: flex; gap: 8px; align-items: baseline; border: 1px solid #ccc; background: #fff; padding: 7px 8px; margin-bottom: 4px; cursor: pointer; }
+.rb-row--on { border-color: #000; border-width: 2px; background: #fff; }
+.rb-row__n { font-size: 11px; color: #666; }
+.rb-row__k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.rb-row__s { font-size: 12px; color: #666; margin-left: auto; }
+.rb-list__ops { display: flex; gap: 4px; margin: 8px 0 4px; }
+.rb-locked { font-size: 11px; color: #666; background: #eee; border: 1px solid #ccc; padding: 5px 8px; margin: 10px 0 0; }
+.rb-detail { flex: 1 1 auto; min-width: 0; padding: 14px 16px; }
+.rb-detail__h h3 { margin: 4px 0 4px; font-size: 15px; }
+.rb-reject { font-size: 12px; color: #333; border-left: 3px solid #333; background: #f7f7f7; padding: 8px 10px; margin: 6px 0 0; }
+.rb-preview { margin-top: 14px; border-top: 1px solid #ccc; padding-top: 10px; }
+
+/* ---- option 4: guided slots ------------------------------------------ */
+.rb-sheet { max-width: 720px; }
+.rb-slotrow { display: flex; gap: 14px; border-top: 1px solid #ccc; padding: 12px 0; }
+.rb-slotrow:first-of-type { border-top: 2px solid #333; margin-top: 12px; }
+.rb-slotrow__lab { flex: 0 0 96px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding-top: 4px; }
+.rb-slotrow__body { flex: 1 1 auto; min-width: 0; }
+.rb-slotrow--locked { background: #f7f7f7; }
+.rb-slotrow--locked .rb-slotrow__lab { color: #666; }
+.rb-filled { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border: 1px solid #333; background: #fff; padding: 7px 10px; margin-bottom: 5px; font-size: 13px; }
+.rb-filled button { margin-left: auto; }
+.rb-filled button + button { margin-left: 0; }
+.rb-filled--locked { border-color: #ccc; color: #666; font-size: 12px; }
+.rb-empty { display: block; width: 100%; font: inherit; font-size: 12px; color: #666; text-align: left; background: #fff; border: 1px solid #ccc; padding: 7px 10px; cursor: pointer; }
+.rb-empty--wait { border-width: 2px; border-color: #666; color: #333; }
+
+/* ---- option 5: deck and tray ----------------------------------------- */
+.rb-pipe { list-style: none; margin: 12px 0 0; padding: 0; }
+.rb-pc { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border: 1px solid #333; background: #fff; padding: 7px 10px; margin-bottom: 5px; }
+.rb-pc__k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; min-width: 82px; }
+.rb-pc__s { font-size: 13px; color: #333; flex: 1 1 160px; }
+.rb-tray { border: 1px solid #333; border-top-width: 2px; background: #f7f7f7; padding: 12px 14px; margin-top: 16px; max-width: 780px; }
+.rb-tray__h h4 { margin: 0; font-size: 13px; }
+.rb-deck { display: flex; gap: 10px; list-style: none; margin: 10px 0 0; padding: 0; flex-wrap: wrap; }
+.rb-dc { flex: 1 1 140px; min-height: 88px; border: 1px solid #333; background: #fff; padding: 9px; cursor: pointer; }
+.rb-dc:hover { background: #eee; }
+.rb-dc__k { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.rb-dc__d { display: block; font-size: 12px; color: #666; }
+.rb-dc__n { display: block; font-size: 10px; color: #666; margin-top: 6px; }
+.rb-dc--back { background: repeating-linear-gradient(45deg, #eee, #eee 6px, #fff 6px, #fff 12px); border-style: solid; border-color: #666; cursor: default; }
+.rb-dc--back:hover { background: repeating-linear-gradient(45deg, #eee, #eee 6px, #fff 6px, #fff 12px); }
+.rb-dc__lock { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #666; margin-bottom: 5px; }
+.rb-warn { font-size: 12px; color: #333; border: 1px solid #333; padding: 8px 10px; margin-top: 16px; max-width: 780px; }
+
+/* ---- summary tables and recommendation ------------------------------- */
+.rb-matrix { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 12px; }
+.rb-matrix th, .rb-matrix td { border: 1px solid #ccc; padding: 7px 9px; text-align: left; vertical-align: top; color: #333; }
+.rb-matrix thead th { background: #eee; color: #000; }
+.rb-matrix tbody th { white-space: nowrap; color: #000; }
+.rb-rec { border: 2px solid #000; padding: 14px 16px; margin-top: 22px; }
+.rb-rec h3 { margin: 0 0 8px; font-size: 15px; }
+.rb-rec p { font-size: 13px; line-height: 1.55; color: #333; margin: 0 0 10px; max-width: 74ch; }
+.rb-rec__cost { border-top: 1px solid #ccc; padding-top: 10px; }
+
+/* ---- narrow widths: 1024 and 768 ------------------------------------- */
+@media (max-width: 900px) {
+  .rb-two { flex-direction: column; }
+  .rb-list { flex: 1 1 auto; border-right: none; border-bottom: 1px solid #333; }
+  .rb-row__s { margin-left: 0; }
+  .rb-slotrow { flex-direction: column; gap: 6px; }
+  .rb-slotrow__lab { flex: 1 1 auto; }
+  .rb-sentence { font-size: 15px; }
+  .rb-dc { flex: 1 1 45%; }
+}
