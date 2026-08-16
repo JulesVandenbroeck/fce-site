@@ -13,9 +13,44 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** **cycle 4 dispatched 2026-08-16 on the user's tie-break.** The loop limit was
-  reached and escalated rather than dispatched through (orchestrator §5); the user ruled.
-  Head at escalation `4d4f4e4`, PR #5 open.
+- **Status:** **cycle 4 delivered, in review 2026-08-16.** Head `4ed75d8`, PR #5 open.
+  Dispatched on the user's tie-break after the loop limit was reached and escalated
+  (orchestrator §5) rather than dispatched through.
+- **Cycle 4 — both required findings answered within the ruling.** `verify.py --all` →
+  **89 PASS, 0 FAIL**, exit 0; flake8 clean; `git diff --stat main...HEAD -- src/ tests/
+  content/` empty. Scope held at exactly the 5 files named for this cycle (`git diff
+  --name-only 4d4f4e4..4ed75d8`); `frame.css` and `payload.json` untouched as instructed.
+  - *y-scale fixed at the root cause.* `plot.js:100-109` — `niceCeilingAndStep` headroom
+    `1.35 → 1.08`, and it no longer rounds the axis top to a "nice" ceiling. **Peak fill goes
+    ~40% → 92.6% of the main panel.** Checked the way the criteria demanded: the reference
+    was rendered from this `payload.json` through `plotter.py` itself (via a faked-`uproot`
+    adapter, matplotlib 3.11.0 / mplhep 1.3.1) giving peak fill **0.9254**, against the SVG's
+    **0.9259** — within 0.1 point, two independently produced numbers rather than one.
+  - *Mutation-tested.* Reverting to the pre-fix ladder makes both new assertions fail with
+    `this SVG: 0.400` / `this SVG: 20000`; restored byte-identical, both pass.
+  - *tab10 corrected.* `--tab10-x2`/`--tab10-x3` set from a fresh
+    `colormaps["tab10"].resampled(3)` run, not copied from the dispatch — the fix and its
+    verification do not share a hand. **D-002 must harvest these values, not cycle 3's.**
+  - *Counted claims replaced by a lint.* `EXHAUSTIVE_CLAIM_PATTERNS` extended to catch
+    counted-exception phrasing, shown catching the pre-fix wording (**8 matches → 0**). The
+    rulings panel now lists all five deviations without counting them. This is the first time
+    the D-001 failure class has been turned into a check rather than a promise.
+  - *Both suggested-majors fixed, neither overruled.* The reveal now arms once per figure
+    (`armReveal()`), so flipping between histogram and cutflow no longer costs ~1.6 s each
+    way; the 40 bin hit-areas gained real `click`/Enter/Space activation matching the
+    `role="button"` they already advertised.
+- **Reported rather than left silent, per the dispatch:** the y-scale fix did **not** close
+  the x-major-spacing deviation — `xMajor` is a separate hardcoded constant in `plot.js`,
+  untouched by `niceCeilingAndStep`. So x spacing remains a ruled deviation.
+- **Declared deviations, cycle 4.** (1) The coder could not check out
+  `task/d-003-plot-component` in its worktree — the branch was held by a stale sibling
+  worktree and `git worktree remove` was blocked by its sandbox — so it worked on a local
+  branch tracking the same remote ref and pushed to `task/d-003-plot-component`. Same remote
+  branch, same PR, no second PR. **The orchestrator has since removed that stale worktree and
+  fast-forwarded the local ref to `4ed75d8`.** (2) PR title edited again, because the old one
+  itself carried a count ("two ruled exceptions") that this cycle outgrew. (3) The reference
+  render adapter `render_reference.py` is not committed — outside the five-file scope — and is
+  reproduced in the PR body instead.
 - **The user's tie-break, 2026-08-16: fix the y-scale and the colours only.**
   - *Fix:* the y-axis (a real visual defect — the Z peak renders at ~40% of panel height)
     and the tab10 X2/X3 values (a factual error that **D-002 would inherit**).
