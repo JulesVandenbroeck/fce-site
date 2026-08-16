@@ -17,7 +17,7 @@
   </div>
 
   <nav class="main-tabs" aria-label="Wireframe options">
-    <button class="tab-btn active" data-tab="option-1">1: Split Bench</button>
+    <button class="tab-btn active" data-tab="option-1" aria-current="true">1: Split Bench</button>
     <button class="tab-btn" data-tab="option-2">2: Notebook Spread</button>
     <button class="tab-btn" data-tab="option-3">3: Focus Stage</button>
     <button class="tab-btn" data-tab="option-4">4: Result First</button>
@@ -557,9 +557,10 @@
   var panels = document.querySelectorAll('.option-panel');
   tabBtns.forEach(function(btn) {
     btn.addEventListener('click', function() {
-      tabBtns.forEach(function(b) { b.classList.remove('active'); });
+      tabBtns.forEach(function(b) { b.classList.remove('active'); b.removeAttribute('aria-current'); });
       panels.forEach(function(p) { p.classList.remove('active'); });
       btn.classList.add('active');
+      btn.setAttribute('aria-current', 'true');
       var target = document.getElementById(btn.dataset.tab);
       if (target) target.classList.add('active');
     });

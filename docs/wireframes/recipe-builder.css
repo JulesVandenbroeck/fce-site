@@ -1,7 +1,9 @@
 /* Recipe-card builder wireframes — content CSS only.
  * Framework (tabs, panels, browser frame, annotations) lives in base.css.
  * Strictly greyscale: #000 #333 #666 #ccc #eee #f7f7f7 #fff.
- * No type choice is expressed here — the browser default is used deliberately.
+ * No type choice is expressed here — the generic `sans-serif` keyword resolves
+ * to the browser's default sans-serif face, used deliberately so nothing here
+ * reads as a font decision.
  */
 
 /* ---- shared primitives ---------------------------------------------- */

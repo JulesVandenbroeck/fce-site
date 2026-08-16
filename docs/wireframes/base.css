@@ -29,6 +29,18 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { margin: 0; font-family: sans-serif; background: #f5f5f5; color: #333; }
 
+/* Blanket link colour. Author-origin rules beat the user-agent stylesheet's
+ * `:link`/`:visited` defaults (rgb(0, 0, 238) / purple) regardless of
+ * specificity, so this one low-specificity rule is enough to keep every
+ * anchor in the directory greyscale, including ones added later that carry
+ * no class of their own — e.g. the "← index" link in the title bar, which
+ * rendered UA-default blue until this rule existed. Underline is left to the
+ * UA default so it still reads as a link; more specific selectors (e.g.
+ * `.ix__card h2 a`, `.wf-index__tab`) override the colour where a component
+ * needs its own treatment. */
+a { color: #333; }
+a:hover { color: #000; }
+
 .page-wrapper {
   max-width: 1240px;
   margin: 0 auto;

@@ -65,8 +65,10 @@ Both recommendations are written out at length, with what they cost, in each pag
 - **No typeface has been chosen.** Every element on all three pages computes to one of exactly two
   `font-family` values, and no third value exists anywhere in the directory:
   - `sans-serif` on `body` (`base.css`), inherited by every heading, paragraph, button, control
-    and table cell, so all prose falls to the browser default and nothing here reads as a type
-    decision. `getComputedStyle(document.body).fontFamily` returns `sans-serif`.
+    and table cell. This is the generic keyword, not a named face — it resolves to whatever the
+    browser's *default sans-serif* font is (Arial on this machine's Chromium; Chromium's actual
+    unqualified default, absent any `font-family`, is the serif `Times New Roman`), so no
+    typeface is proposed. `getComputedStyle(document.body).fontFamily` returns `sans-serif`.
   - `ui-monospace, "DejaVu Sans Mono", monospace` on numerics and simulated code fields (four
     declarations, in `mission-screen.css` and `recipe-builder.css`). Generic keyword at both ends;
     the one named face in the middle is the stock Linux mono, present only as a fallback for
