@@ -13,11 +13,40 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** **cycle 3 dispatched 2026-08-16** — applying the user's two checkpoint
-  rulings, plus a PR-body refresh. The cycle-2 *review was never dispatched*; the previous
-  session recorded "back in review" and was interrupted before the reviewer ran, so the
-  cycle-2 fixes have been verified by their author and by nobody else. Cycle 3's review
-  therefore covers cycles 2 and 3 together.
+- **Status:** **cycle 3 delivered, in review 2026-08-16** (head `4d4f4e4`). The cycle-2
+  *review was never dispatched* — the previous session recorded "back in review" and was
+  interrupted before the reviewer ran, so cycle 2 was verified by its author and by nobody
+  else. **This review therefore covers cycles 2 and 3 together**, and the PR body was
+  rewritten to carry both cycles' evidence.
+- **Cycle 3 — both rulings applied.** `verify.py --all` → **87 PASS, 0 FAIL**, exit 0
+  (83 → 87: the new `legend-layout` section adds three widths plus a summary line);
+  `flake8` clean; `git diff --stat main...HEAD -- src/ tests/ content/` empty. Scope held
+  at exactly the 7 files (`gh pr diff 5 --name-only`).
+  - *Legend outside the axes.* `FIG.w` 480 → 650; the legend is now a sibling of
+    `.panel-main`/`.panel-ratio` drawn at `axesRight + legendGap`. Measured
+    `rightOfAxes=True, noOverlap=True` at all three widths; figure 650×460 against a derived
+    floor of 416×454; body horizontal overflow `False` at 768.
+  - *The assertion was made falsifiable, and shown to be.* Two independent mutations —
+    structural (legend back inside `.panel-main` → "legend not found") and geometric-only
+    (kept as an `svg` child but at the old inside-axes coordinates → `rightOfAxes=False` at
+    all three widths) — each failed, each reverted, then 87 PASS restored. This is the
+    direct answer to the cycle-1 `Required` finding's *class*, not just its instance.
+  - *Frozen palette is the default.* `<body data-palette="frozen">`, X1 on vermillion,
+    tab10 still reachable through the toggle, repaint by CSS alone.
+  - *Parity claims swept.* `grep -rn "parity"` over all 7 files, every hit read by hand;
+    remaining instances scope the claim to anatomy or name the two exceptions.
+- **Coder found and fixed a real pre-existing bug in its own checker, unprompted** — and
+  this is the second cycle running in which the checker, not the page, was the defect.
+  `check_contrast` measured SVG text through the inherited `color` property rather than the
+  `fill` that actually paints it, and it swept only the visible tab, silently scoring the
+  hidden one against a collapsed `(0,0,0,0)` rect. Post-fix: **114** text-bearing elements
+  checked (up from 71), 0 on a saturated fill, 0 below AA.
+- **Declared deviation, accepted by the orchestrator:** the coder also changed the PR
+  **title** — `"…at reference parity"` → `"…(anatomy at parity; two ruled exceptions)"` —
+  which was outside the stated scope of "the PR body". The argument is right: the title was
+  the single most visible unqualified parity claim on the branch, and correcting every
+  instance except the one at the top would have defeated the criterion. No file touched, and
+  it was flagged in the PR's own deviations section rather than done quietly.
 - **The user's two rulings, 2026-08-16 — both settled at the checkpoint.**
   1. *Legend placement:* **outside the axes.** Not the coder's recommendation, which was to
      keep parity and defer. The legend is to move to the right of the plot area so it never
