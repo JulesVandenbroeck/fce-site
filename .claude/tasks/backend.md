@@ -22,16 +22,33 @@ IDs are `B-nnn`, allocated in order and never reused.
   breach, arriving with D-002's stylesheets — would pass it. A browser-level assertion
   catches whatever the page actually fetches, which is the guarantee shared §3 needs.
 - **Depends on:** B-002 (**done**, merged `ff801fa`)
-- **Branch / PR:** `task/b-003-playwright-harness` — pushed at `1a6ff77`, **PR not yet opened**
-- **Status:** in progress — **the 2026-08-16 dispatch was interrupted before the coder
-  reported.** Discovered by the next session reading git rather than the list: two commits
-  (`8e4c039`, `1a6ff77`) were already written and pushed, adding all four in-scope files
-  (662 lines, 20 tests, including the off-origin assertion and mutation-style guard tests),
-  but no `gh pr create` ran and no report came back, so the review could not start. The
-  main working directory was also left checked out on this branch; returned to `main`.
-  `pyproject.toml` was correctly untouched — `playwright` was already in the `dev` extra
-  from B-001, so that part of the scope was satisfied before the task began.
-  Re-dispatched 2026-08-16 to verify the existing work against the criteria and open the PR.
+- **Branch / PR:** `task/b-003-playwright-harness` — #4
+- **Status:** in review (cycle 1)
+- **Recovered from an interrupted dispatch.** The 2026-08-16 dispatch was cut off before
+  the coder reported. Discovered by the next session reading git rather than the list: two
+  commits (`8e4c039`, `1a6ff77`) were already written and pushed, adding all four in-scope
+  files (662 lines, 20 tests), but no `gh pr create` ran and no report came back, so the
+  review could not start. The main working directory was also left checked out on this
+  branch; returned to `main`. `pyproject.toml` was correctly untouched — `playwright` was
+  already in the `dev` extra from B-001, so that part of the scope was satisfied before the
+  task began.
+- **Second dispatch added no code.** It was told explicitly not to trust the inherited work,
+  and it did not: it stood up a fresh `.venv` and installed Chromium in its worktree
+  (worktrees share no untracked files with the main checkout), then ran every criterion
+  rather than reading the code and agreeing with it. It found nothing to fix — no vacuous
+  assertions, no missed teardown path — so it opened PR #4 on the two inherited commits
+  unchanged. A no-change PR is the honest outcome here; the work had simply never been
+  verified by anyone, and now it has been once, by someone other than its author.
+- **Verification reported:** 46 tests pass repo-wide (20 in `tests/e2e/`), `flake8 src/
+  tests/ scripts/` clean, `scripts/screenshot.py /` writes three valid PNGs at exactly
+  1440×900, 1024×900, 768×900. Non-vacuity is carried by dedicated guard tests: one forces a
+  real `console.error`, another makes the page actually fetch
+  `https://blocked.invalid/probe.png` and asserts the checker reports exactly that URL —
+  which is what makes the off-origin assertion worth anything to D-002.
+- **Environment note for the reviewer and design role:** this container's default Playwright
+  browser cache (`/cache`) is not writable, so `PLAYWRIGHT_BROWSERS_PATH` must be exported
+  before `playwright install chromium`. `screenshot.py`'s own `CHROMIUM_MISSING_HINT`
+  already documents this; no code change was needed.
 
 ## Ready
 
