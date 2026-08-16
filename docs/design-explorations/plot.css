@@ -92,6 +92,14 @@ code, .num { font-family: var(--font-mono); }
   margin-top: var(--space-2);
 }
 
+/* Crossing 5sigma is one of the three sanctioned uses of the reserved
+ * accent (design-brief.md §7); 3sigma ("evidence") stays in ink. This is
+ * the minimal in-line reflection of that rule for the fit readout, not the
+ * full significance gauge described in design-brief.md §5 — that is a
+ * separate, larger component and out of this task's scope. */
+.fit-z-discovery { color: var(--vermillion); font-weight: 700; }
+.fit-z-evidence { color: var(--ink); font-weight: 700; }
+
 /* ---- SVG figure styling ------------------------------------------------ */
 
 svg#hist-svg, svg#cutflow-svg { display: block; }

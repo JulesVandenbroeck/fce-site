@@ -679,7 +679,26 @@ function main() {
   const muEl = document.getElementById("fit-mu");
   const zEl = document.getElementById("fit-z");
   if (muEl) muEl.textContent = `μ = ${payload.fit.mu.toFixed(2)} ± ${payload.fit.muErr.toFixed(2)}`;
-  if (zEl) zEl.textContent = `Z = ${payload.fit.significanceZ.toFixed(1)}σ`;
+  if (zEl) {
+    const z = payload.fit.significanceZ;
+    const t = payload.fit.thresholds;
+    // design-brief.md §5/§7: 3σ is "evidence", 5σ is "discovery", and
+    // discovery is one of the three sanctioned uses of the reserved
+    // vermillion accent. This is a minimal, in-line reflection of that rule
+    // (a class the CSS resolves), not the full significance gauge —
+    // building that is out of D-003's scope; see the PR body.
+    let statusText = "";
+    let statusCls = "";
+    if (t && z >= t.discovery) {
+      statusText = " — discovery";
+      statusCls = "fit-z-discovery";
+    } else if (t && z >= t.evidence) {
+      statusText = " — evidence";
+      statusCls = "fit-z-evidence";
+    }
+    zEl.textContent = `Z = ${z.toFixed(1)}σ${statusText}`;
+    if (statusCls) zEl.classList.add(statusCls);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", main);
