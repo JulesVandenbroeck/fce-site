@@ -155,6 +155,38 @@ Entries carry the task ID they came from, so context is recoverable.
   `aria-current="true"` on the active button, removed alongside the class in the click
   handler, closes it. Worth carrying as a habit into real tabbed UI. _(from D-001 review)_
 
+## Design explorations (`docs/design-explorations/`)
+
+From the D-003 cycle-1 review. All four are suggested-minor and block nothing; the two
+minors about the checker's *honesty* were fixed in cycle 2 instead of landing here.
+
+- **Bin hit-areas are buttons that do nothing.** `plot.js:358` — the 40 bin hit-areas carry
+  `role="button"` but have no click/Enter/Space handler; the only behaviour is
+  announce-on-focus/hover. Confirmed in the CDP accessibility tree: 40 nodes announce as
+  buttons and do nothing when activated. `role="img"` with the same `aria-label`, or no role
+  at all, would describe what they actually are. Becomes a real defect the moment hover
+  readout / legend toggling is built. _(from D-003 review)_
+- **ARIA tablist declared, keyboard pattern not implemented.** `plot.html:19-24` —
+  ArrowRight on `#tab-hist` moves neither focus nor `aria-selected`; inactive tabs keep
+  `tabindex="0"`; the tabpanels have no `tabindex`. Nothing is unreachable (both tabs are Tab
+  stops), so it is a pattern mismatch rather than a blocker. Worth fixing before this markup
+  is copied into D-004, which will have more tabs. _(from D-003 review)_
+- **The exhaustive-claim lint is a phrase denylist, not a general check.**
+  `verify.py:978` — `EXHAUSTIVE_CLAIM_PATTERNS` is six phrases tuned to D-001's specific
+  wording, so it supports a general criterion with a specific check. The reviewer grepped and
+  confirmed the three remaining header claims in `plot.css:1`, `frame.css:8` and `plot.js:12`
+  are **true**, and are claims about source text rather than about rendering, so the criterion
+  holds on its wording. The honest fix is to say in the PR body what the lint actually is.
+  _(from D-003 review)_
+- **Interactivity the brief asks for and D-003 did not build:** hover reads out a bin, and the
+  legend toggles samples (`docs/design-brief.md` §5). Deliberately out of D-003's scope, which
+  was anatomy and measurement. Also unbuilt: a sub-768 legend reflow, and the reference's
+  green "Discovered: …" badge (`engine/plotter.py`). _(from D-003)_
+- **Parity to the reference is asserted, not checked.** The D-003 reviewer declared this limit
+  itself: the engine is not vendored into this repo yet, so anatomy was verified against the
+  rendered DOM only, never against `engine/plotter.py`. Once M2 vendors the engine, a test
+  that renders both and compares would close it. _(from D-003 review)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light
