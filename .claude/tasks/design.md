@@ -9,7 +9,10 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
+### D-003 — Interactive plot component at reference parity
+- **Dispatched 2026-08-16**, alone, in its own worktree. Status: coding, no PR yet.
+- Full entry below under Ready until it reports; moved here so an interrupted session sees
+  that an agent is live on `task/d-003-plot-component`.
 
 ## Ready
 
