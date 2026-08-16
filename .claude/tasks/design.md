@@ -58,6 +58,30 @@ IDs are `D-nnn`, allocated in order and never reused.
     assertion that inspects nothing passes trivially. New link contrast 12.63:1 on white,
     11.59:1 on `#f5f5f5`. Regressions re-checked: 0 remote requests, 0 console errors, 0
     horizontal overflow, reduced motion still collapsing `.tab-btn` to `0s`.
+- **Review, cycle 4:** 1 required, 0 suggested-major, 1 suggested-minor (the `.rb-matrix`
+  scroll affordance, already backlogged, re-checked and confirmed harmless). Both cycle-3
+  findings verified fixed: the `← index` link is the first tab stop at `rgb(51,51,51)`,
+  underlined, with a visible ring; exactly one `.tab-btn` carries `aria-current="true"` at
+  all times, driven through real `.click()`.
+  - *Required* — `README.md:65-66` and `base.css:21-25` claim "**no third value exists
+    anywhere in the directory**" / "two stacks across the whole directory". A computed
+    `font-family` sweep returns **three**: `sans-serif` (8329 elements),
+    `ui-monospace, "DejaVu Sans Mono", monospace` (156), and bare `monospace` (1) — on the
+    `<code>sans-serif</code>` element at `index.html:80`, which no author rule covers.
+  - **The finding was introduced by this cycle's own fix.** `git diff 6457911..HEAD` shows
+    that `<code>` element being *added* while rewording the font claim, and the new
+    verification enumerates paint properties only — never `font-family` — so the method that
+    was supposed to close this class could not see it. The criterion itself is unharmed:
+    `monospace` is a generic keyword, not a typeface, so "no chosen typeface" still holds.
+    Only the sentence is false.
+- **The structural problem, now visible across four cycles.** Each cycle the document makes
+  an *exhaustive* claim about its own rendering ("no hue anywhere, in any file", "no third
+  value exists anywhere in the directory"), and each fix introduces a new precision that is
+  slightly wrong. The claims are hostages to fortune: a throwaway decision document does not
+  need directory-wide exhaustiveness proofs, and every one of them is a defect waiting to be
+  found. Making the next claim true is not the fix — **not making unfalsifiable-by-inspection
+  claims is.** Escalated to the user 2026-08-16 rather than dispatching cycle 5 unilaterally,
+  having already told both the user and the coder there would be none.
 - **Review, cycle 3:** 1 required, 1 suggested-major, 2 suggested-minor. **Loop limit
   reached — escalated to the user 2026-08-16, no fourth cycle dispatched.**
   - *Required* — `mission-screen.html:16`, `recipe-builder.html:16`: the `← index` anchor is
