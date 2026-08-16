@@ -81,6 +81,19 @@ Entries carry the task ID they came from, so context is recoverable.
   `off_origin_requests` and `REPO_ROOT` from `tests.e2e.conftest`. It works, but it is
   against pytest's own guidance; moving them to a plain `tests/e2e/harness.py` would leave
   `conftest.py` holding only fixtures. _(from B-003 review)_
+- **The stuck-navigation guard is tested at the helper, not at the wiring.**
+  `scripts/screenshot.py:240` — the three cycle-2 tests call `_goto_or_raise` directly, and no
+  test drives `capture()` against a stuck page. The reviewer showed that reverting that one
+  line to a bare `page.goto(url, wait_until="networkidle")` **leaves all 49 tests green** while
+  silently restoring the raw-traceback behaviour the cycle existed to fix. The wiring is
+  correct today — the reviewer drove `main()` through it — so this is coverage insurance, not
+  a defect. A test invoking `capture()` against `_stuck_fetch_server` with a shortened
+  `NAVIGATION_TIMEOUT_MS` would close it. _(from B-003 review, cycle 2)_
+- **`RouteNotServedError` asserts the opposite of what happened.** `scripts/screenshot.py:219`
+  — a stuck page raises it, but the route *was* served; it just never went idle. A sibling
+  `NavigationStuckError(ScreenshotError)` would let the class name carry the meaning the
+  message already carries, while `main()`'s single `except ScreenshotError` keeps working
+  unchanged. _(from B-003 review, cycle 2)_
 - **Dependencies unpinned, no lock file.** Fine now, but a scientific-Python stack drifts.
   Worth resolving before classroom deployment so a teacher's install matches the tested
   one. _(from B-001)_

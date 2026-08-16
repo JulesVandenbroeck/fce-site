@@ -39,6 +39,25 @@ IDs are `D-nnn`, allocated in order and never reused.
   in any wireframe file about colour, type or motion against what actually renders.
 - **The user is reviewing the wireframes before choosing a layout direction**, so D-002 stays
   blocked on that decision regardless of how cycle 4 lands.
+- **Cycle 4 delivered 2026-08-16 — in review.** Both findings fixed at the class level, and
+  the new verification method did what the old one could not:
+  - Finding 1 fixed as a blanket `a { color: #333 }` / `a:hover { color: #000 }` in
+    `base.css`, not a per-selector patch, so no future unclassed link can reintroduce it.
+    Author-origin rules beat UA `:link`/`:visited` regardless of specificity, so no
+    `a:visited` rule was needed. The link stays underlined and keeps its focus ring.
+  - Finding 2 fixed in `index.html`, `README.md` — **and `recipe-builder.css:4`, which the
+    finding never named.** The coder swept the directory instead of fixing the two cited
+    lines, which is the whole point of this cycle: the class, not the instances.
+  - `aria-current="true"` added for real to the active option tab in both files, with the
+    click handler moving it alongside the `active` class, correcting the cycle-2 record that
+    described markup which did not exist.
+  - **Verification, by the named method:** 39 page×width×tab combinations, **25,419 elements
+    inspected via `getComputedStyle`**, 0 non-greyscale violations, 0 unparsed colour values —
+    checking `color`, `background-color`, all four `border-*-color`, `outline-color`,
+    `text-decoration-color` and `caret-color`. The element count is stated because an
+    assertion that inspects nothing passes trivially. New link contrast 12.63:1 on white,
+    11.59:1 on `#f5f5f5`. Regressions re-checked: 0 remote requests, 0 console errors, 0
+    horizontal overflow, reduced motion still collapsing `.tab-btn` to `0s`.
 - **Review, cycle 3:** 1 required, 1 suggested-major, 2 suggested-minor. **Loop limit
   reached — escalated to the user 2026-08-16, no fourth cycle dispatched.**
   - *Required* — `mission-screen.html:16`, `recipe-builder.html:16`: the `← index` anchor is

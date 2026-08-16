@@ -9,6 +9,18 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
+_none_
+
+## Ready
+
+_none_
+
+## Blocked
+
+_none_
+
+## Done — most recent first
+
 ### B-003 — Playwright harness and a screenshot helper
 - **Scope:** `pyproject.toml` (dev extra), `tests/e2e/__init__.py`,
   `tests/e2e/conftest.py`, `tests/e2e/test_smoke.py`, `scripts/screenshot.py`
@@ -23,7 +35,20 @@ IDs are `B-nnn`, allocated in order and never reused.
   catches whatever the page actually fetches, which is the guarantee shared §3 needs.
 - **Depends on:** B-002 (**done**, merged `ff801fa`)
 - **Branch / PR:** `task/b-003-playwright-harness` — #4
-- **Status:** in review (cycle 2)
+- **Status:** **done** (2 cycles) — merged as `a212e42`. Verified on `main` after merging:
+  49 tests pass, `flake8 src/ tests/ scripts/` clean.
+- **Review, cycle 2:** 0 required, 0 suggested-major, 2 suggested-minor → backlogged.
+  The reviewer re-ran the coder's mutation check independently rather than accepting it:
+  against the PR's own `_StuckFetchHandler`, an unguarded `page.goto` raises
+  `playwright._impl._errors.TimeoutError` while `_goto_or_raise` raises
+  `RouteNotServedError: … did not settle within 0.5s`. It then drove the whole failure path
+  end to end — `main()` printed one line to stderr, returned `1`, wrote zero files, no
+  traceback — which is the user-visible promise the cycle-1 finding actually asked for. It
+  ran `tests/e2e` three times to check the new 500 ms-budget tests are not flaky (23 passed
+  each), read the PNG IHDR chunks rather than trusting the filenames, opened `index-768.png`
+  to confirm it renders the real landing page, and chased one thing nobody had raised —
+  `_stuck_fetch_server` calls `shutdown()` without `server_close()` — by probing the port
+  afterwards, finding it refused, and reporting it as *not* a finding.
 - **Cycle 2 resolution:** suggested-major fixed, not overruled. `_goto_or_raise()` navigates
   and converts a Playwright `TimeoutError` — **specifically that, not any `PlaywrightError`**
   — into a `RouteNotServedError` naming the stuck URL; `capture()` now calls it in place of a
@@ -75,16 +100,6 @@ IDs are `B-nnn`, allocated in order and never reused.
   browser cache (`/cache`) is not writable, so `PLAYWRIGHT_BROWSERS_PATH` must be exported
   before `playwright install chromium`. `screenshot.py`'s own `CHROMIUM_MISSING_HINT`
   already documents this; no code change was needed.
-
-## Ready
-
-_none_
-
-## Blocked
-
-_none_
-
-## Done — most recent first
 
 ### B-002 — FastAPI app factory and a served index route
 - **Scope:** `src/fce_web/app.py`, `src/fce_web/routes/__init__.py`,
