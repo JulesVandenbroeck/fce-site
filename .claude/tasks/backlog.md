@@ -113,6 +113,13 @@ Entries carry the task ID they came from, so context is recoverable.
 
 ## Design
 
+> **`docs/wireframes/` was superseded 2026-08-16 by the node-graph pivot** (see `design.md`
+> D-001). Every design entry below that names a file in that directory is now **closed, not
+> pending** — the directory is the record of a decision that was really made, and it will not
+> be reopened, so its one open `Required` finding is permanently parked. The entries stay
+> because two of them describe *habits* worth carrying into `docs/design-explorations/`:
+> placeholder text must meet AA, and selection state needs `aria-current`, not a class alone.
+
 - **`docs/wireframes/brain/design-taste.md`** is the wireframe skill's colour-phase
   reference, copied unmodified and unused in phase 1. Keep it only if a phase-2 run is ever
   wanted; otherwise delete. _(from D-001)_

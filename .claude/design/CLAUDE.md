@@ -33,12 +33,24 @@ silently breaks a form.
 
 ## 2. The aesthetic direction, committed
 
-**Lab notebook.** A physicist's working notebook: warm paper, real ink, ruled lines,
-annotations in the margin, results taped in.
+> **Amended 2026-08-16, on the user's explicit decision.** The interface is now a
+> **game-style interactive node graph** (`docs/design-brief.md` §4), and this section is
+> amended to match. **Light ground survives. The one-rationed-accent rule does not** —
+> saturated colour is now used to highlight what matters. Read `docs/design-brief.md` §4 and
+> §7 before anything here; both carry the same amendment note.
 
-This was chosen over a dark "control room" look deliberately. It is sober, it is calm, it
-does not shout, and — usefully — physics plots are conventionally drawn on white, so the
-charts belong on this ground rather than fighting it.
+**Lab notebook, with the volume up.** A physicist's working notebook — warm paper, real ink,
+ruled lines, annotations in the margin, results taped in — carrying a saturated, legible node
+graph on top of it.
+
+Light was chosen over a dark "control room" look deliberately, and the reason survives the
+pivot intact: **physics plots are conventionally drawn on white**, so the charts belong on
+this ground rather than fighting it. A student's plot should look like a plot a physicist
+would publish. That is not negotiable and it is why the ground did not flip when the rest of
+the direction did.
+
+What the paper now has to do that it did not before: hold saturated node colour without
+turning muddy, and stay quiet enough that the graph reads as the foreground.
 
 **Ground.** Warm off-white paper. Not `#fff`. A cream or oat cast, with a faint grain and
 optional very low-contrast rule or grid lines. Build texture with CSS (layered gradients,
@@ -47,16 +59,39 @@ an inline SVG filter) — never a fetched image.
 **Ink.** Near-black with a blue-black or sepia cast. Not `#000`. Secondary text is the
 same ink at lower opacity, as though written lighter, rather than a different grey.
 
-**Accent — and this is the important part.** *One* saturated accent, red-pen vermillion,
-**rationed almost to nothing.** It appears when significance crosses a threshold, when a
-mission completes, and on the signal sample in a chart. Nowhere else. Buttons are not
-accent-coloured. Links are not accent-coloured. The brief says "limit bright colours except
-for special highlighted features", and the way that becomes powerful rather than merely
-restrained is that seeing the accent *means something*. A student should learn, without
-being told, that red means the physics did something.
+**Colour — and this is the important part.** Colour is now a **carrier of meaning**, and it
+is used generously wherever it carries some. The rule that replaces rationing:
 
-A muted graphite-blue serves as the everyday interactive colour so the accent never has to
-do ordinary work.
+> **Every saturated colour on the page must be answerable.** If you cannot say what a hue
+> encodes — which node type, which sample, which lock state, which threshold — it does not
+> belong. Decorative saturation is the failure mode, and it is still a failure mode.
+
+The four things colour encodes:
+
+1. **Node type.** Each node kind owns a hue, consistently, everywhere it appears — on the
+   node, in the picker, in the legend of any diagram explaining the pipeline. This is what
+   makes a graph readable at a glance instead of a box-and-line puzzle.
+2. **Sample identity.** A sample's colour is the same in the graph, the legend and the plot.
+   The reference engine assigns `tab10` by sample *order*, which means adding a sample shifts
+   every colour — check with the orchestrator before inheriting that, because X1 changing
+   colour between missions is a teaching bug, not a cosmetic one.
+3. **Lock state.** A gated node type is desaturated *and* visibly inert — not merely a
+   lighter grey, which reads as disabled-by-accident rather than not-yet-earned.
+4. **Thresholds crossed.** Significance passing 3σ and 5σ.
+
+**Red-pen vermillion stays reserved** for significance thresholds, mission completion and the
+signal sample. This is the one piece of the old rationing rule kept on purpose: in a palette
+that is loud everywhere else, a colour still held back is *louder*. A student should learn,
+without being told, that red means the physics did something. Buttons are not vermillion.
+Links are not vermillion.
+
+A muted graphite-blue serves as the everyday interactive colour so neither vermillion nor the
+node hues have to do ordinary chrome work.
+
+**Contrast still binds, and the node palette is where it will break.** Fills behind nothing
+need not pass AA, but every label *on* a coloured fill does — legend text, node titles on a
+tinted node body, efficiency percentages over a bar. Measure those specifically against the
+real fill, not against paper.
 
 **Typography.** A distinctive serif for headings and body — the notebook is written, not
 typeset in a UI font. A mono or slab for all numerics, because physics numbers must align
@@ -70,19 +105,25 @@ with real character; a mono with warmth rather than a terminal font.
 All fonts are **self-hosted woff2 in `static/fonts/`**, subset where possible. No Google
 Fonts link, no CDN — the classroom may be offline.
 
-**Colour mode.** Commit to light. A lab notebook is a light object, and doing a dark
-variant badly is worse than not doing one. Paint `background` and `color` explicitly on
-`body` rather than inheriting. A dark "darkroom" variant is a backlog item, not v1.
+**Colour mode.** Light, and it stays light — see §2 above for why (the plots). Paint
+`background` and `color` explicitly on `body` rather than inheriting. A dark "darkroom"
+variant is a backlog item, not v1.
 
 ---
 
-## 3. Game feel without neon
+## 3. Game feel
 
 This is the hard problem of this project, and the reason your role exists separately.
 
-The obvious way to make something feel like a game — saturated colour, big glows, bouncy
-easing, confetti — is exactly what the brief forbids and what would make the physics look
-unserious. So the game feel has to come from **artefacts and ritual** instead of colour.
+Colour is now available and should be used — but colour alone makes something look like a
+toy, not like a game. The distinction that matters: **a game rewards you with events, not
+with brightness.** So the artefact-and-ritual devices below are not a workaround for a
+constraint that has been lifted; they are still the load-bearing half of the game feel, and
+the saturated palette sits on top of them.
+
+The graph itself is now the biggest game-feel surface available. Use it: a run is something
+that visibly travels through the pipeline, a cut is something that visibly starves what
+follows, and an unlock is something that visibly arrives.
 
 Devices to build with:
 
@@ -109,8 +150,14 @@ arriving, staggered with `animation-delay`, beats a dozen scattered micro-intera
 **The significance gauge.** Z is the score. Draw it as a ruled gauge with 3σ and 5σ inked
 as labelled threshold lines. Crossing one is an event, not a number changing.
 
-**Save the accent for 5σ.** Discovery is the one moment the design is allowed to be loud.
-Everything else in the palette exists so that this moment lands.
+**Save vermillion for 5σ.** Discovery is the one moment the design is allowed to be loud
+*beyond* its everyday loudness. Everything else in the palette exists so that this moment
+still lands.
+
+**The graph is alive during a run.** Events travelling the pipeline, per-node counters
+draining (`240 000 → 18 420`), a wire thinning where a hard cut bit. This is the strongest
+device the pivot bought us, and it doubles as the progress indicator the brief demands — a
+run that is visibly moving is never silent.
 
 ### Do not
 
@@ -121,8 +168,15 @@ Everything else in the palette exists so that this moment lands.
 - Rotation beyond about 2°, and never on a block of text students must actually read.
 - Beige mush. Warm and low-contrast are not the same thing; text still needs to hit
   contrast targets against paper.
-- Bouncy, springy, cartoon easing. The motion here is ink and paper: quick, slightly
-  damped, settling.
+- Bouncy, springy, cartoon easing. Saturation was unlocked; easing was not. Motion here is
+  quick, slightly damped, settling.
+- **Unanswerable colour.** A hue that encodes nothing (see §2). The pivot lifted the
+  rationing rule, not the requirement that colour mean something.
+- **Glow as a substitute for state.** A focus ring, a lock, an armed port and a crossed
+  threshold are four different things and need four different treatments, not four glows.
+- **Motion with no reduced-motion end state.** The travelling-run animation *is* the game
+  feel, so under `prefers-reduced-motion` it needs a static state that still reads. If it
+  cannot have one, the effect does not ship.
 
 ---
 
@@ -200,7 +254,8 @@ by it.
 
 | Thought | Reality |
 |---|---|
-| "A bit more accent colour would liven it up" | The accent's power is its scarcity. Guard it. |
+| "A bit more colour would liven it up" | "Liven it up" is not a meaning. §2: every saturated colour must encode something nameable. |
+| "Colour is unrationed now, so vermillion is fair game" | Vermillion is the one hue still held back — thresholds, completion, signal. §2. |
 | "I'll restructure this markup so my selector works" | Not your file. Add a class or report it. |
 | "Inter is a safe choice" | It is the sloppiest choice available. §2 forbids it. |
 | "I'll link the font from Google Fonts" | Classroom may be offline. Self-host. |

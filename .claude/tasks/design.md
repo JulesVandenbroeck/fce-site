@@ -13,17 +13,59 @@ _none_
 
 ## Ready
 
-_none_
+### D-003 — Interactive plot component at reference parity
+- **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
+  `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
+- **Accept:** (1) `verify.py --plot` prints each named anatomy feature present/absent from
+  the DOM; (2) figure `getBoundingClientRect` reported as measured numbers at 1440/1024/768
+  against a ~480×460 floor; (3) cutflow figure complete, efficiency-% count = stage count;
+  (4) full computed-style sweep with denominators at all three widths, including `fill` and
+  `stroke`; (5) `git diff --stat -- src/ tests/ content/` empty.
+- **Depends on:** nothing. Dispatched alone — the figure's real minimum dimensions constrain
+  where every D-004 style can put it, so guessing costs a cycle later.
+- **Why it exists:** the user ruled for full parity with the reference python figure
+  (`fce-project/fce/engine/plotter.py`), ratio panel included.
+- **Branch / PR:** not yet opened
 
 ## Blocked
+
+### D-004 — Three node-graph styles
+- **Scope:** `docs/design-explorations/` — `index.html`, `{beamline,bench,board}.{html,css,js}`,
+  `README.md`, extend `tokens.css` and `verify.py`; plus a two-line superseded note at the
+  top of `docs/wireframes/README.md` and nothing else outside the new directory.
+- **Accept:** (1) persistence model differs per page and is inspectable in the DOM;
+  (2) connection interaction differs per page and is driven by real Playwright gestures —
+  Beamline accepts click and rejects drag, Bench the reverse, Board both plus keyboard;
+  (3) all 121 ordered node-type pairs attempted per page, 0 illegal accepted, 0 legal
+  refused; (4) every domain-inventory item present per page via `data-wf`, 0 missing, plus a
+  locked node type present-but-inert; (5) full sweep at three widths with denominators.
+- **Depends on:** D-003
+- **The three, pushed apart on what the graph persists** — the one axis CSS cannot swap, and
+  the thing that later lands in `POST /api/run`:
+  - **A · Beamline** — auto-laid rail, persists an ordered edge list only, click-to-connect,
+    colour on node chrome. Best 768 story; gives up all arrangement agency.
+  - **B · Bench** — free canvas, persists `{x, y}`, drag-to-connect, colour on the wires.
+    Its real cost is not the drag — the plot inspector always occludes the graph, so cut and
+    consequence are never co-visible. Framed as the *sandbox-mode candidate*.
+  - **C · Board** — typed columns with slots, persists `{column, slotIndex}`, both gestures
+    plus keyboard, colour on the columns. **Recommended:** the only one where the shape of
+    the page changes per mission (columns appear as missions unlock) and the only one where
+    the plot lives *inside* the graph as the terminal node.
+- **Branch / PR:** not yet opened
 
 ### D-002 — Design token foundation
 - **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
 - **Accept:** every colour, spacing, type-scale, radius, and timing value defined as a
-  custom property; the lab-notebook palette committed with measured AA contrast ratios
-  documented in the file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that
-  are explicitly not Inter/Roboto/system-ui/Space Grotesk
-- **Depends on:** D-001 **and the user's layout decision** — the M1 checkpoint
+  custom property; the palette committed with measured AA contrast ratios documented in the
+  file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that are explicitly not
+  Inter/Roboto/system-ui/Space Grotesk
+- **Depends on:** ~~D-001 and the user's D-001 layout decision~~ — **blocker changed
+  2026-08-16.** Now blocked on the user's choice among Beamline / Bench / Board at the D-004
+  checkpoint, with `docs/design-explorations/tokens.css` as its input rather than a blank
+  page. Left pointing at the old blocker it would read as waiting on something extinct.
+- **New scope pressure from the pivot:** the palette must now carry node-type hues, sample
+  identity, and lock state — not just paper, ink and one accent. AA must be measured for
+  labels sitting *on* saturated fills, not only on paper.
 - **Owed from D-001:** the wireframe contrast ratios were measured against wireframe white,
   because no paper colour exists yet. AA must be re-measured against the real paper token.
 - **Branch / PR:** not yet opened
@@ -31,6 +73,27 @@ _none_
 ## Done
 
 ### D-001 — Wireframe exploration: mission screen and recipe builder
+- **SUPERSEDED 2026-08-16 by the user's design pivot.** All ten options were drawn under
+  constraints that no longer hold. `docs/wireframes/` is kept as the record of a decision
+  that really was made; it is not current, and it will not be reopened — its one open
+  `Required` finding is therefore permanently parked. The replacement work is D-003 + D-004
+  in a fresh directory, `docs/design-explorations/`.
+  **What changed, and the user's four rulings:**
+  1. The site pivots to a **game-style interactive node graph** — nodes connected, added and
+     removed. The graph **replaces the recipe-card stack entirely**; card types become node
+     types. D-001's Card Stack recommendation is dead, as is Notebook Spread.
+  2. **Ground stays light.** Warm paper survives. The one-rationed-vermillion-accent rule
+     does not — saturated colour now encodes node type, sample identity and lock state.
+     Vermillion alone stays held back.
+  3. The three new wireframes **differ on connection interaction** — one click-to-connect,
+     one drag-to-connect, one both.
+  4. **Full plot parity with the reference python figure**, ratio panel included.
+  `docs/design-brief.md` §4, §7, §8 and `.claude/design/CLAUDE.md` §2–3 were amended to
+  match, each carrying a dated note, because the pivot reverses text those files stated as
+  committed — `design-brief.md:150` said in terms that the node canvas was *not* a V1 goal.
+  Two things from D-001 survive the pivot and should be carried into D-003/D-004: the
+  domain inventory (every UI element the mission screen must hold), and the two
+  verification rules extracted from its four failed cycles — see D-003's dispatch.
 - **Scope:** `docs/wireframes/` (output only — no application files)
 - **Accept:** `/wireframe` run for both the mission screen and the recipe-card builder;
   options explore genuinely different information architectures, not restyles of one

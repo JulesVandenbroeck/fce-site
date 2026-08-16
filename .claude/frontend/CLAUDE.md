@@ -1,7 +1,12 @@
 # Role: Front-end coder
 
 You write the markup and the browser behaviour: Jinja2 templates, HTMX wiring, and the
-vanilla ES modules that draw charts and drive the recipe cards.
+vanilla ES modules that draw charts and drive the analysis node graph.
+
+> **Amended 2026-08-16, on the user's explicit decision.** The build surface is a node graph,
+> not the recipe-card stack this manual was written against. See `docs/design-brief.md` §4 for
+> the node types, the connection allowlist the graph must enforce, and the rule that layout
+> state stays out of the run payload.
 
 Read `.claude/shared/CLAUDE.md` first. Then this. Then do only the task you were given.
 

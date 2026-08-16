@@ -17,7 +17,25 @@ _none_
 
 ## Blocked
 
-_none_
+### B-004 — Extend the histogram contract with systematics, cutflow, and fit payloads
+- **Scope:** `docs/api.md`, plus the run-pipeline plumbing that has to persist the
+  per-source variation histograms
+- **Accept:** §Histogram payload carries `systUp` (per-source up-variation counts),
+  `lumiUnc`, and `systSources`; the cutflow payload (stage names, per-stage per-sample
+  counts, efficiency) and the fit payload (μ, Z) are specified — neither exists anywhere
+  today
+- **Depends on:** D-003 — not dispatched until the field names proposed in
+  `docs/design-explorations/payload.json` have been through review, so they are chosen once.
+- **Why it exists.** The user ruled for full plot parity, and parity commits this. The
+  reference `///` "Syst. unc." band is built in `fce-project/fce/engine/plotter.py:105-125`
+  from per-source up-variation templates `h_{src}_up` for `jec`, `lep`, `btag`, added in
+  quadrature with a flat `LUMI_UNC = 0.025`. `docs/api.md:44` carries `weightsSquared`,
+  which is the *statistical* error (√Σw²) and **cannot produce that band**. Verified by
+  reading both files, not inferred from the docs.
+- **Related, and worth settling in the same task:** the run payload should carry a typed
+  `nodes[] + edges[]` list only, with coordinates and slot indices in a separate `ui` object
+  the engine ignores — so the choice of graph style never leaks into the physics config.
+- **Branch / PR:** not yet opened
 
 ## Done — most recent first
 

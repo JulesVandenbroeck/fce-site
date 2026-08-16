@@ -123,31 +123,65 @@ be built around.
 
 ---
 
-## 4. Building an analysis: recipe cards
+## 4. Building an analysis: the node graph
 
-A vertical stack of configurable cards, in pipeline order:
+> **Amended 2026-08-16, on the user's explicit decision.** This section previously specified
+> a vertical stack of recipe cards and stated that the node canvas was "not a V1 goal". That
+> is reversed: the analysis is now built on an interactive node graph. The card stack is no
+> longer the plan and no longer a fallback. Recorded rather than silently rewritten, because
+> the superseded model was a committed decision that shaped D-001's ten wireframes, and
+> because `docs/wireframes/` still reads as current unless you know this happened.
+
+Students assemble the analysis as a **graph of nodes** that can be added, connected, and
+removed. The graph *is* the analysis: it is what runs, and it is what grows as the campaign
+progresses.
+
+Nodes are the reference engine's node types, unchanged, so the underlying config is the
+engine's config: `DataSource`, `Multiplicity`, `Selection`, `Observable` (and its subtypes
+`ObsGlobal`, `ObsObject`, `ObsVectorSum`, `ObsCustom`), `Histogram`.
+
+**Which connections are legal is not a design choice.** The reference app defines an explicit
+allowlist (`ui/graph.py`, `_VALID_CONNECTIONS`), and the web version enforces the same one:
 
 ```
-Data  →  Filter  →  Observable  →  Plot
+DataSource   → Multiplicity, Selection
+Multiplicity → Multiplicity, Selection
+Selection    → Selection (an AND-chain), Observable*
+Observable*  → Histogram
+Histogram    → terminal
 ```
 
-This replaces the desktop app's drag-and-drop node canvas. Reasons: a 16-year-old learns it
-in a minute, it works on a laptop trackpad and a tablet, and it still teaches that an
-analysis *is* a pipeline — which is the structural lesson worth keeping.
+Two consequences worth designing *for* rather than around. `Selection → Selection` chains
+cuts with AND, so a chain of filters is a visible conjunction rather than an ordering
+accident. And `ObsVectorSum` is exactly the mission-2 lesson in node form — adding the
+photon's four-vector back to recover the Z mass — which makes it the most valuable unlock in
+the campaign.
 
-The cards map onto the reference engine's node types, so the underlying config is
-unchanged: `DataSource`, `Multiplicity`, `Selection`, `Observable`, `Histogram`.
+**The three reasons the card stack was originally chosen are now requirements the graph must
+meet.** They were good reasons; dropping the stack does not drop them.
 
-Cards can be added, removed, reordered where meaningful, and collapsed once configured.
-The stack reads top to bottom as a sentence describing the analysis. A student should be
-able to point at it and say what it does.
+1. **A 16-year-old learns it in a minute.** The graph must be legible on first contact, not
+   after a tutorial.
+2. **It works on a laptop trackpad and a tablet.** Whatever the connection gesture is, it
+   must survive both, and it must have a keyboard path — that is a review item, not a
+   nice-to-have.
+3. **It still reads as a pipeline.** A student should be able to point at the graph and say
+   what it does, in order.
+
+**Complexity ramps through the campaign.** Mission 1 exposes a minimal graph; later missions
+unlock further node types, and the graph grows with them. Node gating carries the teaching
+exactly as card gating did (§3): a locked node type is *shown and inert*, labelled with the
+mission that opens it, never hidden.
+
+**What the run payload carries.** A typed `nodes[] + edges[]` list, and nothing else the
+engine has to understand. Any layout state — coordinates, slot indices, collapse state —
+lives in a separate `ui` object the engine ignores. This keeps the physics config independent
+of the visual direction, so changing how the graph is drawn stays front-end work.
 
 Expression entry (`l1.pt > 20 and (l1.p4 + l2.p4).mass > 80`) stays available for students
 who get that far — the HEP syntax is part of what is being taught. It is evaluated through
 a strict AST whitelist, never `eval`. Rejection messages are written for a 16-year-old and
 are part of the learning experience, not a stack trace.
-
-The node canvas is **not** a V1 goal. It is a plausible sandbox-mode addition later.
 
 ---
 
@@ -195,24 +229,47 @@ first.
 
 ## 7. How it should feel
 
-**Lab notebook.** Warm paper, real ink, ruled lines, notes in the margin, results taped in.
-Sober; almost no colour; calm. Full direction in `.claude/design/CLAUDE.md` §2–3.
+> **Amended 2026-08-16, on the user's explicit decision.** The rationing rule below is
+> reversed: colour is now used generously to highlight what matters. The *ground* is
+> unchanged — light paper, dark ink — and the artefact devices are unchanged. What changed is
+> that saturation is no longer forbidden, because the interface is now a node graph and
+> colour is how a graph stays readable. Recorded, not silently rewritten.
 
-The hard part, stated plainly: **it must feel like a game without looking like a toy.** The
-usual levers — saturated colour, glows, bouncy easing, confetti — are all unavailable,
-because they would make the physics look unserious to exactly the students we want to take
-it seriously.
+**Light ground, loud marks.** Warm paper, real ink, ruled lines, notes in the margin, results
+taped in — and saturated colour on top of it, carrying meaning. Full direction in
+`.claude/design/CLAUDE.md` §2–3.
 
-So the game feel comes from **artefacts and ritual** instead:
+Light is not up for negotiation, and the reason is practical rather than aesthetic: **physics
+plots are conventionally drawn on white**, so the charts sit on this ground instead of
+fighting it. A dark variant remains out of scope (§8).
+
+The hard part, restated for the new direction: **it must feel like a game without looking
+like a toy.** Saturated colour is now available; cartoon easing, glows on everything and
+confetti still are not. The test is whether a colour *means* something. Colour that encodes
+node type, sample identity, lock state, or a crossed threshold is doing work. Colour applied
+to liven something up is the failure mode, and it is still a failure mode.
+
+Colour now carries these, and should carry little else:
+
+- **node type** — each kind of node owns a hue, so a graph is readable at a glance
+- **sample identity** — a sample's colour is the same in the graph, the legend and the plot
+- **lock state** — a gated node type is visibly inert, not merely greyer
+- **thresholds crossed** — significance passing 3σ and 5σ
+
+And the game feel still comes substantially from **artefacts and ritual**, which colour does
+not replace:
 
 - the **logbook fills in** — completed missions become written-on pages, locked ones are
   blank ruled paper, and progress is legible as how much of the book has been used
 - completion **presses a stamp**, off-register, ink dense at the edges
 - hints arrive as **handwritten margin notes**, as though a supervisor were leaning over
 - charts **draw themselves in** like a pen moving
-- there is exactly **one accent colour**, red-pen vermillion, rationed to significance
-  thresholds, mission completion, and the signal sample — so that a student learns without
-  being told that red means the physics did something
+- **red-pen vermillion stays held back** for significance thresholds, mission completion and
+  the signal sample. This is the one part of the old rationing rule kept deliberately: in a
+  palette that is now loud everywhere else, a colour still held in reserve is *louder*, not
+  quieter. A student should learn without being told that red means the physics did
+  something. The reference app already agrees — it paints its "Discovered:" badge in a
+  saturated green reserved for exactly that moment (`engine/plotter.py`).
 
 ---
 
@@ -220,7 +277,8 @@ So the game feel comes from **artefacts and ritual** instead:
 
 Deliberate exclusions. Each is a candidate later; none is a gap to be helpfully filled.
 
-- The drag-and-drop node canvas
+- ~~The drag-and-drop node canvas~~ — **struck 2026-08-16.** The node graph is now the V1
+  build surface; see §4.
 - Energies other than 91 GeV
 - A teacher dashboard or class analytics
 - A dark colour variant
