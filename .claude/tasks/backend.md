@@ -23,7 +23,15 @@ IDs are `B-nnn`, allocated in order and never reused.
   catches whatever the page actually fetches, which is the guarantee shared §3 needs.
 - **Depends on:** B-002 (**done**, merged `ff801fa`)
 - **Branch / PR:** `task/b-003-playwright-harness` — #4
-- **Status:** rework (cycle 2 dispatched 2026-08-16)
+- **Status:** in review (cycle 2)
+- **Cycle 2 resolution:** suggested-major fixed, not overruled. `_goto_or_raise()` navigates
+  and converts a Playwright `TimeoutError` — **specifically that, not any `PlaywrightError`**
+  — into a `RouteNotServedError` naming the stuck URL; `capture()` now calls it in place of a
+  bare `page.goto`. Three new tests drive a real stdlib `http.server` whose `/hang` route
+  never responds, reproducing the reviewer's own repro rather than mocking it. The coder
+  then mutation-tested its own fix: reverting to a bare `page.goto` made 2 of the 3 fail with
+  exactly the raw `playwright._impl._errors.TimeoutError` the review reported, restored
+  before committing. 49 tests pass (46 + 3), flake8 clean, three PNGs still written.
 - **Review, cycle 1:** 0 required, 1 suggested-major, 3 suggested-minor.
   - *Suggested-major* — `scripts/screenshot.py:236` (`main`) catches only `ScreenshotError`,
     so any Playwright failure other than a missing browser exits with a raw traceback and no

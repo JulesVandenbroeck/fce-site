@@ -27,7 +27,18 @@ IDs are `D-nnn`, allocated in order and never reused.
   replaced with the exhaustive twelve-grey list plus the grep that proves it; and
   `brain/design-taste.md` is deleted rather than kept unused.
   **Cycle 3 was the loop limit** (orchestrator manual §5). It did not converge, so the
-  orchestrator stopped and handed it to the user rather than dispatching a fourth. See below.
+  orchestrator stopped and handed it to the user rather than dispatching a fourth.
+- **User's tie-break, 2026-08-16: one final scoped cycle.** Cycle 4 dispatched with the
+  verification method named in the criteria — enumerate computed styles in a real browser
+  over every page × option tab × width and report the count of elements inspected, because
+  an assertion that inspects nothing passes trivially. **There is no cycle 5.** The coder
+  was told the repeated failure is a verification-method problem caused by the
+  orchestrator's criterion, not a competence problem, and asked to fix the *class* rather
+  than the two named instances: a blanket link rule in `base.css` (the reviewer noted
+  `index.html` passes only *incidentally*, via `index.css:32`), and a sweep of every claim
+  in any wireframe file about colour, type or motion against what actually renders.
+- **The user is reviewing the wireframes before choosing a layout direction**, so D-002 stays
+  blocked on that decision regardless of how cycle 4 lands.
 - **Review, cycle 3:** 1 required, 1 suggested-major, 2 suggested-minor. **Loop limit
   reached — escalated to the user 2026-08-16, no fourth cycle dispatched.**
   - *Required* — `mission-screen.html:16`, `recipe-builder.html:16`: the `← index` anchor is
