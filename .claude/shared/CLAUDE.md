@@ -250,6 +250,36 @@ explicitly when you are unsure. Two escape hatches: `rtk proxy <cmd>` runs a com
 no filtering, for when you need the raw output to debug something, and `rtk gain` reports
 what the filtering has saved.
 
+### Previewing a page in a real browser
+
+**Never hand the user a `file:///tmp/...` URL.** The default browser on this machine is
+**snap Firefox**, and a snap runs with a *private `/tmp` namespace*: a `/tmp` path resolves
+to nothing inside the sandbox, so the tab opens on an empty document and reports no error
+that names the cause. `$HOME` is readable; `/tmp` is not. This bites anything that stages
+files for viewing — `git archive` into a temp dir, a scratch copy, a generated report.
+
+For a page that is not on `main`, preview it from a **git worktree under `$HOME`**:
+
+```bash
+git worktree add --detach ~/wireframes-preview origin/task/d-001-wireframes-clean
+```
+
+`--detach` creates no branch and moves no branch, so this does not touch the
+never-delete-a-branch rule. A worktree has exactly one `HEAD`, so it is one worktree per
+ref. The two that exist:
+
+| Worktree | Ref | Holds |
+|---|---|---|
+| `~/wireframes-preview` | `origin/task/d-001-wireframes-clean` | `docs/wireframes/` — D-001, superseded |
+| `~/wireframes-preview-d003` | `origin/task/d-003-plot-component` | `docs/design-explorations/plot.html` — D-003 |
+
+`.claude/scripts/open-wireframes.sh` maintains both and opens the right page; run it with no
+argument for what currently exists and what does not. Headless or over ssh, `--print` emits
+the URLs instead of launching anything.
+
+Screenshots are the other half of this: `scripts/screenshot.py <route>` drives the real app
+headless and writes PNGs. That one is unaffected — it never asks a browser to read `/tmp`.
+
 ### Git — branch per task, PR before review
 
 **Every task is developed on its own branch and reviewed as a pull request.** You never
