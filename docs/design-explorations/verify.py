@@ -479,6 +479,66 @@ def check_anatomy(page: Page) -> CheckResult:
         )
     )
 
+    # Main-panel y-scale vs. the reference — Required 1, PR #5 review cycle 3,
+    # fixed cycle 4. REFERENCE_* below are not asserted from this file: they
+    # were measured once by rendering engine/plotter.py's own _render_single
+    # against this directory's payload.json (faking the uproot.open() ROOT
+    # reads it expects, capturing the Axes right before plt.savefig() would
+    # discard it) — see the PR body for the adapter script and its full
+    # output. This SVG's `niceCeilingAndStep` (plot.js) is a hand-tuned
+    # approximation of matplotlib's real two-stage margin-then-locator
+    # process, not a port of it, so this checks *closeness* to the
+    # reference's peak-fill fraction (a wide, explicit tolerance) and exact
+    # equality only on the one number both approaches happen to land on for
+    # this payload: the highest labelled major tick, 8000. It does not
+    # assert equality on the axis's upper *limit* (reference 8635.47 from a
+    # margin computed over the band+errorbar extent; this SVG approximates
+    # that with an 8% headroom constant over the raw stack peak, giving
+    # 8630.71) or on the major step itself (reference 1000 under this
+    # render's matplotlib 3.11.0 / mplhep 1.3.1; this SVG's ladder lands on
+    # 2000) — both are approximation artefacts of a from-scratch "nice
+    # numbers" chooser standing in for matplotlib's locator, not bugs; see
+    # the PR body for the full side-by-side.
+    REFERENCE_PEAK_FRAC = 0.9254158507134821  # ax.transData-measured, see PR body
+    REFERENCE_MAX_MAJOR_LABEL = 8000.0
+    y_scale_geo = page.evaluate(
+        """() => {
+            const g = document.querySelector('#hist-svg .panel-main');
+            const frame = g.querySelector('.plot-frame').getBBox();
+            const bandTops = Array.from(g.querySelectorAll('.hist-band')).map(b => b.getBBox().y);
+            const peakTopY = bandTops.length ? Math.min(...bandTops) : null;
+            const majorLabels = Array.from(g.querySelectorAll('.plot-tick-label[text-anchor="end"]'))
+                .map(t => parseFloat(t.textContent.trim()))
+                .filter(v => !Number.isNaN(v));
+            return {
+                peakFrac: peakTopY === null ? null : (frame.y + frame.height - peakTopY) / frame.height,
+                maxMajorLabel: majorLabels.length ? Math.max(...majorLabels) : null,
+                majorLabels,
+            };
+        }"""
+    )
+    peak_frac = y_scale_geo["peakFrac"]
+    max_major = y_scale_geo["maxMajorLabel"]
+    peak_frac_ok = peak_frac is not None and 0.80 <= peak_frac <= 0.98
+    major_ok = max_major == REFERENCE_MAX_MAJOR_LABEL
+    results.append(
+        (
+            "Z peak fills most of the main panel, matching the reference's proportions "
+            "(reference measured 92.5% of panel height; this SVG within [80%, 98%])",
+            peak_frac_ok,
+            f"reference: {REFERENCE_PEAK_FRAC:.3f}; this SVG: "
+            f"{peak_frac:.3f}" if peak_frac is not None else "no .hist-band found",
+        )
+    )
+    results.append(
+        (
+            "Highest labelled main-panel y major tick matches the reference (8000, not 20000)",
+            major_ok,
+            f"reference: {REFERENCE_MAX_MAJOR_LABEL:.0f}; this SVG: {max_major}; "
+            f"all major labels: {y_scale_geo['majorLabels']}",
+        )
+    )
+
     # Legend geometry — rewritten this cycle for the user's 2026-08-16 ruling
     # (design.md D-003 entry): the legend moves outside the axes, to their
     # right, and that is what this assertion must now require to be able to
@@ -1585,6 +1645,18 @@ EXHAUSTIVE_CLAIM_PATTERNS: list[str] = [
     # tokens.css's own note references design-brief prose; still flagged for review.
     r"\bnowhere else\b(?!.*\.claude/design)",
     r"\bexhaustively\b",
+    # D-003 cycle 4 (Required 1, PR #5 review cycle 3): "two named exceptions"
+    # was itself the falsifiable claim — a count of deviations from the
+    # reference that a later finding disproved by arithmetic the moment a
+    # third deviation turned up. These catch that shape of phrasing
+    # generally, not just the specific words this cycle happened to write —
+    # a spelled-out or numeral count paired with "named"/"exception(s)"/
+    # "deviation(s)", and the ordinal "first/second named exception" form
+    # this file used to enumerate them one at a time.
+    r"\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+named\b",
+    r"\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(exceptions?|deviations?)\b",
+    r"\b(first|second|third|fourth|fifth)\s+named\s+exception\b",
+    r"\bboth exceptions\b",
 ]
 
 

@@ -3,13 +3,18 @@
 // hard-coded payload embedded in plot.html (#payload-data). No fetch(), so
 // it also runs correctly from a file:// URL.
 //
-// This figure's anatomy is at parity with the reference python figure
+// This figure's overall anatomy follows the reference python figure
 // (engine/plotter.py / engine/cutflow_plotter.py) — panels, ratio split,
-// ticks, frame, stacking, systematic band, header. It carries two named,
-// user-ruled exceptions, both settled 2026-08-16: legend placement (outside
-// the axes, not the reference's framed inside-axes convention) and
-// sample-colour assignment (a frozen per-sample map is the default, not
-// tab10-by-draw-order). See plot.html's rulings panel for both.
+// frame, stacking, systematic band, header. It departs from the reference
+// in specific, named respects: legend placement (outside the axes, not the
+// reference's framed inside-axes convention), sample-colour assignment (a
+// frozen per-sample map is the default, not tab10-by-draw-order), the
+// ratio panel's missing horizontal (bin-width) error bars, the main
+// panel's own bottom tick marks (the reference suppresses them), and the
+// x-axis major tick spacing. See plot.html's rulings panel for what each
+// one is and why — this comment does not repeat or count them, because a
+// count here is exactly the kind of claim a later finding falsifies by
+// arithmetic (see the D-003 PR body, cycle 3).
 //
 // This file is a one-task carve-out from the JS/CSS ownership split (see the
 // D-003 task body) so the design role can build this chart end to end. It is
@@ -17,13 +22,13 @@
 //
 // Colour policy: every SVG element that carries paint sets a `class` that
 // keys into a CSS rule in plot.css, which resolves to a var() in
-// tokens.css. Nothing here writes a hex value or a `style=` attribute —
-// the one exception is the tick/reveal geometry, which is layout, not
-// paint. The two sample-colour schemes (tab10, colour-by-draw-order
-// matching the reference, vs. a frozen per-sample map, the default since
-// 2026-08-16) are both wired up permanently via the `data-palette`
-// attribute on <body>; the toggle button flips the attribute, the CSS
-// decides what each scheme looks like.
+// tokens.css. Nothing here writes a hex value or a `style=` attribute for
+// paint — the tick/reveal geometry writes coordinates directly, since
+// those are layout, not paint. Both sample-colour schemes (tab10,
+// colour-by-draw-order matching the reference, vs. a frozen per-sample map,
+// the default since 2026-08-16) are wired up permanently via the
+// `data-palette` attribute on <body>; the toggle button flips the
+// attribute, the CSS decides what each scheme looks like.
 //
 // Loaded as a classic script, not `type="module"`: Chromium refuses to
 // fetch a module script from a file:// document even same-origin, and this
@@ -58,18 +63,49 @@ function scaleLinear(d0, d1, r0, r1) {
 }
 
 /** A small "nice numbers" tick chooser: returns {max, majorStep} for an
- * axis running from 0 to at least `dataMax`, headroom included. */
+ * axis running from 0 to `dataMax` plus headroom.
+ *
+ * Fixed in D-003 cycle 4 (Required 1, PR #5 review cycle 3): the axis top
+ * used to be `dataMax * 1.35` rounded up to the smallest "nice" ceiling
+ * that kept the major-tick count at 8 or fewer, which for this payload's
+ * peak (~7991) put the axis top's order of magnitude at 10,000 — a bracket
+ * whose smallest candidate step is already 10,000, so the ladder below
+ * could never land on anything finer than that no matter which of its five
+ * multipliers won. The Z peak rendered at roughly 40% of the panel height
+ * instead of filling it, because most of the panel was headroom the data
+ * never used.
+ *
+ * matplotlib's own autoscale is not a "round up to a nice ceiling"
+ * algorithm at all: `ax.set_ymargin` (0.05 under mplhep's ROOT style)
+ * pads the axis top by 5% of the full drawn extent — which for this main
+ * panel includes the hatched systematic band and the pseudo-data error
+ * bars stacked on top of the MC, not just the stack itself — and a
+ * separate, independent locator then chooses "nice" tick spacing to fit
+ * within whatever that top turns out to be. This axis top is not itself
+ * required to be a round number, and in the reference render it is not.
+ *
+ * This rewrite keeps the same five-multiplier ladder (still the right
+ * shape for a lightweight, dependency-free "nice numbers" chooser) but:
+ *   (a) stops rounding the axis top up to a multiple of the chosen step,
+ *       so the top tracks the data the way a margin does, not a ceiling;
+ *   (b) uses an 8% headroom multiplier rather than 35%, approximating the
+ *       reference's 5% margin plus the extra the band and error bars add
+ *       above the raw stack for this kind of payload.
+ * This is a hand-tuned approximation of matplotlib's real two-stage
+ * process, not a port of it, and is not asserted to be byte-identical to
+ * any one matplotlib version's output — see the PR body for a direct
+ * render of the reference against this exact payload, the numbers this
+ * produces against it side by side, and why they are close rather than
+ * equal. */
 function niceCeilingAndStep(dataMax) {
-  const target = dataMax * 1.35 || 1;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(target)));
+  const max = dataMax * 1.08 || 1;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
   const steps = [1, 2, 2.5, 5, 10];
   for (const s of steps) {
     const step = s * magnitude;
-    const ceiling = Math.ceil(target / step) * step;
-    if (ceiling / step <= 8) return { max: ceiling, step };
+    if (max / step <= 8) return { max, step };
   }
-  const step = 10 * magnitude;
-  return { max: Math.ceil(target / step) * step, step };
+  return { max, step: 10 * magnitude };
 }
 
 // ---------------------------------------------------------------------
@@ -81,10 +117,10 @@ function niceCeilingAndStep(dataMax) {
 // plot.html's rulings panel for the reasoning.
 //
 // The axes box itself (axesLeft..axesRight, 412px wide) is unchanged from
-// before this cycle — legend placement is the user's first named exception
-// to parity (2026-08-16), built by widening the SVG canvas and drawing the
-// legend in that new right-hand margin, past axesRight, rather than by
-// shrinking the axes to make room inside them.
+// before this cycle — legend placement is a named exception to parity
+// (2026-08-16, see plot.html's rulings panel), built by widening the SVG
+// canvas and drawing the legend in that new right-hand margin, past
+// axesRight, rather than by shrinking the axes to make room inside them.
 const FIG = {
   left: 56,
   right: 12,
@@ -385,8 +421,24 @@ function renderHistogramFigure(root, payload) {
     const announce = () => {
       if (readout) readout.textContent = label;
     };
+    // Suggested-major, PR #5 review cycle 3: this rect carries role="button"
+    // (an aria-live readout target, keyboard-reachable via tabindex) but
+    // previously only responded to hover/focus, so a screen reader
+    // announcing "button" gave no way to actually activate one — Enter,
+    // Space and a real click all did nothing a Tab press hadn't already
+    // done. Both now call the same announce(); the bin's one piece of
+    // information is already fully available on focus, so activating a
+    // focused bin is intentionally a no-op beyond re-announcing it, which
+    // is what a button whose entire job is "read this out" should do.
     hit.addEventListener("mouseenter", announce);
     hit.addEventListener("focus", announce);
+    hit.addEventListener("click", announce);
+    hit.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " " || ev.key === "Spacebar") {
+        ev.preventDefault();
+        announce();
+      }
+    });
     hitG.appendChild(hit);
   }
   mainG.appendChild(hitG);
@@ -655,6 +707,37 @@ function renderCutflowFigure(root, payload) {
   root.appendChild(svg);
 }
 
+// Longest reveal chain in plot.css: the legend, animation-delay 1160ms +
+// 380ms duration = 1540ms. 1600ms is that plus a small buffer.
+const REVEAL_TOTAL_MS = 1600;
+
+/** Play the ink-draw reveal on `panel` exactly once. Suggested-major, PR #5
+ * review cycle 3: frame.css's tab switcher shows/hides each `.option-panel`
+ * with `display: none`/`block`, and a browser restarts a running or
+ * forwards-filled CSS animation whenever its element re-enters the render
+ * tree after `display: none` — so without this guard, the ~1.6s reveal
+ * replayed every time a student flipped back to a figure they had already
+ * seen. `.reveal-armed` (plot.css) is the only thing that puts the
+ * animated styling in effect at all; the base `.reveal-*` rules are
+ * already the settled end state. This adds the class the first time a
+ * panel is shown and removes it once the reveal has had time to finish, so
+ * every later `display` toggle has nothing to restart — it just shows the
+ * plain settled state, with or without `.reveal-armed` ever having been
+ * there. `prefers-reduced-motion` skips arming altogether, so the settled
+ * state is what those students see from the first frame; plot.css's own
+ * media query is the belt-and-suspenders backstop if this is ever called
+ * without that check (see .claude/design/CLAUDE.md §3's reduced-motion
+ * rule). */
+function armReveal(panel) {
+  if (!panel || panel.dataset.revealed === "true") return;
+  panel.dataset.revealed = "true";
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+  panel.classList.add("reveal-armed");
+  window.setTimeout(() => panel.classList.remove("reveal-armed"), REVEAL_TOTAL_MS);
+}
+
 function initTabs() {
   const tabs = Array.from(document.querySelectorAll(".tab-btn[role='tab']"));
   tabs.forEach((tab) => {
@@ -668,7 +751,10 @@ function initTabs() {
       const panelId = tab.getAttribute("aria-controls");
       document.querySelectorAll(".option-panel").forEach((p) => p.classList.remove("active"));
       const panel = document.getElementById(panelId);
-      if (panel) panel.classList.add("active");
+      if (panel) {
+        panel.classList.add("active");
+        armReveal(panel);
+      }
     });
   });
 }
@@ -696,6 +782,10 @@ function main() {
   if (cutflowRoot) renderCutflowFigure(cutflowRoot, payload);
   initTabs();
   initPaletteToggle();
+  // The histogram panel starts active (plot.html's markup, unowned here),
+  // so it is the one figure whose first reveal is not triggered by a tab
+  // click — arm it directly.
+  armReveal(document.getElementById("panel-hist"));
 
   const muEl = document.getElementById("fit-mu");
   const zEl = document.getElementById("fit-z");

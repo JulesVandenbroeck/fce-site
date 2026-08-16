@@ -167,36 +167,66 @@ body[data-palette="frozen"] .sample-x1 { fill: var(--frozen-x1); }
 body[data-palette="frozen"] .sample-x2 { fill: var(--frozen-x2); }
 body[data-palette="frozen"] .sample-x3 { fill: var(--frozen-x3); }
 
-/* ---- reveal-in-ink: one orchestrated draw-on-load, staggered ----------
+/* ---- reveal-in-ink: one orchestrated draw-on-load, staggered, ONCE -----
  * `.claude/design/CLAUDE.md` §3: axes draw first, then the stacked bands in
  * sequence, then the data points, then the legend. Under reduced motion the
- * end state renders immediately with no transit — see the media query
- * below, which is the whole animation block's off switch. */
-.reveal-frame {
-  stroke-dasharray: 1600;
+ * end state renders immediately with no transit.
+ *
+ * Fixed in D-003 cycle 4 (Suggested-major, PR #5 review cycle 3): frame.css
+ * (unowned here) shows/hides each figure by toggling `display: none` /
+ * `block` on `.option-panel` when a student switches tabs, and a browser
+ * restarts a running or forwards-filled animation whenever its element
+ * re-enters the render tree after `display: none` — so the reveal replayed
+ * (~1.6s) on every tab re-show, not just the first. The rules below are
+ * therefore the SETTLED end state by default — no animation property at
+ * all — and only become the animated version under the ancestor class
+ * `.option-panel.reveal-armed`, which `plot.js`'s `armReveal()` adds the
+ * first time a panel is shown and removes once the reveal has had time to
+ * finish. From then on nothing here has an `animation` for `display`
+ * toggling to restart. */
+.reveal-frame { stroke-dasharray: 1600; stroke-dashoffset: 0; }
+.reveal-band,
+.reveal-data,
+.reveal-legend { opacity: 1; }
+
+.option-panel.reveal-armed .reveal-frame {
   stroke-dashoffset: 1600;
   animation: draw-frame 700ms ease-out forwards;
 }
 @keyframes draw-frame {
   to { stroke-dashoffset: 0; }
 }
-.reveal-band {
+.option-panel.reveal-armed .reveal-band {
   opacity: 0;
   animation: rise-in 420ms ease-out forwards;
 }
-.reveal-band.s0 { animation-delay: 620ms; }
-.reveal-band.s1 { animation-delay: 720ms; }
-.reveal-band.s2 { animation-delay: 820ms; }
-.reveal-band.s3 { animation-delay: 920ms; }
+.option-panel.reveal-armed .reveal-band.s0 { animation-delay: 620ms; }
+.option-panel.reveal-armed .reveal-band.s1 { animation-delay: 720ms; }
+.option-panel.reveal-armed .reveal-band.s2 { animation-delay: 820ms; }
+.option-panel.reveal-armed .reveal-band.s3 { animation-delay: 920ms; }
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.reveal-data { opacity: 0; animation: rise-in 380ms ease-out forwards; animation-delay: 1040ms; }
-.reveal-legend { opacity: 0; animation: rise-in 380ms ease-out forwards; animation-delay: 1160ms; }
+.option-panel.reveal-armed .reveal-data {
+  opacity: 0;
+  animation: rise-in 380ms ease-out forwards;
+  animation-delay: 1040ms;
+}
+.option-panel.reveal-armed .reveal-legend {
+  opacity: 0;
+  animation: rise-in 380ms ease-out forwards;
+  animation-delay: 1160ms;
+}
 
+/* Belt-and-suspenders: plot.js's armReveal() already skips arming under
+ * reduced motion, so `.reveal-armed` should never appear in that case —
+ * but if it ever does, this keeps the settled state rather than animating. */
 @media (prefers-reduced-motion: reduce) {
-  .reveal-frame, .reveal-band, .reveal-data, .reveal-legend {
+  .option-panel.reveal-armed .reveal-frame,
+  .option-panel.reveal-armed .reveal-band,
+  .option-panel.reveal-armed .reveal-data,
+  .option-panel.reveal-armed .reveal-legend {
     animation: none;
     stroke-dashoffset: 0;
     opacity: 1;
