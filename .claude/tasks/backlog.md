@@ -68,6 +68,19 @@ Entries carry the task ID they came from, so context is recoverable.
   what the next coder will trust. **Partly mitigated by B-003**, whose browser-level e2e
   assertion catches anything the page actually fetches, including `@import`. _(from B-002
   review)_
+- **A leaked server thread dies quietly.** `scripts/screenshot.py:130` —
+  `thread.join(timeout=SHUTDOWN_TIMEOUT)` discards its result, so a server that fails to stop
+  within 10 s leaks with no signal. That undercuts the stated reason `SERVER_THREAD_NAME`
+  exists ("a leaked one is identifiable"): checking `thread.is_alive()` after the join and
+  raising or warning would make the leak as loud as the naming intends. _(from B-003 review)_
+- **`printed_paths` splits on whitespace, not lines.** `tests/e2e/test_smoke.py:213` uses
+  `self.completed.stdout.split()`, while the tool's contract is one path per line. A path
+  containing a space would be silently split in two and the width assertions would fail in a
+  confusing way. `splitlines()` matches the contract. _(from B-003 review)_
+- **e2e helpers live in `conftest.py`.** `tests/e2e/test_smoke.py:31` imports `LoadedPage`,
+  `off_origin_requests` and `REPO_ROOT` from `tests.e2e.conftest`. It works, but it is
+  against pytest's own guidance; moving them to a plain `tests/e2e/harness.py` would leave
+  `conftest.py` holding only fixtures. _(from B-003 review)_
 - **Dependencies unpinned, no lock file.** Fine now, but a scientific-Python stack drifts.
   Worth resolving before classroom deployment so a teacher's install matches the tested
   one. _(from B-001)_

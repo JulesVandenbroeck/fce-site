@@ -23,7 +23,25 @@ IDs are `B-nnn`, allocated in order and never reused.
   catches whatever the page actually fetches, which is the guarantee shared §3 needs.
 - **Depends on:** B-002 (**done**, merged `ff801fa`)
 - **Branch / PR:** `task/b-003-playwright-harness` — #4
-- **Status:** in review (cycle 1)
+- **Status:** rework (cycle 2 dispatched 2026-08-16)
+- **Review, cycle 1:** 0 required, 1 suggested-major, 3 suggested-minor.
+  - *Suggested-major* — `scripts/screenshot.py:236` (`main`) catches only `ScreenshotError`,
+    so any Playwright failure other than a missing browser exits with a raw traceback and no
+    PNG. Reproduced by the reviewer against a page holding a long-running `fetch()` open:
+    `wait_until="networkidle"` never fires and the run dies after 30 s with a bare
+    `playwright._impl._errors.TimeoutError`. **The design role will hit this on the first
+    "run in progress" page**, which is exactly what M3 builds. The reviewer also tested SSE
+    specifically and found it fine — a page with an open `EventSource` screenshots in 1.6 s
+    — so `networkidle` is not the wrong default, it is merely unguarded. Fix is inside scope.
+  - *Suggested-minor* ×3 → backlogged.
+  - **The review earned its findings by mutation, not by reading.** It rebuilt the exact
+    threat the off-origin assertion exists to stop — a scratch `static/css/main.css`
+    containing `@import url("https://fonts.googleapis.com/css2?family=Inter")`, linked from
+    `base.html` — and watched `test_index_page_requests_nothing_off_origin` fail with the
+    Google URL in the diff. That is the D-002 guarantee demonstrated rather than asserted.
+    It also broke the console/page-error guards, pointed `PLAYWRIGHT_BROWSERS_PATH` at an
+    empty directory to confirm the suite *errors* rather than silently skipping, and opened
+    `index-1440.png` to check it showed the real landing page and not an error page.
 - **Recovered from an interrupted dispatch.** The 2026-08-16 dispatch was cut off before
   the coder reported. Discovered by the next session reading git rather than the list: two
   commits (`8e4c039`, `1a6ff77`) were already written and pushed, adding all four in-scope
