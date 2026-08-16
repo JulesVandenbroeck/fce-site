@@ -182,10 +182,33 @@ minors about the checker's *honesty* were fixed in cycle 2 instead of landing he
   legend toggles samples (`docs/design-brief.md` §5). Deliberately out of D-003's scope, which
   was anatomy and measurement. Also unbuilt: a sub-768 legend reflow, and the reference's
   green "Discovered: …" badge (`engine/plotter.py`). _(from D-003)_
-- **Parity to the reference is asserted, not checked.** The D-003 reviewer declared this limit
-  itself: the engine is not vendored into this repo yet, so anatomy was verified against the
-  rendered DOM only, never against `engine/plotter.py`. Once M2 vendors the engine, a test
-  that renders both and compares would close it. _(from D-003 review)_
+- **Parity to the reference is asserted, not checked.** ~~The D-003 reviewer declared this
+  limit itself: the engine is not vendored into this repo yet, so anatomy was verified
+  against the rendered DOM only, never against `engine/plotter.py`.~~ **Closed 2026-08-16 by
+  the cycle-3 review**, which located `fce-project/fce/engine/plotter.py` outside the repo and
+  rendered it from D-003's own `payload.json` through the reference's code path. It found four
+  parity gaps nobody had seen. **The method is the lesson: "at parity" is only checkable by
+  rendering the reference and diffing** — every future parity criterion must name that as its
+  verification, exactly as D-001's colour criterion had to name "enumerate computed styles in
+  a browser". Once M2 vendors the engine this becomes a test rather than a review technique.
+  _(from D-003 reviews, cycles 1 and 3)_
+
+From the D-003 cycle-3 review. Three suggested-minor; none blocks.
+
+- **ARIA tablist declared, keyboard pattern still not implemented.** `plot.html:19-24` with
+  `plot.js:658-674` — both tabs sit in the tab order and ArrowRight on `#tab-hist` leaves
+  focus where it is. Raised in cycle 1, re-confirmed in cycle 3, still open. Either add roving
+  `tabindex` + arrow handling or drop the tab roles for plain buttons. **Do not copy this
+  markup into D-004**, which will have more tabs. _(from D-003 review, cycles 1 and 3)_
+- **`--ink-45` is below AA and unmarked.** `tokens.css:42` — 2.60:1 composited on paper, used
+  by 0 elements, so it passes only because nothing uses it. A comment marking it non-text-safe
+  would stop D-002 reaching for it. This is the third time this token has been flagged; it is
+  already recorded as *owed to D-002* in `design.md`. _(from D-003 review, cycle 3)_
+- **The y-scale linearity check has two samples.** `verify.py:476` — `px-per-unit` is measured
+  at `[-0.0144, -0.0144]` because the axis carries only three major ticks, so it cannot
+  distinguish linear from most non-linear scales. Note the coupling: if Required 1's y-scale
+  fix lands, the axis gains major ticks and this check gets stronger for free. _(from D-003
+  review, cycle 3)_
 
 ## Cross-cutting
 

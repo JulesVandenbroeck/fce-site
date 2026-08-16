@@ -13,7 +13,51 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** **cycle 3 delivered, in review 2026-08-16** (head `4d4f4e4`). The cycle-2
+- **Status:** **LOOP LIMIT — escalated to the user 2026-08-16, no cycle 4 dispatched.**
+  Review of cycle 3 returned **2 required, 2 suggested-major, 3 suggested-minor**. Three
+  coder passes have now happened (initial, cycle-2 fixes, cycle-3 rulings) against two
+  completed reviews, so orchestrator §5's limit is reached. Head `4d4f4e4`, PR #5 open.
+- **Review, cycle 3 — the first review that checked parity against the reference itself.**
+  Cycle 1's reviewer declared it *could not*, because the engine is not vendored here. This
+  one found `fce-project/fce/engine/plotter.py` outside the repo, rendered it **from this
+  exact `payload.json` through the reference's own code path**, and diffed against the SVG.
+  So these are new findings on new ground, not the same finding recurring — the D-001
+  failure mode is **not** what is happening here.
+  - *Required 1* — the anatomy-at-parity claim, which explicitly names "ticks", is false in
+    four further respects. **Independently confirmed by the orchestrator against
+    `plotter.py` source, not taken on the reviewer's word:** `plotter.py:84` sets
+    `tick_params(axis="x", bottom=False, labelbottom=False)` on the main panel while the SVG
+    draws 31 bottom tick marks; `plotter.py:169` passes `xerr=widths / 2` while the SVG has
+    0 horizontal ratio error bars. The reviewer additionally measured main-panel y-limits
+    `(0, 8391)` with majors `[0, 2000, …, 8000]` against the SVG's `0–20000` / `0,10000,20000`,
+    and x majors `0/50/100/150` against `0/25/…/150`.
+    **The y-scale one is a real visual defect, not merely a false sentence:** the Z peak
+    fills ~40% of the panel instead of ~95%. Root cause named at `plot.js:62-73` — the
+    `steps` ladder starts at `1 * magnitude` and can never select the reference's 2000 step.
+  - *Required 2* — `tokens.css:57-65`, `plot.html:93-102` claim the tab10 triples are
+    "exactly what the reference assigns". **Confirmed false by the orchestrator running
+    matplotlib directly:** `colormaps["tab10"].resampled(3)` → `#1f77b4, #8c564b, #17becf`;
+    the file carries `#1f77b4, #ff7f0e, #2ca02c`, which is `tab10(0),(1),(2)` unresampled.
+    X2 and X3 are wrong. **D-002 harvests this file**, so it would inherit the error.
+  - *Suggested-major* — `plot.css:170-205`: the reveal animation re-fires on every tab
+    re-show, because the switcher toggles `display`. Measured ~1.6 s before the figure
+    settles, **each way**, for a student flipping between histogram and cutflow to compare.
+    `verify.py` accommodates it with `wait_for_timeout(1700)` rather than flagging it.
+  - *Suggested-major* — `plot.js:370-391`: the 40 bin hit-areas still carry `role="button"`
+    with only hover/focus handlers, so a screen reader announces 40 buttons that do nothing
+    on Enter. Raised as minor in cycle 1 and backlogged; it is now major because the readout
+    is `aria-live` and the mismatch is load-bearing.
+  - *Suggested-minor ×3* → backlogged.
+  - **What the review verified rather than assumed:** scope (7 files, nothing under `src/`,
+    `tests/`, `content/`), `87 PASS` reproduced exactly, 49 pytest passes, flake8 clean, its
+    own Playwright legend measurement at three widths, **its own mutation of the legend
+    assertion** (moved the legend inside → FAIL, as the coder claimed), and **its own
+    mutation of the contrast probe** (widened the legend swatch so labels sit on the fills →
+    `6 of 114 on solid fill, 4 below AA`, catching ink-on-vermillion at 2.76:1). The coder's
+    two new checks are therefore confirmed non-vacuous by someone other than their author.
+  - **Not treated as a finding:** the out-of-scope PR *title* edit — metadata, not a file,
+    disclosed, and in the spirit of criterion 4. The orchestrator had already accepted it.
+- **Cycle 3 was delivered and reviewed as follows.** The cycle-2
   *review was never dispatched* — the previous session recorded "back in review" and was
   interrupted before the reviewer ran, so cycle 2 was verified by its author and by nobody
   else. **This review therefore covers cycles 2 and 3 together**, and the PR body was
