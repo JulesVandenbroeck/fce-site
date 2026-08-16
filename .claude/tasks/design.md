@@ -13,9 +13,41 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** **cycle 4 delivered, in review 2026-08-16.** Head `4ed75d8`, PR #5 open.
-  Dispatched on the user's tie-break after the loop limit was reached and escalated
-  (orchestrator §5) rather than dispatched through.
+- **Status:** **cycle-4 review returned 1 required, 1 suggested-major, 4 suggested-minor —
+  escalated to the user 2026-08-17, no cycle 5 dispatched.** Head `4ed75d8`, PR #5 open.
+  Four coder passes, three reviews; already past §5's limit and running on the user's
+  cycle-4 tie-break, so the orchestrator stopped rather than extending it unilaterally.
+- **Review, cycle 4 — and it corrected the previous review, which is the headline.**
+  - *Required* — `plot.js:106`. Criterion 1 ("main-panel y-limits **and major ticks** match
+    the reference") is ticked but only half met. Limits match to 0.05% (8630.71 vs 8635.47);
+    the major ticks do not — reference **step 1000**, this SVG **step 2000**. The PR body and
+    `verify.py:497-500` describe this as an irreducible approximation artefact. **It is not:
+    it is the hard-coded cap in `if (max / step <= 8)`.**
+  - **Orchestrator verified this directly rather than trusting either reviewer, because the
+    two reviews disagreed.** Cycle 3 reported reference majors `[0, 2000 … 8000]`; cycle 4
+    reported `[0, 1000 … 8000]`. Running matplotlib's own `AutoLocator`: for ylim `0..8635.47`
+    **and** for `0..8391`, it returns **step 1000** in both cases. **Cycle 4 is right and
+    cycle 3's sub-claim was wrong** — though cycle 3's headline (peak at ~40% of panel) was
+    correct and is what mattered. Arithmetic on the live constant: `8630.71 / 1000 = 8.63`,
+    rejected by `<= 8`, so it falls to step 2000; at `<= 9` it accepts 1000 and matches.
+  - *Suggested-major* — `plot.js:87,103-108`: three of the five ladder rungs are unreachable,
+    so the comment's "keeps the same five-multiplier ladder" describes code that does not
+    exist. **Confirmed by the orchestrator:** `magnitude = 10^floor(log10(max))` forces
+    `max / magnitude ∈ [1, 10)`, so `s = 1` returns whenever the ratio clears the cap and
+    `s = 2` always returns otherwise (ratio/2 < 5); `2.5`, `5`, `10` and the fallback at
+    line 108 are dead under either cap. This is *why* the axis can only ever land on 1× or 2×
+    magnitude, so the next person to tune it will mis-diagnose it the same way.
+  - *Suggested-minor ×4* → backlogged.
+  - **What this review verified rather than assumed:** scope (7 files; cycle 4's diff exactly
+    the 5 named), 89 PASS reproduced, flake8 clean, 26 pytest passes, **its own independent
+    reference render** reproducing the PR body's numbers to the digit, its own DOM probe
+    (`peakFrac 0.9259`), a fresh `resampled(3)` run matching `tokens.css`, both suggested-major
+    fixes driven for real (reveal does not replay; Enter and Space on bin 5 both set the
+    readout), the palette toggle proven CSS-only by byte-comparing `#hist-svg` outerHTML
+    across the click, 146 text elements contrast-swept, and the new prose lint **run against
+    the pre-fix commit** — 8 matches, exactly the 8 claimed.
+  - **The instrument held this time.** Cycles 1 and 3 both found the checker defective; cycle
+    4's checker was independently re-run and its new assertions confirmed non-vacuous.
 - **Cycle 4 — both required findings answered within the ruling.** `verify.py --all` →
   **89 PASS, 0 FAIL**, exit 0; flake8 clean; `git diff --stat main...HEAD -- src/ tests/
   content/` empty. Scope held at exactly the 5 files named for this cycle (`git diff

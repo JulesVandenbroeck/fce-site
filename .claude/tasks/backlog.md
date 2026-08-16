@@ -204,6 +204,24 @@ From the D-003 cycle-3 review. Three suggested-minor; none blocks.
   by 0 elements, so it passes only because nothing uses it. A comment marking it non-text-safe
   would stop D-002 reaching for it. This is the third time this token has been flagged; it is
   already recorded as *owed to D-002* in `design.md`. _(from D-003 review, cycle 3)_
+From the D-003 cycle-4 review. Four suggested-minor; none blocks.
+
+- **`REFERENCE_PEAK_FRAC` is printed but never compared.** `verify.py:502,522` — the assertion
+  is a hand-picked window `0.80 <= peak_frac <= 0.98` (±9 points) while real agreement is
+  0.9259 vs 0.9254. A reference-derived tolerance (`abs(peak_frac - REFERENCE_PEAK_FRAC)
+  <= 0.02`) would make the check actually about the reference and would still have caught the
+  0.40 regression. The constant being *displayed* rather than *used* is the same shape as the
+  cycle-1 finding. _(from D-003 review, cycle 4)_
+- **All 40 bin rects are individual tab stops.** `plot.js:410-420` — a keyboard user traverses
+  40 stops to get past the figure. The usual pattern is one stop for the plot with arrow keys
+  moving between bins. Interacts with the tablist minor below; worth doing together once
+  D-004 settles the surrounding layout. _(from D-003 review, cycle 4)_
+- **The PR #5 body still carries counted-exception phrasing** in its retained cycle-3 history
+  ("two named exceptions", "state both exceptions") — the exact wording the new lint forbids.
+  Clearly framed as an unedited historical record and superseded by the cycle-4 section, but
+  **the lint scans only the five directory files and the PR body is also a place deviations
+  are recorded**. Worth knowing the lint's blind spot is the PR itself. _(from D-003 review,
+  cycle 4)_
 - **The y-scale linearity check has two samples.** `verify.py:476` — `px-per-unit` is measured
   at `[-0.0144, -0.0144]` because the axis carries only three major ticks, so it cannot
   distinguish linear from most non-linear scales. Note the coupling: if Required 1's y-scale
