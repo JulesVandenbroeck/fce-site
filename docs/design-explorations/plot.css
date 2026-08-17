@@ -1,0 +1,243 @@
+/* plot.css — D-003. Every colour here is a var() into tokens.css; nothing
+ * below sets an inline style attribute or a bare hex value. Sample identity
+ * colour is deliberately NOT set here on the `.sample-x*` classes directly —
+ * it is set per `data-palette` on <body>, in the "sample identity" block
+ * near the bottom, so the tab10/frozen toggle is pure CSS and needs no
+ * re-render from plot.js. `frozen` is the default (see plot.html's
+ * <body data-palette>) since the user's 2026-08-16 ruling; `tab10` stays
+ * selectable via the on-page toggle.
+ */
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* faint ruled-paper texture on the page ground, CSS only */
+body {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    var(--paper-line) 27px,
+    var(--paper-line) 28px
+  );
+}
+
+h1, h2, h3 { font-family: var(--font-body); color: var(--ink); margin: 0 0 var(--space-2); }
+p { margin: 0 0 var(--space-2); color: var(--ink-70); }
+code, .num { font-family: var(--font-mono); }
+
+.title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-3);
+}
+.title-bar p { margin: 0; }
+
+.plot-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.plot-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.palette-toggle {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--chrome-border);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.palette-toggle:hover { background: var(--hover-bg); }
+
+.plot-readout {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  min-height: 1.4em;
+}
+
+/* Wide content scrolls inside its own container; the page body never
+ * scrolls horizontally (design working rule). This is also the mechanism
+ * that lets the figure keep its fixed reference bin width instead of
+ * shrinking its anatomy to fit a narrow viewport. */
+.figure-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: var(--space-2);
+}
+
+.fit-readout {
+  display: flex;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  margin-top: var(--space-2);
+}
+
+/* Crossing 5sigma is one of the three sanctioned uses of the reserved
+ * accent (design-brief.md §7); 3sigma ("evidence") stays in ink. This is
+ * the minimal in-line reflection of that rule for the fit readout, not the
+ * full significance gauge described in design-brief.md §5 — that is a
+ * separate, larger component and out of this task's scope. */
+.fit-z-discovery { color: var(--vermillion); font-weight: 700; }
+.fit-z-evidence { color: var(--ink); font-weight: 700; }
+
+/* ---- SVG figure styling ------------------------------------------------ */
+
+svg#hist-svg, svg#cutflow-svg { display: block; }
+
+.plot-frame {
+  stroke: var(--plot-frame);
+  stroke-width: 1.2;
+}
+.plot-tick { stroke: var(--plot-frame); stroke-width: 1; }
+.plot-tick-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--ink-70);
+}
+.plot-axis-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  fill: var(--ink);
+}
+.plot-header {
+  font-family: var(--font-body);
+  font-size: 12px;
+  fill: var(--ink);
+}
+.plot-header-bold { font-weight: 700; }
+.plot-eff-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+
+.hist-band { stroke: var(--plot-edge); stroke-width: 1.2; stroke-linejoin: round; }
+
+.syst-band { fill: url(#syst-hatch); stroke: none; }
+.hatch-line { stroke: var(--syst-grey); stroke-width: 1; }
+
+.data-marker { fill: var(--data-marker); }
+.data-errbar { stroke: var(--data-marker); stroke-width: 1; }
+.ratio-oneline { stroke: var(--syst-grey); stroke-width: 1; stroke-dasharray: 4 3; }
+
+.legend-frame {
+  fill: var(--panel);
+  fill-opacity: 0.94;
+  stroke: var(--legend-border);
+  stroke-width: 1;
+}
+.legend-label {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  fill: var(--ink);
+}
+.legend-swatch { stroke: var(--legend-border); stroke-width: 0.75; }
+
+.bin-hit { pointer-events: all; cursor: pointer; outline-offset: -2px; }
+.bin-hit:hover { fill: var(--hover-bg); fill-opacity: 0.35; }
+
+/* ---- sample identity: chosen by data-palette on <body> ---------------- */
+body[data-palette="tab10"] .sample-x1 { fill: var(--tab10-x1); }
+body[data-palette="tab10"] .sample-x2 { fill: var(--tab10-x2); }
+body[data-palette="tab10"] .sample-x3 { fill: var(--tab10-x3); }
+body[data-palette="frozen"] .sample-x1 { fill: var(--frozen-x1); }
+body[data-palette="frozen"] .sample-x2 { fill: var(--frozen-x2); }
+body[data-palette="frozen"] .sample-x3 { fill: var(--frozen-x3); }
+
+/* ---- reveal-in-ink: one orchestrated draw-on-load, staggered, ONCE -----
+ * `.claude/design/CLAUDE.md` §3: axes draw first, then the stacked bands in
+ * sequence, then the data points, then the legend. Under reduced motion the
+ * end state renders immediately with no transit.
+ *
+ * Fixed in D-003 cycle 4 (Suggested-major, PR #5 review cycle 3): frame.css
+ * (unowned here) shows/hides each figure by toggling `display: none` /
+ * `block` on `.option-panel` when a student switches tabs, and a browser
+ * restarts a running or forwards-filled animation whenever its element
+ * re-enters the render tree after `display: none` — so the reveal replayed
+ * (~1.6s) on every tab re-show, not just the first. The rules below are
+ * therefore the SETTLED end state by default — no animation property at
+ * all — and only become the animated version under the ancestor class
+ * `.option-panel.reveal-armed`, which `plot.js`'s `armReveal()` adds the
+ * first time a panel is shown and removes once the reveal has had time to
+ * finish. From then on nothing here has an `animation` for `display`
+ * toggling to restart. */
+.reveal-frame { stroke-dasharray: 1600; stroke-dashoffset: 0; }
+.reveal-band,
+.reveal-data,
+.reveal-legend { opacity: 1; }
+
+.option-panel.reveal-armed .reveal-frame {
+  stroke-dashoffset: 1600;
+  animation: draw-frame 700ms ease-out forwards;
+}
+@keyframes draw-frame {
+  to { stroke-dashoffset: 0; }
+}
+.option-panel.reveal-armed .reveal-band {
+  opacity: 0;
+  animation: rise-in 420ms ease-out forwards;
+}
+.option-panel.reveal-armed .reveal-band.s0 { animation-delay: 620ms; }
+.option-panel.reveal-armed .reveal-band.s1 { animation-delay: 720ms; }
+.option-panel.reveal-armed .reveal-band.s2 { animation-delay: 820ms; }
+.option-panel.reveal-armed .reveal-band.s3 { animation-delay: 920ms; }
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.option-panel.reveal-armed .reveal-data {
+  opacity: 0;
+  animation: rise-in 380ms ease-out forwards;
+  animation-delay: 1040ms;
+}
+.option-panel.reveal-armed .reveal-legend {
+  opacity: 0;
+  animation: rise-in 380ms ease-out forwards;
+  animation-delay: 1160ms;
+}
+
+/* Belt-and-suspenders: plot.js's armReveal() already skips arming under
+ * reduced motion, so `.reveal-armed` should never appear in that case —
+ * but if it ever does, this keeps the settled state rather than animating. */
+@media (prefers-reduced-motion: reduce) {
+  .option-panel.reveal-armed .reveal-frame,
+  .option-panel.reveal-armed .reveal-band,
+  .option-panel.reveal-armed .reveal-data,
+  .option-panel.reveal-armed .reveal-legend {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Focus — SVG hit areas are keyboard-operable rects with tabindex, not
+ * <button>s, so they need their own selector alongside frame.css's list. */
+.bin-hit:focus-visible,
+.palette-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

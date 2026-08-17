@@ -1,0 +1,113 @@
+/* tokens.css — exploration palette for D-003 (interactive plot component).
+ *
+ * This is NOT src/fce_web/static/css/tokens.css. That file is D-002's, and
+ * still the real one the app ships with. This file exists so D-002 has
+ * something concrete to harvest from once the plot component is reviewed.
+ *
+ * The intent: every colour used anywhere in this directory is declared as a
+ * custom property in this :root block, and plot.css, frame.css and plot.js
+ * are meant to reference it (CSS var(), or a computed-style read in JS)
+ * rather than repeat a hex value. Whether that intent actually held for a
+ * given render is not asserted here — it is measured by verify.py's paint
+ * sweep, which resolves every custom property below into an allowed-colour
+ * set and checks every rendered element's paint properties against it,
+ * printing the count inspected and any violation found.
+ *
+ * Direction: `.claude/design/CLAUDE.md` §2 — lab notebook, warm paper, ink,
+ * and a saturated palette where every hue is answerable. Two sample-colour
+ * schemes are declared side by side: tab10 (colour by sample draw order,
+ * matching engine/plotter.py) and a frozen per-sample map (X1 pinned to
+ * the vermillion accent). The user ruled `frozen` the default at the
+ * 2026-08-16 checkpoint — see plot.html's rulings panel — but both stay
+ * wired via `data-palette` on <body> so the alternative remains
+ * inspectable, toggled with no re-render.
+ */
+
+:root {
+  /* ---- ground: warm paper --------------------------------------------- */
+  --paper: #f4ecda;
+  --paper-line: #e6dcc3;
+  --panel: #faf5e7;
+
+  /* ---- chrome: the browser-frame furniture, not the physics ----------- */
+  --chrome-bg: #efe6d2;
+  --chrome-border: #d8cba8;
+  --hover-bg: #e9dfc4;
+
+  /* ---- ink: text --------------------------------------------------------
+   * Near-black with a warm cast, at three opacities rather than three greys,
+   * so secondary text reads as "the same ink, written lighter". */
+  --ink: #2b2620;
+  --ink-70: rgba(43, 38, 32, 0.7);
+  --ink-45: rgba(43, 38, 32, 0.45);
+
+  /* ---- interactive chrome ------------------------------------------------
+   * Muted graphite-blue does the ordinary interactive work (links, the
+   * palette toggle, focus rings) so vermillion never has to. */
+  --graphite-blue: #3c5a6e;
+  --graphite-blue-strong: #2c4454;
+
+  /* ---- accent: rationed --------------------------------------------------
+   * Significance thresholds, mission completion, the signal sample. Nowhere
+   * else. Used in this directory only inside the "frozen" sample palette,
+   * on the X1 (signal) swatch, and on the 5sigma line in the cutflow's
+   * discovery note — see plot.js. */
+  --vermillion: #c0392b;
+
+  /* ---- sample identity: option A, tab10 (reference draw-order) -----------
+   * `matplotlib.colormaps["tab10"].resampled(3)` — exactly what
+   * engine/plotter.py's `cmap = matplotlib.colormaps["tab10"].resampled(len(h_mc))`
+   * assigns when three MC samples are drawn (plotter.py ~line 92). This is
+   * *not* the raw tab10(0)/(1)/(2) triple — resampling a 10-colour map down
+   * to 3 stops changes which colours land at indices 1 and 2. Verified by
+   * running matplotlib directly (PR body carries the command and output):
+   * `#1f77b4, #8c564b, #17becf`. Only the first three entries are used
+   * (X1, X2, X3); the rest of tab10 is not declared because nothing in this
+   * payload uses it. Not the default — see option B and plot.html's rulings
+   * panel. */
+  --tab10-x1: #1f77b4;
+  --tab10-x2: #8c564b;
+  --tab10-x3: #17becf;
+
+  /* ---- sample identity: option B, frozen per-sample map — DEFAULT --------
+   * Ruled the default at the 2026-08-16 checkpoint (plot.html's rulings
+   * panel). X1 is the signal in missions 1 and 2, so it takes the reserved
+   * accent — on-brief per design-brief.md §7 ("the signal sample"). X2 and
+   * X3 get fixed hues that do not collide with tab10 or with
+   * graphite-blue's chrome duty. This mapping does not shift if a fourth
+   * sample is added. */
+  --frozen-x1: var(--vermillion);
+  --frozen-x2: #6b8f5e;
+  --frozen-x3: #b5883a;
+
+  /* ---- plot furniture ---------------------------------------------------
+   * "Black" in the reference (axis frame, ticks, histogram edges, data
+   * markers) is drawn in --ink rather than a true #000, so it stays inside
+   * this file's declared set instead of introducing a bare hex value. */
+  --plot-frame: var(--ink);
+  --plot-edge: var(--ink);
+  --data-marker: var(--ink);
+  --syst-grey: #8a8272;
+  --legend-border: var(--ink);
+
+  /* ---- focus ------------------------------------------------------------ */
+  --focus-ring: var(--graphite-blue);
+
+  /* ---- type ---------------------------------------------------------------
+   * Placeholder stacks, not a font decision: this directory carries no font
+   * files (out of D-003's file scope), so headings and numerics fall back to
+   * named faces likely present on the reviewing machine rather than
+   * Inter/Roboto/Arial/system-ui/Space Grotesk, which `.claude/design/CLAUDE.md`
+   * §2 rules out by name. D-002 self-hosts the real faces. */
+  --font-body: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  --font-mono: "DejaVu Sans Mono", ui-monospace, monospace;
+
+  /* ---- spacing / radius / motion ---------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --radius: 6px;
+  --timing: 180ms;
+}
