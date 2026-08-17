@@ -1,0 +1,142 @@
+/* frame.css — structural chrome carried over from docs/wireframes/base.css.
+ *
+ * Scope note from the D-003 task: this is the tab switcher, the
+ * .browser-frame/.browser-chrome/.browser-content shell, .wf-marker /
+ * .wf-annotations, and the :focus-visible block — copied because they are
+ * useful structure, not because docs/wireframes/ is this task's design
+ * reference. It is not; see plot.html and tokens.css for the actual
+ * direction. Every colour below is a var() into tokens.css; base.css's
+ * literal greyscale hex values are not carried over, and neither is its
+ * opening comment asserting the directory's own colour exhaustiveness —
+ * that assertion belonged to a wireframe-only, greyscale-only task and does
+ * not hold here. Facts about this directory's rendering belong in
+ * verify.py's output, not in a comment.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.page-wrapper {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: var(--space-3);
+}
+
+/* Browser frame shell */
+.browser-frame {
+  max-width: 1160px;
+  margin: 0 auto;
+  border: 1px solid var(--chrome-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.browser-chrome {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+  gap: var(--space-2);
+}
+.browser-dots {
+  display: flex;
+  gap: 6px;
+}
+.browser-dots span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--chrome-border);
+}
+.browser-url {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ink-70);
+  background: var(--panel);
+  border: 1px solid var(--chrome-border);
+  border-radius: 4px;
+  padding: var(--space-1) var(--space-2);
+}
+.browser-controls {
+  display: flex;
+  gap: var(--space-2);
+  font-size: 14px;
+  color: var(--ink-70);
+}
+.browser-content {
+  padding: var(--space-3);
+  overflow: hidden;
+}
+
+/* Tab switcher */
+.main-tabs {
+  display: flex;
+  background: var(--panel);
+  border-bottom: 1px solid var(--chrome-border);
+  overflow-x: auto;
+}
+.tab-btn {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: var(--panel);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-70);
+  white-space: nowrap;
+  transition: color var(--timing), border-color var(--timing);
+}
+.tab-btn:hover { color: var(--ink); background: var(--hover-bg); }
+.tab-btn.active { color: var(--ink); border-bottom-color: var(--graphite-blue); font-weight: 600; }
+
+.option-panel { display: none; padding: var(--space-3); }
+.option-panel.active { display: block; }
+
+/* Inline annotation marker + panel — used for the two open design
+ * questions this task reports rather than decides (legend placement,
+ * sample-colour mapping). Prose here states rationale and opinion, which is
+ * falsifiable only by the reader's judgement, not by inspection. */
+.wf-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--chrome-border);
+  background: var(--panel);
+  font-size: 10px;
+  color: var(--ink-70);
+  vertical-align: super;
+  margin-left: 2px;
+}
+.wf-annotations {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.wf-annotations h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  color: var(--ink);
+}
+.wf-annotations ul { margin: 0; padding-left: 20px; }
+.wf-annotations li { font-size: 13px; color: var(--ink-70); margin-bottom: var(--space-1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-btn { transition: none; }
+}
+
+/* Focus — visible on every interactive element, never removed */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

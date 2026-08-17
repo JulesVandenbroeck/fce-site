@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-003 — interactive plot component (design exploration)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="frame.css" />
+<link rel="stylesheet" href="plot.css" />
+</head>
+<body data-palette="frozen">
+<div class="page-wrapper">
+  <div class="browser-frame">
+    <div class="browser-chrome">
+      <div class="browser-dots"><span></span><span></span><span></span></div>
+      <div class="browser-url">fce.local / mission-1 / results</div>
+    </div>
+
+    <div class="main-tabs" role="tablist" aria-label="Result figures">
+      <button class="tab-btn active" id="tab-hist" type="button" role="tab"
+              aria-selected="true" aria-controls="panel-hist">Histogram</button>
+      <button class="tab-btn" id="tab-cutflow" type="button" role="tab"
+              aria-selected="false" aria-controls="panel-cutflow">Cutflow</button>
+    </div>
+
+    <div class="browser-content">
+      <header class="title-bar">
+        <h1>M-1 · First Light — results</h1>
+        <p class="num">IDEA, √s = 91 GeV</p>
+      </header>
+      <p>
+        D-003 exploration: a hand-written SVG histogram (with ratio panel) and a
+        matching cutflow figure, driven entirely by the hard-coded payload below.
+        This figure's overall <strong>anatomy</strong> — panels, ratio split, frame,
+        stacking, the hatched systematic band, header — follows the reference python
+        figure's structure. It departs from the reference in specific, named
+        respects, each either a user ruling from a checkpoint or a gap this
+        exploration has not built — see the rulings panel at the bottom for what each
+        one is and why. Nothing here ships; see <code>verify.py</code> for what is
+        actually measured.
+      </p>
+
+      <section class="option-panel active" id="panel-hist" role="tabpanel" aria-labelledby="tab-hist">
+        <h2>m(l₁, l₂), stacked, with ratio panel</h2>
+        <div class="plot-controls">
+          <button class="palette-toggle" id="palette-toggle" type="button" aria-pressed="true">
+            Sample colours: frozen per-sample map (default)
+          </button>
+          <p class="plot-readout" id="plot-readout" aria-live="polite">
+            Hover or tab into a bin for its range and yield.
+          </p>
+        </div>
+        <div class="figure-scroll">
+          <div id="hist-figure"></div>
+        </div>
+        <div class="fit-readout">
+          <span class="num" id="fit-mu">μ = —</span>
+          <span class="num" id="fit-z">Z = —</span>
+        </div>
+      </section>
+
+      <section class="option-panel" id="panel-cutflow" role="tabpanel" aria-labelledby="tab-cutflow">
+        <h2>Cutflow — MC composition by stage</h2>
+        <div class="figure-scroll">
+          <div id="cutflow-figure"></div>
+        </div>
+      </section>
+
+      <div class="wf-annotations">
+        <h3>Checkpoint rulings and named deviations from the reference
+          <span class="wf-marker">i</span></h3>
+        <p>
+          This list names every respect in which this figure's rendering is known to
+          differ from <code>engine/plotter.py</code> — some ruled by the user at a
+          checkpoint, some accepted gaps this exploration has not built. It is not
+          presented as a closed set: state what is named here, and if review finds a
+          further difference, name that one too rather than treat this list as
+          disproven by its own past wording (cycle 3's review found this figure's
+          prose claiming a fixed count of exceptions, which a further finding then
+          falsified by arithmetic — see the PR body).
+        </p>
+        <ul>
+          <li>
+            <strong>Legend placement — ruled outside the axes.</strong> Not the
+            coder's recommendation, which (in the previous cycle of this same panel)
+            was to keep the framed, inside-axes legend as the default and defer an
+            outside-axes position to a later task. The user ruled the other way: the
+            legend now sits <em>outside the axes, to the right of the plot area</em>,
+            so it never occludes the Z peak in the 0–150 GeV range. Built at every
+            width this page renders — see <code>verify.py</code>'s dedicated
+            legend-layout sweep, which measures the legend box against the axes box
+            at 1440/1024/768 CSS px and reports both rectangles, plus
+            <code>check_anatomy</code>'s single-width assertion of the same fact,
+            rewritten this cycle to require outside-axes rather than inside. A named
+            exception to the D-001 "full plot parity" ruling, settled 2026-08-16.
+          </li>
+          <li>
+            <strong>Sample colour mapping — ruled frozen per-sample, X1 on the
+            vermillion accent.</strong> This was the coder's own recommendation,
+            taken. Both schemes below are wired up for real, not mocked — the toggle
+            button above the histogram swaps the <code>data-palette</code> attribute
+            on <code>&lt;body&gt;</code>, which is the only thing that changes;
+            nothing re-renders — but <em>frozen</em> is now the default, not
+            <em>tab10</em>. <em>tab10</em> remains selectable and still assigns
+            colour by sample draw order, exactly as <code>engine/plotter.py</code>
+            and <code>engine/cutflow_plotter.py</code> do (as of cycle 4, its X2 and
+            X3 swatches carry <code>matplotlib.colormaps["tab10"].resampled(3)</code>'s
+            actual output — see the PR body for the command and its output — not the
+            raw, unresampled <code>tab10(1)</code>/<code>tab10(2)</code> this
+            directory shipped through cycle 3). <em>Frozen</em> fixes X1 (the signal
+            across missions 1–3) to the reserved vermillion accent — an explicitly
+            sanctioned use per <code>docs/design-brief.md</code> §7 — and gives X2 and
+            X3 hues that do not move as the sample roster grows. A named exception to
+            parity: colour <em>assignment</em> no longer follows reference draw order
+            by default, even though the reference's own resampled tab10 triple stays
+            available under the tab10 toggle.
+          </li>
+          <li>
+            <strong>Ratio-panel error bars carry no horizontal bin-width bar.</strong>
+            The reference draws both a vertical (Poisson) and a horizontal (bin
+            half-width) bar on every ratio-panel point —
+            <code>engine/plotter.py</code>'s <code>ax_ratio.errorbar(centers, ratio,
+            yerr=ratio_err, xerr=widths / 2, …)</code>. This SVG's ratio markers draw
+            only the vertical bar. Found by cycle 3's review; the user accepted it as
+            a deviation at the 2026-08-16 checkpoint rather than have it built this
+            cycle.
+          </li>
+          <li>
+            <strong>The main panel draws its own bottom tick marks.</strong> The
+            reference suppresses them — <code>engine/plotter.py</code>'s
+            <code>ax.tick_params(axis="x", bottom=False, labelbottom=False)</code> —
+            because the ratio panel immediately below shares the same x-axis. Found
+            by cycle 3's review; accepted as a deviation at the same checkpoint.
+          </li>
+          <li>
+            <strong>X-axis major tick spacing differs from the reference's.</strong>
+            <code>plot.js</code>'s main and ratio panels both space their x majors at
+            a fixed 25 GeV (<code>xMajor</code>, set independently of the y-axis's
+            step-selection ladder) — this did not change when cycle 4 fixed that
+            ladder for the y-axis, because the two are unrelated constants in this
+            file, not two consumers of one shared algorithm. Accepted as a deviation
+            at the 2026-08-16 checkpoint; see the PR body for what a direct render of
+            the reference against this same payload actually spaces its x majors at.
+          </li>
+        </ul>
+        <p>
+          <strong>What "parity" means for this figure, precisely.</strong> The D-001
+          pivot ruling was "full plot parity with the reference python figure, ratio
+          panel included." That ruling still governs this figure's overall
+          <strong>anatomy</strong> — panel layout, the 3:1 ratio split, the stacked
+          bands, the hatched systematic band, and the header. It does not hold for
+          the respects named above. Cycle 4 also corrected the main panel's y-axis:
+          through cycle 3 the step-selection ladder in <code>plot.js</code> could
+          only ever land on multiples of an order of magnitude too coarse for this
+          payload, drawing the Z peak at a fraction of the panel height a direct
+          render of the reference actually fills it to — see the PR body for both
+          renders' numbers side by side. A claim that this figure is simply "at
+          parity with <code>engine/plotter.py</code>" is true of its overall anatomy
+          and false of every item named above — name what differs, or don't make the
+          claim.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="payload-data">
+{
+  "meta": {
+    "mission": "M-1",
+    "detector": "IDEA",
+    "energy": "91 GeV",
+    "xLabel": "m(l₁, l₂) [GeV]",
+    "processNames": {
+      "X1": "X1: Z→2ℓ",
+      "X2": "X2: Z→2q",
+      "X3": "X3: Z→2ℓ+γ"
+    }
+  },
+  "edges": [
+    0.0, 3.75, 7.5, 11.25, 15.0, 18.75, 22.5, 26.25, 30.0, 33.75,
+    37.5, 41.25, 45.0, 48.75, 52.5, 56.25, 60.0, 63.75, 67.5, 71.25,
+    75.0, 78.75, 82.5, 86.25, 90.0, 93.75, 97.5, 101.25, 105.0, 108.75,
+    112.5, 116.25, 120.0, 123.75, 127.5, 131.25, 135.0, 138.75, 142.5, 146.25,
+    150.0
+  ],
+  "lumiUnc": 0.025,
+  "systSources": ["jec", "lep", "btag"],
+  "samples": [
+    {
+      "name": "X1",
+      "counts": [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.002, 2.06, 256.914, 4002.496, 7788.114, 1892.744, 57.453, 0.218, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+      ],
+      "weightsSquared": [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0013, 1.277, 159.2867, 2481.5476, 4828.6304, 1173.5013, 35.6206, 0.135, 0.0001, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+      ],
+      "systUp": {
+        "jec": [
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.002, 2.06, 256.914, 4002.496, 7788.114, 1892.744, 57.453, 0.218, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ],
+        "lep": [
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.002, 2.091, 260.768, 4062.534, 7904.935, 1921.135, 58.314, 0.221, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ],
+        "btag": [
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.002, 2.06, 256.914, 4002.496, 7788.114, 1892.744, 57.453, 0.218, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        ]
+      }
+    },
+    {
+      "name": "X2",
+      "counts": [
+        19.074, 22.395, 12.878, 15.59, 21.703, 17.207, 16.717, 17.063, 14.97, 15.127,
+        22.034, 22.482, 18.831, 23.915, 13.795, 21.699, 23.211, 23.915, 21.227, 17.579,
+        22.129, 18.799, 21.356, 23.915, 19.782, 18.421, 21.05, 20.771, 15.859, 14.234,
+        23.915, 22.894, 21.41, 21.69, 23.915, 21.081, 17.034, 23.915, 22.502, 23.915
+      ],
+      "weightsSquared": [
+        17.1663, 20.1554, 11.5898, 14.0308, 19.5328, 15.4859, 15.0454, 15.357, 13.4727, 13.6147,
+        19.8304, 20.2336, 16.948, 21.5239, 12.4156, 19.529, 20.8895, 21.5239, 19.1046, 15.8215,
+        19.9158, 16.9194, 19.2203, 21.5239, 17.8038, 16.5788, 18.9449, 18.6939, 14.2734, 12.8106,
+        21.5239, 20.6044, 19.2687, 19.5213, 21.5239, 18.9727, 15.3304, 21.5239, 20.2515, 21.5239
+      ],
+      "systUp": {
+        "jec": [
+          19.646, 23.067, 13.264, 16.057, 22.354, 17.723, 17.219, 17.575, 15.419, 15.581,
+          22.695, 23.156, 19.396, 24.633, 14.209, 22.35, 23.907, 24.633, 21.864, 18.107,
+          22.792, 19.363, 21.997, 24.633, 20.376, 18.974, 21.681, 21.394, 16.335, 14.661,
+          24.633, 23.581, 22.052, 22.341, 24.633, 21.713, 17.545, 24.633, 23.177, 24.633
+        ],
+        "lep": [
+          19.112, 22.44, 12.903, 15.621, 21.747, 17.241, 16.751, 17.098, 15.0, 15.158,
+          22.078, 22.527, 18.869, 23.963, 13.823, 21.742, 23.257, 23.963, 21.27, 17.615,
+          22.173, 18.837, 21.399, 23.963, 19.822, 18.458, 21.092, 20.813, 15.891, 14.262,
+          23.963, 22.94, 21.452, 21.734, 23.963, 21.123, 17.068, 23.963, 22.547, 23.963
+        ],
+        "btag": [
+          19.455, 22.843, 13.135, 15.902, 22.137, 17.551, 17.051, 17.405, 15.269, 15.43,
+          22.475, 22.931, 19.208, 24.394, 14.071, 22.133, 23.675, 24.394, 21.652, 17.931,
+          22.571, 19.175, 21.783, 24.394, 20.178, 18.789, 21.471, 21.186, 16.177, 14.519,
+          24.394, 23.352, 21.838, 22.124, 24.394, 21.502, 17.374, 24.394, 22.952, 24.394
+        ]
+      }
+    },
+    {
+      "name": "X3",
+      "counts": [
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.001, 0.004, 0.02, 0.087, 0.341,
+        1.197, 3.737, 10.392, 25.728, 56.706, 111.268, 194.376, 302.302, 418.568, 515.962,
+        566.235, 395.161, 343.721, 266.174, 183.506, 112.632, 61.546, 29.941, 12.968, 5.0,
+        1.716, 0.525, 0.143, 0.035, 0.007, 0.001, 0.0, 0.0, 0.0, 0.0
+      ],
+      "weightsSquared": [
+        0.0, 0.0, 0.0, 0.0, 0.0001, 0.0004, 0.0022, 0.0108, 0.0476, 0.1876,
+        0.6581, 2.0555, 5.7158, 14.1505, 31.1881, 61.1975, 106.9068, 166.2661, 230.2125, 283.7794,
+        311.4293, 217.3385, 189.0466, 146.3955, 100.9283, 61.9477, 33.8504, 16.4676, 7.1322, 2.7501,
+        0.944, 0.2885, 0.0785, 0.019, 0.0041, 0.0008, 0.0001, 0.0, 0.0, 0.0
+      ],
+      "systUp": {
+        "jec": [
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.001, 0.004, 0.02, 0.087, 0.341,
+          1.197, 3.737, 10.392, 25.728, 56.706, 111.268, 194.376, 302.302, 418.568, 515.962,
+          566.235, 395.161, 343.721, 266.174, 183.506, 112.632, 61.546, 29.941, 12.968, 5.0,
+          1.716, 0.525, 0.143, 0.035, 0.007, 0.001, 0.0, 0.0, 0.0, 0.0
+        ],
+        "lep": [
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.001, 0.004, 0.02, 0.088, 0.346,
+          1.214, 3.793, 10.548, 26.114, 57.556, 112.937, 197.292, 306.837, 424.847, 523.702,
+          574.729, 401.088, 348.877, 270.166, 186.259, 114.322, 62.469, 30.39, 13.162, 5.075,
+          1.742, 0.532, 0.145, 0.035, 0.008, 0.001, 0.0, 0.0, 0.0, 0.0
+        ],
+        "btag": [
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.001, 0.004, 0.02, 0.087, 0.341,
+          1.197, 3.737, 10.392, 25.728, 56.706, 111.268, 194.376, 302.302, 418.568, 515.962,
+          566.235, 395.161, 343.721, 266.174, 183.506, 112.632, 61.546, 29.941, 12.968, 5.0,
+          1.716, 0.525, 0.143, 0.035, 0.007, 0.001, 0.0, 0.0, 0.0, 0.0
+        ]
+      }
+    }
+  ],
+  "data": [
+    20, 22, 16, 17, 23, 23, 12, 21, 20, 18,
+    27, 20, 26, 51, 74, 157, 232, 335, 448, 542,
+    607, 431, 614, 4230, 7813, 2052, 144, 52, 26, 16,
+    21, 26, 25, 19, 22, 23, 18, 17, 29, 17
+  ],
+  "cutflow": {
+    "stages": ["Total", "≥ 2 leptons"],
+    "samples": ["X1", "X2", "X3"],
+    "counts": {
+      "Total": { "X1": 20200, "X2": 215300, "X3": 4500 },
+      "≥ 2 leptons": { "X1": 14000, "X2": 800, "X3": 3620 }
+    },
+    "totalRaw": 240000,
+    "efficiencyPct": [100.0, 7.7]
+  },
+  "fit": {
+    "mu": 1.02,
+    "muErr": 0.15,
+    "significanceZ": 5.8,
+    "thresholds": { "evidence": 3.0, "discovery": 5.0 }
+  }
+}
+</script>
+
+<script src="plot.js"></script>
+</body>
+</html>
