@@ -204,6 +204,34 @@ From the D-003 cycle-3 review. Three suggested-minor; none blocks.
   by 0 elements, so it passes only because nothing uses it. A comment marking it non-text-safe
   would stop D-002 reaching for it. This is the third time this token has been flagged; it is
   already recorded as *owed to D-002* in `design.md`. _(from D-003 review, cycle 3)_
+- **OPEN `Required` FINDING, MERGED OVER ON THE USER'S OVERRIDE 2026-08-17.**
+  `plot.js:106` — the main-panel y-axis majors are **step 2000** where the reference is
+  **step 1000**. PR #5's criterion 1 ("y-limits *and major ticks* match the reference") is
+  ticked and is half false; the limits do match, to 0.05%.
+  *Reproduction:* render `engine/plotter.py` from `docs/design-explorations/payload.json` and
+  read `ax.get_yticks()`, or more cheaply — this is how the orchestrator confirmed it —
+  `AutoLocator` on `0..8635.47` returns `[0, 1000 … 8000]`. The DOM has `[0, 2000, 4000,
+  6000, 8000]`.
+  *Cause, and it is not what the code says:* `niceCeilingAndStep` computes `max = 8630.71`,
+  `magnitude = 1000`, and rejects step 1000 because `8630.71 / 1000 = 8.63` fails the
+  hard-coded `if (max / step <= 8)`. The comment above it calls this an inherent
+  approximation of matplotlib's two-stage process. It is a tunable constant.
+  *Fix:* `<= 8` → `<= 9`, which matplotlib's own `AutoLocator` effectively uses (bin budget
+  9 over `steps = [1, 2, 2.5, 5, 10]`). The reviewer verified this lands bit-identically on
+  the reference's ticks for this payload. Re-tick criterion 1, or un-tick it and rule the
+  step a deviation.
+  *Do this if `plot.js` is ever touched again* — and note it pairs with the suggested-major
+  below, since the same function is the subject. _(from D-003 review, cycle 4)_
+- **Three of the five tick-ladder rungs are unreachable, and a comment says otherwise.**
+  `plot.js:87,103-108` — `magnitude = 10^floor(log10(max))` forces `max / magnitude ∈ [1, 10)`,
+  so `s = 1` returns whenever the ratio clears the cap and `s = 2` always returns otherwise
+  (ratio/2 < 5). `2.5`, `5`, `10` and the `return { max, step: 10 * magnitude }` fallback are
+  dead under either cap. **Confirmed by the orchestrator.** The comment's "keeps the same
+  five-multiplier ladder" therefore describes code that does not exist, and the dead rungs are
+  *why* the axis can only land on 1× or 2× magnitude — so the next person tuning it will
+  mis-diagnose it exactly as this cycle did. Suggested-major, unfixed at merge.
+  _(from D-003 review, cycle 4)_
+
 From the D-003 cycle-4 review. Four suggested-minor; none blocks.
 
 - **`REFERENCE_PEAK_FRAC` is printed but never compared.** `verify.py:502,522` — the assertion

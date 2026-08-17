@@ -9,14 +9,112 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
+### D-004 — Three node-graph styles
+- **Scope:** `docs/design-explorations/` — `index.html`, `{beamline,bench,board}.{html,css,js}`,
+  `README.md`, extend `tokens.css` and `verify.py`; plus a two-line superseded note at the
+  top of `docs/wireframes/README.md` and nothing else outside the new directory.
+- **Accept:** (1) persistence model differs per page and is inspectable in the DOM;
+  (2) connection interaction differs per page and is driven by real Playwright gestures —
+  Beamline accepts click and rejects drag, Bench the reverse, Board both plus keyboard;
+  (3) all 121 ordered node-type pairs attempted per page, 0 illegal accepted, 0 legal
+  refused; (4) every domain-inventory item present per page via `data-wf`, 0 missing, plus a
+  locked node type present-but-inert; (5) full sweep at three widths with denominators.
+- **Depends on:** D-003 — **cleared 2026-08-17**, merged as `99ec8f3`.
+- **Status:** dispatched 2026-08-17.
+- **The three, pushed apart on what the graph persists** — the one axis CSS cannot swap, and
+  the thing that later lands in `POST /api/run`:
+  - **A · Beamline** — auto-laid rail, persists an ordered edge list only, click-to-connect,
+    colour on node chrome. Best 768 story; gives up all arrangement agency.
+  - **B · Bench** — free canvas, persists `{x, y}`, drag-to-connect, colour on the wires.
+    Its real cost is not the drag — the plot inspector always occludes the graph, so cut and
+    consequence are never co-visible. Framed as the *sandbox-mode candidate*.
+  - **C · Board** — typed columns with slots, persists `{column, slotIndex}`, both gestures
+    plus keyboard, colour on the columns. **Recommended:** the only one where the shape of
+    the page changes per mission (columns appear as missions unlock) and the only one where
+    the plot lives *inside* the graph as the terminal node.
+- **What D-003 hands it, and it is not just a file to import:**
+  - The figure is a **fixed intrinsic 650×460** CSS px (widened from 480 when the legend moved
+    outside the axes). Every layout must budget for that; it does not reflow.
+  - `tokens.css` is the input to D-002 — **harvest the cycle-4 `--tab10-x2`/`--tab10-x3`
+    values, not cycle 3's, which were wrong.** `--ink-45` is 2.60:1 and not text-safe.
+  - Four verification rules earned across D-001's and D-003's seven cycles: name the
+    verification *method* in the criterion; mutation-test every new assertion; list
+    deviations, never count them; and check parity by rendering the reference, never by
+    reading the code. `verify.py` now carries a lint for the third.
+  - Two markup patterns **not** to copy: the `role="tablist"` with no arrow-key handling, and
+    per-item tab stops (D-003 has 40 individually focusable bins).
+- **Branch / PR:** not yet opened
+
+## Ready
+
+_none_
+
+## Blocked
+
+### D-002 — Design token foundation
+- **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
+- **Accept:** every colour, spacing, type-scale, radius, and timing value defined as a
+  custom property; the palette committed with measured AA contrast ratios documented in the
+  file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that are explicitly not
+  Inter/Roboto/system-ui/Space Grotesk
+- **Depends on:** ~~D-001 and the user's D-001 layout decision~~ — **blocker changed
+  2026-08-16.** Now blocked on the user's choice among Beamline / Bench / Board at the D-004
+  checkpoint, with `docs/design-explorations/tokens.css` as its input rather than a blank
+  page. Left pointing at the old blocker it would read as waiting on something extinct.
+- **New scope pressure from the pivot:** the palette must now carry node-type hues, sample
+  identity, and lock state — not just paper, ink and one accent. AA must be measured for
+  labels sitting *on* saturated fills, not only on paper.
+- **Owed from D-001:** the wireframe contrast ratios were measured against wireframe white,
+  because no paper colour exists yet. AA must be re-measured against the real paper token.
+- **Owed from D-003:** `--ink-45` composites to 2.60:1 against paper and fails AA if ever
+  used for text; it is currently unused. Do not inherit it unstated. And take the **corrected**
+  tab10 values — cycle 3 shipped `#ff7f0e`/`#2ca02c`, which are `tab10(0),(1),(2)` unresampled
+  and wrong; cycle 4 corrected them to `#8c564b`/`#17becf`.
+- **Branch / PR:** not yet opened
+
+## Done
+
 ### D-003 — Interactive plot component at reference parity
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
-- **Status:** **cycle-4 review returned 1 required, 1 suggested-major, 4 suggested-minor —
-  escalated to the user 2026-08-17, no cycle 5 dispatched.** Head `4ed75d8`, PR #5 open.
-  Four coder passes, three reviews; already past §5's limit and running on the user's
-  cycle-4 tie-break, so the orchestrator stopped rather than extending it unilaterally.
+- **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
+  `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
+- **Accept:** (1) `verify.py --plot` prints each named anatomy feature present/absent from
+  the DOM; (2) figure `getBoundingClientRect` reported as measured numbers at 1440/1024/768
+  against a floor; (3) cutflow figure complete, efficiency-% count = stage count; (4) full
+  computed-style sweep with denominators at all three widths, including `fill` and `stroke`;
+  (5) `git diff --stat -- src/ tests/ content/` empty.
+- **Depends on:** nothing. Dispatched alone — the figure's real minimum dimensions constrain
+  where every D-004 style can put it, so guessing costs a cycle later.
+- **Why it exists:** the user ruled for full parity with the reference python figure
+  (`fce-project/fce/engine/plotter.py`), ratio panel included. That ruling was then narrowed
+  twice by the user's own later rulings — see the deviation list below.
+- **Status: done (4 cycles, 3 reviews) — merged as `99ec8f3`, on the user's explicit
+  override, with the `Required` finding open.**
+- **Resolution — the second deliberate exception to orchestrator §5, and it must not
+  generalise.** The user was shown the finding, shown that the fix was a one-character change
+  to a constant (`<= 8` → `<= 9`) that the reviewer had already proved lands on the
+  reference's exact tick step, shown the alternative of un-ticking the criterion and ruling
+  the tick step a deviation, and shown the orchestrator's written advice **against** merging
+  as-is. They chose to merge anyway. Recorded here because the rule is otherwise absolute and
+  a silent exception would corrode it.
+  **What this leaves false, stated plainly:** PR #5's criterion 1 reads "main-panel y-limits
+  **and major ticks** match the reference" and is ticked. The limits match to 0.05%; the
+  ticks are step 2000 against the reference's 1000. The tick is wrong and stays wrong in the
+  merged record.
+  **Grounds, such as they are:** `docs/design-explorations/` ships nothing and no application
+  file imports it; the defect is a coarser tick grid on an exploration figure, not a physics
+  or accessibility error; and the finding is in `backlog.md` with its reproduction and its
+  one-line fix. **This does not extend to `src/`, `tests/` or `content/`** — nor, note, to
+  `tokens.css`'s *values*, which D-002 harvests and which were therefore fixed rather than
+  merged wrong.
+- **The cycle-4 review that produced this finding is recorded below.** Head at merge
+  `4ed75d8`. Four coder passes, three reviews; already past §5's limit and running on the
+  user's cycle-4 tie-break, so the orchestrator escalated rather than extending it.
+- **Everything else in the review passed independent re-verification** — see below. The
+  merged figure renders the Z peak at 92.6% of panel height (from ~40%), which is the change
+  this task existed to make.
 - **Review, cycle 4 — and it corrected the previous review, which is the headline.**
   - *Required* — `plot.js:106`. Criterion 1 ("main-panel y-limits **and major ticks** match
     the reference") is ticked but only half met. Limits match to 0.05% (8630.71 vs 8635.47);
@@ -290,65 +388,6 @@ IDs are `D-nnn`, allocated in order and never reused.
      X1 changing colour between missions is a teaching bug. Breaks parity with the reference.
 - **Backlog candidates raised:** hover readout + legend sample-toggle (design-brief §5, not
   built); a sub-768 legend reflow; the reference's green "Discovered:" badge.
-
-## Ready
-
-_none_
-- **Accept:** (1) `verify.py --plot` prints each named anatomy feature present/absent from
-  the DOM; (2) figure `getBoundingClientRect` reported as measured numbers at 1440/1024/768
-  against a ~480×460 floor; (3) cutflow figure complete, efficiency-% count = stage count;
-  (4) full computed-style sweep with denominators at all three widths, including `fill` and
-  `stroke`; (5) `git diff --stat -- src/ tests/ content/` empty.
-- **Depends on:** nothing. Dispatched alone — the figure's real minimum dimensions constrain
-  where every D-004 style can put it, so guessing costs a cycle later.
-- **Why it exists:** the user ruled for full parity with the reference python figure
-  (`fce-project/fce/engine/plotter.py`), ratio panel included.
-- **Branch / PR:** not yet opened
-
-## Blocked
-
-### D-004 — Three node-graph styles
-- **Scope:** `docs/design-explorations/` — `index.html`, `{beamline,bench,board}.{html,css,js}`,
-  `README.md`, extend `tokens.css` and `verify.py`; plus a two-line superseded note at the
-  top of `docs/wireframes/README.md` and nothing else outside the new directory.
-- **Accept:** (1) persistence model differs per page and is inspectable in the DOM;
-  (2) connection interaction differs per page and is driven by real Playwright gestures —
-  Beamline accepts click and rejects drag, Bench the reverse, Board both plus keyboard;
-  (3) all 121 ordered node-type pairs attempted per page, 0 illegal accepted, 0 legal
-  refused; (4) every domain-inventory item present per page via `data-wf`, 0 missing, plus a
-  locked node type present-but-inert; (5) full sweep at three widths with denominators.
-- **Depends on:** D-003
-- **The three, pushed apart on what the graph persists** — the one axis CSS cannot swap, and
-  the thing that later lands in `POST /api/run`:
-  - **A · Beamline** — auto-laid rail, persists an ordered edge list only, click-to-connect,
-    colour on node chrome. Best 768 story; gives up all arrangement agency.
-  - **B · Bench** — free canvas, persists `{x, y}`, drag-to-connect, colour on the wires.
-    Its real cost is not the drag — the plot inspector always occludes the graph, so cut and
-    consequence are never co-visible. Framed as the *sandbox-mode candidate*.
-  - **C · Board** — typed columns with slots, persists `{column, slotIndex}`, both gestures
-    plus keyboard, colour on the columns. **Recommended:** the only one where the shape of
-    the page changes per mission (columns appear as missions unlock) and the only one where
-    the plot lives *inside* the graph as the terminal node.
-- **Branch / PR:** not yet opened
-
-### D-002 — Design token foundation
-- **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
-- **Accept:** every colour, spacing, type-scale, radius, and timing value defined as a
-  custom property; the palette committed with measured AA contrast ratios documented in the
-  file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that are explicitly not
-  Inter/Roboto/system-ui/Space Grotesk
-- **Depends on:** ~~D-001 and the user's D-001 layout decision~~ — **blocker changed
-  2026-08-16.** Now blocked on the user's choice among Beamline / Bench / Board at the D-004
-  checkpoint, with `docs/design-explorations/tokens.css` as its input rather than a blank
-  page. Left pointing at the old blocker it would read as waiting on something extinct.
-- **New scope pressure from the pivot:** the palette must now carry node-type hues, sample
-  identity, and lock state — not just paper, ink and one accent. AA must be measured for
-  labels sitting *on* saturated fills, not only on paper.
-- **Owed from D-001:** the wireframe contrast ratios were measured against wireframe white,
-  because no paper colour exists yet. AA must be re-measured against the real paper token.
-- **Branch / PR:** not yet opened
-
-## Done
 
 ### D-001 — Wireframe exploration: mission screen and recipe builder
 - **SUPERSEDED 2026-08-16 by the user's design pivot.** All ten options were drawn under
