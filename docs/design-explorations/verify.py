@@ -19,7 +19,8 @@ Usage:
                                   # git-diff, prose lint — plus D-004's
                                   # Beamline persistence, connection-gesture,
                                   # 64-pair, inventory, paint, contrast,
-                                  # reduced-motion and network sections
+                                  # pairwise-luminance, reduced-motion and
+                                  # network sections
     python verify.py             # same as --all
 
 Note: D-003's own anatomy checks (`check_anatomy`, `check_ratio_panel`,
@@ -74,6 +75,45 @@ REPO_ROOT = HERE.parent.parent  # docs/design-explorations -> docs -> repo root
 BEAMLINE_HTML = HERE / "beamline.html"
 
 
+def _primary_checkout_root() -> Optional[Path]:
+    """Return the *primary* checkout's root directory, even when this file is
+    being run from inside a `git worktree` (shared §6's documented preview
+    and review workflow — a worktree is not a second clone, it is a second
+    working tree sharing one `.git`).
+
+    `REPO_ROOT.parent` (a plain path join) resolves against whatever
+    directory this file happens to be sitting in. From a worktree, that is
+    `.claude/worktrees/<name>/../..`, which is the *worktree's own* root, not
+    the primary checkout — so a sibling lookup like `../fce-project` walks
+    off into nothing (D-004 cycle-2 review, suggested-major 2, reproduced
+    live from a worktree).
+
+    `git rev-parse --path-format=absolute --git-common-dir` is the fix: it
+    always returns the primary checkout's `.git` directory, from *any*
+    worktree attached to it, because all worktrees of one repo share that
+    one `.git`. Its parent is the primary checkout's root. Returns None
+    (rather than raising) if `git` is unavailable or this is not a git
+    checkout at all, so the pip-installed-`fce` branch in
+    `_resolve_reference_graph_py` still gets a chance to resolve."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=HERE,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    if not out:
+        return None
+    git_common_dir = Path(out)
+    # `--git-common-dir` names the `.git` directory itself; its parent is the
+    # checkout root ("fce-site", per the fce-project/fce-site sibling layout
+    # shared §2 describes).
+    return git_common_dir.parent
+
+
 def _resolve_reference_graph_py() -> Path:
     """Locate the vendored reference's `ui/graph.py`, used to derive the
     legal node-kind connection pairs by *executing* the reference's own
@@ -83,19 +123,24 @@ def _resolve_reference_graph_py() -> Path:
     Two paths, tried in order (D-004 cycle-1 review, suggested-major 4):
     the `fce` package if it is pip-installed in *this* interpreter — the
     provenance tokens.css's node-identity comment actually claims — else a
-    sibling git checkout at `../fce-project` (relative to this repo's own
-    parent), which is what this checker has always actually read from,
-    since `fce` is not installed in this project's own `.venv`. Neither
-    path is asserted to exist here; `check_beamline_pairs` reports the path
-    it tried and fails loudly if it does not resolve, rather than this
-    function silently returning a path nothing backs."""
+    sibling git checkout at `../fce-project`, resolved against the *primary*
+    checkout's root (`_primary_checkout_root`, D-004 cycle-2 review,
+    suggested-major 2) so this also works from inside a `git worktree`, not
+    only from the primary checkout itself. If `_primary_checkout_root`
+    cannot determine that (not a git checkout, or `git` unavailable), this
+    falls back to the plain `REPO_ROOT.parent` join so the function still
+    returns *some* path rather than raising. Neither candidate path is
+    asserted to exist here; `check_beamline_pairs` reports the path it tried
+    and fails loudly if it does not resolve, rather than this function
+    silently returning a path nothing backs."""
     spec = importlib.util.find_spec("fce")
     if spec and spec.submodule_search_locations:
         for loc in spec.submodule_search_locations:
             candidate = Path(loc) / "ui" / "graph.py"
             if candidate.exists():
                 return candidate
-    return REPO_ROOT.parent / "fce-project" / "fce" / "ui" / "graph.py"
+    primary_root = _primary_checkout_root() or REPO_ROOT
+    return primary_root.parent / "fce-project" / "fce" / "ui" / "graph.py"
 
 
 REFERENCE_GRAPH_PY = _resolve_reference_graph_py()
@@ -2473,6 +2518,135 @@ def check_beamline_contrast(pw: Playwright) -> bool:
     return ok_nodes and ok_locked and ok_general
 
 
+# The 8 node-identity fills, name -> the label `check_beamline_pairwise_
+# luminance` prints for it. Kept as its own small map (not reused from
+# `BEAMLINE_ADDABLE_KINDS`) because the two lists are indexed by different
+# things -- the reference's own node-kind strings there, this file's own
+# token names here -- and coupling them would make a rename of either one
+# silently break the other.
+NODE_FILL_TOKENS = [
+    "--node-data",
+    "--node-multiplicity",
+    "--node-selection",
+    "--node-obs-global",
+    "--node-obs-object",
+    "--node-obs-vecsum",
+    "--node-obs-custom",
+    "--node-histogram",
+]
+
+
+def hex_to_rgb(value: str) -> Optional[tuple[int, int, int]]:
+    """Parse a literal `#rrggbb` (or `#rgb`) token value into an (r, g, b)
+    triple, 0-255 per channel. Returns None for anything else (a `var()`
+    reference, an `rgba()` call, a bare keyword) -- this check only makes
+    the pairwise-luminance claim about the tokens it can read as a literal
+    colour, and says so rather than guessing at the rest."""
+    value = value.strip()
+    m = re.match(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", value)
+    if not m:
+        return None
+    h = m.group(1)
+    if len(h) == 3:
+        h = "".join(ch * 2 for ch in h)
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+def check_beamline_pairwise_luminance() -> bool:
+    """Design manual §2 rule 1 makes node-kind hue "what makes the graph
+    readable at a glance"; D-004 cycle-2 review's suggested-major 1 found
+    that identity resting on hue *alone* fails under colour-vision
+    deficiency, because CVD collapses hue while leaving luminance intact.
+    Three independent methods (two CVD-matrix simulations, one plain
+    relative-luminance read of the raw tokens) landed on the same pairs at
+    the same near-1:1 ratios -- worst case `data` vs `multiplicity` at
+    1.011:1, i.e. indistinguishable regardless of which CVD model is
+    trusted.
+
+    This check is deliberately NOT a CVD simulation. It does not ship a
+    Machado (or any other) confusion-line matrix, and it does not need to:
+    WCAG relative luminance is computed from linear-light RGB with fixed
+    channel weights, independent of which cone type failed, so two colours
+    separated in luminance stay separated under every CVD type by
+    construction -- protanopia, deuteranopia, tritanopia, and full
+    achromatopsia all preserve luminance ordering (they remove or attenuate
+    a cone response, not the eye's luminance channel). A hue-only palette
+    can collapse under any of them; a luminance-separated one cannot, by
+    the same arithmetic that makes WCAG contrast a colour-blind-safe metric
+    for *text* in the first place. That is also why this lives in
+    verify.py rather than only in a tokens.css comment: it is a measured,
+    re-checkable property, not an assertion D-005 and D-006 would have to
+    take on faith.
+
+    The check: parse every `--node-*` fill directly from tokens.css's
+    source text (a literal `#rrggbb`, not a live-page resolution -- there
+    is nothing to resolve, these are not `var()`-of-`var()` chains), compute
+    all 28 unordered pairwise WCAG contrast ratios, and require every one to
+    clear 1.15:1 (the floor this task's dispatch set, well inside the
+    1.246:1 ceiling an 8-step luminance ladder admits before the white-label
+    4.5:1 floor below breaks) -- plus, on the same parsed values, that
+    white-on-fill contrast (`--node-label-on-fill` is `#ffffff`, asserted
+    rather than assumed) still clears 4.5:1 for all 8, since luminance is
+    being spent as a *new* identity channel and must not spend down the one
+    this palette already had. The full 28-ratio table is printed either
+    way, with the 4.5:1 denominator stated in the white-on-fill lines and
+    the 1.15:1 floor stated in the pairwise ones, so a future change to
+    this palette is checked against both numbers again rather than
+    re-derived from scratch."""
+    section("Beamline node-fill pairwise luminance -- CVD-robust separation, no simulation matrix needed")
+    tokens = parse_root_tokens(TOKENS_CSS.read_text())
+
+    fills: dict[str, tuple[int, int, int]] = {}
+    missing = []
+    for name in NODE_FILL_TOKENS:
+        raw = tokens.get(name)
+        rgb = hex_to_rgb(raw) if raw is not None else None
+        if rgb is None:
+            missing.append((name, raw))
+        else:
+            fills[name] = rgb
+    ok_parsed = not missing
+    line(
+        f"All {len(NODE_FILL_TOKENS)} --node-* fills parsed as literal #rrggbb from tokens.css",
+        ok_parsed,
+        "ok" if ok_parsed else f"unparseable: {missing}",
+    )
+    if not ok_parsed:
+        return False
+
+    white = (255, 255, 255)
+    white_ok = True
+    print("       white-on-fill (needs >= 4.5:1):")
+    for name, rgb in fills.items():
+        ratio = contrast_ratio(white, rgb)
+        passed = ratio >= 4.5
+        white_ok = white_ok and passed
+        mark = "ok" if passed else "BELOW AA"
+        print(f"         {name:20s} {ratio:6.2f}:1  {mark}")
+    line("White node-title text clears 4.5:1 against every --node-* fill", white_ok)
+
+    names = list(fills.keys())
+    pairs = []
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            ratio = contrast_ratio(fills[names[i]], fills[names[j]])
+            pairs.append((ratio, names[i], names[j]))
+    pairs.sort()
+    print(f"       all {len(pairs)} unordered pairwise ratios (needs >= 1.15:1):")
+    for ratio, a, b in pairs:
+        mark = "ok" if ratio >= 1.15 else "BELOW FLOOR"
+        print(f"         {a:20s} vs {b:20s} = {ratio:6.3f}:1  {mark}")
+    worst_ratio, worst_a, worst_b = pairs[0]
+    ok_pairwise = worst_ratio >= 1.15
+    line(
+        "Every one of the 28 unordered --node-* fill pairs clears 1.15:1",
+        ok_pairwise,
+        f"worst is {worst_a} vs {worst_b} at {worst_ratio:.3f}:1",
+    )
+
+    return ok_parsed and white_ok and ok_pairwise
+
+
 def check_beamline_focus_walk(pw: Playwright, html_path: Optional[Path] = None) -> bool:
     """Drive a real keyboard Tab walk from the top of the page (same method
     as D-003's `check_focus_walk`) and check every reachable stop for a
@@ -2717,6 +2891,7 @@ def main() -> None:
             all_results.append(("beamline-inventory", check_beamline_inventory(pw)))
             all_results.append(("beamline-paint-sweep", check_beamline_paint_sweep(pw)))
             all_results.append(("beamline-contrast", check_beamline_contrast(pw)))
+            all_results.append(("beamline-pairwise-luminance", check_beamline_pairwise_luminance()))
             all_results.append(("beamline-focus-walk", check_beamline_focus_walk(pw)))
             all_results.append(("beamline-reduced-motion", check_beamline_reduced_motion(pw)))
             all_results.append(("beamline-network-and-errors", check_beamline_network_and_errors(pw)))

@@ -156,17 +156,34 @@
    * below (D-004 cycle-1 review, Required 1 / suggested-major 2) — the same
    * slate doing node-identity duty and ordinary interactive-chrome duty on
    * one screen, and the direct cause of the focus ring's worst-case failure
-   * against this fill. Replaced with a deep indigo-violet that reads as its
-   * own hue against every other value in this block (measured pairwise
-   * ratios and HSL angle in the PR body), not just against graphite-blue. */
-  --node-data: #8a5c0d;
-  --node-multiplicity: #5c6b1f;
-  --node-selection: #2e7d4f;
-  --node-obs-global: #1f7a72;
-  --node-obs-object: #3d5aa8;
-  --node-obs-vecsum: #7d4c93;
-  --node-obs-custom: #9c3f78;
-  --node-histogram: #4a2f6e;
+   * against this fill.
+   *
+   * Every fill below was then re-lit at cycle 3 (D-004 cycle-2 review,
+   * suggested-major 1): the cycle-2 set only broke isoluminance for
+   * `--node-histogram` — the other seven still spanned relative luminance
+   * L = 0.111-0.158, a band so narrow that stripping hue (the effect of any
+   * CVD type) collapsed several pairs to near-identical greys, worst case
+   * `data` vs `multiplicity` at 1.01:1. Hue was kept exactly as it was for
+   * all 8 (same H in HSL, to one decimal) — this is luminance added as a
+   * *second* identity channel, not hue traded away for one. Each fill's
+   * lightness was retargeted on its own ladder rung, spaced so every one of
+   * the 28 unordered pairs clears 1.15:1 (worst case, printed by verify.py's
+   * `--beamline` pairwise-luminance section, is `obs-global` vs `selection`
+   * at 1.195:1 — comfortably inside the 1.246:1 ceiling the 4.5:1
+   * white-label floor admits for an 8-step ladder), while every white-label
+   * pairing still clears 4.5:1 (worst case now 4.79:1, up from the 4.61:1 a
+   * first pass at this ladder produced, given deliberate headroom rather
+   * than sitting on the floor). See `check_beamline_pairwise_luminance` for
+   * why luminance separation alone — with no CVD simulation matrix — is
+   * sufficient and preferred here. */
+  --node-data: #775315;
+  --node-multiplicity: #465315;
+  --node-selection: #26824c;
+  --node-obs-global: #1c726a;
+  --node-obs-object: #17264f;
+  --node-obs-vecsum: #4c245e;
+  --node-obs-custom: #732154;
+  --node-histogram: #1e122e;
   --node-label-on-fill: #ffffff;
 
   /* ---- node shadow (D-004) -------------------------------------------------
