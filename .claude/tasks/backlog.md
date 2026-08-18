@@ -285,6 +285,27 @@ is a false provenance claim in `tokens.css`, the file D-002 harvests.
   judgement call best settled when the palette is re-tuned for colour-vision deficiency, since
   that work moves the same colours. _(from D-004 review, cycle 2)_
 
+From the D-004 cycle-3 review. Three suggested-minor; none blocks. The first is folded into
+**D-008** as an acceptance criterion rather than left here; the other two are PR-body accuracy
+and are historical now that #6 is merged.
+
+- **`check_beamline_pairwise_luminance` hard-codes white.** `verify.py:2617` —
+  `white = (255, 255, 255)` while the docstring says `--node-label-on-fill` is "asserted rather
+  than assumed". The token is never read, so if it ever moves to an off-white the check keeps
+  measuring pure white and silently over-reports. **Carried into D-008 criterion 4**, since
+  that task rewrites this function's docstring anyway. _(from D-004 review, cycle 3)_
+- **PR #6's criterion 4 overstates hue precision.** It claims every fill kept its exact HSL hue
+  "to one decimal"; the real drift is up to 0.7° (`multiplicity` +0.7, `obs-custom` −0.5,
+  `selection`/`obs-global` −0.3, `obs-object` +0.2). The substance holds — all within 1°, hue
+  was clearly not traded away for lightness, which was the point — but the precision claim does
+  not. Same failure shape as the exhaustive-claim family: the phrasing outran the measurement.
+  _(from D-004 review, cycle 3)_
+- **PR #6's verification block is reformatted, not verbatim.** It prints the summary three
+  sections per line where the program prints one, and says "all 25 sections" while listing 26.
+  Every number in it reproduces exactly, so this is presentation only — but the verification
+  block is the one part of a PR body that must be a transcript, because it is what the reviewer
+  is being asked to trust. _(from D-004 review, cycle 3)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light
