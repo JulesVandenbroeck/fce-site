@@ -27,10 +27,65 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-003 — cleared 2026-08-17, merged as `99ec8f3`.
 - **Branch / PR:** `task/d-004-node-graphs` — **#6**. (The branch pre-existed at `c86981c`
   with no commits from the stopped first attempt; reused rather than re-cut.)
-- **Status:** **in rework (cycle 3)** — cycle 1: 2 required, 5 suggested-major, 5
-  suggested-minor. Cycle 2 fixed all of them, overruling none. **Cycle-2 review: 0 required,
-  2 suggested-major, 3 suggested-minor.** Not yet approved — §5 needs suggested-major at 0 or
-  overruled. **This is the last cycle before the §5 loop limit.**
+- **Status:** **cycle 3 delivered 2026-08-18, in review.** Cycle 1: 2 required, 5
+  suggested-major, 5 suggested-minor. Cycle 2 fixed all of them, overruling none. Cycle-2
+  review: 0 required, 2 suggested-major, 3 suggested-minor. Cycle 3 fixed both majors,
+  overruling neither. **This is the last cycle before the §5 loop limit — if the cycle-3
+  review is not clean, the task goes to the user as underspecified, not to a cycle 4.**
+- **Bookkeeping loss, recorded honestly:** cycle 2's three suggested-minors were written down
+  as "two folded into cycle 3, one backlogged". The backlogged one is named in `backlog.md`;
+  **the two folded ones were never named anywhere and are lost.** Minors never block, so
+  cycle 3 proceeded on the two majors alone. Name every finding individually in future, even
+  the minors that are being handled immediately.
+
+- **Cycle 3 delivered 2026-08-18. Verified independently by the orchestrator, and the
+  verification found something the coder did not report:**
+  - *Suggested-major 2 (worktree resolution) fixed.* `_primary_checkout_root()` resolves the
+    reference via `git rev-parse --path-format=absolute --git-common-dir`. The coder ran it
+    from inside its own worktree — the actual failing workflow, not a proxy — and
+    `beamline-pairs` reports the allowlist executed from the real
+    `fce-project/fce/ui/graph.py`, deriving 13 legal pairs. Verified before the fix that the
+    incantation returns the primary checkout's `.git` from here.
+  - *Suggested-major 1 (isoluminant palette) fixed, and fixed well on the axis I asked for.*
+    All eight fills re-lit onto a luminance ladder. **Recomputed independently from the pushed
+    tokens; every number reproduces:** worst pairwise contrast among the 28 pairs is
+    **1.195:1** (was 1.011:1) against the 1.15 floor I set, and the five worst pairs sit at
+    1.195–1.208, so the ladder is near-optimally even rather than merely clearing the bar.
+    Worst white-on-fill is **4.79:1**, all eight still above 4.5 — so the focus ring, which
+    rings in the same white, still clears SC 2.4.11's 3:1 floor everywhere.
+    **The part worth recording: hue drift is at most 0.7°.** I asked for lightness to be
+    *added* as a second channel rather than substituted for hue, which was the criterion I
+    was least confident would survive contact with the palette. It did, exactly.
+  - **A regression the coder did not report and my brief did not anticipate — protanopia.**
+    Re-simulating all three CVD types (Machado 2009, severity 1.0) over the 28 pairs:
+
+    | | worst pair before | worst pair after |
+    |---|---|---|
+    | deuteranopia | obs-global vs obs-custom **7.8** | obs-vecsum vs obs-custom **19.3** |
+    | protanopia | data vs multiplicity **20.8** | data vs multiplicity **9.3** |
+    | tritanopia | data vs obs-custom **18.7** | selection vs obs-global **19.4** |
+
+    The headline deuteranopia collision that started this is genuinely resolved, 2.5× better.
+    Tritanopia is unchanged. **But protanopia regressed from 20.8 to 9.3**, so the palette's
+    worst case across all three types moved only 7.8 → 9.3. Better, but not the fix the
+    numbers in the PR body imply.
+    *The cause is a hole in the proxy I prescribed, so this one is mine, not the coder's.*
+    `--node-data` `#775315` and `--node-multiplicity` `#465315` differ almost only in the red
+    channel. Standard relative luminance weights red at 0.2126, so the ladder counts them as
+    separated (1.208:1) — but a protanope has strongly reduced red sensitivity, so to them
+    those two fills are close to isoluminant *and* on the lost red-green hue axis at once.
+    **A luminance ladder computed with the standard coefficients is not a CVD-safe proxy for
+    pairs separated mainly in red.** That is the general lesson; it will apply again to D-002.
+    Not raised with the coder directly — it goes to the cycle-3 reviewer to find or not find
+    on its own (§4 rule 3), and it is not `Required` for the same reason the original was not:
+    every node also carries a text label, so nothing is unreadable.
+- **Scope verified by the orchestrator:** `git diff --name-only main...origin/task/d-004-node-graphs`
+  is exactly the five scoped files; the diff against `src/`, `tests/`, `content/` and
+  `.claude/` is empty — the contamination from the incident below has not recurred.
+- **PR body re-checked before dispatching the cycle-3 review** (§4 rule 3): carries the
+  cycle-3 changes, the new criteria marked with evidence, a real `--all` transcript, the
+  mutation test of the new check shown failing and restored, and the worktree-run proof.
+  Stands alone.
 - **Review, cycle 2 — both required findings confirmed genuinely fixed.** The reviewer
   re-derived every criterion against something it ran rather than against the PR body: its own
   Playwright script at three widths plus reduced-motion, its own 17-stop tab walk (8 ports
