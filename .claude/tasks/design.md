@@ -27,8 +27,65 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-003 — cleared 2026-08-17, merged as `99ec8f3`.
 - **Branch / PR:** `task/d-004-node-graphs` — **#6**. (The branch pre-existed at `c86981c`
   with no commits from the stopped first attempt; reused rather than re-cut.)
-- **Status:** **in rework (cycle 2)** — review cycle 1 returned **2 required, 5
-  suggested-major, 5 suggested-minor**.
+- **Status:** **in review (cycle 2)** — cycle 1 returned **2 required, 5 suggested-major,
+  5 suggested-minor**; cycle 2 fixed both required and all five suggested-major, **overruling
+  none**.
+- **Cycle 2 delivered 2026-08-18. Verified independently by the orchestrator, not taken from
+  the coder's report:**
+  - *Required 1 fixed at the right layer.* `.port:focus-visible` now rings with
+    `--node-label-on-fill` (white) instead of `--graphite-blue`. Recomputed against all eight
+    fills: **5.05:1 worst case** (selection), 10.92:1 best — every one clears SC 2.4.11's 3:1
+    floor, and in fact clears the 4.5:1 text floor too. Was 1.06–1.45:1. The `border-radius`
+    override that made a focused port morph from circle to square is gone.
+  - *Suggested-major 1 fixed.* `.node:nth-child(1..5)` now carry **only** `animation-delay`;
+    hue comes from `.node--<kind>` alone. Confirmed by reading the committed file.
+  - *Suggested-major 2 fixed.* `--node-histogram` `#38566b` → `#4a2f6e`. Separation from
+    `--graphite-blue` goes 1.06:1 → **1.50:1**, and white-on-histogram is now 10.92:1.
+    **Note for the reviewer's judgement, not settled by me:** 1.50:1 is still a low *contrast*
+    number, but contrast is the wrong metric for "are these two hues distinguishable" — two
+    very different hues can share a luminance. The coder's stated basis is a 62° hue-angle
+    separation (purple against slate-blue), which is the right axis for the finding as raised.
+  - *Required 2, and the three remaining majors* — reported fixed by the coder
+    (focus check now composites and asserts >= 3:1, with a mutation transcript;
+    `check_beamline_contrast` clicks the three undemonstrated kinds into existence before
+    measuring; `box-shadow` literals moved to a new `--node-shadow` token and the paint sweep
+    extended to see `box-shadow`; `REFERENCE_GRAPH_PY` resolved via the installed `fce`
+    package with the sibling checkout as fallback, prerequisite documented for D-005/D-006).
+    **Not independently re-verified by me — that is the review's job.**
+  - *Coder reports* `verify.py --all` → 25/25 PASS with D-003's numbers unchanged (peak fill
+    0.926), flake8 clean.
+- **Scope re-checked after the git incident below:** `git diff --name-only main...HEAD` is now
+  exactly the five scoped files; `git diff --stat main...HEAD -- src/ tests/ content/` empty.
+
+#### Orchestrator git error, 2026-08-18 — bookkeeping commits landed on a task branch
+**This is the §3 shared-`HEAD` failure the manual documents, and I walked into it.** The
+cycle-1 coder checked `task/d-004-node-graphs` out **in the main working directory** rather
+than in a worktree. I then ran three bookkeeping commits without checking `HEAD`, so
+`fbf9c7c`-equivalents landed on the **task branch** instead of `main`. `git push origin main`
+pushed an unchanged ref and reported success, so nothing surfaced it.
+
+Two rules were broken at once: §4's carve-out says bookkeeping goes **straight to `main` and
+never appears on a task branch**, and the contaminated branch put
+`.claude/tasks/design.md` — which carries my written record of the cycle-1 review and my
+framing of the whole task — **inside the PR diff the reviewer reads**. That is §4 rule 3:
+the cycle-2 reviewer would have read my summary of cycle 1 instead of forming its own view.
+
+Recovery, using no forbidden operation: the three commits were **cherry-picked** onto `main`
+(`fbf9c7c`, `6a3f10f`, `2e8dfd0`) — the same remedy D-001 used for its contaminated branch —
+and `main` was then merged **into** the branch, which is the manual's own prescribed fix for a
+stale branch. The merge advanced the merge-base, so the two `.claude/tasks/*.md` files drop
+out of `main...HEAD`. Verified: no file under `docs/` changed in that merge, and the task
+files on the branch are byte-identical to `main`'s.
+
+The merge was performed by the orchestrator rather than the coder only because the cycle-2
+agent could no longer be resumed. It changed no file content and touched nothing under
+`docs/`, `src/`, `tests/` or `content/`.
+
+**The standing fix:** a coder must never check a task branch out in the main working
+directory — `git worktree add` or `isolation: "worktree"`, every time, even for a single
+agent. §3 justifies this for *parallel* dispatch; this incident shows a **single** agent is
+enough to cause it, because the orchestrator shares that working directory. Check
+`git symbolic-ref --short HEAD` before every bookkeeping commit.
 - **Review, cycle 1 — and it found a real accessibility defect the checker was built to
   miss.**
   - *Required 1* — `beamline.css:47-52`. The focus ring is `--focus-ring` (= `--graphite-blue`
