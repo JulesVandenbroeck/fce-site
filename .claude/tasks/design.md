@@ -27,7 +27,56 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-003 — cleared 2026-08-17, merged as `99ec8f3`.
 - **Branch / PR:** `task/d-004-node-graphs` — **#6**. (The branch pre-existed at `c86981c`
   with no commits from the stopped first attempt; reused rather than re-cut.)
-- **Status:** delivered 2026-08-18, **in review (cycle 1)**.
+- **Status:** **in rework (cycle 2)** — review cycle 1 returned **2 required, 5
+  suggested-major, 5 suggested-minor**.
+- **Review, cycle 1 — and it found a real accessibility defect the checker was built to
+  miss.**
+  - *Required 1* — `beamline.css:47-52`. The focus ring is `--focus-ring` (= `--graphite-blue`
+    `#3c5a6e`) drawn with `outline-offset: 2px` on a 20 px port, so it lands **on top of the
+    node's own saturated fill**. It fails WCAG 2.2 SC 2.4.11's 3:1 floor against **all eight**
+    node hues. **Orchestrator recomputed all eight independently and they reproduce to the
+    digit:** histogram 1.06, obs-object 1.12, obs-vecsum 1.16, obs-custom 1.18, multiplicity
+    1.24, data 1.26, obs-global 1.42, selection 1.45. On `--node-histogram` the reviewer
+    tabbed to it and screenshotted it: genuinely imperceptible, the only remaining cue being
+    the port accidentally morphing from a circle to a rounded square. **8 of the 17 keyboard
+    stops have no usable focus indicator.**
+  - *Required 2* — `verify.py:2405-2410`. `check_beamline_focus_walk` defines "visible focus
+    ring" as `matches(':focus-visible') && outlineStyle !== 'none' && outlineWidth > 0`.
+    **Confirmed verbatim by the orchestrator.** That is a *presence* test, not a
+    *perceivability* test — it returns PASS on a 1.06:1 ring. So the report line "17 carried a
+    visible focus ring, 0 did not", and criterion 5's claim resting on it, are not supported
+    by what the check measures. This is the D-003 cycle-1 failure class exactly: an assertion
+    that cannot fail in the way that matters.
+  - *Suggested-major ×5* — position-decides-hue (`.node:nth-child(1..5)` set `background`
+    alongside `animation-delay`; **confirmed** — `(0,2,0)` beats `.node--<kind>`'s `(0,1,0)`,
+    so for the first five rail slots the hue is decided by **position, not kind**, and it is
+    invisible today only because the demo order happens to match); `--node-histogram` and
+    `--graphite-blue` are 1.06:1 apart and read as one colour doing two unrelated jobs; the
+    armed-port state swaps the fill to `--graphite-blue`, taking the most important feedback
+    in the whole click-to-connect model from 4.29–6.59:1 down to 1.06–1.45:1 and carrying
+    nothing in the accessibility tree; `verify.py:63` hard-codes a sibling `../fce-project`
+    checkout, so the **shared** checker D-005/D-006 inherit is reproducible on one machine;
+    and `box-shadow: 0 1px 0 rgba(0,0,0,0.15)` is a hard-coded colour outside `tokens.css`
+    that `PAINT_PROPS` cannot catch and that falsifies `beamline.css:1-2`'s own header.
+  - *Suggested-minor ×5* — two folded into cycle 2 (see below), three backlogged.
+  - **What the review verified rather than assumed:** scope (5 files, `+1911/-13`, the 13
+    deletions all in `verify.py`'s docstring and an args guard, no D-003 check body altered),
+    flake8 clean, 49 pytest passes, `verify.py --all` 25/25 reproduced with D-003's numbers
+    unchanged, **its own Playwright drive** at three widths, its own 216-element scan for
+    coordinate-shaped attributes after four real add-node clicks, its own real
+    `mouse.down/move/up` and keyboard connection attempts, and — the best of it — it
+    **`exec`'d `_VALID_CONNECTIONS` out of the reference `ui/graph.py` and regex-extracted
+    `create_node("…")` from `fce.py` itself**, then diffed the result against `beamline.js`'s
+    table: symmetric difference empty. Criterion 3 is checked against the reference's running
+    code, not against my dispatch.
+- **Both of my flagged doubts resolved, and one of them against me.** (1) Criterion 5's
+  "5 of 8 hues" deviation is **not** a defect: the reviewer recomputed all eight ratios from
+  the raw tokens itself and every number reproduces, so the values are true regardless of how
+  many nodes exist on a fresh load. What remains is that the *sweep* measures five of them
+  while three are asserted — worth closing when the focus fix touches this code anyway.
+  (2) The claim that the inherited comment was breaking D-003's token parser is **not
+  confirmed**; the reviewer reports 25/25 with D-003's numbers unchanged, which shows the
+  parser works now, not that it was broken before. Left unproven rather than recorded as fact.
 - **Coder reports** (unverified by anyone else yet): `verify.py --all` → **25/25 sections
   PASS**, including every pre-existing D-003 section unchanged; `flake8` clean;
   `git diff --name-only main...HEAD` exactly the 5 scoped files; `git diff --stat
