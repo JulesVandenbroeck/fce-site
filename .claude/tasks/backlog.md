@@ -278,6 +278,13 @@ is a false provenance claim in `tokens.css`, the file D-002 harvests.
   enough to read as a second language; separating the badge from the label would help.
   _(from D-004 review, cycle 1)_
 
+- **Hover previews the armed state on every port the pointer crosses.**
+  `beamline.css:265-272` — `.port--armed` and `.port:hover:not(.port--absent)` both set
+  `border-color: var(--graphite-blue-strong)`, so hovering an unarmed port produces the armed
+  colour. Width and scale steps still separate them. Left out of cycle 3 deliberately: it is a
+  judgement call best settled when the palette is re-tuned for colour-vision deficiency, since
+  that work moves the same colours. _(from D-004 review, cycle 2)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light

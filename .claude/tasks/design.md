@@ -27,9 +27,45 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-003 — cleared 2026-08-17, merged as `99ec8f3`.
 - **Branch / PR:** `task/d-004-node-graphs` — **#6**. (The branch pre-existed at `c86981c`
   with no commits from the stopped first attempt; reused rather than re-cut.)
-- **Status:** **in review (cycle 2)** — cycle 1 returned **2 required, 5 suggested-major,
-  5 suggested-minor**; cycle 2 fixed both required and all five suggested-major, **overruling
-  none**.
+- **Status:** **in rework (cycle 3)** — cycle 1: 2 required, 5 suggested-major, 5
+  suggested-minor. Cycle 2 fixed all of them, overruling none. **Cycle-2 review: 0 required,
+  2 suggested-major, 3 suggested-minor.** Not yet approved — §5 needs suggested-major at 0 or
+  overruled. **This is the last cycle before the §5 loop limit.**
+- **Review, cycle 2 — both required findings confirmed genuinely fixed.** The reviewer
+  re-derived every criterion against something it ran rather than against the PR body: its own
+  Playwright script at three widths plus reduced-motion, its own 17-stop tab walk (8 ports
+  ringed white at 5.05–10.92:1, 9 chrome stops at 6.20:1, locked tile unreachable), its own
+  contrast sweep over **103 text-bearing elements after instantiating all 8 node kinds** (0
+  below AA), its own click/drag/illegal-pair drive, and its own execution of the reference
+  allowlist confirming 13 legal pairs. It also audited scope **per commit**, confirming the two
+  `design:` commits touch only the five scoped files and the `orchestrator:` commits are
+  net-zero against the merge base — which independently closes the contamination incident
+  recorded below.
+  - *Suggested-major 1* — `tokens.css:162-169`. The 8 node hues are **near-isoluminant**, so
+    kind identity rests on hue alone and collides under colour-vision deficiency.
+    **Orchestrator re-simulated this independently (Machado 2009 matrices) and confirms it:**
+    seven of the eight span relative luminance **0.111–0.158**, and under deuteranopia
+    `--node-obs-global` `#1f7a72` and `--node-obs-custom` `#9c3f78` land at RGB (102,106,115)
+    and (98,103,118) — **distance 5.8**, the same colour. Under protanopia `data`/`multiplicity`
+    are 21.7 apart and `obs-object`/`obs-vecsum` 24.9. (The reviewer reported 5.4 / 18.9 / 21.6;
+    different simulation matrices, identical conclusion and identical pairs.) Not `Required`
+    because every node also carries a text label, so nothing is unreadable — but design manual
+    §2 makes node hue *the* thing that makes the graph readable at a glance, and it does not do
+    that for ~8% of male students. **The cost triples after this merge**, because D-005 and
+    D-006 consume this token set read-only.
+    **One thing the review did not say, and it points at the fix:** cycle 2's histogram
+    recolour to `#4a2f6e` (luminance 0.046) is the *only* hue that broke the isoluminance, and
+    it is now the most separable of the eight. Spreading lightness across the set is the same
+    move, applied to the other seven.
+  - *Suggested-major 2* — `verify.py:98`. The reference fallback
+    `REPO_ROOT.parent / "fce-project"` resolves against whatever checkout the file sits in, so
+    it **does not resolve from a git worktree** — the exact workflow shared §6 tells reviewers
+    and previewers to use. The reviewer reproduced it live from its own worktree: criterion 3
+    cannot be checked at all without hand-symlinking. Cycle-1's suggested-major 4 added the
+    pip-install branch and left this half open.
+    `git rev-parse --path-format=absolute --git-common-dir` returns the primary checkout's
+    `.git` even from a worktree, which is the clean resolution.
+  - *Suggested-minor ×3* — two folded into cycle 3, one backlogged.
 - **Cycle 2 delivered 2026-08-18. Verified independently by the orchestrator, not taken from
   the coder's report:**
   - *Required 1 fixed at the right layer.* `.port:focus-visible` now rings with
