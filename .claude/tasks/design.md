@@ -86,6 +86,55 @@ IDs are `D-nnn`, allocated in order and never reused.
   cycle-3 changes, the new criteria marked with evidence, a real `--all` transcript, the
   mutation test of the new check shown failing and restored, and the worktree-run proof.
   Stands alone.
+
+- **Review, cycle 3 — 0 required, 2 suggested-major, 3 suggested-minor. §5 LOOP LIMIT
+  REACHED; escalated to the user rather than dispatching a cycle 4.**
+  The reviewer ran `verify.py --all` from its **own detached worktree** — exercising the
+  worktree fix rather than reading it — and got 26/26 PASS; confirmed
+  `_primary_checkout_root()` resolves to the primary checkout and the reference allowlist to
+  the real `fce-project/fce/ui/graph.py`. It recomputed all 28 pairwise and 8 white-on-fill
+  ratios in its own script and matched the PR body to three decimals. It mutation-tested the
+  new check **twice, by monkeypatching `parse_root_tokens` rather than editing repo files** —
+  collapsing a pair, and lightening a fill to `#cccccc` — proving both the pairwise branch and
+  the AA branch are sensitive. Scope clean; 0 console errors at three widths; 0 `style=`,
+  0 `!important`, 0 remote URLs, 0 hex literals outside `tokens.css`.
+  - *Suggested-major 1* — `verify.py:2571`. **The new check's docstring claims luminance
+    separation survives every CVD type "by construction". It does not, and the palette it
+    certifies does not.** Applying Machado 2009 in **linear** RGB (the space the matrices are
+    defined in — my own earlier pass applied them in sRGB, which is why I saw the direction
+    but understated the size):
+
+    | | pairs below the 1.15 floor | worst pair | worst white-on-fill |
+    |---|---|---|---|
+    | normal vision | 0 of 28 | 1.195:1 | 4.79:1 |
+    | **protanopia** | **3 of 28** | obs-vecsum/obs-custom **1.084:1** | **4.48:1** |
+    | **deuteranopia** | **2 of 28** | data/obs-global **1.089:1** | 5.04:1 |
+    | tritanopia | 0 of 28 | 1.158:1 | 4.82:1 |
+
+    **Every number independently reproduced by the orchestrator.** The cause: protan/deutan
+    L-cone loss shifts the luminous efficiency function, so red-dominant fills darken relative
+    to WCAG's fixed 0.2126 red coefficient. The white-on-fill headroom I called "deliberate"
+    is spent under protanopia (4.48:1, below AA).
+    **This is my decomposition error, twice over, and it is why the loop hit its limit.** I
+    prescribed a normal-vision luminance floor as a proxy for CVD safety and told the coder in
+    writing that it survives every CVD type "by construction" — the coder wrote my claim into
+    the docstring. The criterion as written is met; the criterion was wrong.
+  - *Suggested-major 2* — `tokens.css:179-186` + `beamline.css:322-336`. The re-lighting put
+    four fills below L=0.06. At node scale all eight stay distinct (screenshot-checked), but at
+    the **9×9 px `.palette__add::before` swatch**, `obs-object`, `obs-vecsum` and `histogram`
+    read as the same black chip on cream — small-area colour discrimination is much weaker.
+    Design manual §2 rule 1 requires the kind hue to read "on the node, **in the picker**, in
+    the legend", and the picker is where a student chooses. Also downstream of my ladder brief.
+  - *Suggested-minor ×3* — (a) `verify.py:2617` hard-codes `white = (255,255,255)` while the
+    docstring says `--node-label-on-fill` is "asserted rather than assumed"; the token is never
+    read. (b) PR body criterion 4 claims hue held "to one decimal"; the real drift is up to
+    0.7°, so the substance holds but the precision claim does not. (c) The PR body's
+    verification block is reformatted rather than verbatim (says 25 sections, lists 26) — every
+    number reproduces, but a hand-edited verification block is the one thing it must not be.
+  - **Neither suggested-major is `Required`, and the reviewer said why:** every node carries a
+    text label and every swatch sits beside its name, so kind identity is never actually lost —
+    only the at-a-glance reading the design manual asks for. It also named the legitimate
+    counter-argument itself: Machado is a model, not ground truth.
 - **Review, cycle 2 — both required findings confirmed genuinely fixed.** The reviewer
   re-derived every criterion against something it ran rather than against the PR body: its own
   Playwright script at three widths plus reduced-motion, its own 17-stop tab walk (8 ports
