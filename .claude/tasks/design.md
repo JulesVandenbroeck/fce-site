@@ -9,81 +9,146 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### D-004 — Three node-graph styles
-- **Scope:** `docs/design-explorations/` — `index.html`, `{beamline,bench,board}.{html,css,js}`,
-  `README.md`, extend `tokens.css` and `verify.py`; plus a two-line superseded note at the
-  top of `docs/wireframes/README.md` and nothing else outside the new directory.
-- **Accept:** (1) persistence model differs per page and is inspectable in the DOM;
-  (2) connection interaction differs per page and is driven by real Playwright gestures —
-  Beamline accepts click and rejects drag, Bench the reverse, Board both plus keyboard;
-  (3) all 121 ordered node-type pairs attempted per page, 0 illegal accepted, 0 legal
-  refused; (4) every domain-inventory item present per page via `data-wf`, 0 missing, plus a
-  locked node type present-but-inert; (5) full sweep at three widths with denominators.
-- **Depends on:** D-003 — **cleared 2026-08-17**, merged as `99ec8f3`.
-- **Status:** **dispatched 2026-08-17, stopped by the user before any commit.** Branch
-  `task/d-004-node-graphs` exists at `c86981c` (= `main`, no commits). No PR. Partial work
-  survives **uncommitted** in the agent worktree
-  `.claude/worktrees/agent-aabe0d4da7ede4df9` — a single 41-line addition to
-  `docs/design-explorations/tokens.css`. That worktree has changes, so it will not be
-  auto-cleaned; do not remove it without reading the diff first.
-- **CRITERION 3 IS WRONG, AND THE ERROR IS THE ORCHESTRATOR'S.** It says "all **121** ordered
-  node-type pairs attempted per page". 121 implies 11 node kinds. The reference has **8
-  concrete kinds**, so the real figure is **64 ordered pairs**. The number was inherited from
-  this entry's original wording and was never grounded in anything.
-  **Verified against source by the orchestrator, not taken from the agent:**
-  - `fce-project/fce/ui/graph.py:163` — `_VALID_CONNECTIONS` has **9** keys: `DataSource`,
-    `Multiplicity`, `Selection`, `Observable`, `ObsGlobal`, `ObsObject`, `ObsVectorSum`,
-    `ObsCustom`, `Histogram`.
-  - `fce-project/fce/ui/state.py:35` — `NODE_LABELS`, the same 9.
-  - `fce-project/fce/fce.py` — `create_node("...")` is called for exactly **8** of them.
-    **Bare `"Observable"` is an allowlist key that is never instantiated**, so it is a
-    grouping, not an addable node kind.
-  So: 8 addable kinds → 64 ordered pairs; 9 keys including the abstract one → 81. Neither is
-  121. **Fix the criterion before this is re-dispatched**, and state which of 64 or 81 is
-  wanted rather than leaving the coder to choose.
-- **The stopped agent found this by reading `ui/graph.py`** instead of trusting the dispatch,
-  and encoded it in the tokens.css comment before it was stopped. That is the behaviour the
-  four verification rules are meant to produce, and it worked on the first try here.
-- **The other thing its partial work settles:** the node-type palette. 8 hues, each paired
-  with white node-title text and claimed to composite at >= 4.5:1, plus a `--locked-fill`
-  that is desaturated rather than merely lighter, with its label on full `--ink` because
-  `--ink-70` over that fill measures 4.30:1 — below the 4.5:1 floor. **Those contrast numbers
-  are the coder's own and have been verified by nobody**; `verify.py`'s D-004 contrast
-  section, which was to have measured them, was never written.
-- **Size risk, recorded before the next attempt:** this task is 12 files and three
-  interactive prototypes, well past the orchestrator manual's own splitting test (§2, "more
-  than about three files, suspect it is really two tasks"). D-003, a smaller task, took four
-  cycles. If a re-dispatch thrashes, split it — one page per task, with `tokens.css` and
-  `verify.py` extended by the first and only read by the others — rather than spending cycles.
-- **The three, pushed apart on what the graph persists** — the one axis CSS cannot swap, and
-  the thing that later lands in `POST /api/run`:
-  - **A · Beamline** — auto-laid rail, persists an ordered edge list only, click-to-connect,
-    colour on node chrome. Best 768 story; gives up all arrangement agency.
-  - **B · Bench** — free canvas, persists `{x, y}`, drag-to-connect, colour on the wires.
-    Its real cost is not the drag — the plot inspector always occludes the graph, so cut and
-    consequence are never co-visible. Framed as the *sandbox-mode candidate*.
-  - **C · Board** — typed columns with slots, persists `{column, slotIndex}`, both gestures
-    plus keyboard, colour on the columns. **Recommended:** the only one where the shape of
-    the page changes per mission (columns appear as missions unlock) and the only one where
-    the plot lives *inside* the graph as the terminal node.
-- **What D-003 hands it, and it is not just a file to import:**
-  - The figure is a **fixed intrinsic 650×460** CSS px (widened from 480 when the legend moved
-    outside the axes). Every layout must budget for that; it does not reflow.
-  - `tokens.css` is the input to D-002 — **harvest the cycle-4 `--tab10-x2`/`--tab10-x3`
-    values, not cycle 3's, which were wrong.** `--ink-45` is 2.60:1 and not text-safe.
-  - Four verification rules earned across D-001's and D-003's seven cycles: name the
-    verification *method* in the criterion; mutation-test every new assertion; list
-    deviations, never count them; and check parity by rendering the reference, never by
-    reading the code. `verify.py` now carries a lint for the third.
-  - Two markup patterns **not** to copy: the `role="tablist"` with no arrow-key handling, and
-    per-item tab stops (D-003 has 40 individually focusable bins).
-- **Branch / PR:** not yet opened
+### D-004 — Node-graph style A: Beamline, plus the shared node palette and checker
+- **Scope:** `docs/design-explorations/` — create `beamline.html`, `beamline.css`,
+  `beamline.js`; extend `tokens.css` (node-type hues, lock state) and `verify.py` (a
+  `--beamline` section). Nothing else, anywhere.
+- **Accept:**
+  1. Persistence model inspectable in the DOM: Beamline persists an **ordered edge list
+     only**, no coordinates — provable by reading a single serialised attribute.
+  2. Connection interaction: click-to-connect **accepted**, drag-to-connect **refused**,
+     both driven by real Playwright gestures, each assertion mutation-tested.
+  3. All **64** ordered node-kind pairs attempted between two distinct node instances:
+     **13 accepted, 51 refused**, with the accepted set named in the output.
+  4. Every domain-inventory item present via `data-wf`, reported as *n* of *n* with the
+     denominator printed; plus one locked node kind present-but-inert.
+  5. Computed-style sweep at 1440/1024/768 with denominators, including the contrast of
+     every node label on its own fill.
+- **Depends on:** D-003 — cleared 2026-08-17, merged as `99ec8f3`.
+- **Branch / PR:** `task/d-004-node-graphs` exists at `c86981c` with **no commits** from the
+  stopped first attempt. Reuse it; do not open a second branch.
+
+#### The 64/13/51 ruling, and why the old criterion was wrong
+The original criterion said "all **121** ordered node-type pairs". 121 implies 11 node
+kinds. **The error was the orchestrator's** — the number was inherited from this entry's
+first draft and was never grounded in anything. Verified against reference source, twice,
+by the orchestrator rather than taken from an agent:
+
+- `fce-project/fce/ui/graph.py:163` — `_VALID_CONNECTIONS`, **9** keys.
+- `fce-project/fce/ui/state.py:35` — `NODE_LABELS`, the same 9.
+- `fce-project/fce/fce.py:501-526,802-806` — `create_node("…")` is called for exactly
+  **8** of them. **Bare `"Observable"` is never instantiated**: it is an allowlist
+  grouping, not an addable node kind, so no node of that kind can exist on a canvas and no
+  gesture can target it.
+
+**Ruled: 8 addable kinds → 64 ordered pairs.** Not 81, and not 121. `Observable` stays out
+of the enumeration *and* out of the palette, because enumerating it would test a state the
+UI cannot reach.
+
+The 13 legal pairs, derived from the allowlist with `Observable` removed:
+
+| Source | Legal destinations | *n* |
+|---|---|---|
+| `DataSource` | `Multiplicity`, `Selection` | 2 |
+| `Multiplicity` | `Multiplicity`, `Selection` | 2 |
+| `Selection` | `Selection`, `ObsGlobal`, `ObsObject`, `ObsVectorSum`, `ObsCustom` | 5 |
+| `ObsGlobal` / `ObsObject` / `ObsVectorSum` / `ObsCustom` | `Histogram` | 4 |
+| `Histogram` | — | 0 |
+
+`Multiplicity → Multiplicity` and `Selection → Selection` are legal **between two distinct
+nodes of the same kind**; `link_callback` (`ui/graph.py:193-213`) validates on kind alone,
+so self-loops are out of scope for this check.
+
+#### What the stopped attempt left, and what to do with it
+The first D-004 agent was stopped by the user before any commit. One **uncommitted** 41-line
+addition to `docs/design-explorations/tokens.css` survives in the agent worktree
+`.claude/worktrees/agent-aabe0d4da7ede4df9`. **Do not remove that worktree without reading
+the diff.**
+
+It found the 8-vs-11 discrepancy itself, by reading `ui/graph.py` rather than trusting the
+dispatch — which is exactly the behaviour the four verification rules exist to produce.
+
+Its palette: 8 hues, each with white node-title text, plus a `--locked-fill` that is
+desaturated rather than merely lighter, its label on full `--ink` because `--ink-70` over
+that fill measures 4.30:1, under the 4.5:1 floor. **The orchestrator recomputed all ten
+ratios independently and every one reproduces exactly** — white on the 8 hues is
+5.05–7.74:1, `--ink` on `--locked-fill` is 8.90:1, `--ink-70` is 4.30:1. The values are
+sound and should be kept.
+
+**One sentence in it is false and must be corrected, not inherited:** the comment says the
+ratios are "measured by verify.py's D-004 contrast section", and that section was never
+written. It is a claim about a check that does not exist — the D-003 failure class exactly.
+Either write the section first or reword the comment.
 
 ## Ready
 
 _none_
 
 ## Blocked
+
+### D-005 — Node-graph style B: Bench
+- **Scope:** `docs/design-explorations/` — create `bench.{html,css,js}`; append a `--bench`
+  section to `verify.py`. `tokens.css` is **read-only** here.
+- **Accept:** as D-004, with the model and gestures inverted — Bench persists `{x, y}` per
+  node on a free canvas, **drag-to-connect accepted, click-to-connect refused**. Same
+  64/13/51 enumeration, same inventory denominators, same three-width sweep.
+- **Depends on:** D-004 — the hues and the checker harness come from it.
+
+### D-006 — Node-graph style C: Board
+- **Scope:** `docs/design-explorations/` — create `board.{html,css,js}`; append a `--board`
+  section to `verify.py`. `tokens.css` read-only.
+- **Accept:** Board persists `{column, slotIndex}` in typed columns and accepts **both**
+  gestures plus keyboard connection. Same 64/13/51 enumeration and sweeps. The plot lives
+  *inside* the graph as the terminal node, so it must budget for D-003's fixed intrinsic
+  **650×460** figure and be shown doing so at 768.
+- **Depends on:** D-004.
+
+### D-007 — Comparison index and the recommendation
+- **Scope:** `docs/design-explorations/index.html`, `README.md`, plus a two-line superseded
+  note at the top of `docs/wireframes/README.md`. No page files, no `tokens.css`, no
+  `verify.py`.
+- **Accept:** the index links all three styles and states, per style, what the graph
+  persists and which gesture connects; the README states a recommendation with reasoning
+  and names what each option gives up. **This is the checkpoint the user reads to choose.**
+- **Depends on:** D-004, D-005, D-006.
+
+#### Why this is four tasks and not one
+The single-task version was 12 files and three interactive prototypes — well past the
+orchestrator manual's own splitting test (§2, "more than about three files, suspect it is
+really two tasks"). D-003 took four cycles at half the size, and the first D-004 attempt
+never got far enough to show the big shape works. Split costs an extra PR or two and buys
+much tighter review loops. `tokens.css` and `verify.py` are extended by D-004 and read-only
+or append-only thereafter, so the shared files have exactly one author.
+
+**Run these serially, not in parallel.** D-005 and D-006 both append to `verify.py`; two
+coders in flight would collide on it, and the manual's §3 worktree rule only protects the
+branch, not the merge.
+
+#### The three, pushed apart on what the graph persists
+The one axis CSS cannot swap, and the thing that later lands in `POST /api/run`:
+
+- **A · Beamline** — auto-laid rail, ordered edge list only, click-to-connect, colour on
+  node chrome. Best 768 story; gives up all arrangement agency.
+- **B · Bench** — free canvas, `{x, y}`, drag-to-connect, colour on the wires. Its real
+  cost is not the drag — the plot inspector always occludes the graph, so cut and
+  consequence are never co-visible. Framed as the *sandbox-mode candidate*.
+- **C · Board** — typed columns with slots, `{column, slotIndex}`, both gestures plus
+  keyboard, colour on the columns. **Recommended:** the only one where the shape of the
+  page changes per mission (columns appear as missions unlock) and the only one where the
+  plot lives inside the graph as the terminal node.
+
+#### What D-003 hands all four, and it is not just a file to import
+- The figure is a **fixed intrinsic 650×460** CSS px (widened from 480 when the legend moved
+  outside the axes). Every layout must budget for that; it does not reflow.
+- `tokens.css` is the input to D-002 — **harvest the cycle-4 `--tab10-x2`/`--tab10-x3`
+  values, not cycle 3's, which were wrong.** `--ink-45` is 2.60:1 and not text-safe.
+- Four verification rules earned across D-001's and D-003's seven cycles: name the
+  verification *method* in the criterion; mutation-test every new assertion; list
+  deviations, never count them; and check parity by rendering the reference, never by
+  reading the code. `verify.py` now carries a lint for the third.
+- Two markup patterns **not** to copy: the `role="tablist"` with no arrow-key handling, and
+  per-item tab stops (D-003 has 40 individually focusable bins).
+
 
 ### D-002 — Design token foundation
 - **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
@@ -92,9 +157,11 @@ _none_
   file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that are explicitly not
   Inter/Roboto/system-ui/Space Grotesk
 - **Depends on:** ~~D-001 and the user's D-001 layout decision~~ — **blocker changed
-  2026-08-16.** Now blocked on the user's choice among Beamline / Bench / Board at the D-004
-  checkpoint, with `docs/design-explorations/tokens.css` as its input rather than a blank
-  page. Left pointing at the old blocker it would read as waiting on something extinct.
+  2026-08-16.** Now blocked on the user's choice among Beamline / Bench / Board — presented
+  at the **D-007** checkpoint (2026-08-18: the D-004 checkpoint moved there when D-004 was
+  split into D-004/005/006/007), with `docs/design-explorations/tokens.css` as its input
+  rather than a blank page. Left pointing at the old blocker it would read as waiting on
+  something extinct.
 - **New scope pressure from the pivot:** the palette must now carry node-type hues, sample
   identity, and lock state — not just paper, ink and one accent. AA must be measured for
   labels sitting *on* saturated fills, not only on paper.
