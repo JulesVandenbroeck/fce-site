@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-004 — node graph style A: Beamline (design exploration)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="beamline.css" />
+</head>
+<body>
+<main class="page">
+
+  <header class="topbar">
+    <span class="topbar__brand" data-wf="brand">FCE</span>
+    <nav class="campaign-nav" data-wf="campaign-nav" aria-label="Missions">
+      <span class="chip chip--current">1 · First Light</span>
+      <span class="chip chip--locked" data-wf="mission-locked" aria-disabled="true">2 · Cleaning the Signal <span class="lock-tag">locked</span></span>
+      <span class="chip chip--locked" aria-disabled="true">3 · The Unknown <span class="lock-tag">locked</span></span>
+    </nav>
+    <span class="topbar__who" data-wf="student-id">kwark_42</span>
+  </header>
+
+  <section class="brief">
+    <h1 class="brief__title" data-wf="mission-title">M-1 · First Light</h1>
+    <p class="brief__text" data-wf="mission-brief">A Z boson lives for a moment and then falls
+      apart into two leptons. Those two leptons still carry its mass between them. Add them
+      together, take the mass, and plot it.</p>
+    <div class="objective" data-wf="objective">
+      <span class="label">Objective</span>
+      <p>Find the peak, and read its position within <strong>±2 GeV of 91.2 GeV</strong>.</p>
+    </div>
+  </section>
+
+  <section class="builder">
+    <h2 class="builder__h">Your analysis <span class="style-tag">Beamline — click to connect</span></h2>
+    <p class="builder__note">Beamline lays every node out for you in a single rail. It keeps an
+      ordered list of which node feeds which — nothing about where a node sits on screen is
+      ever saved. Click an output port, then an input port, to connect two nodes. Dragging a
+      port does nothing on purpose — try it.</p>
+
+    <div class="graph" id="graph" data-wf="graph" data-edges="[]">
+      <ol class="graph__rail" id="graph-rail" aria-label="Analysis pipeline"></ol>
+      <p class="graph__status" id="graph-status" data-wf="connect-status" aria-live="polite">
+        Click an output port, then an input port, to connect two nodes.</p>
+    </div>
+
+    <div class="palette" data-wf="node-palette">
+      <span class="palette__label">Add a node</span>
+      <button class="palette__add palette__add--data" data-add-kind="DataSource" type="button">+ Data</button>
+      <button class="palette__add palette__add--multiplicity" data-add-kind="Multiplicity" type="button">+ Multiplicity</button>
+      <button class="palette__add palette__add--selection" data-add-kind="Selection" type="button">+ Selection</button>
+      <button class="palette__add palette__add--obs-global" data-add-kind="ObsGlobal" type="button">+ Obs: Global</button>
+      <button class="palette__add palette__add--obs-object" data-add-kind="ObsObject" type="button">+ Obs: Object</button>
+      <button class="palette__add palette__add--obs-vecsum" data-add-kind="ObsVectorSum" type="button">+ Obs: Vec Sum</button>
+      <button class="palette__add palette__add--obs-custom" data-add-kind="ObsCustom" type="button">+ Obs: Custom</button>
+      <button class="palette__add palette__add--histogram" data-add-kind="Histogram" type="button">+ Histogram</button>
+      <div class="palette__locked" data-wf="node-locked" aria-disabled="true">
+        <span class="lock-tag">locked</span> Node kind — opens in a later mission
+      </div>
+    </div>
+
+    <div class="run-panel" id="run-panel">
+      <button class="btn btn--go" id="run-button" data-wf="run-control" type="button">▶ Run analysis</button>
+      <div class="run-progress" data-wf="run-progress">
+        <div class="run-progress__bar"><span class="run-progress__fill"></span></div>
+        <p class="run-progress__phase">Reading events — 62% · sample 3 of 6</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="results">
+    <h2 class="results__h">Result</h2>
+    <figure class="plot-placeholder" data-wf="plot">
+      <span class="plot__ylab">events</span>
+      <div class="plot__area">
+        <div class="hist">
+          <span class="b1"></span><span class="b1"></span><span class="b1"></span>
+          <span class="b2"></span><span class="b2"></span><span class="b2"></span>
+          <span class="b3"></span><span class="b3"></span><span class="b4"></span>
+          <span class="b5"></span><span class="b6"></span><span class="b8"></span>
+          <span class="b10"></span><span class="b9"></span><span class="b5"></span>
+          <span class="b3"></span><span class="b2"></span><span class="b1"></span>
+          <span class="b1"></span><span class="b1"></span>
+        </div>
+      </div>
+      <figcaption class="plot__xlab">m(l1, l2) [GeV] &nbsp;0 · 30 · 60 · 90 · 120</figcaption>
+    </figure>
+
+    <ul class="legend" data-wf="legend">
+      <li><span class="swatch swatch--data"></span>data</li>
+      <li><span class="swatch swatch--x1"></span>Z → 2 leptons</li>
+      <li><span class="swatch swatch--x2"></span>Z → 2 quarks</li>
+      <li><span class="swatch swatch--x3"></span>Z → 2 leptons + γ</li>
+    </ul>
+
+    <div class="readout" data-wf="readout">
+      <span class="label">Peak position</span>
+      <strong class="num">90.8 GeV</strong>
+    </div>
+
+    <p class="verdict verdict--met" data-wf="verdict">Objective met — mission 2 is now open.
+      <span class="stamp" data-wf="stamp" aria-hidden="true">LOGGED</span></p>
+
+    <table class="cutflow" data-wf="cutflow">
+      <caption>Cutflow</caption>
+      <thead>
+        <tr><th scope="col">Stage</th><th scope="col">Events</th><th scope="col">Efficiency</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">All events</th><td class="num">240 000</td><td class="num">—</td></tr>
+        <tr><th scope="row">≥ 2 leptons</th><td class="num">18 420</td><td class="num">7.7%</td></tr>
+        <tr><th scope="row">pt &gt; 20 GeV</th><td class="num">12 108</td><td class="num">65.7%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="gauge" data-wf="gauge">
+      <span class="label">Significance Z</span>
+      <div class="gauge__bar">
+        <span class="gauge__tick gauge__tick--3">3σ</span>
+        <span class="gauge__tick gauge__tick--5">5σ</span>
+      </div>
+      <p class="muted">no fit in this mission</p>
+    </div>
+  </section>
+
+  <section class="log" data-wf="run-history">
+    <h2>Previous runs <span class="count">1 entry</span></h2>
+    <article class="log__entry">
+      <header>
+        <span class="log__n">run 1</span>
+        <span class="log__d">no filter — peak at 88.4 GeV, 2.8 low</span>
+      </header>
+      <p class="margin-note" data-wf="margin-note">You measured the peak a bit low. Something
+        carried energy away before you measured it — look at the left side of your plot.</p>
+    </article>
+  </section>
+
+  <section class="annotations">
+    <h2>What Beamline is, and what it gives up</h2>
+    <ul>
+      <li><strong>Persists an ordered edge list, nothing else.</strong> The graph container
+        (<code>#graph</code>) carries one attribute, <code>data-edges</code>, holding a JSON
+        array of <code>[from, to]</code> node-id pairs in the order they were connected. No
+        node carries an x, a y, a column or a slot index — position on screen is a pure
+        function of the order nodes were added, laid out by ordinary flex flow.
+        <code>verify.py --beamline</code> reads that attribute and prints it back as
+        ordered source→destination pairs; see its own comment for the check that no
+        coordinate exists anywhere in the DOM either.</li>
+      <li><strong>Connects by clicking, not dragging.</strong> Click an output port to arm it,
+        then click an input port on a different node to attempt the connection. A drag
+        gesture between two ports produces no <code>click</code> event on either one, so it
+        is refused by construction rather than by a special case that watches for it.</li>
+      <li><strong>The trade this style makes, on purpose.</strong> Beamline gives up all
+        arrangement agency — a student cannot place a node anywhere, cannot express "these
+        two belong near each other" spatially, and the graph never needs a canvas wider than
+        the rail. That is also its strongest asset: at narrow widths the rail simply wraps,
+        so this is the only one of the three styles with a real story at 768 px rather than a
+        compromise at it.</li>
+      <li><strong>Node-kind colour, not wire colour.</strong> Each of the 8 addable kinds owns
+        a hue on its own chrome (<code>tokens.css</code>'s <code>--node-*</code> set); there
+        is no drawn wire to colour, since connections are represented as text
+        (<code>→ Selection (n3)</code>) rather than a drawn line — a deliberate consequence
+        of persisting no coordinate, since a drawn connector would need one to place its
+        endpoints even if that placement were never saved.</li>
+      <li><strong>Locked node kind.</strong> The palette's final tile is not one of the 8
+        addable kinds — it stands for a node type a later mission unlocks, shown so a student
+        can see it is coming. It carries no port, no click handler, and no tab stop, so it
+        cannot be reached as an active control by keyboard or by mouse.</li>
+    </ul>
+    <p>Nothing on this page ships; it exists to be compared against Bench (D-005, free
+      canvas, drag-to-connect) and Board (D-006, typed columns, both gestures) at the D-007
+      checkpoint. See <code>verify.py --beamline</code> for what is actually measured about
+      this rendering, rather than claimed here.</p>
+  </section>
+
+</main>
+<script src="beamline.js"></script>
+</body>
+</html>

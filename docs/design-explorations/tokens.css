@@ -46,6 +46,12 @@
    * palette toggle, focus rings) so vermillion never has to. */
   --graphite-blue: #3c5a6e;
   --graphite-blue-strong: #2c4454;
+  /* Label text set on graphite-blue chrome (D-004's run button) — the same
+   * value as --node-label-on-fill below, kept as its own name because the
+   * two are different concerns (a button's own text colour vs. a node
+   * type's label) that happen to share a value, not one borrowing the
+   * other's name. */
+  --on-graphite-blue: #ffffff;
 
   /* ---- accent: rationed --------------------------------------------------
    * Significance thresholds, mission completion, the signal sample. Nowhere
@@ -90,7 +96,18 @@
   --syst-grey: #8a8272;
   --legend-border: var(--ink);
 
-  /* ---- focus ------------------------------------------------------------ */
+  /* ---- focus ------------------------------------------------------------
+   * `--focus-ring` (graphite-blue) rings every `a`/`button` focus stop that
+   * sits on --paper or --panel, where it composites to >= 6:1 (measured by
+   * verify.py's `--beamline` focus-walk section). D-004's ports are the one
+   * focus stop that instead sits inside a saturated `--node-*` fill, where
+   * graphite-blue itself is one of those fills (see --node-histogram's own
+   * comment) and composited as low as 1.06:1 there (D-004 cycle-1 review,
+   * Required 1) -- an invisible ring on 8 of 17 keyboard stops. `.port`
+   * rings with `--node-label-on-fill` instead (beamline.css), the same
+   * white already proven >= 4.5:1 against every one of the 8 node fills for
+   * node-title text, which composites to >= 5:1 as a ring against the same
+   * fills (worst case printed by check_beamline_focus_walk). */
   --focus-ring: var(--graphite-blue);
 
   /* ---- type ---------------------------------------------------------------
@@ -110,4 +127,84 @@
   --space-5: 32px;
   --radius: 6px;
   --timing: 180ms;
+
+  /* ---- node type identity (D-004) ----------------------------------------
+   * One hue per concrete node kind the run payload can carry. The kind list
+   * and every legal src -> dst pair are read from the vendored reference's
+   * own allowlist, not guessed: `_VALID_CONNECTIONS` and `NODE_LABELS` in
+   * `ui/graph.py` and `ui/state.py` — read from a sibling git checkout of
+   * the `fce` reference repo (`../fce-project` relative to this repo's
+   * parent, per `.claude/shared/CLAUDE.md` §2 and verify.py's
+   * `REFERENCE_GRAPH_PY`), because `fce` is *not* pip-installed in this
+   * project's own `.venv` — cross-checked against `fce.py`'s "Insert Node"
+   * menu, which is the actual user-facing list of addable node kinds. That
+   * menu offers 8 concrete kinds — DataSource, Multiplicity, Selection, and
+   * the four Observable subtypes (ObsGlobal, ObsObject, ObsVectorSum,
+   * ObsCustom), plus Histogram. Bare "Observable" is a key in the allowlist
+   * dict but is never itself instantiated (`create_node("Observable")` does
+   * not appear in `fce.py`), so it is not given its own hue here. See each
+   * page's own annotation panel and the PR body for why this is 8 kinds and
+   * not the task dispatch's original 11.
+   *
+   * Every one of the 8 fills below is paired with white node-title text
+   * (`--node-label-on-fill`); each pairing composites to >= 4.5:1. Measured
+   * by verify.py's `--beamline` contrast section (see `check_beamline_
+   * contrast`), which prints the per-swatch ratio it actually computed —
+   * not asserted here as a fact this file cannot check for itself.
+   *
+   * `--node-histogram` was originally #38566b, 1.06:1 from `--graphite-blue`
+   * below (D-004 cycle-1 review, Required 1 / suggested-major 2) — the same
+   * slate doing node-identity duty and ordinary interactive-chrome duty on
+   * one screen, and the direct cause of the focus ring's worst-case failure
+   * against this fill.
+   *
+   * Every fill below was then re-lit at cycle 3 (D-004 cycle-2 review,
+   * suggested-major 1): the cycle-2 set only broke isoluminance for
+   * `--node-histogram` — the other seven still spanned relative luminance
+   * L = 0.111-0.158, a band so narrow that stripping hue (the effect of any
+   * CVD type) collapsed several pairs to near-identical greys, worst case
+   * `data` vs `multiplicity` at 1.01:1. Hue was kept exactly as it was for
+   * all 8 (same H in HSL, to one decimal) — this is luminance added as a
+   * *second* identity channel, not hue traded away for one. Each fill's
+   * lightness was retargeted on its own ladder rung, spaced so every one of
+   * the 28 unordered pairs clears 1.15:1 (worst case, printed by verify.py's
+   * `--beamline` pairwise-luminance section, is `obs-global` vs `selection`
+   * at 1.195:1 — comfortably inside the 1.246:1 ceiling the 4.5:1
+   * white-label floor admits for an 8-step ladder), while every white-label
+   * pairing still clears 4.5:1 (worst case now 4.79:1, up from the 4.61:1 a
+   * first pass at this ladder produced, given deliberate headroom rather
+   * than sitting on the floor). See `check_beamline_pairwise_luminance` for
+   * why luminance separation alone — with no CVD simulation matrix — is
+   * sufficient and preferred here. */
+  --node-data: #775315;
+  --node-multiplicity: #465315;
+  --node-selection: #26824c;
+  --node-obs-global: #1c726a;
+  --node-obs-object: #17264f;
+  --node-obs-vecsum: #4c245e;
+  --node-obs-custom: #732154;
+  --node-histogram: #1e122e;
+  --node-label-on-fill: #ffffff;
+
+  /* ---- node shadow (D-004) -------------------------------------------------
+   * The node's own resting drop-shadow and the node--flash keyframe's reset
+   * state (beamline.css) both painted this literal inline (D-004 cycle-1
+   * review, suggested-major 5) rather than through a token, the one bare hex
+   * value outside this file the sweep could not see because `PAINT_PROPS`
+   * (verify.py) has no box-shadow entry — check_beamline_paint_sweep now
+   * extracts and checks the colour component of every element's computed
+   * `box-shadow` against this file's allowed-colour set too, so a future
+   * literal here is caught the same way any other paint property is. */
+  --node-shadow: rgba(0, 0, 0, 0.15);
+
+  /* ---- lock state (D-004) -------------------------------------------------
+   * A gated node type: desaturated fill, not merely a lighter grey (design
+   * manual §2 rule 3) — this fill sits visibly apart from every --node-*
+   * hue above rather than being one of them turned down. Its label stays on
+   * full-opacity --ink rather than --ink-70, because --ink-70 composited
+   * over --locked-fill measures below the 4.5:1 AA-normal floor this
+   * project holds text to, where full --ink clears it with room to spare.
+   * Both numbers are printed by verify.py's `--beamline` contrast section. */
+  --locked-fill: #cfc7b2;
+  --locked-border: #b3a98c;
 }
