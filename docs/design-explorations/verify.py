@@ -28,10 +28,27 @@ unconditionally regardless of which flag is passed — that is pre-existing
 D-003 behaviour, out of D-004's file-scope to change, so `--beamline` alone
 still exercises them too.
 
-Requires Playwright (Python) with a Chromium browser available — see the
-task body for the PLAYWRIGHT_BROWSERS_PATH note on this container.
+Requires:
+    - Playwright (Python) with a Chromium browser available — see the task
+      body for the PLAYWRIGHT_BROWSERS_PATH note on this container.
+    - For `check_beamline_pairs` only (the 64-pair reference-parity section,
+      run by `--all`/`--beamline`) — the vendored `fce` reference repo
+      (`.claude/shared/CLAUDE.md` §2), so this checker can execute the
+      reference's own `_VALID_CONNECTIONS` dict rather than transcribe it
+      (verification rule 4). Resolved by `_resolve_reference_graph_py()`:
+      the `fce` package if it is pip-installed in this interpreter, else a
+      sibling git checkout at `../fce-project` (relative to this repo's own
+      parent) providing `fce/ui/graph.py`. Neither is guaranteed present —
+      `fce` is not in this project's own `.venv` as of D-004 — and
+      `check_beamline_pairs` fails loudly, by design, rather than silently
+      falling back to a hard-coded table, if neither resolves. Every other
+      section runs without it. D-005/D-006 read this same module as a
+      shared, read-only dependency (D-004 cycle-1 review, suggested-major
+      4); this two-path resolution and this docstring note are both for
+      their benefit as much as this task's.
 """
 import argparse
+import importlib.util
 import json
 import re
 import subprocess
@@ -55,12 +72,33 @@ REPO_ROOT = HERE.parent.parent  # docs/design-explorations -> docs -> repo root
 
 # ---- D-004 (Beamline) -----------------------------------------------------
 BEAMLINE_HTML = HERE / "beamline.html"
-# The reference repo this project vendors from (`.claude/shared/CLAUDE.md`
-# §2), checked out as a sibling of this repo on this machine. Used to derive
-# the legal node-kind connection pairs by *executing* the reference's own
-# dict (see check_beamline_reference_parity), not by re-typing it from a
-# read of the source — verification rule 4.
-REFERENCE_GRAPH_PY = REPO_ROOT.parent / "fce-project" / "fce" / "ui" / "graph.py"
+
+
+def _resolve_reference_graph_py() -> Path:
+    """Locate the vendored reference's `ui/graph.py`, used to derive the
+    legal node-kind connection pairs by *executing* the reference's own
+    dict (see `derive_reference_legal_pairs`), not by re-typing it from a
+    read of the source — verification rule 4.
+
+    Two paths, tried in order (D-004 cycle-1 review, suggested-major 4):
+    the `fce` package if it is pip-installed in *this* interpreter — the
+    provenance tokens.css's node-identity comment actually claims — else a
+    sibling git checkout at `../fce-project` (relative to this repo's own
+    parent), which is what this checker has always actually read from,
+    since `fce` is not installed in this project's own `.venv`. Neither
+    path is asserted to exist here; `check_beamline_pairs` reports the path
+    it tried and fails loudly if it does not resolve, rather than this
+    function silently returning a path nothing backs."""
+    spec = importlib.util.find_spec("fce")
+    if spec and spec.submodule_search_locations:
+        for loc in spec.submodule_search_locations:
+            candidate = Path(loc) / "ui" / "graph.py"
+            if candidate.exists():
+                return candidate
+    return REPO_ROOT.parent / "fce-project" / "fce" / "ui" / "graph.py"
+
+
+REFERENCE_GRAPH_PY = _resolve_reference_graph_py()
 # The 8 kinds `fce.py` actually calls `create_node(...)` for. Bare
 # "Observable" is a 9th key in the reference's own allowlist dict but is
 # never instantiated, so it is excluded here too — see tokens.css's node
@@ -2157,7 +2195,21 @@ def check_beamline_paint_sweep(pw: Playwright) -> bool:
     :root set (same PAINT_PROPS list D-003 checks, including `fill`/`stroke`
     -- guarded to SVG shape elements only, same as D-003, since this page
     draws no SVG today and every HTML element resolves a `fill` it never
-    renders), plus zero horizontal body overflow at 768."""
+    renders), plus zero horizontal body overflow at 768.
+
+    Also inspects `box-shadow`'s own colour component -- D-004 cycle-1
+    review, suggested-major 5: the shared `PAINT_PROPS` list (D-003's own,
+    out of this task's scope to change) has no box-shadow entry, so a
+    literal colour hiding in a box-shadow value (as beamline.css's node
+    shadow and node--flash reset state both did) was invisible to this
+    sweep even though it is exactly the kind of paint this sweep exists to
+    catch. Handled separately here, not by adding to `PAINT_PROPS`, because
+    a computed `boxShadow` is a shorthand string ("rgba(...) 0px 1px 0px
+    0px", or a comma-joined list of those for multiple shadows) rather than
+    a bare colour like every other entry in that list -- extracting each
+    shadow's leading colour token is a different operation, kept local to
+    the check that needs it instead of complicating the shared constant
+    every other paint-property read relies on being a plain lookup."""
     section("Beamline paint sweep -- token-set membership, every width")
     tokens = parse_root_tokens(TOKENS_CSS.read_text())
     all_ok = True
@@ -2165,7 +2217,7 @@ def check_beamline_paint_sweep(pw: Playwright) -> bool:
         browser, context, page, *_ = load_beamline_page(pw, width)
         allowed, resolved = resolve_allowed_colors(page, tokens)
         report = page.evaluate(
-            """(args) => {
+            r"""(args) => {
                 const [props, allowedList] = args;
                 const allowed = new Set(allowedList);
                 const results = { inspected: 0, violations: [], exemptCount: 0 };
@@ -2197,6 +2249,25 @@ def check_beamline_paint_sweep(pw: Playwright) -> bool:
                             results.violations.push({ tag: el.tagName, cls: el.getAttribute('class'), prop, val });
                         }
                     }
+                    // box-shadow: not in `props` (see this function's own
+                    // docstring) -- extract every rgb()/rgba() colour token
+                    // the computed shorthand carries (one shadow or several,
+                    // comma-joined) and check each the same way.
+                    const bs = cs.boxShadow;
+                    if (bs && bs !== 'none') {
+                        const colorTokens = bs.match(/rgba?\([^)]*\)/g) || [];
+                        colorTokens.forEach(val => {
+                            results.inspected++;
+                            const lower = val.toLowerCase();
+                            const exempt = lower === 'rgba(0, 0, 0, 0)';
+                            if (exempt) { results.exemptCount++; return; }
+                            if (!allowed.has(val)) {
+                                results.violations.push({
+                                    tag: el.tagName, cls: el.getAttribute('class'), prop: 'boxShadow', val,
+                                });
+                            }
+                        });
+                    }
                 });
                 const overflow = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
                 return { ...results, bodyOverflow: overflow };
@@ -2207,8 +2278,8 @@ def check_beamline_paint_sweep(pw: Playwright) -> bool:
         all_ok = all_ok and ok
         line(
             f"width={width}px: {report['inspected']} property reads across {len(PAINT_PROPS)} "
-            f"properties, {report['exemptCount']} exempt, body horizontal overflow="
-            f"{report['bodyOverflow']}",
+            f"properties plus every box-shadow colour token, {report['exemptCount']} exempt, "
+            f"body horizontal overflow={report['bodyOverflow']}",
             ok,
             f"{len(report['violations'])} off-token violations",
         )
@@ -2224,9 +2295,29 @@ def check_beamline_contrast(pw: Playwright) -> bool:
     floor -- plus the locked tile's own label against `--locked-fill`, plus
     a general sweep of every other text-bearing element against its own
     resolved background (the nearest painted ancestor, walking up from the
-    element itself; paper is the fallback when nothing paints one)."""
+    element itself; paper is the fallback when nothing paints one).
+
+    The demo graph `beamline.js` builds on load only instantiates 5 of the 8
+    addable node kinds (DataSource, Multiplicity, Selection, ObsVectorSum,
+    Histogram) -- tokens.css's node-identity comment asserts the >= 4.5:1
+    pairing for all 8, a fact that is true of the token values themselves
+    regardless of what happens to be on screen, not something the review
+    disputed (D-004 cycle-1 review closed this point in the coder's favour).
+    What it did flag as worth closing, since Required 1 already puts this
+    task back in this file: the *sweep* only ever measured whatever the
+    demo happened to render, so its own denominator undershot the claim it
+    exists to check. Clicking the 3 missing kinds into existence here,
+    before measuring, makes the sweep's own count match what it is
+    checking -- see BEAMLINE_ADDABLE_KINDS for the full 8."""
     section("Beamline contrast -- text against its real background, alpha-composited")
     browser, context, page, *_ = load_beamline_page(pw, 1024)
+    # Bring every addable kind onto the page before measuring (see this
+    # function's own docstring) -- palette buttons, not a DOM shortcut, so
+    # this exercises the same node-creation path every other check does.
+    demo_kinds = {"DataSource", "Multiplicity", "Selection", "ObsVectorSum", "Histogram"}
+    for kind in BEAMLINE_ADDABLE_KINDS:
+        if kind not in demo_kinds:
+            page.click(f'[data-add-kind="{kind}"]')
 
     def resolve_token(name: str) -> tuple[float, float, float]:
         c = page.evaluate(
@@ -2382,14 +2473,55 @@ def check_beamline_contrast(pw: Playwright) -> bool:
     return ok_nodes and ok_locked and ok_general
 
 
-def check_beamline_focus_walk(pw: Playwright) -> bool:
+def check_beamline_focus_walk(pw: Playwright, html_path: Optional[Path] = None) -> bool:
     """Drive a real keyboard Tab walk from the top of the page (same method
     as D-003's `check_focus_walk`) and check every reachable stop for a
-    visible `:focus-visible` ring, counting stops with and without one --
-    the design manual's "keyboard focus is visible on every interactive
-    element" requirement, measured rather than eyeballed."""
-    section("Beamline keyboard focus walk -- real Tab presses, visible-ring count")
-    browser, context, page, *_ = load_beamline_page(pw, 1024)
+    focus ring that is both PRESENT (`:focus-visible` matches, an outline is
+    actually painted) and PERCEIVABLE (that outline colour, alpha-composited
+    over what a viewer actually sees behind it, clears the WCAG 3:1
+    non-text-contrast floor) -- the design manual's "keyboard focus is
+    visible on every interactive element" requirement, measured rather than
+    eyeballed.
+
+    D-004 cycle-1's version of this check asserted presence only
+    (`:focus-visible` + `outlineStyle !== 'none'` + `outlineWidth > 0`),
+    which is why it reported "17 carried a visible focus ring, 0 did not"
+    on a page where 8 of those 17 rings independently measured as low as
+    1.06:1 against their own node fill (cycle-1 review, Required 2): a
+    presence test cannot fail in the way an invisible-but-painted ring
+    fails. This version adds the contrast half. An outline paints OUTSIDE
+    the focused element's own border box (in the offset gap and the ring
+    itself), so the background it is judged against is the nearest painted
+    ancestor found by walking up from the element's *parent* -- the same
+    "walk up from the paint boundary" logic `check_beamline_contrast`'s
+    general sweep already uses for text, applied here to what sits behind a
+    ring instead of what sits behind a glyph.
+
+    `html_path`, when given, points at a scratch mutated copy instead of the
+    real page -- used only for the mutation-transcript proof in the PR body
+    that this rewritten check actually fails on the regressed
+    graphite-blue-on-every-fill ring cycle-1 shipped; the unconditional
+    call from `main()` never passes it, so every real run checks the
+    committed page."""
+    section("Beamline keyboard focus walk -- real Tab presses, present AND >=3:1 ring count")
+    browser, context, page, *_ = load_beamline_page(pw, 1024, html_path=html_path)
+
+    def resolve_token(name: str) -> tuple[float, float, float]:
+        c = page.evaluate(
+            """(v) => {
+                const probe = document.createElement('div');
+                probe.style.color = `var(${v})`;
+                document.body.appendChild(probe);
+                const r = getComputedStyle(probe).color;
+                document.body.removeChild(probe);
+                return r;
+            }""",
+            name,
+        )
+        return parse_rgba(c)[:3]
+
+    paper = resolve_token("--paper")
+
     page.evaluate("""() => { window.__focusWalk = { map: new WeakMap(), next: 1 }; }""")
     page.keyboard.press("Tab")
     stops = []
@@ -2403,12 +2535,23 @@ def check_beamline_focus_walk(pw: Playwright) -> bool:
                 let wid = w.map.get(el);
                 if (wid === undefined) { wid = w.next++; w.map.set(el, wid); }
                 const cs = getComputedStyle(el);
-                const visible = (
+                const present = (
                     el.matches(':focus-visible') &&
                     cs.outlineStyle !== 'none' &&
                     parseFloat(cs.outlineWidth) > 0
                 );
-                return { wid, tag: el.tagName, cls: el.getAttribute('class'), visible };
+                const isPaintedBg = (c) => c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent';
+                let ground = null;
+                let cur = el.parentElement;
+                while (cur) {
+                    const c = getComputedStyle(cur).backgroundColor;
+                    if (isPaintedBg(c)) { ground = c; break; }
+                    cur = cur.parentElement;
+                }
+                return {
+                    wid, tag: el.tagName, cls: el.getAttribute('class'),
+                    present, outlineColor: cs.outlineColor, ground,
+                };
             }"""
         )
         if info is None:
@@ -2418,16 +2561,35 @@ def check_beamline_focus_walk(pw: Playwright) -> bool:
         seen_ids.add(info["wid"])
         stops.append(info)
         page.keyboard.press("Tab")
-    with_ring = sum(1 for s in stops if s["visible"])
-    without_ring = [s for s in stops if not s["visible"]]
-    ok = len(stops) > 0 and len(without_ring) == 0
+
+    checked = []
+    for s in stops:
+        outline_rgba = parse_rgba(s["outlineColor"])
+        ground_rgba = parse_rgba(s["ground"]) if s["ground"] else None
+        ground = composite_over(ground_rgba, paper) if ground_rgba else paper
+        ratio = None
+        if outline_rgba:
+            composited = composite_over(outline_rgba, ground)
+            ratio = contrast_ratio(composited, ground)
+        visible = bool(s["present"]) and ratio is not None and ratio >= 3.0
+        checked.append({**s, "ratio": ratio, "visible": visible})
+
+    with_ring = sum(1 for s in checked if s["visible"])
+    without_ring = [s for s in checked if not s["visible"]]
+    ok = len(checked) > 0 and len(without_ring) == 0
     line(
-        f"{len(stops)} focusable stops reached by real Tab presses",
+        f"{len(checked)} focusable stops reached by real Tab presses",
         ok,
-        f"{with_ring} carried a visible focus ring, {len(without_ring)} did not",
+        f"{with_ring} carried a ring both present and >=3:1 against its real adjacent "
+        f"background, {len(without_ring)} did not",
     )
-    for s in without_ring[:10]:
-        print(f"       no visible ring: <{s['tag']} class={s['cls']!r}>")
+    for s in checked:
+        ratio_str = f"{s['ratio']:.2f}:1" if s["ratio"] is not None else "n/a"
+        mark = "ok " if s["visible"] else "FAIL"
+        print(
+            f"       [{mark}] <{s['tag']} class={s['cls']!r}> outline={s['outlineColor']} "
+            f"ground={s['ground']} ratio={ratio_str}"
+        )
     browser.close()
     return ok
 

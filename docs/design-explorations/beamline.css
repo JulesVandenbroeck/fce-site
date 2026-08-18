@@ -43,12 +43,29 @@ a, button {
   font: inherit;
 }
 
-/* ---- focus — visible everywhere, never removed ------------------------ */
+/* ---- focus — visible everywhere, never removed ------------------------
+ * No `border-radius` set here (D-004 cycle-1 review, folded into Required
+ * 1): every focusable element already declares its own border-radius
+ * (`.btn`, `.palette__add`, `.port`'s 50%…), so the outline follows that
+ * shape natively. Setting one here used to *override* it, which is what
+ * turned a focused `.port` from a circle into a rounded square — an
+ * accident of this rule's own specificity, not a design. */
 a:focus-visible,
 button:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: var(--radius);
+}
+
+/* Ports sit inside a saturated --node-* fill, not on --paper/--panel like
+ * every other focusable element — see tokens.css's --focus-ring comment
+ * for why that fill defeats --graphite-blue's own ring and why this one
+ * rings with --node-label-on-fill (white) instead, which every --node-*
+ * fill was already built to hold text at >= 4.5:1 (tokens.css's node-
+ * identity comment) and clears >= 3:1 as a ring with room to spare
+ * (per-fill ratio printed by verify.py's check_beamline_focus_walk). */
+.port:focus-visible {
+  outline: 3px solid var(--node-label-on-fill);
+  outline-offset: 2px;
 }
 
 /* ---- topbar ------------------------------------------------------------- */
@@ -176,15 +193,21 @@ button:focus-visible {
   border-radius: var(--radius);
   padding: var(--space-2);
   color: var(--node-label-on-fill);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 0 var(--node-shadow);
   opacity: 0;
   animation: node-enter var(--timing) ease-out forwards;
 }
-.node:nth-child(1) { animation-delay: 0ms; background: var(--node-data); }
-.node:nth-child(2) { animation-delay: 60ms; background: var(--node-multiplicity); }
-.node:nth-child(3) { animation-delay: 120ms; background: var(--node-selection); }
-.node:nth-child(4) { animation-delay: 180ms; background: var(--node-obs-vecsum); }
-.node:nth-child(5) { animation-delay: 240ms; background: var(--node-histogram); }
+/* Stagger timing only — D-004 cycle-1 review, suggested-major 1: these
+ * selectors used to also set `background`, at specificity (0,2,0), which
+ * beats `.node--<kind>`'s (0,1,0) regardless of source order. For the first
+ * five rail slots that made hue a function of *position*, not kind — masked
+ * only because the demo's append order happened to match. Node-kind colour
+ * comes from `.node--<kind>` alone now; nth-child sets nothing but delay. */
+.node:nth-child(1) { animation-delay: 0ms; }
+.node:nth-child(2) { animation-delay: 60ms; }
+.node:nth-child(3) { animation-delay: 120ms; }
+.node:nth-child(4) { animation-delay: 180ms; }
+.node:nth-child(5) { animation-delay: 240ms; }
 .node:nth-child(n+6) { animation-delay: 0ms; }
 
 .node--data { background: var(--node-data); }
@@ -231,12 +254,21 @@ button:focus-visible {
   background: transparent;
   cursor: default;
 }
+/* Armed/hover used to fill the port with --graphite-blue, which crushed the
+ * port's own contrast against its node fill from 4.29-6.59:1 (--paper on a
+ * --node-* fill) down to 1.06-1.45:1 -- the single most important feedback
+ * in the click-to-connect model, vanishing on the fills it needed to read
+ * against most (D-004 cycle-1 review, suggested-major 3). The port's own
+ * fill stays --paper; armed/hover are carried on shape and size (thicker
+ * border, a scale step) so the state survives in greyscale and does not
+ * depend on which node fill the port happens to sit on. */
 .port--armed {
-  background: var(--graphite-blue);
+  border-width: 3px;
   border-color: var(--graphite-blue-strong);
+  transform: scale(1.15);
 }
 .port:hover:not(.port--absent) {
-  background: var(--graphite-blue);
+  border-color: var(--graphite-blue-strong);
 }
 .node__links {
   list-style: none;
@@ -257,7 +289,7 @@ button:focus-visible {
 }
 @keyframes node-flash {
   0% { box-shadow: 0 0 0 3px var(--graphite-blue); }
-  100% { box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15); }
+  100% { box-shadow: 0 1px 0 var(--node-shadow); }
 }
 
 /* ---- palette --------------------------------------------------------------- */

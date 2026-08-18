@@ -122,6 +122,11 @@ function buildNodeEl(id, kind, subtitle) {
     outPort.className = "port port--out";
     outPort.dataset.role = "out";
     outPort.setAttribute("aria-label", `Connect out from ${meta.label} (${id})`);
+    // Armed is a toggle state on this specific control (armPort/clearArmed
+    // flip it), not just a class -- D-004 cycle-1 review, suggested-major
+    // 3: the polite status line said "Connecting from…" but the port
+    // itself carried nothing in the accessibility tree.
+    outPort.setAttribute("aria-pressed", "false");
     outPort.addEventListener("click", () => handleOutClick(id));
     ports.appendChild(outPort);
   } else {
@@ -167,6 +172,7 @@ function armPort(id, portEl) {
   clearArmed();
   graphState.armed = { id, kind: graphState.nodes.get(id).kind };
   portEl.classList.add("port--armed");
+  portEl.setAttribute("aria-pressed", "true");
   setStatus(`Connecting from ${nodeLabel(id)} — click an input port to finish, or click this port again to cancel.`);
 }
 
@@ -175,7 +181,10 @@ function clearArmed() {
   const prev = els.graph.querySelector(
     `.node[data-node-id="${graphState.armed.id}"] .port--out`
   );
-  if (prev) prev.classList.remove("port--armed");
+  if (prev) {
+    prev.classList.remove("port--armed");
+    prev.setAttribute("aria-pressed", "false");
+  }
   graphState.armed = null;
 }
 

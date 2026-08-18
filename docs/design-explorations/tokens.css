@@ -96,7 +96,18 @@
   --syst-grey: #8a8272;
   --legend-border: var(--ink);
 
-  /* ---- focus ------------------------------------------------------------ */
+  /* ---- focus ------------------------------------------------------------
+   * `--focus-ring` (graphite-blue) rings every `a`/`button` focus stop that
+   * sits on --paper or --panel, where it composites to >= 6:1 (measured by
+   * verify.py's `--beamline` focus-walk section). D-004's ports are the one
+   * focus stop that instead sits inside a saturated `--node-*` fill, where
+   * graphite-blue itself is one of those fills (see --node-histogram's own
+   * comment) and composited as low as 1.06:1 there (D-004 cycle-1 review,
+   * Required 1) -- an invisible ring on 8 of 17 keyboard stops. `.port`
+   * rings with `--node-label-on-fill` instead (beamline.css), the same
+   * white already proven >= 4.5:1 against every one of the 8 node fills for
+   * node-title text, which composites to >= 5:1 as a ring against the same
+   * fills (worst case printed by check_beamline_focus_walk). */
   --focus-ring: var(--graphite-blue);
 
   /* ---- type ---------------------------------------------------------------
@@ -121,23 +132,33 @@
    * One hue per concrete node kind the run payload can carry. The kind list
    * and every legal src -> dst pair are read from the vendored reference's
    * own allowlist, not guessed: `_VALID_CONNECTIONS` and `NODE_LABELS` in
-   * `ui/graph.py` and `ui/state.py` of the `fce` package (installed from
-   * PyPI at 0.0.11 for this check — the repo this project vendors from,
-   * per `.claude/shared/CLAUDE.md` §2), cross-checked against `fce.py`'s
-   * "Insert Node" menu, which is the actual user-facing list of addable
-   * node kinds. That menu offers 8 concrete kinds — DataSource,
-   * Multiplicity, Selection, and the four Observable subtypes (ObsGlobal,
-   * ObsObject, ObsVectorSum, ObsCustom), plus Histogram. Bare "Observable"
-   * is a key in the allowlist dict but is never itself instantiated
-   * (`create_node("Observable")` does not appear in `fce.py`), so it is not
-   * given its own hue here. See each page's own annotation panel and the
-   * PR body for why this is 8 kinds and not the task dispatch's original 11.
+   * `ui/graph.py` and `ui/state.py` — read from a sibling git checkout of
+   * the `fce` reference repo (`../fce-project` relative to this repo's
+   * parent, per `.claude/shared/CLAUDE.md` §2 and verify.py's
+   * `REFERENCE_GRAPH_PY`), because `fce` is *not* pip-installed in this
+   * project's own `.venv` — cross-checked against `fce.py`'s "Insert Node"
+   * menu, which is the actual user-facing list of addable node kinds. That
+   * menu offers 8 concrete kinds — DataSource, Multiplicity, Selection, and
+   * the four Observable subtypes (ObsGlobal, ObsObject, ObsVectorSum,
+   * ObsCustom), plus Histogram. Bare "Observable" is a key in the allowlist
+   * dict but is never itself instantiated (`create_node("Observable")` does
+   * not appear in `fce.py`), so it is not given its own hue here. See each
+   * page's own annotation panel and the PR body for why this is 8 kinds and
+   * not the task dispatch's original 11.
    *
    * Every one of the 8 fills below is paired with white node-title text
    * (`--node-label-on-fill`); each pairing composites to >= 4.5:1. Measured
    * by verify.py's `--beamline` contrast section (see `check_beamline_
    * contrast`), which prints the per-swatch ratio it actually computed —
-   * not asserted here as a fact this file cannot check for itself. */
+   * not asserted here as a fact this file cannot check for itself.
+   *
+   * `--node-histogram` was originally #38566b, 1.06:1 from `--graphite-blue`
+   * below (D-004 cycle-1 review, Required 1 / suggested-major 2) — the same
+   * slate doing node-identity duty and ordinary interactive-chrome duty on
+   * one screen, and the direct cause of the focus ring's worst-case failure
+   * against this fill. Replaced with a deep indigo-violet that reads as its
+   * own hue against every other value in this block (measured pairwise
+   * ratios and HSL angle in the PR body), not just against graphite-blue. */
   --node-data: #8a5c0d;
   --node-multiplicity: #5c6b1f;
   --node-selection: #2e7d4f;
@@ -145,8 +166,19 @@
   --node-obs-object: #3d5aa8;
   --node-obs-vecsum: #7d4c93;
   --node-obs-custom: #9c3f78;
-  --node-histogram: #38566b;
+  --node-histogram: #4a2f6e;
   --node-label-on-fill: #ffffff;
+
+  /* ---- node shadow (D-004) -------------------------------------------------
+   * The node's own resting drop-shadow and the node--flash keyframe's reset
+   * state (beamline.css) both painted this literal inline (D-004 cycle-1
+   * review, suggested-major 5) rather than through a token, the one bare hex
+   * value outside this file the sweep could not see because `PAINT_PROPS`
+   * (verify.py) has no box-shadow entry — check_beamline_paint_sweep now
+   * extracts and checks the colour component of every element's computed
+   * `box-shadow` against this file's allowed-colour set too, so a future
+   * literal here is caught the same way any other paint property is. */
+  --node-shadow: rgba(0, 0, 0, 0.15);
 
   /* ---- lock state (D-004) -------------------------------------------------
    * A gated node type: desaturated fill, not merely a lighter grey (design
