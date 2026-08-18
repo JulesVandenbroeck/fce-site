@@ -20,7 +20,41 @@ IDs are `D-nnn`, allocated in order and never reused.
   refused; (4) every domain-inventory item present per page via `data-wf`, 0 missing, plus a
   locked node type present-but-inert; (5) full sweep at three widths with denominators.
 - **Depends on:** D-003 — **cleared 2026-08-17**, merged as `99ec8f3`.
-- **Status:** dispatched 2026-08-17.
+- **Status:** **dispatched 2026-08-17, stopped by the user before any commit.** Branch
+  `task/d-004-node-graphs` exists at `c86981c` (= `main`, no commits). No PR. Partial work
+  survives **uncommitted** in the agent worktree
+  `.claude/worktrees/agent-aabe0d4da7ede4df9` — a single 41-line addition to
+  `docs/design-explorations/tokens.css`. That worktree has changes, so it will not be
+  auto-cleaned; do not remove it without reading the diff first.
+- **CRITERION 3 IS WRONG, AND THE ERROR IS THE ORCHESTRATOR'S.** It says "all **121** ordered
+  node-type pairs attempted per page". 121 implies 11 node kinds. The reference has **8
+  concrete kinds**, so the real figure is **64 ordered pairs**. The number was inherited from
+  this entry's original wording and was never grounded in anything.
+  **Verified against source by the orchestrator, not taken from the agent:**
+  - `fce-project/fce/ui/graph.py:163` — `_VALID_CONNECTIONS` has **9** keys: `DataSource`,
+    `Multiplicity`, `Selection`, `Observable`, `ObsGlobal`, `ObsObject`, `ObsVectorSum`,
+    `ObsCustom`, `Histogram`.
+  - `fce-project/fce/ui/state.py:35` — `NODE_LABELS`, the same 9.
+  - `fce-project/fce/fce.py` — `create_node("...")` is called for exactly **8** of them.
+    **Bare `"Observable"` is an allowlist key that is never instantiated**, so it is a
+    grouping, not an addable node kind.
+  So: 8 addable kinds → 64 ordered pairs; 9 keys including the abstract one → 81. Neither is
+  121. **Fix the criterion before this is re-dispatched**, and state which of 64 or 81 is
+  wanted rather than leaving the coder to choose.
+- **The stopped agent found this by reading `ui/graph.py`** instead of trusting the dispatch,
+  and encoded it in the tokens.css comment before it was stopped. That is the behaviour the
+  four verification rules are meant to produce, and it worked on the first try here.
+- **The other thing its partial work settles:** the node-type palette. 8 hues, each paired
+  with white node-title text and claimed to composite at >= 4.5:1, plus a `--locked-fill`
+  that is desaturated rather than merely lighter, with its label on full `--ink` because
+  `--ink-70` over that fill measures 4.30:1 — below the 4.5:1 floor. **Those contrast numbers
+  are the coder's own and have been verified by nobody**; `verify.py`'s D-004 contrast
+  section, which was to have measured them, was never written.
+- **Size risk, recorded before the next attempt:** this task is 12 files and three
+  interactive prototypes, well past the orchestrator manual's own splitting test (§2, "more
+  than about three files, suspect it is really two tasks"). D-003, a smaller task, took four
+  cycles. If a re-dispatch thrashes, split it — one page per task, with `tokens.css` and
+  `verify.py` extended by the first and only read by the others — rather than spending cycles.
 - **The three, pushed apart on what the graph persists** — the one axis CSS cannot swap, and
   the thing that later lands in `POST /api/run`:
   - **A · Beamline** — auto-laid rail, persists an ordered edge list only, click-to-connect,
