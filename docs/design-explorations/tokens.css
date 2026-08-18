@@ -46,6 +46,12 @@
    * palette toggle, focus rings) so vermillion never has to. */
   --graphite-blue: #3c5a6e;
   --graphite-blue-strong: #2c4454;
+  /* Label text set on graphite-blue chrome (D-004's run button) — the same
+   * value as --node-label-on-fill below, kept as its own name because the
+   * two are different concerns (a button's own text colour vs. a node
+   * type's label) that happen to share a value, not one borrowing the
+   * other's name. */
+  --on-graphite-blue: #ffffff;
 
   /* ---- accent: rationed --------------------------------------------------
    * Significance thresholds, mission completion, the signal sample. Nowhere
@@ -110,4 +116,46 @@
   --space-5: 32px;
   --radius: 6px;
   --timing: 180ms;
+
+  /* ---- node type identity (D-004) ----------------------------------------
+   * One hue per concrete node kind the run payload can carry. The kind list
+   * and every legal src -> dst pair are read from the vendored reference's
+   * own allowlist, not guessed: `_VALID_CONNECTIONS` and `NODE_LABELS` in
+   * `ui/graph.py` and `ui/state.py` of the `fce` package (installed from
+   * PyPI at 0.0.11 for this check — the repo this project vendors from,
+   * per `.claude/shared/CLAUDE.md` §2), cross-checked against `fce.py`'s
+   * "Insert Node" menu, which is the actual user-facing list of addable
+   * node kinds. That menu offers 8 concrete kinds — DataSource,
+   * Multiplicity, Selection, and the four Observable subtypes (ObsGlobal,
+   * ObsObject, ObsVectorSum, ObsCustom), plus Histogram. Bare "Observable"
+   * is a key in the allowlist dict but is never itself instantiated
+   * (`create_node("Observable")` does not appear in `fce.py`), so it is not
+   * given its own hue here. See each page's own annotation panel and the
+   * PR body for why this is 8 kinds and not the task dispatch's original 11.
+   *
+   * Every one of the 8 fills below is paired with white node-title text
+   * (`--node-label-on-fill`); each pairing composites to >= 4.5:1. Measured
+   * by verify.py's `--beamline` contrast section (see `check_beamline_
+   * contrast`), which prints the per-swatch ratio it actually computed —
+   * not asserted here as a fact this file cannot check for itself. */
+  --node-data: #8a5c0d;
+  --node-multiplicity: #5c6b1f;
+  --node-selection: #2e7d4f;
+  --node-obs-global: #1f7a72;
+  --node-obs-object: #3d5aa8;
+  --node-obs-vecsum: #7d4c93;
+  --node-obs-custom: #9c3f78;
+  --node-histogram: #38566b;
+  --node-label-on-fill: #ffffff;
+
+  /* ---- lock state (D-004) -------------------------------------------------
+   * A gated node type: desaturated fill, not merely a lighter grey (design
+   * manual §2 rule 3) — this fill sits visibly apart from every --node-*
+   * hue above rather than being one of them turned down. Its label stays on
+   * full-opacity --ink rather than --ink-70, because --ink-70 composited
+   * over --locked-fill measures below the 4.5:1 AA-normal floor this
+   * project holds text to, where full --ink clears it with room to spare.
+   * Both numbers are printed by verify.py's `--beamline` contrast section. */
+  --locked-fill: #cfc7b2;
+  --locked-border: #b3a98c;
 }

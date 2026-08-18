@@ -1,20 +1,32 @@
 #!/usr/bin/env python3
-"""verify.py — D-003 checker for docs/design-explorations/.
+"""verify.py — D-003/D-004 checker for docs/design-explorations/.
 
-This script is the fact-generating half of the D-003 contract: every claim
-about this directory's own rendering lives here, as something measured in a
-real browser, printed with a denominator — never as a sentence in a comment
-or a README. See the task body's "two rules" section for why.
+This script is the fact-generating half of the D-003/D-004 contract: every
+claim about this directory's own rendering lives here, as something measured
+in a real browser, printed with a denominator — never as a sentence in a
+comment or a README. See each task body's "verification rules" section for
+why.
 
 Not imported by the app, not a test suite for src/. A documentation tool,
-per the D-003 task's file-scope carve-out.
+per D-003's and D-004's file-scope carve-outs.
 
 Usage:
-    python verify.py --plot     # anatomy-only report (acceptance criterion 1)
-    python verify.py --all      # everything: anatomy, measurements, paint
-                                 # sweep, contrast, focus walk, reduced motion,
-                                 # overflow, network, console, git-diff, prose lint
-    python verify.py            # same as --all
+    python verify.py --plot      # anatomy-only report (D-003 criterion 1)
+    python verify.py --beamline  # D-004 Beamline section only (see note below)
+    python verify.py --all       # everything: D-003's anatomy, measurements,
+                                  # paint sweep, contrast, focus walk, reduced
+                                  # motion, overflow, network, console,
+                                  # git-diff, prose lint — plus D-004's
+                                  # Beamline persistence, connection-gesture,
+                                  # 64-pair, inventory, paint, contrast,
+                                  # reduced-motion and network sections
+    python verify.py             # same as --all
+
+Note: D-003's own anatomy checks (`check_anatomy`, `check_ratio_panel`,
+`check_fit_readout`, `check_cutflow`, `check_payload_schema_sanity`) run
+unconditionally regardless of which flag is passed — that is pre-existing
+D-003 behaviour, out of D-004's file-scope to change, so `--beamline` alone
+still exercises them too.
 
 Requires Playwright (Python) with a Chromium browser available — see the
 task body for the PLAYWRIGHT_BROWSERS_PATH note on this container.
@@ -40,6 +52,63 @@ PLOT_HTML = HERE / "plot.html"
 TOKENS_CSS = HERE / "tokens.css"
 PAYLOAD_JSON = HERE / "payload.json"
 REPO_ROOT = HERE.parent.parent  # docs/design-explorations -> docs -> repo root
+
+# ---- D-004 (Beamline) -----------------------------------------------------
+BEAMLINE_HTML = HERE / "beamline.html"
+# The reference repo this project vendors from (`.claude/shared/CLAUDE.md`
+# §2), checked out as a sibling of this repo on this machine. Used to derive
+# the legal node-kind connection pairs by *executing* the reference's own
+# dict (see check_beamline_reference_parity), not by re-typing it from a
+# read of the source — verification rule 4.
+REFERENCE_GRAPH_PY = REPO_ROOT.parent / "fce-project" / "fce" / "ui" / "graph.py"
+# The 8 kinds `fce.py` actually calls `create_node(...)` for. Bare
+# "Observable" is a 9th key in the reference's own allowlist dict but is
+# never instantiated, so it is excluded here too — see tokens.css's node
+# identity comment and the PR body for how that was checked.
+BEAMLINE_ADDABLE_KINDS = [
+    "DataSource",
+    "Multiplicity",
+    "Selection",
+    "ObsGlobal",
+    "ObsObject",
+    "ObsVectorSum",
+    "ObsCustom",
+    "Histogram",
+]
+# Every distinct UI element a mission screen must hold, per the domain
+# inventory this task's dispatch names as criterion 4's source of truth:
+# the union of elements present across docs/wireframes/mission-screen.html's
+# five layout options (D-001), translated 1:1 to the node-graph pivot where
+# the widget itself changed (card -> node), plus two elements the pivot
+# itself introduces that the card-stack inventory had no need for: the node
+# type's own lock state (design-brief.md §4, "a locked node type is shown
+# and inert") and the click-to-connect feedback surface (this interaction
+# model's replacement for a card's own inline state). Each maps to one
+# `data-wf` value; presence is checked live in the DOM, never asserted here.
+BEAMLINE_DOMAIN_INVENTORY = [
+    ("brand", "wordmark, e.g. wf-wordmark in every option"),
+    ("campaign-nav", "mission list, e.g. wf-campaign / wf-index / wf-spines"),
+    ("mission-locked", "a locked mission chip within the nav, e.g. wf-chip--locked"),
+    ("student-id", "nickname display, e.g. wf-who"),
+    ("mission-title", "mission heading, e.g. 'M-1 . First Light'"),
+    ("mission-brief", "brief prose, e.g. wf-brief__text"),
+    ("objective", "the checkable objective box, e.g. wf-objective"),
+    ("graph", "the build/analysis area — was wf-stack cards, now the node graph"),
+    ("node-palette", "add-a-step control, e.g. wf-btn--ghost '+ Add a step'"),
+    ("node-locked", "a locked node kind, inert — design-brief.md §4 node gating"),
+    ("run-control", "run button, e.g. wf-btn--go"),
+    ("run-progress", "progress bar + phase text, e.g. wf-progress / wf-phase"),
+    ("connect-status", "click-to-connect feedback surface — this interaction model's own"),
+    ("plot", "figure, e.g. wf-plot"),
+    ("legend", "sample legend, e.g. wf-legend"),
+    ("readout", "numeric readout, e.g. wf-readout / wf-num"),
+    ("verdict", "objective met/missed message, e.g. wf-verdict"),
+    ("stamp", "completion stamp, e.g. wf-stamp"),
+    ("cutflow", "cutflow table, e.g. wf-table"),
+    ("gauge", "significance gauge, e.g. wf-gauge"),
+    ("run-history", "previous runs, e.g. wf-entry / 'Previous runs'"),
+    ("margin-note", "hint / marginalia, e.g. wf-note"),
+]
 
 WIDTHS = [1440, 1024, 768]
 
@@ -151,6 +220,35 @@ def load_page(
         page.on("request", lambda req: requests.append(req.url))
     page.goto(PLOT_HTML.as_uri())
     page.wait_for_timeout(1700)  # let the staggered reveal animation finish
+    return browser, context, page, console_errors, page_errors, requests
+
+
+def load_beamline_page(
+    pw: Playwright,
+    width: int,
+    height: int = 1200,
+    reduced_motion: Optional[str] = None,
+    html_path: Optional[Path] = None,
+) -> tuple[Browser, BrowserContext, Page, list[str], list[str], list[str]]:
+    """Same contract as `load_page`, but for `beamline.html` (D-004) rather
+    than `plot.html`. `html_path` lets a caller point at a scratch mutated
+    copy instead of the real file — used only by the mutation-testing
+    transcripts in the PR body, never by the checks below, which always run
+    against the real, committed page."""
+    browser = pw.chromium.launch()
+    context_kwargs = {"viewport": {"width": width, "height": height}}
+    if reduced_motion:
+        context_kwargs["reduced_motion"] = reduced_motion
+    context = browser.new_context(**context_kwargs)
+    page = context.new_page()
+    console_errors = []
+    page_errors = []
+    requests = []
+    page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+    page.on("request", lambda req: requests.append(req.url))
+    page.goto((html_path or BEAMLINE_HTML).as_uri())
+    page.wait_for_timeout(400)  # let the node-entrance stagger animation finish
     return browser, context, page, console_errors, page_errors, requests
 
 
@@ -1704,16 +1802,728 @@ def check_payload_consistency(pw: Playwright) -> bool:
     return ok
 
 
+# =======================================================================
+# D-004 — Beamline (node-graph style A)
+# =======================================================================
+def check_beamline_persistence(pw: Playwright) -> bool:
+    """Criterion 1: Beamline persists an ordered edge list only. Reads the
+    single `data-edges` attribute on `#graph`, prints it back as ordered
+    source->destination pairs (by node kind + id), and separately makes a
+    positive, falsifiable assertion — not a claim in prose — that no
+    coordinate of any kind (an inline `style`, a data-x/y/pos/col/row/slot
+    attribute, or a non-static computed `position` on a node) exists
+    anywhere in the rendered DOM."""
+    section("Beamline persistence — ordered edge list only, no coordinate anywhere")
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+
+    raw = page.eval_on_selector("#graph", "el => el.getAttribute('data-edges')")
+    try:
+        edges = json.loads(raw)
+        well_formed = isinstance(edges, list) and all(
+            isinstance(e, list) and len(e) == 2 and all(isinstance(x, str) for x in e) for e in edges
+        )
+    except (json.JSONDecodeError, TypeError):
+        edges = None
+        well_formed = False
+    line(
+        "data-edges attribute on #graph parses as a list of [from, to] id pairs",
+        well_formed,
+        f"raw attribute: {raw!r}",
+    )
+
+    if well_formed:
+        kind_by_id = page.evaluate(
+            """() => {
+                const out = {};
+                document.querySelectorAll('.node[data-node-id]').forEach(el => {
+                    out[el.dataset.nodeId] = el.dataset.nodeKind;
+                });
+                return out;
+            }"""
+        )
+        print(f"       {len(edges)} persisted edge(s), in order:")
+        for src, dst in edges:
+            print(f"         {kind_by_id.get(src, '?')}({src}) -> {kind_by_id.get(dst, '?')}({dst})")
+
+    # Denominator is every element under <body>, not just .node elements, so
+    # a coordinate hiding anywhere else on the page would still be caught.
+    scan = page.evaluate(
+        """() => {
+            const all = Array.from(document.querySelectorAll('body *'));
+            const coordAttrRe = /^data-(x|y|pos|position|col|column|row|slot)$/i;
+            let inlineStyleCount = 0;
+            let coordAttrCount = 0;
+            const offenders = [];
+            all.forEach(el => {
+                if (el.getAttribute('style')) {
+                    inlineStyleCount++;
+                    offenders.push({ why: 'inline style', tag: el.tagName, cls: el.className });
+                }
+                for (const attr of el.attributes) {
+                    if (coordAttrRe.test(attr.name)) {
+                        coordAttrCount++;
+                        offenders.push({ why: attr.name, tag: el.tagName, cls: el.className });
+                    }
+                }
+            });
+            const nodes = Array.from(document.querySelectorAll('.node'));
+            const nonStatic = nodes.filter(el => getComputedStyle(el).position !== 'static').length;
+            return {
+                inspected: all.length, inlineStyleCount, coordAttrCount,
+                nodeCount: nodes.length, nonStaticNodeCount: nonStatic,
+                offenders: offenders.slice(0, 10),
+            };
+        }"""
+    )
+    no_coord = scan["inlineStyleCount"] == 0 and scan["coordAttrCount"] == 0 and scan["nonStaticNodeCount"] == 0
+    line(
+        f"No coordinate anywhere: {scan['inspected']} elements scanned for an inline style "
+        f"attribute or a data-x/y/pos/col/row/slot-shaped attribute; {scan['nodeCount']} .node "
+        "elements checked for a non-static computed position",
+        no_coord,
+        f"{scan['inlineStyleCount']} inline styles, {scan['coordAttrCount']} coordinate-shaped "
+        f"attributes, {scan['nonStaticNodeCount']} non-statically-positioned nodes"
+        + (f"; e.g. {scan['offenders']}" if scan["offenders"] else ""),
+    )
+
+    ok = well_formed and no_coord
+    browser.close()
+    return ok
+
+
+def check_beamline_connection_gestures(pw: Playwright) -> bool:
+    """Criterion 2: click-to-connect is accepted, drag-to-connect is
+    refused — both driven by real Playwright gestures (`click()` for the
+    accept case; `mouse.down`/`move`/`up` for the refuse case), never by
+    calling this page's own JS handlers directly. Falsifiability for both
+    assertions is demonstrated by mutation, not in this file — the same
+    reporting shape D-003's legend-layout check used for the same reason
+    (a checker asserting its own checker is correct proves nothing). See
+    the PR body for both transcripts: break the accept path and this
+    fails; break the refuse path and this fails; restore and both pass."""
+    section("Connection gestures — click accepted, drag refused")
+    all_ok = True
+
+    # accept: two real clicks between a legal pair (Data -> Selection)
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+    page.click('[data-add-kind="DataSource"]')
+    page.click('[data-add-kind="Selection"]')
+    page.click('.node[data-node-id="n6"] .port--out')
+    page.click('.node[data-node-id="n7"] .port--in')
+    edges = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-edges')"))
+    accepted = ["n6", "n7"] in edges
+    all_ok = all_ok and accepted
+    status_text = page.eval_on_selector("#graph-status", "el => el.textContent")
+    line(
+        "Click-to-connect: two real .click() calls on a legal pair (Data -> Selection) create the edge",
+        accepted,
+        f"edges={edges}, status={status_text!r}",
+    )
+    browser.close()
+
+    # refuse by kind: a legal-port, illegal-kind pair, via real clicks
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+    page.click('[data-add-kind="Multiplicity"]')
+    page.click('[data-add-kind="ObsGlobal"]')
+    page.click('.node[data-node-id="n6"] .port--out')
+    page.click('.node[data-node-id="n7"] .port--in')
+    edges2 = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-edges')"))
+    refused_by_kind = ["n6", "n7"] not in edges2
+    status_text2 = page.eval_on_selector("#graph-status", "el => el.textContent")
+    names_refusal = "cannot connect to" in status_text2
+    all_ok = all_ok and refused_by_kind and names_refusal
+    line(
+        "Illegal-kind click attempt (Multiplicity -> Obs: Global) is refused, and the status "
+        "region names why",
+        refused_by_kind and names_refusal,
+        f"edges={edges2}, status={status_text2!r}",
+    )
+    browser.close()
+
+    # refuse by gesture: a legal pair, attempted by a real drag
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+    page.click('[data-add-kind="Selection"]')
+    page.click('[data-add-kind="ObsCustom"]')
+    src = page.locator('.node[data-node-id="n6"] .port--out').bounding_box()
+    dst = page.locator('.node[data-node-id="n7"] .port--in').bounding_box()
+    page.mouse.move(src["x"] + src["width"] / 2, src["y"] + src["height"] / 2)
+    page.mouse.down()
+    page.mouse.move(dst["x"] + dst["width"] / 2, dst["y"] + dst["height"] / 2, steps=15)
+    page.mouse.up()
+    edges3 = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-edges')"))
+    refused_by_drag = ["n6", "n7"] not in edges3
+    all_ok = all_ok and refused_by_drag
+    line(
+        "Real drag gesture (mouse.down on an out-port, mouse.move, mouse.up on a different "
+        "node's in-port) between a legal pair (Selection -> Obs: Custom) does NOT create the edge",
+        refused_by_drag,
+        f"edges={edges3}",
+    )
+    browser.close()
+
+    return all_ok
+
+
+def derive_reference_legal_pairs() -> Optional[set[tuple[str, str]]]:
+    """Extract `_OBS_TYPES_SET` and `_VALID_CONNECTIONS` from the vendored
+    reference's own `ui/graph.py` and `exec` that exact source block — not a
+    hand-transcription of it — to compute the legal ordered (src, dst) pairs
+    among the 8 addable kinds. Returns None if the sibling reference repo is
+    not checked out at `REFERENCE_GRAPH_PY`, rather than silently falling
+    back to a hard-coded table: a parity claim with nothing to check against
+    is not a parity claim (verification rule 4)."""
+    if not REFERENCE_GRAPH_PY.exists():
+        return None
+    src = REFERENCE_GRAPH_PY.read_text()
+    m = re.search(
+        r"_OBS_TYPES_SET = .*?\n_VALID_CONNECTIONS: dict\[str, set\[str\]\] = \{.*?\n\}\n", src, re.S
+    )
+    if not m:
+        return None
+    ns: dict = {}
+    exec(m.group(0), ns)  # the reference's own literal dict block, not user input
+    valid_connections = ns["_VALID_CONNECTIONS"]
+    legal = set()
+    for s in BEAMLINE_ADDABLE_KINDS:
+        for d in BEAMLINE_ADDABLE_KINDS:
+            if d in valid_connections.get(s, set()):
+                legal.add((s, d))
+    return legal
+
+
+def check_beamline_pairs(pw: Playwright) -> bool:
+    """Criterion 3: every one of the 64 ordered (src, dst) pairs among the 8
+    addable node kinds is attempted between two distinct, freshly-added node
+    instances, through the real click-to-connect interaction path — never by
+    calling isLegal() or any other JS function directly. The expected
+    accept/refuse verdict for each pair is not hard-coded here: it comes
+    from `derive_reference_legal_pairs`, executed fresh each run."""
+    section("All 64 ordered node-kind pairs, real click gestures, against the reference's own allowlist")
+
+    reference_legal = derive_reference_legal_pairs()
+    if reference_legal is None:
+        line(
+            f"Reference allowlist executed from {REFERENCE_GRAPH_PY}",
+            False,
+            "sibling reference repo not found at this path -- cannot check parity against it",
+        )
+        return False
+    line(
+        f"Reference allowlist executed from {REFERENCE_GRAPH_PY} (not transcribed)",
+        len(reference_legal) == 13,
+        f"{len(reference_legal)} legal pairs derived among the 8 addable kinds",
+    )
+
+    browser = pw.chromium.launch()
+    results: dict[tuple[str, str], bool] = {}
+    for src_kind in BEAMLINE_ADDABLE_KINDS:
+        for dst_kind in BEAMLINE_ADDABLE_KINDS:
+            page = browser.new_page(viewport={"width": 1200, "height": 1200})
+            page.goto(BEAMLINE_HTML.as_uri())
+            page.wait_for_timeout(60)
+            page.click(f'[data-add-kind="{src_kind}"]')
+            page.click(f'[data-add-kind="{dst_kind}"]')
+            out_sel = '.node[data-node-id="n6"] .port--out'
+            in_sel = '.node[data-node-id="n7"] .port--in'
+            if page.locator(out_sel).count() > 0:
+                page.click(out_sel)
+            if page.locator(in_sel).count() > 0:
+                page.click(in_sel)
+            edges = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-edges')"))
+            results[(src_kind, dst_kind)] = ["n6", "n7"] in edges
+            page.close()
+    browser.close()
+
+    accepted = {pair for pair, ok in results.items() if ok}
+    refused = {pair for pair, ok in results.items() if not ok}
+    disagreements = [pair for pair in results if results[pair] != (pair in reference_legal)]
+
+    ok = len(results) == 64 and len(accepted) == 13 and len(refused) == 51 and not disagreements
+    line(
+        f"{len(results)} of 64 ordered pairs attempted via real click gestures",
+        ok,
+        f"{len(accepted)} accepted, {len(refused)} refused, {len(disagreements)} disagree with "
+        "the reference-derived allowlist",
+    )
+    print("       accepted set:")
+    for src_kind, dst_kind in sorted(accepted):
+        print(f"         {src_kind} -> {dst_kind}")
+    for pair in disagreements:
+        print(
+            f"       DISAGREES with reference: {pair} -- UI said {results[pair]}, "
+            f"reference said {pair in reference_legal}"
+        )
+
+    return ok
+
+
+def check_beamline_inventory(pw: Playwright) -> bool:
+    """Criterion 4: every domain-inventory item (BEAMLINE_DOMAIN_INVENTORY,
+    denominator and source named there) is present via a `data-wf`
+    attribute, reported as n of N; plus the one locked node kind is present,
+    visibly gated, not connectable, and not reachable by keyboard as an
+    active control — checked by a real Tab walk, not by reading its
+    tabindex value alone."""
+    section("Domain inventory -- every data-wf item present, plus the locked node kind's own checks")
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+
+    names = [name for name, _ in BEAMLINE_DOMAIN_INVENTORY]
+    counts = page.evaluate(
+        """(names) => Object.fromEntries(
+            names.map(n => [n, document.querySelectorAll(`[data-wf="${n}"]`).length])
+        )""",
+        names,
+    )
+    present = [n for n in names if counts[n] > 0]
+    missing = [n for n in names if counts[n] == 0]
+    n_total = len(BEAMLINE_DOMAIN_INVENTORY)
+    ok_inventory = len(missing) == 0
+    line(
+        f"{len(present)} of {n_total} domain-inventory items present (denominator source: "
+        "docs/wireframes/mission-screen.html's five layout options -- see "
+        "BEAMLINE_DOMAIN_INVENTORY's own comment)",
+        ok_inventory,
+        f"missing: {missing}" if missing else "all present",
+    )
+    for name, source in BEAMLINE_DOMAIN_INVENTORY:
+        mark = "x" if counts[name] > 0 else " "
+        print(f"       [{mark}] {name} ({counts[name]}) -- {source}")
+
+    locked_info = page.evaluate(
+        """() => {
+            const el = document.querySelector('[data-wf="node-locked"]');
+            if (!el) return null;
+            const rect = el.getBoundingClientRect();
+            return {
+                visible: rect.width > 0 && rect.height > 0,
+                ariaDisabled: el.getAttribute('aria-disabled'),
+                isButtonOrLink: ['BUTTON', 'A', 'INPUT'].includes(el.tagName),
+                hasTabindexNonNegative: (
+                    el.hasAttribute('tabindex') && parseInt(el.getAttribute('tabindex'), 10) >= 0
+                ),
+                hasPort: !!el.querySelector('.port:not(.port--absent)'),
+            };
+        }"""
+    )
+    page.evaluate("""() => { window.__lockWalk = { map: new WeakMap(), next: 1 }; }""")
+    page.keyboard.press("Tab")
+    seen: set = set()
+    locked_focused = False
+    for _ in range(200):
+        info = page.evaluate(
+            """() => {
+                const el = document.activeElement;
+                if (!el || el === document.body) return null;
+                const w = window.__lockWalk;
+                let wid = w.map.get(el);
+                if (wid === undefined) { wid = w.next++; w.map.set(el, wid); }
+                return { wid, isLocked: el.matches('[data-wf="node-locked"]') };
+            }"""
+        )
+        if info is None:
+            break
+        if info["wid"] in seen:
+            break
+        seen.add(info["wid"])
+        if info["isLocked"]:
+            locked_focused = True
+        page.keyboard.press("Tab")
+
+    locked_ok = (
+        locked_info is not None
+        and locked_info["visible"]
+        and locked_info["ariaDisabled"] == "true"
+        and not locked_info["isButtonOrLink"]
+        and not locked_info["hasTabindexNonNegative"]
+        and not locked_info["hasPort"]
+        and not locked_focused
+    )
+    line(
+        f"Locked node kind: visible={locked_info and locked_info['visible']}, "
+        f"aria-disabled={locked_info and locked_info['ariaDisabled']!r}, not a button/link/input, "
+        f"no non-negative tabindex, no port, reached by a real {len(seen)}-stop Tab walk="
+        f"{locked_focused}",
+        locked_ok,
+        "" if locked_ok else f"raw: {locked_info}",
+    )
+
+    browser.close()
+    return ok_inventory and locked_ok
+
+
+def check_beamline_paint_sweep(pw: Playwright) -> bool:
+    """Criterion 5's general sweep: computed-style paint properties at
+    1440/1024/768, with a printed denominator, checked against tokens.css's
+    :root set (same PAINT_PROPS list D-003 checks, including `fill`/`stroke`
+    -- guarded to SVG shape elements only, same as D-003, since this page
+    draws no SVG today and every HTML element resolves a `fill` it never
+    renders), plus zero horizontal body overflow at 768."""
+    section("Beamline paint sweep -- token-set membership, every width")
+    tokens = parse_root_tokens(TOKENS_CSS.read_text())
+    all_ok = True
+    for width in WIDTHS:
+        browser, context, page, *_ = load_beamline_page(pw, width)
+        allowed, resolved = resolve_allowed_colors(page, tokens)
+        report = page.evaluate(
+            """(args) => {
+                const [props, allowedList] = args;
+                const allowed = new Set(allowedList);
+                const results = { inspected: 0, violations: [], exemptCount: 0 };
+                const scope = [document.body, ...document.body.querySelectorAll('*')];
+                // fill/stroke only ever paint anything on SVG shape
+                // elements, never on HTML elements -- see D-003's
+                // check_paint_sweep for the same guard and why (every HTML
+                // element resolves an initial `fill: rgb(0, 0, 0)` per the
+                // CSS Fill spec even though it never renders one).
+                const fillableSvgTags = new Set(['rect', 'circle', 'path', 'polygon', 'text', 'ellipse', 'polyline']);
+                const strokableSvgTags = new Set([...fillableSvgTags, 'line']);
+                const isSvg = (el) => el.namespaceURI === 'http://www.w3.org/2000/svg';
+                scope.forEach(el => {
+                    const cs = getComputedStyle(el);
+                    const tag = el.tagName.toLowerCase();
+                    for (const prop of props) {
+                        if (prop === 'fill' && !(isSvg(el) && fillableSvgTags.has(tag))) continue;
+                        if (prop === 'stroke' && !(isSvg(el) && strokableSvgTags.has(tag))) continue;
+                        const val = cs[prop];
+                        if (val === undefined || val === '') continue;
+                        results.inspected++;
+                        const lower = String(val).toLowerCase();
+                        const exempt = (
+                            lower === 'none' || lower === 'transparent' ||
+                            lower === 'rgba(0, 0, 0, 0)' || lower === 'currentcolor'
+                        );
+                        if (exempt) { results.exemptCount++; continue; }
+                        if (!allowed.has(val)) {
+                            results.violations.push({ tag: el.tagName, cls: el.getAttribute('class'), prop, val });
+                        }
+                    }
+                });
+                const overflow = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
+                return { ...results, bodyOverflow: overflow };
+            }""",
+            [PAINT_PROPS, list(allowed)],
+        )
+        ok = len(report["violations"]) == 0 and not report["bodyOverflow"]
+        all_ok = all_ok and ok
+        line(
+            f"width={width}px: {report['inspected']} property reads across {len(PAINT_PROPS)} "
+            f"properties, {report['exemptCount']} exempt, body horizontal overflow="
+            f"{report['bodyOverflow']}",
+            ok,
+            f"{len(report['violations'])} off-token violations",
+        )
+        for v in report["violations"][:10]:
+            print(f"       off-token: <{v['tag']} class={v['cls']!r}> {v['prop']}={v['val']}")
+        browser.close()
+    return all_ok
+
+
+def check_beamline_contrast(pw: Playwright) -> bool:
+    """Criterion 5's node-label requirement: the contrast of every node
+    label against its own fill, alpha-composited, against the 4.5:1 AA
+    floor -- plus the locked tile's own label against `--locked-fill`, plus
+    a general sweep of every other text-bearing element against its own
+    resolved background (the nearest painted ancestor, walking up from the
+    element itself; paper is the fallback when nothing paints one)."""
+    section("Beamline contrast -- text against its real background, alpha-composited")
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+
+    def resolve_token(name: str) -> tuple[float, float, float]:
+        c = page.evaluate(
+            """(v) => {
+                const probe = document.createElement('div');
+                probe.style.color = `var(${v})`;
+                document.body.appendChild(probe);
+                const r = getComputedStyle(probe).color;
+                document.body.removeChild(probe);
+                return r;
+            }""",
+            name,
+        )
+        return parse_rgba(c)[:3]
+
+    paper = resolve_token("--paper")
+
+    node_texts = page.evaluate(
+        """() => {
+            const out = [];
+            document.querySelectorAll('.node').forEach(node => {
+                const bg = getComputedStyle(node).backgroundColor;
+                node.querySelectorAll('.node__title, .node__subtitle, .node__links li').forEach(el => {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width === 0 || rect.height === 0) return;
+                    const cs = getComputedStyle(el);
+                    out.push({
+                        kind: node.dataset.nodeKind, bg, color: cs.color,
+                        fontSize: parseFloat(cs.fontSize), fontWeight: cs.fontWeight,
+                        text: el.textContent.trim().slice(0, 24),
+                    });
+                });
+            });
+            return out;
+        }"""
+    )
+    checked = 0
+    failures = []
+    per_kind_ratio: dict[str, float] = {}
+    for t in node_texts:
+        rgba = parse_rgba(t["color"])
+        bg = parse_rgba(t["bg"])
+        if not rgba or not bg:
+            continue
+        ground = composite_over(bg, paper)
+        composited = composite_over(rgba, ground)
+        ratio = contrast_ratio(composited, ground)
+        checked += 1
+        large = t["fontSize"] >= 24 or (t["fontSize"] >= 18.66 and t["fontWeight"] in ("700", "bold"))
+        threshold = 3.0 if large else 4.5
+        per_kind_ratio.setdefault(t["kind"], ratio)
+        if ratio < threshold:
+            failures.append((t, ratio, threshold))
+    ok_nodes = checked > 0 and len(failures) == 0
+    line(
+        f"{checked} node label(s) checked against their own node fill, across "
+        f"{len(per_kind_ratio)} node kinds",
+        ok_nodes,
+        f"{len(failures)} below AA",
+    )
+    for kind, ratio in sorted(per_kind_ratio.items()):
+        print(f"       {kind}: {ratio:.2f}:1 against its own fill")
+    for t, ratio, threshold in failures[:10]:
+        print(f"       below AA: {t['kind']} {t['color']} on {t['bg']} = {ratio:.2f}:1 (needs {threshold})")
+
+    locked = page.evaluate(
+        """() => {
+            const el = document.querySelector('[data-wf="node-locked"]');
+            if (!el) return null;
+            const cs = getComputedStyle(el);
+            return { bg: cs.backgroundColor, color: cs.color };
+        }"""
+    )
+    locked_ratio = None
+    if locked:
+        bg = parse_rgba(locked["bg"])
+        fg = parse_rgba(locked["color"])
+        ground = composite_over(bg, paper)
+        composited = composite_over(fg, ground)
+        locked_ratio = contrast_ratio(composited, ground)
+    ok_locked = locked_ratio is not None and locked_ratio >= 4.5
+    line(
+        "Locked node-kind tile label against --locked-fill",
+        ok_locked,
+        f"{locked_ratio:.2f}:1" if locked_ratio else "n/a",
+    )
+
+    # Ground is resolved by walking up from the element itself (not by a
+    # hand-maintained list of "panel-ish" selectors, which is exactly the
+    # kind of guess that goes stale): the first ancestor, starting at the
+    # element, whose own computed background-color is not transparent. That
+    # is what a viewer actually sees behind the text, whether that is paper,
+    # panel, a button's own solid fill, or anything else.
+    general = page.evaluate(
+        """() => {
+            const isPaintedBg = (c) => c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent';
+            const out = [];
+            document.querySelectorAll('body :not(script):not(style)').forEach(el => {
+                if (el.closest('.node') || el.matches('[data-wf="node-locked"]')) return;
+                const direct = Array.from(el.childNodes).some(
+                    n => n.nodeType === 3 && n.textContent.trim().length > 0
+                );
+                if (!direct) return;
+                const rect = el.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                const cs = getComputedStyle(el);
+                let bg = null;
+                let cur = el;
+                while (cur && cur !== document.documentElement.parentElement) {
+                    const c = getComputedStyle(cur).backgroundColor;
+                    if (isPaintedBg(c)) { bg = c; break; }
+                    cur = cur.parentElement;
+                }
+                out.push({
+                    tag: el.tagName, cls: el.getAttribute('class'), color: cs.color, bg,
+                    fontSize: parseFloat(cs.fontSize), fontWeight: cs.fontWeight,
+                    text: el.textContent.trim().slice(0, 24),
+                });
+            });
+            return out;
+        }"""
+    )
+    checked2 = 0
+    failures2 = []
+    for s in general:
+        rgba = parse_rgba(s["color"])
+        if not rgba:
+            continue
+        bg_rgba = parse_rgba(s["bg"]) if s["bg"] else None
+        ground = composite_over(bg_rgba, paper) if bg_rgba else paper
+        composited = composite_over(rgba, ground)
+        ratio = contrast_ratio(composited, ground)
+        large = s["fontSize"] >= 24 or (s["fontSize"] >= 18.66 and s["fontWeight"] in ("700", "bold"))
+        threshold = 3.0 if large else 4.5
+        checked2 += 1
+        if ratio < threshold:
+            failures2.append((s, ratio, threshold, ground))
+    ok_general = checked2 > 0 and len(failures2) == 0
+    line(
+        f"{checked2} other text-bearing elements checked against their own resolved background "
+        f"(nearest painted ancestor background, walking up from the element itself; paper "
+        f"{paper} is the fallback when nothing paints one)",
+        ok_general,
+        f"{len(failures2)} below AA",
+    )
+    for s, ratio, threshold, ground in failures2[:10]:
+        print(
+            f"       below AA: <{s['tag']} class={s['cls']!r}> {s['color']} on {ground} "
+            f"{ratio:.2f}:1 (needs {threshold}) text={s['text']!r}"
+        )
+
+    browser.close()
+    return ok_nodes and ok_locked and ok_general
+
+
+def check_beamline_focus_walk(pw: Playwright) -> bool:
+    """Drive a real keyboard Tab walk from the top of the page (same method
+    as D-003's `check_focus_walk`) and check every reachable stop for a
+    visible `:focus-visible` ring, counting stops with and without one --
+    the design manual's "keyboard focus is visible on every interactive
+    element" requirement, measured rather than eyeballed."""
+    section("Beamline keyboard focus walk -- real Tab presses, visible-ring count")
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+    page.evaluate("""() => { window.__focusWalk = { map: new WeakMap(), next: 1 }; }""")
+    page.keyboard.press("Tab")
+    stops = []
+    seen_ids: set = set()
+    for _ in range(200):
+        info = page.evaluate(
+            """() => {
+                const el = document.activeElement;
+                if (!el || el === document.body) return null;
+                const w = window.__focusWalk;
+                let wid = w.map.get(el);
+                if (wid === undefined) { wid = w.next++; w.map.set(el, wid); }
+                const cs = getComputedStyle(el);
+                const visible = (
+                    el.matches(':focus-visible') &&
+                    cs.outlineStyle !== 'none' &&
+                    parseFloat(cs.outlineWidth) > 0
+                );
+                return { wid, tag: el.tagName, cls: el.getAttribute('class'), visible };
+            }"""
+        )
+        if info is None:
+            break
+        if info["wid"] in seen_ids:
+            break
+        seen_ids.add(info["wid"])
+        stops.append(info)
+        page.keyboard.press("Tab")
+    with_ring = sum(1 for s in stops if s["visible"])
+    without_ring = [s for s in stops if not s["visible"]]
+    ok = len(stops) > 0 and len(without_ring) == 0
+    line(
+        f"{len(stops)} focusable stops reached by real Tab presses",
+        ok,
+        f"{with_ring} carried a visible focus ring, {len(without_ring)} did not",
+    )
+    for s in without_ring[:10]:
+        print(f"       no visible ring: <{s['tag']} class={s['cls']!r}>")
+    browser.close()
+    return ok
+
+
+def check_beamline_reduced_motion(pw: Playwright) -> bool:
+    """Re-render with prefers-reduced-motion: reduce and check every
+    animated element (the `.node` entrance stagger, the `.stamp` press)
+    renders its finished end state immediately, no transit."""
+    section("Beamline prefers-reduced-motion re-render")
+    browser, context, page, *_ = load_beamline_page(pw, 1024, reduced_motion="reduce")
+    facts = page.evaluate(
+        """() => {
+            return Array.from(document.querySelectorAll('.node, .stamp')).map(el => {
+                const cs = getComputedStyle(el);
+                return {
+                    cls: el.getAttribute('class'),
+                    animationName: cs.animationName,
+                    opacity: parseFloat(cs.opacity),
+                };
+            });
+        }"""
+    )
+    bad = [f for f in facts if f["animationName"] != "none" or f["opacity"] < 1]
+    ok = len(facts) > 0 and len(bad) == 0
+    line(
+        f"{len(facts)} reveal/press-animated elements checked under prefers-reduced-motion: reduce",
+        ok,
+        f"{len(bad)} still animating or not at full opacity",
+    )
+    for f in bad[:10]:
+        print(f"       still animating: {f}")
+    browser.close()
+    return ok
+
+
+def check_beamline_network_and_errors(pw: Playwright) -> bool:
+    """Zero non-local requests, zero console/page errors, at each width --
+    driven through the add-node/connect/run interactions, not just a bare
+    load, so a handler wired up after load has a chance to misbehave."""
+    section("Beamline -- non-local requests + console/page errors")
+    all_ok = True
+    for width in WIDTHS:
+        browser, context, page, console_errors, page_errors, requests = load_beamline_page(pw, width)
+        page.click('[data-add-kind="Selection"]')
+        page.click('.node[data-node-id="n1"] .port--out')
+        page.click('.node[data-node-id="n6"] .port--in')
+        page.click("#run-button")
+        page.wait_for_timeout(200)
+        non_local = [r for r in requests if not r.startswith("file://")]
+        ok = len(non_local) == 0 and len(console_errors) == 0 and len(page_errors) == 0
+        all_ok = all_ok and ok
+        line(
+            f"width={width}px: {len(requests)} requests total, {len(console_errors)} console "
+            f"errors, {len(page_errors)} page errors",
+            ok,
+            f"non-local requests: {non_local}",
+        )
+        browser.close()
+    return all_ok
+
+
+def check_beamline_no_exhaustive_prose() -> bool:
+    """Same lint as `check_no_exhaustive_prose` (reusing the shared
+    `EXHAUSTIVE_CLAIM_PATTERNS` denylist), run over this task's own files
+    plus the D-004 addition to tokens.css -- kept as a separate function so
+    D-003's own check and its file list stay untouched."""
+    section("Beamline prose/comment lint -- no exhaustive claims about this directory's own rendering")
+    files = [HERE / "beamline.html", HERE / "beamline.css", HERE / "beamline.js", HERE / "tokens.css"]
+    hits: list[tuple[str, str]] = []
+    for f in files:
+        text = f.read_text()
+        for pat in EXHAUSTIVE_CLAIM_PATTERNS:
+            for m in re.finditer(pat, text, re.I):
+                start = max(0, m.start() - 40)
+                hits.append((f.name, text[start:m.end() + 10].replace("\n", " ")))
+    ok = len(hits) == 0
+    line(f"{len(files)} files scanned for exhaustive-claim phrasing", ok, f"{len(hits)} matches")
+    for fname, ctx in hits:
+        print(f"       {fname}: ...{ctx}...")
+    return ok
+
+
 # ---------------------------------------------------------------------
 def main() -> None:
     """Run the anatomy checks (always) plus the full sweep (`--all`, the
     default) or just anatomy (`--plot`), print a summary table, and exit
-    non-zero if any section failed."""
+    non-zero if any section failed. `--beamline` additionally (or, given
+    alone, only in addition to the unconditional anatomy block above, which
+    is D-003's existing behaviour and out of this task's file scope to
+    change) runs the D-004 Beamline section."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--plot", action="store_true", help="anatomy-only report")
     parser.add_argument("--all", action="store_true", help="full sweep")
+    parser.add_argument("--beamline", action="store_true", help="D-004 Beamline section only")
     args = parser.parse_args()
-    if not args.plot and not args.all:
+    if not args.plot and not args.all and not args.beamline:
         args.all = True
 
     all_results = []
@@ -1737,6 +2547,18 @@ def main() -> None:
             all_results.append(("network-and-errors", check_network_and_errors(pw)))
             all_results.append(("git-diff-clean", check_git_diff()))
             all_results.append(("no-exhaustive-prose", check_no_exhaustive_prose()))
+
+        if args.all or args.beamline:
+            all_results.append(("beamline-persistence", check_beamline_persistence(pw)))
+            all_results.append(("beamline-connection-gestures", check_beamline_connection_gestures(pw)))
+            all_results.append(("beamline-pairs", check_beamline_pairs(pw)))
+            all_results.append(("beamline-inventory", check_beamline_inventory(pw)))
+            all_results.append(("beamline-paint-sweep", check_beamline_paint_sweep(pw)))
+            all_results.append(("beamline-contrast", check_beamline_contrast(pw)))
+            all_results.append(("beamline-focus-walk", check_beamline_focus_walk(pw)))
+            all_results.append(("beamline-reduced-motion", check_beamline_reduced_motion(pw)))
+            all_results.append(("beamline-network-and-errors", check_beamline_network_and_errors(pw)))
+            all_results.append(("beamline-no-exhaustive-prose", check_beamline_no_exhaustive_prose()))
 
     section("Summary")
     for name, ok in all_results:
