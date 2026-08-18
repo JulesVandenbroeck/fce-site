@@ -256,6 +256,28 @@ From the D-003 cycle-4 review. Four suggested-minor; none blocks.
   fix lands, the axis gains major ticks and this check gets stronger for free. _(from D-003
   review, cycle 3)_
 
+## Design explorations — D-004 (Beamline)
+
+From the D-004 cycle-1 review. Three suggested-minor; none blocks. The other two minors were
+folded into cycle 2 — one because it shares a CSS rule with a `Required` fix, one because it
+is a false provenance claim in `tokens.css`, the file D-002 harvests.
+
+- **The page is a classic script, so everything is global.** `beamline.html:177` —
+  `<script src="beamline.js"></script>` makes `NODE_KINDS`, `VALID_CONNECTIONS`, `graphState`,
+  `els` and every top-level function global bindings. Shared §6 asks for ES modules and no
+  globals, and `type="module"` costs nothing on a `file://` page. **Not fixed in cycle 2
+  deliberately** — the propagation is better stopped at the source, so D-005's and D-006's
+  acceptance criteria name `type="module"` outright rather than letting the pattern be copied
+  twice and swept later. _(from D-004 review, cycle 1)_
+- **`<div>` where a semantic element exists.** `beamline.html:41` wraps a labelled region and
+  `beamline.html:57` wraps a palette item; shared §6 names `<section>` and `<li>`. Also
+  `aria-disabled="true"` on a non-interactive `<div>` conveys nothing to assistive tech — the
+  visible "locked" text is doing the real work. _(from D-004 review, cycle 1)_
+- **Locked-tile copy reads as a run-on.** `beamline.html:58` — "**LOCKED** Node kind — opens
+  in a later mission" starts the sentence with the badge word. Shared §1 asks for copy simple
+  enough to read as a second language; separating the badge from the label would help.
+  _(from D-004 review, cycle 1)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light
