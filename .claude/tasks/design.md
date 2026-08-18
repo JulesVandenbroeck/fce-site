@@ -109,9 +109,7 @@ _none_
 ## Done
 
 ### D-003 — Interactive plot component at reference parity
-- **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
-  `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
-- **Branch / PR:** `task/d-003-plot-component` — #5 (7 files, +3249)
+- **Branch / PR:** `task/d-003-plot-component` — #5, merged as `99ec8f3`. Branch kept at `4ed75d8`.
 - **Scope:** `docs/design-explorations/` — `plot.html`, `plot.css`, `plot.js`, `frame.css`,
   `tokens.css`, `payload.json`, `verify.py`. Nothing under `src/`, `tests/` or `content/`.
 - **Accept:** (1) `verify.py --plot` prints each named anatomy feature present/absent from
