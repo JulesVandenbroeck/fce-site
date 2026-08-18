@@ -25,8 +25,41 @@ IDs are `D-nnn`, allocated in order and never reused.
   5. Computed-style sweep at 1440/1024/768 with denominators, including the contrast of
      every node label on its own fill.
 - **Depends on:** D-003 — cleared 2026-08-17, merged as `99ec8f3`.
-- **Branch / PR:** `task/d-004-node-graphs` exists at `c86981c` with **no commits** from the
-  stopped first attempt. Reuse it; do not open a second branch.
+- **Branch / PR:** `task/d-004-node-graphs` — **#6**. (The branch pre-existed at `c86981c`
+  with no commits from the stopped first attempt; reused rather than re-cut.)
+- **Status:** delivered 2026-08-18, **in review (cycle 1)**.
+- **Coder reports** (unverified by anyone else yet): `verify.py --all` → **25/25 sections
+  PASS**, including every pre-existing D-003 section unchanged; `flake8` clean;
+  `git diff --name-only main...HEAD` exactly the 5 scoped files; `git diff --stat
+  main...HEAD -- src/ tests/ content/` empty. Five mutation tests driven (accept path,
+  refuse path, coordinate assertion, inventory count, locked-tile keyboard reachability),
+  each shown failing then restored. 22 domain-inventory items via `data-wf`; 17 tab stops
+  all with a visible ring.
+- **PR body checked before dispatching review** (orchestrator §4 rule 3): carries the task ID,
+  goal, verbatim scope, all five criteria marked with evidence, a real verification
+  transcript, a mutation-testing section, and declared deviations. Stands alone.
+- **The inherited `tokens.css` comment did more damage than anyone knew.** It was dispatched
+  as "one false sentence" — it claimed contrast ratios were measured by a `verify.py` section
+  that had never been written. The coder reports it was **also syntactically breaking D-003's
+  own token parser**, which nobody had noticed because nothing had re-run the parser since.
+  **This needs independent confirmation from the review**, since it is a claim about the
+  shared file D-002 harvests.
+- **Declared deviations, cycle 1, for the reviewer to weigh:** (1) bare `--beamline` still
+  triggers D-003's pre-existing unconditional anatomy block, because that block never checked
+  any flag and changing it was out of scope; (2) a `check_beamline_focus_walk` was added
+  beyond the five named criteria; (3) the node-fill contrast report shows **5 of 8** hues on a
+  fresh load — the other three need an add-node click to exist — so 3 of the 8 label-on-fill
+  ratios are asserted in a `tokens.css` comment rather than measured by the sweep. **Criterion
+  5 says every node label against its own fill; on the coder's own account it measures five
+  eighths of them.** Do not resolve this from the coder's report — it is exactly what the
+  review is for.
+- **New shared surface for D-005/D-006, from the coder's report:** `tokens.css` gains
+  `--node-*`, `--locked-*` and a new `--on-graphite-blue`; `verify.py` exposes
+  `parse_root_tokens`, `resolve_allowed_colors`, `contrast_ratio`, `composite_over` and
+  `EXHAUSTIVE_CLAIM_PATTERNS` as read-only helpers, plus `BEAMLINE_DOMAIN_INVENTORY`, which
+  is the **mission screen's** inventory rather than a Beamline-specific one — so D-005 and
+  D-006 must satisfy the same 22 items. If that survives review, rename it in D-005 rather
+  than let the name mislead.
 
 #### The 64/13/51 ruling, and why the old criterion was wrong
 The original criterion said "all **121** ordered node-type pairs". 121 implies 11 node
