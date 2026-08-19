@@ -48,7 +48,8 @@ IDs are `D-nnn`, allocated in order and never reused.
   metric and a guarantee about it in the same breath** — give the metric, and let the check
   establish whether the guarantee holds.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** in review (cycle 1), delivered 2026-08-19
+- **Status:** cycle 1 reviewed — **2 required, 2 suggested-major, 3 suggested-minor**;
+  re-dispatched for cycle 2 on 2026-08-19
 - **Cycle 1 delivered:** all 8 fills re-lit by a hue-fixed differential-evolution search
   (max hue drift 0.43°). Ships a **1.02:1** pairwise floor — far below the 1.15:1 D-004
   claimed — because the coder did the feasibility arithmetic the criterion demanded and
@@ -61,6 +62,36 @@ IDs are `D-nnn`, allocated in order and never reused.
   channel (glyph or letter-mark per kind), which is markup and therefore a front-end task.
 - **My arithmetic slip, corrected by the coder:** I gave the white-AA ceiling as L ≤ 0.1783
   in the dispatch; it is L ≤ 0.825/4.5 = 0.1833. The r ≈ 1.246 conclusion is unchanged.
+- **Review, cycle 1: the metric was wrong a second time, and that is the headline.**
+  D-004 used normal-vision luminance as a proxy for CVD safety; D-008 cycle 1 fixed the
+  *simulation* but kept **luminance ratio** as the distinguishability measure, which
+  discards the chromatic axis a dichromat still has. The reviewer measured the rendered
+  9×9 px picker under CVD simulation and found `obs-object`, `obs-vecsum` and `histogram`
+  render as the **same blue swatch** under protanopia and deuteranopia — CAM02-UCS ΔE 2.62
+  against a JND of ~1–2. So criterion 3 fails when measured chromatically, and the new
+  palette is **not an improvement on D-004** on that metric (min ΔE 2.62 vs D-004's 3.20).
+- **The coder's central conclusion was disproved, and this matters beyond D-008.** "Fill
+  colour alone cannot carry robust 8-way node-kind identity under CVD" does not follow from
+  the ~1.05:1 luminance ceiling — the reviewer reproduced that ceiling independently but
+  measured **median simulated ΔE 28** across all 84 pair×type combinations. The glyph /
+  letter-mark front-end task I was about to raise rests on that inference, so it is **not
+  being raised** until cycle 2 settles the metric.
+- **Second required:** both `verify.py:2672` and `tokens.css:160` tell the reader the search
+  script is "in the D-008 PR body". It is not — the PR's own Deviations section says it was
+  never committed. An unchecked false claim in a comment is the exact defect class criterion
+  5 exists to remove, and it leaves the floor unreproducible. **I have extended the file
+  scope for cycle 2** to permit committing the search script, which is the better of the two
+  resolutions the reviewer offered.
+- **Suggested-major, and it is a design-manual breach nothing in the check could see:**
+  `--node-multiplicity` `#657d09` simulates to **ΔE 1.9 from `--vermillion`** under
+  deuteranopia (D-004's fill was at 9.9). Manual §2 reserves vermillion so "red means the
+  physics did something"; a deuteranope now sees an ordinary node kind wearing it. The check
+  looks only at the 8 `--node-*` fills, so it passed silently.
+- **The aesthetic worry I held back from the reviewer, it found independently** (as
+  suggested-minor): `--node-histogram: #670cdf` reads as electric violet against warm paper
+  and is the most saturated element on the page. Manual §6 names purple-on-white as the
+  converged-on default to avoid. Withholding it from the review prompt was worth it — the
+  finding is independent, not an echo of my framing.
 
 
 ## Ready
