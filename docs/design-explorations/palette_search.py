@@ -65,9 +65,10 @@ Usage:
                                            # own comments and the D-008
                                            # cycle-2 PR body.
     python palette_search.py --seed N     # differential_evolution's seed
-                                           # (default 11, the seed the
+                                           # (default 7, the seed the
                                            # committed palette was found
-                                           # with)
+                                           # with -- `python palette_search.py`
+                                           # with no arguments regenerates it)
 
 Requires: numpy, scipy (both already this project's dependencies --
 `.claude/shared/CLAUDE.md` §3, not new ones). Importing `verify` for the
@@ -95,12 +96,38 @@ sys.path.insert(0, str(HERE))
 import verify as v  # noqa: E402  (needs sys.path set up first)
 
 # ---- constants shared with verify.py's check -------------------------------
+# These are the floors `report()` checks a candidate against -- literally
+# the same numbers `check_beamline_pairwise_luminance` (verify.py) checks,
+# so "clears report()" and "clears the real check" are the same claim.
 CVD_TYPES = v.CVD_TYPES
 DARK_FLOOR = 0.06
 WHITE_FLOOR = 4.5
 PAIR_LUM_FLOOR = 1.02
 CHROMA_CAP = 62.0
 DELTA_E_FLOOR = 4.0  # the floor check_beamline_pairwise_luminance imposes
+
+# The search's own internal targets, strictly *above* the floors just
+# above -- the same "headroom below the ceiling, not sitting on it"
+# principle D-008 cycle 1 used for its luminance floor (tokens.css's own
+# comment). Without this margin the optimiser is free to converge exactly
+# onto a boundary it cannot reliably clear once its continuous HSL solution
+# is rounded to an 8-bit hex triple: measured directly, `--seed 11` without
+# this margin missed the darkness, white-on-fill, *and* pairwise-luminance
+# floors simultaneously despite clearing delta-E with room to spare
+# (ΔE=7.8); the same seed *with* this margin cleared those three but then
+# missed the delta-E floor by a few tenths (3.77 against 4.0) -- a maximin
+# objective over 4 competing constraints in 24 dimensions does not converge
+# to the same margin on every constraint from every random seed. `--seed 7`
+# (this file's default) is the one that was tried and cleared all four with
+# real margin on every one -- see `report()`'s output below for the exact
+# numbers. This is not evidence of tuning-to-pass: every constraint's floor
+# is fixed above (identical to `check_beamline_pairwise_luminance`), the
+# search never sees or adjusts them, and `--report` independently confirms
+# the committed palette against those same fixed floors without running the
+# search at all.
+SEARCH_DARK_FLOOR = 0.066
+SEARCH_WHITE_FLOOR = 4.58
+SEARCH_PAIR_LUM_FLOOR = 1.035
 
 # D-004 cycle-3 hues (degrees) -- the anchor `.claude/design/CLAUDE.md` §2's
 # "hue is node-kind identity" rule is measured against. Transcribed from the
@@ -328,7 +355,7 @@ def objective(x):
     nlum = normal_lum(rgbs)
     chroma = normal_lab_chroma(rgbs)
     penalty += np.sum(np.clip(chroma - CHROMA_CAP, 0, None)) * 3
-    penalty += np.sum(np.clip(DARK_FLOOR - nlum, 0, None)) * 800
+    penalty += np.sum(np.clip(SEARCH_DARK_FLOOR - nlum, 0, None)) * 800
 
     reserved_arr = np.stack(list(RESERVED.values()))
     de_worst = None
@@ -337,11 +364,11 @@ def objective(x):
         sjab = sim_cam02ucs(rgbs, cvd)
         white_lum = sim_lum(WHITE, cvd)
         wr = ratio(white_lum, slum)
-        penalty += np.sum(np.clip(WHITE_FLOOR - wr, 0, None)) * 50
-        penalty += np.sum(np.clip(DARK_FLOOR - slum, 0, None)) * 800
+        penalty += np.sum(np.clip(SEARCH_WHITE_FLOOR - wr, 0, None)) * 50
+        penalty += np.sum(np.clip(SEARCH_DARK_FLOOR - slum, 0, None)) * 800
 
         pr = ratio(slum[IU], slum[JU])
-        penalty += np.sum(np.clip(PAIR_LUM_FLOOR - pr, 0, None)) * 500
+        penalty += np.sum(np.clip(SEARCH_PAIR_LUM_FLOOR - pr, 0, None)) * 500
         de_nn = cam02ucs_deltaE(sjab[IU], sjab[JU])
 
         res_jab = sim_cam02ucs(reserved_arr, cvd)
@@ -435,9 +462,9 @@ def report(rgbs_by_name, label):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", action="store_true", help="report on the committed tokens.css palette")
-    parser.add_argument("--seed", type=int, default=11)
-    parser.add_argument("--maxiter", type=int, default=400)
-    parser.add_argument("--popsize", type=int, default=25)
+    parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--maxiter", type=int, default=800)
+    parser.add_argument("--popsize", type=int, default=30)
     args = parser.parse_args()
 
     _selftest_against_verify()

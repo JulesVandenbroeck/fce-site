@@ -156,8 +156,9 @@
    * ratio between two CVD-simulated fills is not itself a distinguishability
    * claim, because it discards the chromatic axis a dichromat still has --
    * two of cycle 1's fills sat at 1.05:1 luminance and were also only
-   * ~1.7 CAM02-UCS ΔE apart (genuinely close, in the same blue family, under
-   * deuteranopia), but plenty of *other* pairs also near 1.05:1 luminance
+   * 2.62 CAM02-UCS ΔE apart (genuinely close, in the same blue family,
+   * under deuteranopia -- the exact figure the D-008 cycle-2 review itself
+   * measured), but plenty of *other* pairs also near 1.05:1 luminance
    * were tens of ΔE apart -- plainly different colours. Luminance ratio
    * cannot tell those two cases apart. This ladder is selected against
    * CAM02-UCS ΔE (Moroney et al. 2002 CIECAM02 + Luo, Cui & Li 2006's UCS
@@ -174,19 +175,21 @@
    * against the other 7 fills, and `--node-multiplicity` in particular
    * could not do that from anywhere near its cycle-1 hue -- see
    * suggested-major 2 below) -- actual drift on the chosen palette ranges
-   * 0.9°-32.1°, reported per fill by `palette_search.py --report` rather
-   * than asserted here as a single number. Four constraints were imposed
-   * *before* the search, not fitted after it: (1) L >= 0.06 (normal vision
-   * or any of the 3 dichromacies), the same darkness floor cycle 1 used;
-   * (2) white-on-fill >= 4.5:1 under each of the 3 simulations; (3) CAM02-UCS
-   * chroma <= 62 under normal vision, so the search could not reach for
-   * separation by maxing out saturation the way cycle 1's `--node-histogram`
-   * did (C*=112, "the most saturated element on the page at every width",
-   * D-008 cycle-2 review, suggested-minor 3) -- every reserved colour is
-   * checked against the same cap (`--vermillion` C*=65.9, `--graphite-blue`
-   * C*=15.8), so no node fill outshouts either; (4) every fill's simulated
-   * CAM02-UCS ΔE from both `--vermillion` and `--graphite-blue` is subject
-   * to the same floor as fill-vs-fill separation (below).
+   * 2.8°-38.9° per fill, reported (along with every fill's CIE Lab chroma)
+   * by `palette_search.py --report` rather than asserted here as a single
+   * number. Four constraints were imposed *before* the search, not fitted
+   * after it: (1) L >= 0.06 (normal vision or any of the 3 dichromacies),
+   * the same darkness floor cycle 1 used; (2) white-on-fill >= 4.5:1 under
+   * each of the 3 simulations; (3) CIE Lab chroma <= 62 under normal
+   * vision, so the search could not reach for separation by maxing out
+   * saturation the way cycle 1's `--node-histogram` did (C*=112, "the most
+   * saturated element on the page at every width", D-008 cycle-2 review,
+   * suggested-minor 3) -- every reserved colour is checked against the
+   * same cap (`--vermillion` C*=65.9, `--graphite-blue` C*=15.8), so no
+   * node fill outshouts either (this palette's own highest is `--node-
+   * obs-object` at C*=60.5); (4) every fill's simulated CAM02-UCS ΔE from
+   * both `--vermillion` and `--graphite-blue` is subject to the same floor
+   * as fill-vs-fill separation (below).
    *
    * `check_beamline_pairwise_luminance` (verify.py) checks, per fill and per
    * pair, the same 1.02:1 pairwise-luminance and 4.5:1 white-on-fill floors
@@ -194,18 +197,27 @@
    * CAM02-UCS ΔE floor across all 28 node-node pairs and all 16 node-vs-
    * reserved pairs (44 total) -- each with the margin this exact palette
    * leaves printed alongside. The ΔE floor is set with headroom below what
-   * repeated search runs actually reached (worst achieved 5.14, `--node-
-   * obs-object` vs `--node-obs-vecsum` under protanopia), the same
+   * this search reached (worst 7.18, `--node-obs-object` vs `--node-
+   * histogram` under protanopia -- `palette_search.py --report`), the same
    * "headroom below the reachable ceiling" principle cycle 1 used for its
-   * luminance floor -- not a target picked to make the check pass. */
-  --node-data: #534a29;
-  --node-multiplicity: #426b34;
-  --node-selection: #16822d;
-  --node-obs-global: #367152;
-  --node-obs-object: #2d4c77;
-  --node-obs-vecsum: #823c8c;
-  --node-obs-custom: #ab4a5d;
-  --node-histogram: #3c47a8;
+   * luminance floor -- not a target picked to make the check pass. Other
+   * seeds tried at the same constraints landed closer to the floor on one
+   * axis or another (`palette_search.py`'s own comment on `SEARCH_DARK_
+   * FLOOR` etc. reports two of them); this is not evidence of cherry-
+   * picking so much as of a maximin objective over four competing
+   * constraints in 24 dimensions not converging to the same margin on
+   * every axis from every random seed -- ordinary behaviour for a
+   * differential-evolution search, and why the floors below are fixed
+   * numbers `--report` checks independently rather than whatever a given
+   * run happened to reach. */
+  --node-data: #664a35;
+  --node-multiplicity: #3f6416;
+  --node-selection: #447535;
+  --node-obs-global: #377774;
+  --node-obs-object: #4455b9;
+  --node-obs-vecsum: #5d3b76;
+  --node-obs-custom: #a94d95;
+  --node-histogram: #883a96;
   --node-label-on-fill: #ffffff;
 
   /* ---- node shadow (D-004) -------------------------------------------------
