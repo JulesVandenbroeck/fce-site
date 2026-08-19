@@ -48,8 +48,20 @@ IDs are `D-nnn`, allocated in order and never reused.
   metric and a guarantee about it in the same breath** — give the metric, and let the check
   establish whether the guarantee holds.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** cycle 1 reviewed — **2 required, 2 suggested-major, 3 suggested-minor**;
-  re-dispatched for cycle 2 on 2026-08-19
+- **Status:** cycle 2 in progress (resumed 2026-08-19 after an API drop killed the first
+  cycle-2 agent mid-edit). Cycle 1 reviewed: **2 required, 2 suggested-major, 3
+  suggested-minor**.
+- **Cycle-2 dispatch interrupted, recovered by reading the worktree, not the report.** The
+  agent died on an API connection drop one sentence before writing `tokens.css`. Its work
+  survived uncommitted on branch `d008-cycle2-work` (at `18aea84`, the PR head): a full
+  pure-Python CAM02-UCS chain in `verify.py` (+403 lines, `DELTA_E_FLOOR = 4.0`) and a
+  re-selected, markedly more muted palette. **`palette_search.py` was never created** and
+  nothing was committed or pushed. Same failure shape as the B-003 interrupted dispatch:
+  the list said one thing, the disk said another, and the disk was right.
+- **Resumed rather than re-dispatched**, so the ΔE search evidence in its context survives.
+  Landing path given: commit on `d008-cycle2-work`, then
+  `git push origin d008-cycle2-work:task/d-008-cvd-palette` — a fast-forward, since the
+  branch descends from the PR head. No force, no rebase, no branch deleted.
 - **Cycle 1 delivered:** all 8 fills re-lit by a hue-fixed differential-evolution search
   (max hue drift 0.43°). Ships a **1.02:1** pairwise floor — far below the 1.15:1 D-004
   claimed — because the coder did the feasibility arithmetic the criterion demanded and
