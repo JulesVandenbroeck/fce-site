@@ -9,10 +9,6 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
-
-## Ready
-
 ### D-008 — CVD-safe node palette, and the checker claim that certifies it
 - **Scope:** `docs/design-explorations/tokens.css` (the eight `--node-*` fills),
   `docs/design-explorations/verify.py` (`check_beamline_pairwise_luminance` and its
@@ -51,8 +47,13 @@ _none_
   it took the reviewer's independent simulation to catch it. **Do not hand a coder a proxy
   metric and a guarantee about it in the same breath** — give the metric, and let the check
   establish whether the guarantee holds.
-- **Branch / PR:** not yet opened
+- **Branch / PR:** `task/d-008-cvd-palette` — not yet opened
+- **Status:** in progress (dispatched 2026-08-19, cycle 1)
 
+
+## Ready
+
+_none_
 
 ## Blocked
 
