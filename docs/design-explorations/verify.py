@@ -2552,48 +2552,133 @@ def hex_to_rgb(value: str) -> Optional[tuple[int, int, int]]:
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
-def check_beamline_pairwise_luminance() -> bool:
+# Machado, Oliveira & Fernandes (2009), "A Physiologically-based Model for
+# Simulation of Color Vision Deficiency" (IEEE TVCG 15(6)). Severity-100
+# (complete dichromacy) matrices, applied to LINEAR RGB -- transcribed from
+# the authors' own published table and cross-checked against the
+# `colorspacious` package's `MACHADO_ET_AL_MATRICES[cvd_type][100]`, which
+# cites the same source (`inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/
+# CVD_Simulation.html`); both agree to 6 decimal places. Each row sums to
+# ~1.0, which is what keeps a true grey (equal linear R=G=B) invariant under
+# every one of these three matrices -- relied on below so a white node label
+# does not itself shift when simulated.
+MACHADO_2009_DICHROMACY: dict[str, tuple[tuple[float, float, float], ...]] = {
+    "protanopia": (
+        (0.152286, 1.052583, -0.204868),
+        (0.114503, 0.786281, 0.099216),
+        (-0.003882, -0.048116, 1.051998),
+    ),
+    "deuteranopia": (
+        (0.367322, 0.860646, -0.227968),
+        (0.280085, 0.672501, 0.047413),
+        (-0.011820, 0.042940, 0.968881),
+    ),
+    "tritanopia": (
+        (1.255528, -0.076749, -0.178779),
+        (-0.078411, 0.930809, 0.147602),
+        (0.004733, 0.691367, 0.303900),
+    ),
+}
+CVD_TYPES: tuple[str, ...] = ("protanopia", "deuteranopia", "tritanopia")
+# The same three WCAG channel weights `relative_luminance` applies to a
+# linearised sRGB triple -- pulled out as a constant here because the CVD
+# simulation below needs to apply them to an already-linear, already
+# CVD-matrix-transformed triple, not to a fresh sRGB one.
+_WCAG_LUMINANCE_WEIGHTS = (0.2126, 0.7152, 0.0722)
+
+
+def srgb_to_linear(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+    """0-255 sRGB triple -> linear-light RGB, each channel in [0, 1] -- the
+    same transfer function `relative_luminance` applies internally, factored
+    out here as its own function because `simulate_cvd_luminance` below
+    needs the three linear channel values themselves, not their WCAG-
+    weighted sum."""
+
+    def chan(c: int) -> float:
+        c = c / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    return (chan(rgb[0]), chan(rgb[1]), chan(rgb[2]))
+
+
+def simulate_cvd_luminance(rgb: tuple[int, int, int], cvd_type: str) -> float:
+    """Apply a Machado (2009) severity-100 matrix to `rgb` in linear space
+    (per the task dispatch: "The simulation is applied in linear RGB"),
+    clamp the result to the displayable [0, 1] range per channel (the
+    matrices are a physiological model, not a gamut-preserving transform, so
+    a saturated input can simulate to a slightly out-of-range triple -- every
+    fill checked below needed this at least once), and return the
+    WCAG-weighted luminance of what is left. That luminance is what
+    `_ratio_from_luminance` below then compares -- the CVD-simulated
+    equivalent of an ordinary WCAG contrast ratio, not a normal-vision one
+    read off a simulated colour swatch."""
+    lin = srgb_to_linear(rgb)
+    matrix = MACHADO_2009_DICHROMACY[cvd_type]
+    sim = tuple(sum(matrix[row][c] * lin[c] for c in range(3)) for row in range(3))
+    sim = tuple(min(1.0, max(0.0, c)) for c in sim)
+    return sum(w * c for w, c in zip(_WCAG_LUMINANCE_WEIGHTS, sim))
+
+
+def _ratio_from_luminance(l1: float, l2: float) -> float:
+    """WCAG's `(lighter + 0.05) / (darker + 0.05)` contrast formula, taking
+    two already-computed relative luminances directly rather than two RGB
+    triples -- `contrast_ratio` (above) cannot be reused for a
+    CVD-simulated comparison because it re-derives normal-vision luminance
+    from whatever RGB triple it is given, which is exactly the step a CVD
+    simulation has to skip."""
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
     """Design manual §2 rule 1 makes node-kind hue "what makes the graph
     readable at a glance"; D-004 cycle-2 review's suggested-major 1 found
     that identity resting on hue *alone* fails under colour-vision
     deficiency, because CVD collapses hue while leaving luminance intact.
-    Three independent methods (two CVD-matrix simulations, one plain
-    relative-luminance read of the raw tokens) landed on the same pairs at
-    the same near-1:1 ratios -- worst case `data` vs `multiplicity` at
-    1.011:1, i.e. indistinguishable regardless of which CVD model is
-    trusted.
+    D-004 cycle 3's fix rested on normal-vision WCAG luminance and this
+    function's own docstring then claimed that separation "survives every
+    CVD type by construction". That claim was never checked by the code
+    beneath it and D-008's dispatch reports it as false: WCAG luminance
+    fixes the red/green/blue weights at 0.2126/0.7152/0.0722 regardless of
+    viewer, but a protanope's or deuteranope's own luminous-efficiency
+    function weights those channels differently, so luminance *ordering* is
+    not preserved under every CVD type -- two independent Machado (2009)
+    simulations (cited in the D-008 dispatch) found pairs of the cycle-3
+    palette as low as 1.084:1 under protanopia and a white-on-fill pairing
+    at 4.48:1, below AA, under the same simulation. This version replaces
+    the normal-vision-only claim with the simulation itself.
 
-    This check is deliberately NOT a CVD simulation. It does not ship a
-    Machado (or any other) confusion-line matrix, and it does not need to:
-    WCAG relative luminance is computed from linear-light RGB with fixed
-    channel weights, independent of which cone type failed, so two colours
-    separated in luminance stay separated under every CVD type by
-    construction -- protanopia, deuteranopia, tritanopia, and full
-    achromatopsia all preserve luminance ordering (they remove or attenuate
-    a cone response, not the eye's luminance channel). A hue-only palette
-    can collapse under any of them; a luminance-separated one cannot, by
-    the same arithmetic that makes WCAG contrast a colour-blind-safe metric
-    for *text* in the first place. That is also why this lives in
-    verify.py rather than only in a tokens.css comment: it is a measured,
-    re-checkable property, not an assertion D-005 and D-006 would have to
-    take on faith.
+    What is checked, for the 8 `--node-*` fills and `--node-label-on-fill`
+    parsed as literal `#rrggbb` values from tokens.css's own source text:
+    for each of the 3 Machado (2009) severity-100 dichromacies (protanopia,
+    deuteranopia, tritanopia; achromatopsia and the *-anomaly partial forms
+    are not simulated here and no claim is made about them), every one of
+    the 28 unordered fill pairs is compared under `simulate_cvd_luminance`
+    against a 1.02:1 floor, and every fill's white-on-fill contrast is
+    compared against 4.5:1 -- both per-simulation, not pooled, so a fill
+    that only fails under tritanopia still fails this check. Separately,
+    every fill's luminance is checked against a 0.06 floor, both under
+    normal vision (`relative_luminance`) and under each of the 3
+    simulations, because a fill that never gets this dark under any of the
+    4 luminance definitions is the thing that made this task's 9x9 px
+    picker swatch fail in the first place (`.palette__add::before`,
+    beamline.css) -- the previous palette's four darkest fills measured
+    0.009-0.054. Finally, the live page's own 8 picker swatches are read via
+    `getComputedStyle(el, '::before')` and cross-checked against the same
+    tokens.css values, so "the picker renders what tokens.css says" is
+    itself a measured claim rather than an assumption the rest of this
+    function's arithmetic depends on silently.
 
-    The check: parse every `--node-*` fill directly from tokens.css's
-    source text (a literal `#rrggbb`, not a live-page resolution -- there
-    is nothing to resolve, these are not `var()`-of-`var()` chains), compute
-    all 28 unordered pairwise WCAG contrast ratios, and require every one to
-    clear 1.15:1 (the floor this task's dispatch set, well inside the
-    1.246:1 ceiling an 8-step luminance ladder admits before the white-label
-    4.5:1 floor below breaks) -- plus, on the same parsed values, that
-    white-on-fill contrast (`--node-label-on-fill` is `#ffffff`, asserted
-    rather than assumed) still clears 4.5:1 for all 8, since luminance is
-    being spent as a *new* identity channel and must not spend down the one
-    this palette already had. The full 28-ratio table is printed either
-    way, with the 4.5:1 denominator stated in the white-on-fill lines and
-    the 1.15:1 floor stated in the pairwise ones, so a future change to
-    this palette is checked against both numbers again rather than
-    re-derived from scratch."""
-    section("Beamline node-fill pairwise luminance -- CVD-robust separation, no simulation matrix needed")
+    The 1.02:1 and 4.5:1 floors are not derived by this function -- they are
+    the numbers this palette was searched for (D-008 PR body carries the
+    search script and its output) after two constraints -- the 0.06
+    darkness floor and the 4.5:1-under-every-simulation white floor -- were
+    imposed on the search *before* it ran. Repeated search runs, with hue
+    fixed to the D-004 values and with hue left free, converged on the same
+    ~1.05:1 ceiling either way; 1.02:1 is set with headroom below that
+    ceiling, not sitting on it. This is a materially weaker guarantee than
+    cycle 3's false claim, and the PR body says so."""
+    section("Beamline node-fill pairwise luminance -- Machado (2009) CVD simulation, not normal-vision luminance alone")
     tokens = parse_root_tokens(TOKENS_CSS.read_text())
 
     fills: dict[str, tuple[int, int, int]] = {}
@@ -2605,46 +2690,154 @@ def check_beamline_pairwise_luminance() -> bool:
             missing.append((name, raw))
         else:
             fills[name] = rgb
+    label_raw = tokens.get("--node-label-on-fill")
+    label_rgb = hex_to_rgb(label_raw) if label_raw is not None else None
+    if label_rgb is None:
+        missing.append(("--node-label-on-fill", label_raw))
     ok_parsed = not missing
     line(
-        f"All {len(NODE_FILL_TOKENS)} --node-* fills parsed as literal #rrggbb from tokens.css",
+        f"All {len(NODE_FILL_TOKENS)} --node-* fills plus --node-label-on-fill parsed as literal "
+        "#rrggbb from tokens.css",
         ok_parsed,
         "ok" if ok_parsed else f"unparseable: {missing}",
     )
     if not ok_parsed:
         return False
 
-    white = (255, 255, 255)
-    white_ok = True
-    print("       white-on-fill (needs >= 4.5:1):")
-    for name, rgb in fills.items():
-        ratio = contrast_ratio(white, rgb)
-        passed = ratio >= 4.5
-        white_ok = white_ok and passed
-        mark = "ok" if passed else "BELOW AA"
-        print(f"         {name:20s} {ratio:6.2f}:1  {mark}")
-    line("White node-title text clears 4.5:1 against every --node-* fill", white_ok)
-
+    PAIRWISE_FLOOR = 1.02
+    WHITE_FLOOR = 4.5
+    DARK_FLOOR = 0.06
     names = list(fills.keys())
-    pairs = []
-    for i in range(len(names)):
-        for j in range(i + 1, len(names)):
-            ratio = contrast_ratio(fills[names[i]], fills[names[j]])
-            pairs.append((ratio, names[i], names[j]))
-    pairs.sort()
-    print(f"       all {len(pairs)} unordered pairwise ratios (needs >= 1.15:1):")
-    for ratio, a, b in pairs:
-        mark = "ok" if ratio >= 1.15 else "BELOW FLOOR"
-        print(f"         {a:20s} vs {b:20s} = {ratio:6.3f}:1  {mark}")
-    worst_ratio, worst_a, worst_b = pairs[0]
-    ok_pairwise = worst_ratio >= 1.15
+
+    # Normal vision: informational context only, not a pass/fail gate here
+    # (that was cycle 3's mistake) -- printed so a reader can see how far a
+    # normal-vision read diverges from what each simulation below finds.
+    print("       normal vision (context only, not checked here):")
+    normal_lums = {n: relative_luminance(fills[n]) for n in names}
+    label_normal_lum = relative_luminance(label_rgb)
+    for n in names:
+        print(f"         {n:20s} L={normal_lums[n]:.4f}  white-on-fill="
+              f"{_ratio_from_luminance(label_normal_lum, normal_lums[n]):.3f}:1")
+
+    ok_white = True
+    ok_pairwise = True
+    ok_dark = not any(normal_lums[n] < DARK_FLOOR for n in names)
+    dark_failures = [(n, "normal", normal_lums[n]) for n in names if normal_lums[n] < DARK_FLOOR]
+    worst_pairwise_overall = (float("inf"), "", "", "")
+    worst_white_overall = (float("inf"), "", "")
+
+    for cvd_type in CVD_TYPES:
+        print(f"       -- {cvd_type} (Machado 2009, severity 100, linear RGB) --")
+        cvd_lums = {n: simulate_cvd_luminance(fills[n], cvd_type) for n in names}
+        label_cvd_lum = simulate_cvd_luminance(label_rgb, cvd_type)
+
+        print(f"       white-on-fill (needs >= {WHITE_FLOOR}:1):")
+        white_ok_type = True
+        for n in names:
+            ratio = _ratio_from_luminance(label_cvd_lum, cvd_lums[n])
+            passed = ratio >= WHITE_FLOOR
+            white_ok_type = white_ok_type and passed
+            if ratio < worst_white_overall[0]:
+                worst_white_overall = (ratio, n, cvd_type)
+            mark = "ok" if passed else "BELOW AA"
+            print(f"         {n:20s} {ratio:6.2f}:1  {mark}")
+        ok_white = ok_white and white_ok_type
+
+        pairs = []
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                ratio = _ratio_from_luminance(cvd_lums[names[i]], cvd_lums[names[j]])
+                pairs.append((ratio, names[i], names[j]))
+        pairs.sort()
+        print(f"       all {len(pairs)} unordered pairwise ratios (needs >= {PAIRWISE_FLOOR}:1):")
+        for ratio, a, b in pairs:
+            mark = "ok" if ratio >= PAIRWISE_FLOOR else "BELOW FLOOR"
+            print(f"         {a:20s} vs {b:20s} = {ratio:6.4f}:1  {mark}")
+        worst_ratio, worst_a, worst_b = pairs[0]
+        if worst_ratio < worst_pairwise_overall[0]:
+            worst_pairwise_overall = (worst_ratio, worst_a, worst_b, cvd_type)
+        ok_pairwise = ok_pairwise and (worst_ratio >= PAIRWISE_FLOOR)
+
+        for n in names:
+            if cvd_lums[n] < DARK_FLOOR:
+                dark_failures.append((n, cvd_type, cvd_lums[n]))
+                ok_dark = False
+
     line(
-        "Every one of the 28 unordered --node-* fill pairs clears 1.15:1",
+        f"White node-title text clears {WHITE_FLOOR}:1 against every --node-* fill, under all 3 simulations",
+        ok_white,
+        f"worst is {worst_white_overall[1]} under {worst_white_overall[2]} at {worst_white_overall[0]:.3f}:1",
+    )
+    line(
+        f"Every one of the 28 unordered --node-* fill pairs clears {PAIRWISE_FLOOR}:1, under all 3 simulations",
         ok_pairwise,
-        f"worst is {worst_a} vs {worst_b} at {worst_ratio:.3f}:1",
+        f"worst is {worst_pairwise_overall[1]} vs {worst_pairwise_overall[2]} "
+        f"under {worst_pairwise_overall[3]} at {worst_pairwise_overall[0]:.4f}:1",
+    )
+    line(
+        f"No --node-* fill's luminance sits below {DARK_FLOOR} under normal vision or any of the 3 simulations "
+        "(criterion 3: the 9x9 px picker swatch must not read as near-black)",
+        ok_dark,
+        "ok" if ok_dark else f"{len(dark_failures)} below floor: {dark_failures}",
     )
 
-    return ok_parsed and white_ok and ok_pairwise
+    # Live-render cross-check: the picker's own 9x9 px swatch
+    # (`.palette__add--<kind>::before`) is read from the real page and
+    # compared against the value this function parsed from tokens.css's
+    # source text above, so "the picker paints what tokens.css declares" is
+    # itself measured rather than assumed by every check above this line.
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+    suffixes = [name[len("--node-"):] for name in NODE_FILL_TOKENS]
+    rendered = page.evaluate(
+        """(suffixes) => suffixes.map(s => {
+            const el = document.querySelector(`.palette__add--${s}`);
+            if (!el) return null;
+            return getComputedStyle(el, '::before').backgroundColor;
+        })""",
+        suffixes,
+    )
+    browser.close()
+
+    rendered_fills: dict[str, tuple[int, int, int]] = {}
+    render_mismatches = []
+    for name, suffix, computed in zip(NODE_FILL_TOKENS, suffixes, rendered):
+        rgba = parse_rgba(computed) if computed else None
+        if rgba is None:
+            render_mismatches.append((name, computed))
+            continue
+        rendered_fills[name] = rgba[:3]
+        if rendered_fills[name] != fills[name]:
+            render_mismatches.append((name, f"tokens.css says {fills[name]}, picker paints {rendered_fills[name]}"))
+    ok_render = len(rendered_fills) == len(NODE_FILL_TOKENS) and not render_mismatches
+    line(
+        f"{len(rendered_fills)}/{len(NODE_FILL_TOKENS)} picker swatches "
+        "(`.palette__add--<kind>::before`, the 9x9 px kind swatch) rendered live and matched tokens.css",
+        ok_render,
+        "ok" if ok_render else f"{len(render_mismatches)} mismatch(es): {render_mismatches[:5]}",
+    )
+
+    darkest_source = rendered_fills if ok_render else fills
+    darkest3 = sorted(names, key=lambda n: relative_luminance(darkest_source[n]))[:3]
+    print(f"       darkest 3 picker swatches by normal-vision luminance: {darkest3}")
+    darkest3_ok = True
+    for i in range(len(darkest3)):
+        for j in range(i + 1, len(darkest3)):
+            a, b = darkest3[i], darkest3[j]
+            for cvd_type in CVD_TYPES:
+                ratio = _ratio_from_luminance(
+                    simulate_cvd_luminance(darkest_source[a], cvd_type),
+                    simulate_cvd_luminance(darkest_source[b], cvd_type),
+                )
+                passed = ratio >= PAIRWISE_FLOOR
+                darkest3_ok = darkest3_ok and passed
+                mark = "ok" if passed else "BELOW FLOOR"
+                print(f"         {a:20s} vs {b:20s} under {cvd_type:13s} = {ratio:6.4f}:1  {mark}")
+    line(
+        f"The 3 darkest picker swatches stay pairwise distinguishable ({PAIRWISE_FLOOR}:1) under all 3 simulations",
+        darkest3_ok,
+    )
+
+    return ok_parsed and ok_white and ok_pairwise and ok_dark and ok_render and darkest3_ok
 
 
 def check_beamline_focus_walk(pw: Playwright, html_path: Optional[Path] = None) -> bool:
@@ -2891,7 +3084,7 @@ def main() -> None:
             all_results.append(("beamline-inventory", check_beamline_inventory(pw)))
             all_results.append(("beamline-paint-sweep", check_beamline_paint_sweep(pw)))
             all_results.append(("beamline-contrast", check_beamline_contrast(pw)))
-            all_results.append(("beamline-pairwise-luminance", check_beamline_pairwise_luminance()))
+            all_results.append(("beamline-pairwise-luminance", check_beamline_pairwise_luminance(pw)))
             all_results.append(("beamline-focus-walk", check_beamline_focus_walk(pw)))
             all_results.append(("beamline-reduced-motion", check_beamline_reduced_motion(pw)))
             all_results.append(("beamline-network-and-errors", check_beamline_network_and_errors(pw)))

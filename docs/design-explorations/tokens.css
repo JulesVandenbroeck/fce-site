@@ -128,7 +128,7 @@
   --radius: 6px;
   --timing: 180ms;
 
-  /* ---- node type identity (D-004) ----------------------------------------
+  /* ---- node type identity (D-004, re-lit D-008) ---------------------------
    * One hue per concrete node kind the run payload can carry. The kind list
    * and every legal src -> dst pair are read from the vendored reference's
    * own allowlist, not guessed: `_VALID_CONNECTIONS` and `NODE_LABELS` in
@@ -142,48 +142,63 @@
    * the four Observable subtypes (ObsGlobal, ObsObject, ObsVectorSum,
    * ObsCustom), plus Histogram. Bare "Observable" is a key in the allowlist
    * dict but is never itself instantiated (`create_node("Observable")` does
-   * not appear in `fce.py`), so it is not given its own hue here. See each
-   * page's own annotation panel and the PR body for why this is 8 kinds and
-   * not the task dispatch's original 11.
+   * not appear in `fce.py`), so it is not given its own hue here.
    *
-   * Every one of the 8 fills below is paired with white node-title text
-   * (`--node-label-on-fill`); each pairing composites to >= 4.5:1. Measured
-   * by verify.py's `--beamline` contrast section (see `check_beamline_
-   * contrast`), which prints the per-swatch ratio it actually computed —
-   * not asserted here as a fact this file cannot check for itself.
+   * D-008 replaces the D-004 cycle-3 ladder below. That ladder was spaced on
+   * normal-vision WCAG luminance and its own docstring claimed the
+   * separation "survives every CVD type by construction" — false: WCAG's
+   * fixed 0.2126 red weight is not how a protanope's or deuteranope's
+   * luminous-efficiency function actually weights red, so luminance
+   * *ordering* is not CVD-invariant. Simulated under Machado (2009) at
+   * severity 100 (complete dichromacy) in linear RGB, that ladder measured
+   * worst-case 1.084:1 under protanopia and a white-label pairing as low as
+   * 4.48:1 — below AA. `check_beamline_pairwise_luminance` (verify.py) now
+   * simulates all three dichromacies directly instead of assuming
+   * CVD-safety from normal-vision luminance alone.
    *
-   * `--node-histogram` was originally #38566b, 1.06:1 from `--graphite-blue`
-   * below (D-004 cycle-1 review, Required 1 / suggested-major 2) — the same
-   * slate doing node-identity duty and ordinary interactive-chrome duty on
-   * one screen, and the direct cause of the focus ring's worst-case failure
-   * against this fill.
+   * The fills below were found by a numerical search (differential
+   * evolution, scipy, script kept in the D-008 PR body rather than this
+   * repo) over each fill's HSL lightness and saturation with **hue held
+   * fixed** to the D-004 values (max drift measured 0.43°, see the PR
+   * body) — hue is spent purely as node-kind identity, not traded for
+   * separation. Two constraints were imposed *before* the search, not
+   * fitted after it: (1) a fill may not simulate below L = 0.06 (normal
+   * vision or under any of the 3 dichromacies) — the previous ladder's
+   * four darkest fills sat at L = 0.009-0.054, indistinguishable from
+   * black at the 9x9 px picker swatch (`.palette__add::before`,
+   * beamline.css), which is what made `data` vs `multiplicity` collapse to
+   * 1.01:1 in the first place; (2) white-on-fill must clear 4.5:1 under
+   * each of the 3 simulations, not only under normal vision. Under those
+   * two constraints, repeated search runs (hue fixed and hue free alike;
+   * see the PR body) converged on a reachable pairwise floor around
+   * 1.05:1, well short of the 1.15-1.25:1 range a normal-vision-only
+   * ladder can reach — the two look close only because the darkness and
+   * white-label floors leave very little lightness range to spread 8
+   * colours across, and CVD simulation shrinks that range further. This is
+   * the ceiling the search reached, not a target picked to make a check
+   * pass: pushed any higher across repeated runs, either a fill collapsed
+   * toward black again or a white label lost AA under one of the 3
+   * simulations.
    *
-   * Every fill below was then re-lit at cycle 3 (D-004 cycle-2 review,
-   * suggested-major 1): the cycle-2 set only broke isoluminance for
-   * `--node-histogram` — the other seven still spanned relative luminance
-   * L = 0.111-0.158, a band so narrow that stripping hue (the effect of any
-   * CVD type) collapsed several pairs to near-identical greys, worst case
-   * `data` vs `multiplicity` at 1.01:1. Hue was kept exactly as it was for
-   * all 8 (same H in HSL, to one decimal) — this is luminance added as a
-   * *second* identity channel, not hue traded away for one. Each fill's
-   * lightness was retargeted on its own ladder rung, spaced so every one of
-   * the 28 unordered pairs clears 1.15:1 (worst case, printed by verify.py's
-   * `--beamline` pairwise-luminance section, is `obs-global` vs `selection`
-   * at 1.195:1 — comfortably inside the 1.246:1 ceiling the 4.5:1
-   * white-label floor admits for an 8-step ladder), while every white-label
-   * pairing still clears 4.5:1 (worst case now 4.79:1, up from the 4.61:1 a
-   * first pass at this ladder produced, given deliberate headroom rather
-   * than sitting on the floor). See `check_beamline_pairwise_luminance` for
-   * why luminance separation alone — with no CVD simulation matrix — is
-   * sufficient and preferred here. */
-  --node-data: #775315;
-  --node-multiplicity: #465315;
-  --node-selection: #26824c;
-  --node-obs-global: #1c726a;
-  --node-obs-object: #17264f;
-  --node-obs-vecsum: #4c245e;
-  --node-obs-custom: #732154;
-  --node-histogram: #1e122e;
+   * `check_beamline_pairwise_luminance` checks, per fill and per pair,
+   * against a 1.02:1 pairwise floor and a 4.5:1 white-on-fill floor, both
+   * under all 3 Machado simulations, plus the L >= 0.06 darkness floor —
+   * each with the margin this exact palette leaves printed alongside. A
+   * ~1.02:1 floor is a materially weaker guarantee than D-004 cycle 3's
+   * false one: it sits barely above the point two fills would read as
+   * identical, and fill colour alone is a thin signal at that distance for
+   * any viewer, CVD or not. The PR body proposes a non-colour secondary
+   * channel (a glyph or letter-mark per kind) as the actual fix for that
+   * and backlogs it — out of this file's own scope, since it would need
+   * template/markup changes. */
+  --node-data: #81560e;
+  --node-multiplicity: #657d09;
+  --node-selection: #226f42;
+  --node-obs-global: #0e776d;
+  --node-obs-object: #3050a6;
+  --node-obs-vecsum: #7c2aa0;
+  --node-obs-custom: #ba2180;
+  --node-histogram: #670cdf;
   --node-label-on-fill: #ffffff;
 
   /* ---- node shadow (D-004) -------------------------------------------------
