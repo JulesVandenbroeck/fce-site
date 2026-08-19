@@ -47,8 +47,20 @@ IDs are `D-nnn`, allocated in order and never reused.
   it took the reviewer's independent simulation to catch it. **Do not hand a coder a proxy
   metric and a guarantee about it in the same breath** — give the metric, and let the check
   establish whether the guarantee holds.
-- **Branch / PR:** `task/d-008-cvd-palette` — not yet opened
-- **Status:** in progress (dispatched 2026-08-19, cycle 1)
+- **Branch / PR:** `task/d-008-cvd-palette` — #7
+- **Status:** in review (cycle 1), delivered 2026-08-19
+- **Cycle 1 delivered:** all 8 fills re-lit by a hue-fixed differential-evolution search
+  (max hue drift 0.43°). Ships a **1.02:1** pairwise floor — far below the 1.15:1 D-004
+  claimed — because the coder did the feasibility arithmetic the criterion demanded and
+  found the reachable ceiling for 8 fills under Machado CVD is only ~1.05:1. White-on-fill
+  worst 4.643:1 (`multiplicity`, protanopia). New explicitly-checked darkness floor L≥0.06
+  fixes the near-black picker swatches. Two mutation tests, both named the exact
+  fill/pair. `verify.py --all` green, 26 sections.
+- **The stated impossibility, and it is the real finding:** fill colour alone cannot carry
+  robust 8-way node-kind identity under CVD. The coder recommends a non-colour secondary
+  channel (glyph or letter-mark per kind), which is markup and therefore a front-end task.
+- **My arithmetic slip, corrected by the coder:** I gave the white-AA ceiling as L ≤ 0.1783
+  in the dispatch; it is L ≤ 0.825/4.5 = 0.1833. The r ≈ 1.246 conclusion is unchanged.
 
 
 ## Ready
