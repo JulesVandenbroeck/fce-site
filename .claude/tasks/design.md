@@ -58,6 +58,14 @@ IDs are `D-nnn`, allocated in order and never reused.
   re-selected, markedly more muted palette. **`palette_search.py` was never created** and
   nothing was committed or pushed. Same failure shape as the B-003 interrupted dispatch:
   the list said one thing, the disk said another, and the disk was right.
+- **Died a second time, 2026-08-19, on a session limit** (reset 12:10 CEST), while testing
+  `palette_search.py --report`. More work survived: `palette_search.py` now exists (19.1K,
+  untracked). Still nothing committed, still nothing pushed — `origin/task/d-008-cvd-palette`
+  and PR #7 both remain at `18aea84`, cycle 1. Resumed a second time at 14:43 CEST.
+- **The uncommitted state is the risk to watch.** Two crashes have left a full cycle of work
+  living only as unstaged changes in one worktree. I am deliberately not committing it
+  myself: it is unverified coder output, `verify.py --all` has never been run against it,
+  and committing it would be me doing a coder's work on source I must not touch (§1).
 - **Resumed rather than re-dispatched**, so the ΔE search evidence in its context survives.
   Landing path given: commit on `d008-cycle2-work`, then
   `git push origin d008-cycle2-work:task/d-008-cvd-palette` — a fast-forward, since the
