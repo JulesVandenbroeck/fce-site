@@ -139,8 +139,13 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing — dispatched alongside B-005 because it is the highest-risk design
   in M2 and touches no vendored file.
 - **Branch / PR:** `task/b-006-safe-eval` — #9
-- **Status:** cycle 1 delivered 2026-08-20; **sent back before review** for the same false
-  e2e claim as B-005, from the same missing env note in my dispatch. Not a review cycle.
+- **Status:** in review (cycle 1), dispatched 2026-08-20.
+- **Sent back once before review** for the same false e2e claim as B-005, from the same
+  missing env note in my dispatch. **Not a review cycle** — no reviewer had seen it, so
+  B-006 stands at cycle 1 against the §5 limit. PR-body-only; branch head never moved
+  (`f9433e7`, one commit). Correction verified by me: false paragraph gone, real transcript
+  in at **153 passed** — which reconciles exactly against the 49 I measured on `main` plus
+  the 104 new.
 - **Scope verified by me, clean:** exactly the two scoped files, `+881/-0`.
 - **Delivered:** `compile_expr(source) -> CompiledExpr` (validates then compiles, raises
   `UnsafeExpression`) and `evaluate(compiled, names)` (runs a pre-validated code object and
