@@ -48,8 +48,61 @@ IDs are `D-nnn`, allocated in order and never reused.
   metric and a guarantee about it in the same breath** — give the metric, and let the check
   establish whether the guarantee holds.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** cycle 2 **delivered, in review** (2026-08-20). Cycle 1 reviewed: **2 required,
-  2 suggested-major, 3 suggested-minor**. This is cycle 2 of the §5 limit of 3.
+- **Status:** **cycle 3 in progress — the last cycle before the §5 limit.** Cycle 1: 2
+  required, 2 suggested-major, 3 suggested-minor. Cycle 2: **1 required, 1 suggested-major,
+  3 suggested-minor**. If cycle 3's review is not clean, this goes to the user as
+  underspecified rather than to a cycle 4 — exactly as D-004 did.
+- **Review, cycle 2 — and the headline is that the metric was wrong a THIRD time, in the
+  same shape.**
+  - *Required* — `verify.py:2790-2795`. `srgb_to_cam02ucs()` is never called anywhere in
+    either committed file, and its docstring says it is "used below only for the aesthetic
+    chroma-context note". **There is no chroma-context note below.** A comment describing
+    behaviour the file does not have is precisely what criterion 4 gates on, and criterion 4
+    is ticked. Small, and it is the exact defect class this task spent two cycles removing.
+  - *Suggested-major — normal-vision separation regressed by 42% and nothing checks it.*
+    `tokens.css:216-223`. Worst normal-vision pair ΔE: D-004 cycle 3 **12.81**, D-008 cycle 1
+    **13.11**, this palette **7.44** (`--node-multiplicity` vs `--node-selection`); median
+    across the 28 pairs fell 37.0 → 31.2. The mechanism is hue: `selection` drifted **38.9°**
+    (144.8° → 105.9°), closing its gap to `multiplicity` from 72.2° to **17.4°**, so two
+    *pipeline-adjacent* node kinds are now the same dark green. The reviewer rendered the
+    picker at native resolution and zoomed 6×: those two 9×9 px swatches read as one colour,
+    and the three purples cluster similarly.
+- **THE PATTERN, AND IT IS MINE.** Three cycles, three metrics, and **each criterion replaced
+  its predecessor instead of joining it**:
+  | | gated on | what silently regressed |
+  |---|---|---|
+  | D-004 cycle 3 | normal-vision **luminance** | CVD safety (protanopia 4.48:1, below AA) |
+  | D-008 cycle 1 | CVD-simulated **luminance** | chromatic separation (min ΔE 2.62 < D-004's 3.20) |
+  | D-008 cycle 2 | CVD-simulated **ΔE** | **normal-vision ΔE (12.81 → 7.44)** |
+  A maximin search spends everything not in its objective. `check_beamline_pairwise_luminance`
+  now prints normal vision as "context only, not checked here" — the right fix for cycle 3's
+  mistake of gating only normal vision, swung exactly one step too far. **Cycle 3's criterion
+  must be cumulative: all four floors at once, and the feasibility arithmetic done before any
+  floor is imposed.** That last clause is the lesson this entry already recorded after cycle
+  1 and which I then failed to apply to cycle 2's brief.
+- **What the cycle-2 review verified rather than read, and it is the most thorough yet:** it
+  re-ran the **full differential-evolution search** (~4 min, no args) and **reproduced
+  `fun=-7.205` and all eight committed hex values exactly** — so criterion 1's reproducibility
+  claim is established, not asserted. It then **re-implemented the whole metric from scratch
+  against `colorspacious` with no project code**, getting 7.180/12.03/0-below-5 against
+  verify.py's 7.179/12.02/0 — **the ΔE implementation is correct**. It mutation-tested the new
+  node-vs-reserved gate by setting `--node-obs-custom` to a near-vermillion red and watching it
+  fail at dE=2.446. 26/26 sections PASS, flake8 clean, scope exactly the three cycle-2 files
+  with `beamline.css` correctly untouched.
+- **Suggested-minor, cycle 2:** (a) `palette_search.py:391-460` prints each fill's chroma but
+  `report()`'s pass/fail return omits `CHROMA_CAP`, so `tokens.css` states the cap as an
+  enforced constraint while nothing gates it — and the same comment's "no node fill outshouts
+  either" is false as written, since `--node-obs-object` at C*=60.5 does outshout
+  `--graphite-blue` at C*=15.8, deliberately. (b) `verify.py:2808-2831` — the colorspacious
+  cross-check agrees to 1.6e-13 for the **CAM02-UCS transform**, not end-to-end through
+  simulation as the docstring claims: `_simulate_cvd_linear` clamps to [0,1] where
+  colorspacious does not, worst per-component J'a'b' difference 26.84 over 500 random colours.
+  **This is why the PR's own table says cycle 1 was 2.62 while colorspacious says 3.40 for the
+  same pair** — so it is not cosmetic, it explains a number in the comparison. Verdicts
+  unaffected; clamping is the conservative direction. **(a) and (b) fold into cycle 3** — both
+  are "a stated constraint is not actually checked", the same class as the required finding.
+  (c) the function is still named `check_beamline_pairwise_luminance` though ΔE is now the
+  load-bearing check → backlogged, naming only.
 - **Cycle 2 landed unreported — the list said one thing and the disk said another for the
   third time on this task.** The resumed agent's session ended before it reported back, but it
   had already committed `78f346a` and `9480cac` and pushed them, so

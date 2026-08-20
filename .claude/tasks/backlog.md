@@ -316,6 +316,13 @@ and are historical now that #6 is merged.
   block is the one part of a PR body that must be a transcript, because it is what the reviewer
   is being asked to trust. _(from D-004 review, cycle 3)_
 
+## Design explorations — D-008
+
+- **`check_beamline_pairwise_luminance` is misnamed.** `verify.py:2844` — after cycle 2 the
+  CAM02-UCS ΔE gate is the load-bearing check and pairwise luminance is secondary, but the
+  function still carries the old name. Naming only, no consequence to what it measures.
+  _(from D-008 review, cycle 2)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light
