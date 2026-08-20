@@ -1,10 +1,12 @@
 """Physics-motivated systematic uncertainty constants and helpers.
 
-Vendored unchanged from the reference repo's ``engine/systematics.py``
-(kskovpen/fce) -- this module has zero imports and zero module-level mutable
-state, so it needed no decoupling. It is the intended shared source of truth
-for uncertainty magnitudes used by the later run-path modules (``path_filter``,
-``fitter``, ``plotter``) vendored in tasks B-007 onward.
+The arithmetic is vendored unchanged from the reference repo's
+``engine/systematics.py`` (kskovpen/fce) -- every constant and every formula
+here is bit-identical to the reference. ``typing`` and ``numpy`` are added
+for the type hints, and this module had zero module-level mutable state to
+begin with, so it needed no decoupling. It is the intended shared source of
+truth for uncertainty magnitudes used by the later run-path modules
+(``path_filter``, ``fitter``, ``plotter``) vendored in tasks B-007 onward.
 """
 from typing import Union
 

@@ -59,9 +59,15 @@ def get_fce_home(env: Optional[Mapping[str, str]] = None) -> Path:
     for candidate in candidates:
         try:
             candidate.mkdir(parents=True, exist_ok=True)
-            probe = candidate / ".write_test"
-            probe.write_text("")
-            probe.unlink()
+            # A fixed probe filename lets one concurrent caller's unlink()
+            # race another's: whoever unlinks second finds the file already
+            # gone and raises OSError, misclassifying a writable directory as
+            # unwritable (B-005 cycle 2, suggested-major 1). mkstemp gives
+            # each call its own atomically-created, uniquely-named file, so
+            # there is nothing left to race over.
+            probe_fd, probe_name = tempfile.mkstemp(dir=candidate)
+            os.close(probe_fd)
+            os.remove(probe_name)
         except OSError:
             continue
         return candidate
