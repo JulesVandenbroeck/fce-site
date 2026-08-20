@@ -25,8 +25,34 @@ IDs are `B-nnn`, allocated in order and never reused.
   the only already-perfect module in the reference engine. It is the cheapest possible place
   to establish the vendoring pattern and the test-porting pattern.
 - **Depends on:** nothing
-- **Branch / PR:** not yet opened
-- **Status:** dispatched 2026-08-20 (cycle 1)
+- **Branch / PR:** `task/b-005-vendor-paths-systematics` — #8
+- **Status:** cycle 1 delivered 2026-08-20; **sent back before review** to correct a false
+  claim in its verification block. Not a review cycle — no reviewer has seen it.
+- **Scope verified by me, clean:** `git diff --name-only main...origin/task/b-005-vendor-paths-systematics`
+  is exactly the five scoped files, `+361/-0`; the diff against `docs/`, `.claude/`,
+  `pyproject.toml`, `content/` and `scripts/` is empty.
+- **Delivered:** `get_fce_home(env=None) -> Path`, pure, same resolution order and write-probe
+  behaviour; `configure_cache_env()` dropped; `systematics.py` arithmetic untouched with type
+  hints added; 23 tests passing, including the one the reference cannot write — two calls in
+  **one process** with different `FCE_HOME` returning different paths. Two reference tests
+  dropped, both named and justified: `test_fill_histogram_syst_keys_created` needs
+  `path_filter`/`analytical_loop`, which are not vendored until B-007, and
+  `test_configure_cache_env_sets_writable_path` tests the function I instructed it to drop.
+- **The false claim, and it is the failure class this project keeps hitting.** PR #8's
+  verification paragraph says the full suite shows "4 failed, 11 errors" which "pre-date this
+  branch", from "Chromium not being installed for Playwright in this environment". **I ran
+  `tests/` on `main` in the primary checkout with `PLAYWRIGHT_BROWSERS_PATH` exported: 49
+  passed, 0 failed, 0 errors.** There is no pre-existing failure. The coder did compare
+  against a baseline honestly, but both sides of its comparison were broken the same way —
+  its fresh worktree venv had no browsers path — so the comparison was valid and the
+  conclusion drawn from it is not. A reviewer reading that paragraph either accepts a false
+  statement about the repo or burns a cycle disproving it.
+- **My error, not the coder's.** The B-003 entry below already records this environment
+  requirement in writing — "this container's default Playwright browser cache (`/cache`) is
+  not writable, so `PLAYWRIGHT_BROWSERS_PATH` must be exported" — and I left it out of the
+  dispatch. **Every future back-end dispatch carries that line**, and every dispatch into a
+  fresh worktree must say that the worktree needs its own venv and that the browser cache is
+  shared at `~/.cache/ms-playwright`.
 
 ### B-006 — `safe_eval.py`, the AST-whitelist expression evaluator
 - **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
