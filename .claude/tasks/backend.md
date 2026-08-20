@@ -26,7 +26,58 @@ IDs are `B-nnn`, allocated in order and never reused.
   to establish the vendoring pattern and the test-porting pattern.
 - **Depends on:** nothing
 - **Branch / PR:** `task/b-005-vendor-paths-systematics` — #8
-- **Status:** in review (cycle 1), dispatched 2026-08-20.
+- **Status:** cycle 2 in progress. **Review, cycle 1: 1 required, 3 suggested-major, 1
+  suggested-minor** — and the required one is a criterion I wrote wrong, not a code defect.
+- **Review, cycle 1 — it found a real concurrency defect that my own instructed deviation
+  created.**
+  - *Required* — criterion 2 ("All 23 reference tests are ported and pass") is **unsatisfiable
+    given this task's other instructions**, so the reviewer correctly refused to grant it and
+    escalated. Porting `test_fill_histogram_syst_keys_created` needs `path_filter.py` and
+    `analytical_loop.py`, which the file scope forbids; `test_configure_cache_env_sets_writable_path`
+    tests a function I instructed the coder to delete. **Waiver granted 2026-08-20: criterion
+    amended to 21, both omissions justified, no code change warranted.** My error — I wrote a
+    count into a criterion that my own file scope made impossible. Same shape as the `eval`
+    miscount on B-006, on the same day: **counts in criteria are a liability; name the items.**
+  - *Suggested-major 1 — real, and it is downstream of my deviation 1.* `paths.py:62-66`
+    probes writability with a **fixed shared filename** `.write_test`, and `probe.unlink()`
+    raises `FileNotFoundError` — an `OSError` — when a concurrent caller removed it first.
+    That is swallowed by `except OSError: continue`, so a perfectly writable directory is
+    misclassified and the resolver falls through to the next candidate. **The reviewer
+    instrumented it: 523/1280 probes on a writable dir failed this way; end to end, 47% of
+    concurrent calls returned the *wrong* home and 12% raised a false "No writable location
+    found".** Removing the reference's memoisation turned a once-per-process probe into a
+    per-call probe, which is what exposed it — so the PR body's "write-probe behaviour
+    preserved exactly" is untrue at the level that matters. **Consequence: students silently
+    resolve to different FCE homes and fragment the content-addressed cache that shared §2
+    says must not break** — which is the exact scenario this whole project exists to support.
+    **Being fixed in cycle 2, not deferred:** the fix is one line (`missing_ok=True`, or a
+    unique probe name via `tempfile.mkstemp`), both verified by the reviewer at 1280/1280, it
+    is inside scope, and B-007 lands the first caller.
+  - *Suggested-major 2 — the manual asks for a test nobody wrote.* `.claude/backend/CLAUDE.md`
+    §3.1 says in as many words: "`import fce_web.engine` must pull in **zero** UI or
+    `dearpygui` dependencies. A test should assert this." The two existing guards in
+    `test_skeleton.py` check declared requirements and `pyproject.toml` text — neither walks
+    the import graph, neither covers `ui.*`. A grep is a one-time check that decays, and
+    B-007…B-012 will copy this package's pattern. **Scope extended for cycle 2** to add it.
+  - *Suggested-major 3 — accepted as a carry-forward, not a cycle-2 fix.*
+    `tests/test_systematics.py:137-160` reimplements `_count_bjets` locally and five tests
+    assert against that copy, so they exercise no `fce_web` production code and cannot catch
+    divergence from the real thing. The reviewer says porting it was right under criterion 2,
+    and I agree — **repoint it at `filter_raw_event_data` when B-007 lands that function.**
+  - *Suggested-minor — folded into cycle 2, not backlogged.* `systematics.py:3-4` says
+    "vendored unchanged … zero imports" while the vendored copy adds `typing`, `numpy`, a
+    `Count` alias and type hints. The arithmetic genuinely is unchanged — the reviewer proved
+    it over 3888 scalar combinations and 5000×3 array events with zero mismatches — so only
+    the prose is false. **This is the sixth false self-describing claim on this project, and
+    this module is the template every later vendoring task will read**, which is why it gets
+    fixed now rather than filed.
+  - **What the review verified rather than read:** a differential test against the real
+    reference module (7 constants identical, 3888 scalar combinations → 0 mismatches, array
+    paths bit-identical, `ValueError` message identical); an **import-graph walk** over
+    `sys.modules` (167 modules, zero matching `dearpygui` or `ui.*`) rather than trusting the
+    grep; a `vars()` sweep for module-level mutable state; a **mutation check** replaying the
+    no-memoisation test against a memoised wrapper to prove the test has teeth; and a
+    test-count audit confirming the PR body's accounting is truthful.
 - **Sent back once before review, and it was not a review cycle** — no reviewer had seen it,
   so B-005's cycle count against the §5 limit is unaffected. The correction was PR-body-only;
   the branch head did not move (`28d5644`, one commit) and the code was already right.
@@ -163,6 +214,14 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   `cancel: threading.Event | None` threaded through the public functions.
 - **The `eval` sites stay untouched in this task** — B-008 swaps them. This must be said in
   the PR body so the reviewer does not raise it as a finding.
+- **Two carry-forwards owed from B-005's cycle-1 review, both to be discharged here.**
+  (1) Port `test_fill_histogram_syst_keys_created` from the reference's
+  `tests/test_systematics.py` — it was dropped from B-005 because it needs `path_filter.py`,
+  which this task creates, and it is the only reference test covering the `h_{src}_up`
+  systematic keys. (2) Repoint `tests/test_systematics.py:137-160` — five `test_nbjets_*`
+  tests currently assert against a **local reimplementation** of `_count_bjets` and so
+  exercise no production code at all. Point them at the real b-jet counting inside
+  `filter_raw_event_data` once it exists here.
 - **Depends on:** B-005
 - **Branch / PR:** not yet opened
 
