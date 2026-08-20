@@ -26,8 +26,15 @@ IDs are `B-nnn`, allocated in order and never reused.
   to establish the vendoring pattern and the test-porting pattern.
 - **Depends on:** nothing
 - **Branch / PR:** `task/b-005-vendor-paths-systematics` — #8
-- **Status:** cycle 1 delivered 2026-08-20; **sent back before review** to correct a false
-  claim in its verification block. Not a review cycle — no reviewer has seen it.
+- **Status:** in review (cycle 1), dispatched 2026-08-20.
+- **Sent back once before review, and it was not a review cycle** — no reviewer had seen it,
+  so B-005's cycle count against the §5 limit is unaffected. The correction was PR-body-only;
+  the branch head did not move (`28d5644`, one commit) and the code was already right.
+- **Correction verified by me before dispatching the review:** the false paragraph is gone
+  (`grep -c "pre-date this branch\|pre-existing"` → 0), the real transcript is in
+  (**72 passed**, which reconciles exactly against the 49 I measured on `main` plus 23 new),
+  and the `PLAYWRIGHT_BROWSERS_PATH` requirement is recorded in Deviations for the next
+  reader. Scope still exactly the five files.
 - **Scope verified by me, clean:** `git diff --name-only main...origin/task/b-005-vendor-paths-systematics`
   is exactly the five scoped files, `+361/-0`; the diff against `docs/`, `.claude/`,
   `pyproject.toml`, `content/` and `scripts/` is empty.
