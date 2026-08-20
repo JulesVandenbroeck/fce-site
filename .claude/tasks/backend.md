@@ -87,8 +87,41 @@ IDs are `B-nnn`, allocated in order and never reused.
   from a text field a student types into.
 - **Depends on:** nothing — dispatched alongside B-005 because it is the highest-risk design
   in M2 and touches no vendored file.
-- **Branch / PR:** not yet opened
-- **Status:** dispatched 2026-08-20 (cycle 1)
+- **Branch / PR:** `task/b-006-safe-eval` — #9
+- **Status:** cycle 1 delivered 2026-08-20; **sent back before review** for the same false
+  e2e claim as B-005, from the same missing env note in my dispatch. Not a review cycle.
+- **Scope verified by me, clean:** exactly the two scoped files, `+881/-0`.
+- **Delivered:** `compile_expr(source) -> CompiledExpr` (validates then compiles, raises
+  `UnsafeExpression`) and `evaluate(compiled, names)` (runs a pre-validated code object and
+  *cannot* raise `UnsafeExpression`) — the two-stage shape that structurally prevents a bad
+  expression from failing inside a hot loop. Zero third-party imports. 104 tests: 24
+  escape-rejection tests, a **live demonstration of the escape firing against the real
+  reference module**, a 62-entry corpus from `SEL_ALL_VARS` / `fce.py` / the three saved
+  analyses each value-checked against hand-derived physics, and three mutation tests shown
+  killing their target then restored byte-identically via `diff`.
+- **Benchmark: at parity with raw `eval`**, four runs at 0.98x / 0.85x / 1.38x / 0.94x against
+  a 2x budget. The validate-then-compile ruling is vindicated — the safety costs nothing.
+- **My error #1, caught by the coder: there are seven `eval` sites, not eight.** Confirmed by
+  grep: 255, 296, 368, 426, 606, 615, 630, plus one `compile()` at 393. The number came from
+  `.claude/backend/CLAUDE.md` §3.2 and I repeated it into the dispatch and into B-008's entry
+  below without checking. **Manual corrected 2026-08-20 to name the line numbers instead of a
+  count** — a count is precisely the failure shape this project keeps shipping (D-001 ×2,
+  D-003, D-004, D-008 cycle 1), and it has now bitten a *workflow* file rather than a source
+  comment.
+- **My error #2, also caught by the coder: the manual demanded subscripting and it was wrong.**
+  §3.2 listed `Subscript` as an allowed node and `jets[0].btag` as an example expression,
+  while my dispatch told the coder to reject subscripting. It flagged the tension instead of
+  silently picking one, which is the right move. **Checked: the reference eval namespace is
+  `l1 l2 j1 j2 ph1 ph2 met` plus five counts — there is no `jets` name at all**, so
+  `jets[0].btag` raises `NameError` in the reference today. The design brief's only expression
+  example (`docs/design-brief.md:181`) has no subscript either. Manual corrected; the example
+  is now `j1.btag > 0.7`, which actually works.
+  **The argument that settles it, and the coder found the shape of it:** the manual's own
+  canonical escape, `(1).__class__.__bases__[0].__subclasses__()`, **requires a subscript** —
+  so rejecting `Subscript` closes that door a second time, independently of the
+  underscore-attribute rule. Narrow beats permissive when permissive buys nothing.
+  **Flagged to the user as reversible** (§7 — it is a decision about the language students
+  will type). If reversed, widening a whitelist is additive and nothing built here is wasted.
 
 ## Ready
 
@@ -135,7 +168,9 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
 - **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
-- **Accept:** `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` returns nothing;
+- **Accept:** `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` returns nothing —
+  that is **seven** `eval` sites plus one `compile`, not eight; the count in this entry was
+  wrong until B-006 checked the reference and reported it;
   golden value tests prove the vectorised path and the per-event fallback produce **identical
   numbers** on the same events; an `UnsafeExpression` propagates to the caller and is **not**
   swallowed by the bare `except Exception: pass` at `:262`; the escape expression fed in as a

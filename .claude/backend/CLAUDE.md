@@ -92,7 +92,10 @@ after resolution — but make the cache explicit and testable.
 ### 3.2 Sandboxing student expressions
 
 `engine/path_filter.py` currently calls `eval(expr, {"__builtins__": _SAFE_BUILTINS}, vars)`
-in eight places. Restricting `__builtins__` does **not** make `eval` safe: a student can
+at lines 255, 296, 368, 426, 606, 615 and 630, and `compile()`s an observable at line 393.
+(This file said "eight places" until 2026-08-20. It is seven `eval`s plus one `compile`; the
+B-006 coder checked the reference instead of trusting the number and reported the discrepancy.
+Line numbers beat counts — a count is the failure shape this project keeps shipping.) Restricting `__builtins__` does **not** make `eval` safe: a student can
 write `(1).__class__.__bases__[0].__subclasses__()` and walk out to arbitrary classes, and
 from there to `os.system`. On a laptop that is nothing. On a teacher's machine with thirty
 students connected, it is remote code execution.
@@ -101,9 +104,17 @@ Build `src/fce_web/safe_eval.py`:
 
 - Parse with `ast.parse(expr, mode="eval")`.
 - Walk the tree and **reject any node type not on an explicit allow-list.** Allow the
-  arithmetic, comparison, boolean, subscript, attribute, name, constant, and call nodes
-  students need. Reject `Lambda`, `comprehensions`, `Import`, assignments, walrus,
-  f-strings, `Starred`, and anything you have not thought about. Default deny.
+  arithmetic, comparison, boolean, attribute, name, constant, and call nodes students need.
+  Reject `Lambda`, `comprehensions`, `Import`, assignments, walrus, f-strings, `Starred`,
+  and anything you have not thought about. Default deny.
+- **`Subscript` is rejected, and the `jets[0].btag` example below is wrong.** Corrected
+  2026-08-20 after B-006 flagged the contradiction. The reference's eval namespace is
+  `l1 l2 j1 j2 ph1 ph2 met` plus five counts — there is **no `jets` name**, so `jets[0].btag`
+  raises `NameError` in the reference today; it describes a language the engine does not
+  implement. An allow-list should be as narrow as what actually works. Note also that the
+  escape example above, `(1).__class__.__bases__[0].__subclasses__()`, **needs a subscript** —
+  so rejecting `Subscript` closes it a second time, independently of the underscore rule.
+  If a later milestone exposes an indexable collection, widening the list is additive.
 - **Reject any attribute name beginning with `_`.** This is what closes the escape.
 - Allow calls only to the whitelisted names already in `_SAFE_BUILTINS`
   (`abs`, `max`, `min`, `len`, `sqrt`, `cos`, `sin`, `tan`, `exp`, `log`, …).
@@ -116,7 +127,7 @@ Build `src/fce_web/safe_eval.py`:
   a cut should learn something from the error, not be frightened by it.
 
 **Everything students can currently write must keep working:** `nlep >= 2`,
-`l1.pt > 20 and l2.pt > 10`, `(l1.p4 + l2.p4).mass > 80`, `jets[0].btag`, `abs(l1.eta) < 2.5`.
+`l1.pt > 20 and l2.pt > 10`, `(l1.p4 + l2.p4).mass > 80`, `j1.btag > 0.7`, `abs(l1.eta) < 2.5`.
 Write tests for each of those *and* for a set of escape attempts, before you write the
 evaluator.
 
