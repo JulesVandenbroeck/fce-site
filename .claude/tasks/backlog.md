@@ -94,6 +94,16 @@ Entries carry the task ID they came from, so context is recoverable.
   `NavigationStuckError(ScreenshotError)` would let the class name carry the meaning the
   message already carries, while `main()`'s single `except ScreenshotError` keeps working
   unchanged. _(from B-003 review, cycle 2)_
+- **Vectorise `and` / `or` in `safe_eval`.** In the reference engine any expression containing
+  `and` raises numpy's "truth value of an array is ambiguous" inside the vectorised path
+  (`engine/path_filter.py:255`), is swallowed by the bare `except Exception: pass` at `:262`,
+  and silently falls back to the per-event Python loop. So `l1.pt > 20 and l2.pt > 10` — the
+  single most common shape a student will type, and the reference's own documented example
+  (`fce.py:151-171`) — **never hits the fast path**, and nothing anywhere says so. Once
+  `safe_eval` owns the AST it can rewrite `BoolOp` to `&`/`|` when the operands are arrays.
+  Large speedup, and it changes no number a student sees. Offered to the user 2026-08-20 as a
+  third option for B-006 and not chosen, to keep M2's evaluator minimal-risk. _(from M2
+  planning, not a review)_
 - **Dependencies unpinned, no lock file.** Fine now, but a scientific-Python stack drifts.
   Worth resolving before classroom deployment so a teacher's install matches the tested
   one. _(from B-001)_

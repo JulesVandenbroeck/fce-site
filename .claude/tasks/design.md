@@ -48,9 +48,42 @@ IDs are `D-nnn`, allocated in order and never reused.
   metric and a guarantee about it in the same breath** — give the metric, and let the check
   establish whether the guarantee holds.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** cycle 2 in progress (resumed 2026-08-19 after an API drop killed the first
-  cycle-2 agent mid-edit). Cycle 1 reviewed: **2 required, 2 suggested-major, 3
-  suggested-minor**.
+- **Status:** cycle 2 **delivered, in review** (2026-08-20). Cycle 1 reviewed: **2 required,
+  2 suggested-major, 3 suggested-minor**. This is cycle 2 of the §5 limit of 3.
+- **Cycle 2 landed unreported — the list said one thing and the disk said another for the
+  third time on this task.** The resumed agent's session ended before it reported back, but it
+  had already committed `78f346a` and `9480cac` and pushed them, so
+  `origin/task/d-008-cvd-palette` and PR #7 both carry the full cycle-2 work. Discovered
+  2026-08-20 by reading git rather than the list, exactly as with B-003 and with cycle 2's own
+  first two deaths. **The standing lesson, now earned three times over: after any interrupted
+  dispatch, read the branch and the PR before believing this file.**
+- **Cycle 2 delivered, from the PR body — not independently verified by me, that is the
+  review's job.** The distinguishability metric moved from luminance ratio to **CAM02-UCS ΔE**,
+  implemented from scratch in numpy (no new dependency), applied to Machado-simulated fills
+  under all three dichromacies, over **44** pairs — the 28 node-node pairs *plus* 16
+  node-vs-reserved pairs against `--vermillion` and `--graphite-blue`, which is what closes
+  cycle 1's suggested-major about multiplicity wearing the reserved red. `palette_search.py`
+  is committed, which closes the second required finding. Reported worst case **ΔE 7.18**
+  against a stated floor of 4.0 and a JND of ~1–2, with **zero** of the 84 pair×type
+  combinations below ΔE 5 — against 3 below 5 in *both* D-004 and D-008 cycle 1. The coder
+  reports the trade-off honestly rather than burying it: the count below ΔE 12 rose 9 → 14 →
+  17, because a maximin objective spends its freedom on the worst pair, not the average one.
+- **The coder retracted its own cycle-1 headline conclusion, with numbers, and I accept the
+  retraction.** "Fill colour alone cannot carry robust 8-way node-kind identity under CVD" is
+  withdrawn: it rested on the ~1.05:1 luminance ceiling, which the coder reproduced but which
+  was never a measure of distinguishability. **So the front-end glyph / letter-mark task stays
+  unraised** — as I had already decided pending cycle 2, and now for a measured reason rather
+  than a pending one. The coder explicitly recommends against raising it and says why.
+- **PR body checked before dispatching the cycle-2 review** (§4 rule 3): a full `## Cycle 2`
+  section carrying the scope extension, all five criteria marked with evidence, a real
+  `verify.py --all` transcript, the three suggested-minors named and individually resolved,
+  declared deviations, and backlog candidates. Stands alone; the reviewer needs nothing from me.
+- **The deviation worth reading, because it is the same discipline the reviews have been
+  teaching:** the first committed `palette_search.py` had no margin above its own floors and
+  its default seed produced a palette missing 3 of 4 of them. The coder caught this **by
+  running the committed script rather than trusting the search's self-report**, and fixed it
+  before reporting done. It also records losing uncommitted work to a `git checkout --` during
+  one of its crash recoveries.
 - **Cycle-2 dispatch interrupted, recovered by reading the worktree, not the report.** The
   agent died on an API connection drop one sentence before writing `tokens.css`. Its work
   survived uncommitted on branch `d008-cycle2-work` (at `18aea84`, the PR head): a full
