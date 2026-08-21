@@ -1,6 +1,6 @@
 """Executable checker for the histogram / cutflow / fit contract in ``docs/api.md``.
 
-B-004 (cycle 2). This module holds the contract as Python data (``HISTOGRAM_SCHEMA``,
+B-004 (cycle 3). This module holds the contract as Python data (``HISTOGRAM_SCHEMA``,
 ``CUTFLOW_SCHEMA``, ``FIT_SCHEMA``) and checks two independent things against it:
 
 1. that every field the schema declares is actually documented in ``docs/api.md`` --
@@ -22,17 +22,29 @@ cell of a table row inside a ``<!-- schema-table:start/end -->`` block in
 this checker used ``\\b<name>\\b`` over the whole document, which a cycle-2 review showed
 was blind for five of the schema's leaf names (``data``, ``name``, ``samples``,
 ``edges``, ``stages``) because the bare word survives in unrelated prose after its
-documenting row is deleted. ``test_removing_field_row_makes_documented_check_fail`` is a
-meta-test, parametrized over every schema path, that proves this checker is falsifiable
-for every one of them, permanently, rather than relying on a hand-picked transcript.
+documenting row is deleted.
+
+**The schema tuples are consumed, not decorative.** A cycle-2 review found that
+``HISTOGRAM_SCHEMA``/``CUTFLOW_SCHEMA``/``FIT_SCHEMA`` were read only as ``set(...)`` of
+keys -- the ``(type, presence)`` half of every tuple was dead data, and a payload could
+delete a required field or corrupt its type without any test noticing. Presence is now a
+four-state lattice (``REQUIRED``, ``NULLABLE``, ``OPTIONAL``, ``OPTIONAL_NULLABLE`` --
+see below), ``_check_path_conformant`` walks a schema path against the real payload and
+enforces exactly that state, and ``test_payload_conforms_to_schema_field`` runs it for
+every one of ``ALL_SCHEMA_PATHS``. ``samples[].systUp.jec``/``.lep``/``.btag`` are
+``OPTIONAL`` (may be absent, never ``null`` when present) rather than ``REQUIRED`` --
+that is not an oversight, it is semantics 1 and 2's partial-presence rule, and treating
+those three as required would make this checker reject a legal payload the moment a
+sample genuinely lacks a source's variation template.
 
 **Every mutation in this file's test suite runs by monkeypatching a module attribute,
 never by editing a tracked file.** ``API_MD_TEXT`` and ``_raw_payload_text`` are the two
 seams: a test's ``monkeypatch`` fixture rebinds one of them for the duration of that
 test only, pytest itself restores it afterwards, and no file on disk is ever touched.
-(An earlier cycle's PR body demonstrated mutations with ``sed -i`` against
-``docs/api.md`` and against this file's own ``_compute_band`` -- that method is
-forbidden by ``.claude/backend/CLAUDE.md`` and is not used here.)
+Both the doc-drift check and the schema-conformance check get a permanent, parametrized
+falsifiability meta-test built on this seam (``test_removing_field_row_makes_documented_check_fail``,
+``test_corrupting_field_makes_schema_check_fail``) rather than a one-off hand-picked
+transcript.
 """
 import json
 import math
@@ -63,48 +75,68 @@ def _raw_payload_text():
 # ---------------------------------------------------------------------------
 # The contract, as data. Keys are dotted paths matching exactly how each
 # field's own row spells it in docs/api.md's field-reference tables.
+#
+# Presence is one of four states, each a (may_be_missing, may_be_null) pair:
+#   REQUIRED          -- key must be present, value must not be null
+#   NULLABLE          -- key must be present, value may be null
+#   OPTIONAL          -- key may be absent; if present, value must not be null
+#   OPTIONAL_NULLABLE -- key may be absent; if present, value may be null
+# Whenever a value is present and non-null, it must match the declared type
+# regardless of which state applies.
 # ---------------------------------------------------------------------------
 
+REQUIRED = (False, False)
+NULLABLE = (False, True)
+OPTIONAL = (True, False)
+OPTIONAL_NULLABLE = (True, True)
+
 HISTOGRAM_SCHEMA = {
-    "meta": (dict, False),
-    "meta.mission": (str, False),
-    "meta.detector": (str, False),
-    "meta.energy": (str, False),
-    "meta.xLabel": (str, False),
-    "meta.processNames": (dict, False),
-    "edges": (list, False),
-    "lumiUnc": ((int, float), False),
-    "systSources": (list, False),
-    "samples": (list, False),
-    "samples[].name": (str, False),
-    "samples[].counts": (list, False),
-    "samples[].weightsSquared": (list, True),
-    "samples[].systUp": (dict, False),
-    "samples[].systUp.jec": (list, False),
-    "samples[].systUp.lep": (list, False),
-    "samples[].systUp.btag": (list, False),
-    "data": (list, False),
+    "meta": (dict, REQUIRED),
+    "meta.mission": (str, REQUIRED),
+    "meta.detector": (str, REQUIRED),
+    "meta.energy": (str, REQUIRED),
+    "meta.xLabel": (str, REQUIRED),
+    "meta.processNames": (dict, REQUIRED),
+    "edges": (list, REQUIRED),
+    "lumiUnc": ((int, float), REQUIRED),
+    "systSources": (list, REQUIRED),
+    "samples": (list, REQUIRED),
+    "samples[].name": (str, REQUIRED),
+    "samples[].counts": (list, REQUIRED),
+    "samples[].weightsSquared": (list, NULLABLE),
+    "samples[].systUp": (dict, REQUIRED),
+    # Present only for the sources that sample actually produced a variation
+    # template for (docs/api.md semantics 1 and 2) -- never null when present,
+    # but its absence is not a contract violation.
+    "samples[].systUp.jec": (list, OPTIONAL),
+    "samples[].systUp.lep": (list, OPTIONAL),
+    "samples[].systUp.btag": (list, OPTIONAL),
+    "data": (list, REQUIRED),
 }
 
 CUTFLOW_SCHEMA = {
-    "cutflow.stages": (list, False),
-    "cutflow.samples": (list, False),
-    "cutflow.counts": (dict, False),
-    "cutflow.totalRaw": (int, False),
-    "cutflow.efficiencyPct": (list, False),
+    "cutflow.stages": (list, REQUIRED),
+    "cutflow.samples": (list, REQUIRED),
+    "cutflow.counts": (dict, REQUIRED),
+    "cutflow.totalRaw": (int, REQUIRED),
+    "cutflow.efficiencyPct": (list, REQUIRED),
 }
 
 FIT_SCHEMA = {
-    "fit.mu": ((int, float), True),
-    "fit.muErr": ((int, float), True),
-    "fit.significanceZ": ((int, float), True),
-    "fit.method": (str, True),
-    "fit.thresholds": (dict, False),
-    "fit.thresholds.evidence": ((int, float), False),
-    "fit.thresholds.discovery": ((int, float), False),
+    "fit.mu": ((int, float), NULLABLE),
+    "fit.muErr": ((int, float), NULLABLE),
+    "fit.significanceZ": ((int, float), NULLABLE),
+    # Absent entirely from docs/design-explorations/payload.json today (a
+    # backlog item is filed to add a producer) -- must tolerate both a
+    # missing key and an explicit null once a producer exists.
+    "fit.method": (str, OPTIONAL_NULLABLE),
+    "fit.thresholds": (dict, REQUIRED),
+    "fit.thresholds.evidence": ((int, float), REQUIRED),
+    "fit.thresholds.discovery": ((int, float), REQUIRED),
 }
 
-ALL_SCHEMA_PATHS = sorted(set(HISTOGRAM_SCHEMA) | set(CUTFLOW_SCHEMA) | set(FIT_SCHEMA))
+ALL_SCHEMA = {**HISTOGRAM_SCHEMA, **CUTFLOW_SCHEMA, **FIT_SCHEMA}
+ALL_SCHEMA_PATHS = sorted(ALL_SCHEMA)
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +189,92 @@ def _check_no_orphan_documented_paths():
 
 
 # ---------------------------------------------------------------------------
+# Schema-driven presence/type conformance -- walks a dotted path (with `[]`
+# denoting "one occurrence per list element") against the real payload and
+# enforces the (type, presence) the schema declares for it.
+# ---------------------------------------------------------------------------
+
+_MISSING = object()
+
+
+def _resolve(payload, tokens):
+    """Yield every occurrence of `tokens` applied to `payload` (`name[]`
+    expands into one branch per list element); yields `_MISSING` for any
+    branch where a key does not exist."""
+    current = [payload]
+    for tok in tokens:
+        list_wildcard = tok.endswith("[]")
+        key = tok[:-2] if list_wildcard else tok
+        nxt = []
+        for val in current:
+            if val is _MISSING or not isinstance(val, dict) or key not in val:
+                nxt.append(_MISSING)
+                continue
+            sub = val[key]
+            if list_wildcard:
+                nxt.extend(sub) if isinstance(sub, list) else nxt.append(_MISSING)
+            else:
+                nxt.append(sub)
+        current = nxt
+    return current
+
+
+def _set_first_occurrence(payload, tokens, new_value):
+    """Mutate `payload` in place: set the first resolvable occurrence of
+    `tokens` to `new_value` (adding the final key if it was absent). Returns
+    True if a mutation was made, False if no container could be found."""
+    containers = [payload]
+    for tok in tokens[:-1]:
+        list_wildcard = tok.endswith("[]")
+        key = tok[:-2] if list_wildcard else tok
+        nxt = []
+        for c in containers:
+            if not isinstance(c, dict) or key not in c:
+                continue
+            sub = c[key]
+            nxt.extend(sub) if list_wildcard and isinstance(sub, list) else nxt.append(sub)
+        containers = nxt
+        if not containers:
+            return False
+    last_tok = tokens[-1]
+    for c in containers:
+        if isinstance(c, dict):
+            c[last_tok] = new_value
+            return True
+    return False
+
+
+def _wrong_type_value(expected_type):
+    """A concrete value guaranteed not to satisfy `isinstance(v, expected_type)`."""
+    types = expected_type if isinstance(expected_type, tuple) else (expected_type,)
+    for candidate in (42, "sentinel-wrong-type", [1, 2], {"k": "v"}, 3.14):
+        if not isinstance(candidate, types):
+            return candidate
+    raise AssertionError(f"no wrong-type sentinel available for {expected_type!r}")
+
+
+def _check_path_conformant(path):
+    """Enforce `ALL_SCHEMA[path]` against the payload `_raw_payload_text()`
+    currently resolves to -- the seam a `monkeypatch`-based mutation rebinds."""
+    expected_type, (may_be_missing, may_be_null) = ALL_SCHEMA[path]
+    payload = json.loads(_raw_payload_text())
+    tokens = path.split(".")
+    occurrences = _resolve(payload, tokens)
+    assert occurrences, f"{path!r}: path resolved to zero occurrences (missing container?)"
+    for value in occurrences:
+        if value is _MISSING:
+            assert may_be_missing, f"{path!r} is missing from the payload but is required"
+            continue
+        if value is None:
+            assert may_be_null, f"{path!r} is null but the schema does not allow null"
+            continue
+        assert isinstance(value, expected_type), (
+            f"{path!r} has the wrong type: expected {expected_type}, "
+            f"got {type(value).__name__} ({value!r})"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
@@ -166,7 +284,10 @@ def payload():
 
 
 # ---------------------------------------------------------------------------
-# Checkers -- plain functions wrapped by a `test_*` below.
+# Checkers -- plain functions wrapped by a `test_*` below. These cover the
+# structural/array-length relationships the schema-driven checker above does
+# not: it validates one field's shape in isolation, not cross-field length
+# agreement or key-set coverage between two different containers.
 # ---------------------------------------------------------------------------
 
 def _check_top_level_fields_present(payload):
@@ -174,17 +295,6 @@ def _check_top_level_fields_present(payload):
     assert required <= set(payload.keys()), (
         f"missing top-level field(s): {sorted(required - set(payload.keys()))}"
     )
-
-
-def _check_meta_fields_typed(payload):
-    meta = payload["meta"]
-    assert (
-        isinstance(meta.get("mission"), str)
-        and isinstance(meta.get("detector"), str)
-        and isinstance(meta.get("energy"), str)
-        and isinstance(meta.get("xLabel"), str)
-        and isinstance(meta.get("processNames"), dict)
-    ), f"meta field(s) missing or wrong type: {meta!r}"
 
 
 def _check_sample_array_lengths_coherent(payload):
@@ -247,26 +357,6 @@ def _check_fit_thresholds_ordered(payload):
     )
 
 
-def _check_fit_nullable_fields_typed(payload):
-    """`mu`, `significanceZ`, `muErr` and `method` are all nullable (docs/api.md
-    semantics 7 and 8): each must be `None` or the type the schema declares."""
-    fit = payload["fit"]
-    mu = fit.get("mu")
-    sig_z = fit.get("significanceZ")
-    mu_err = fit.get("muErr")
-    method = fit.get("method")
-    ok = (
-        (mu is None or isinstance(mu, (int, float)))
-        and (sig_z is None or isinstance(sig_z, (int, float)))
-        and (mu_err is None or isinstance(mu_err, (int, float)))
-        and (method is None or isinstance(method, str))
-    )
-    assert ok, (
-        f"fit.mu, fit.significanceZ, fit.muErr or fit.method has an unexpected type: "
-        f"mu={mu!r}, significanceZ={sig_z!r}, muErr={mu_err!r}, method={method!r}"
-    )
-
-
 # ---------------------------------------------------------------------------
 # The systematics band, re-implemented from the prose in docs/api.md --
 # not imported from docs/design-explorations/plot.js or verify.py.
@@ -279,7 +369,7 @@ def _check_fit_nullable_fields_typed(payload):
 # `sum_s systUp[s][src]` sums only over the samples that carry that source's
 # key -- a sample missing it contributes nothing (not its nominal), and a
 # source is skipped entirely only if *no* sample carries it at all. This is
-# the partial-presence rule from engine/plotter.py:52-64,112, the opposite of
+# the partial-presence rule from engine/plotter.py:58-67,112, the opposite of
 # the fit's all-or-nothing histosys rule -- see docs/api.md semantics 1 and 2.
 # ---------------------------------------------------------------------------
 
@@ -374,12 +464,35 @@ def test_appending_orphan_row_makes_no_orphan_check_fail(monkeypatch):
         _check_no_orphan_documented_paths()
 
 
+@pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
+def test_payload_conforms_to_schema_field(path):
+    """The schema-driven presence/type check, run against the real, unedited
+    payload for every one of ALL_SCHEMA_PATHS -- this is what makes the
+    (type, presence) half of the schema tuples load-bearing rather than
+    decorative."""
+    _check_path_conformant(path)
+
+
+@pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
+def test_corrupting_field_makes_schema_check_fail(path, monkeypatch):
+    """Falsifiability meta-test, modelled on
+    test_removing_field_row_makes_documented_check_fail. For every schema
+    path, corrupt one occurrence of it in an in-memory copy of the payload to
+    a value of the wrong type, monkeypatch that in for `_raw_payload_text`,
+    and prove `_check_path_conformant` now raises naming that exact path."""
+    payload = json.loads(_raw_payload_text())
+    expected_type, _presence = ALL_SCHEMA[path]
+    tokens = path.split(".")
+    mutated_ok = _set_first_occurrence(payload, tokens, _wrong_type_value(expected_type))
+    assert mutated_ok, f"could not locate a container to corrupt for {path!r}"
+    mutated_text = json.dumps(payload)
+    monkeypatch.setattr(sys.modules[__name__], "_raw_payload_text", lambda: mutated_text)
+    with pytest.raises(AssertionError, match=re.escape(path)):
+        _check_path_conformant(path)
+
+
 def test_top_level_fields_present(payload):
     _check_top_level_fields_present(payload)
-
-
-def test_meta_fields_typed(payload):
-    _check_meta_fields_typed(payload)
 
 
 def test_sample_array_lengths_coherent(payload):
@@ -406,10 +519,6 @@ def test_fit_thresholds_ordered(payload):
     _check_fit_thresholds_ordered(payload)
 
 
-def test_fit_nullable_fields_typed(payload):
-    _check_fit_nullable_fields_typed(payload)
-
-
 def test_band_is_finite(payload):
     _check_band_is_finite(payload)
 
@@ -429,7 +538,7 @@ def test_band_frac_zero_where_stack_zero(payload):
 def test_band_partial_presence_includes_source_from_samples_that_have_it():
     """Regression guard for the cycle-2 review finding: an earlier `_compute_band`
     dropped a systematic source entirely if *any* one sample lacked it -- the
-    fit's rule, not the band's. `engine/plotter.py:52-64,112` sums a source from
+    fit's rule, not the band's. `engine/plotter.py:58-67,112` sums a source from
     whichever samples carry it and only drops it if *no* sample does. Two
     samples, `A` with a `jec` variation and `B` without one: the source must
     still contribute, computed from `A` alone.

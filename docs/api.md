@@ -136,7 +136,7 @@ points with `sqrt(n)` error bars, which is the convention the physics community 
 
    Here `Σ_s systUp[s][src]` sums **only over the samples that carry a `systUp[src]` key for
    that source** — a sample missing it simply contributes nothing to that sum, the way
-   `engine/plotter.py:52-64` accumulates `mc_up[src]` only from samples where
+   `engine/plotter.py:58-67` accumulates `mc_up[src]` only from samples where
    `f"h_{src}_up"` exists in that sample's output file. It does **not** fall back to that
    sample's nominal count, and the source is skipped entirely only if **no** sample carries
    it at all (`mc_up[src] is None`, `plotter.py:112`). This is the **opposite rule** from the
