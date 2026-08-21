@@ -86,6 +86,21 @@ IDs are `B-nnn`, allocated in order and never reused.
   the wrong-arity `TypeError` the review filed `Required` against. Sent back to the same
   backend-coder to verify at head and append the section with verbatim transcripts — including the
   forgery test that *can* fail, which is the whole point of the required finding.
+  **Body corrected 2026-08-21, no code change needed; §5.1 gate PASSED at unchanged head
+  `b058166`; review dispatched (cycle 4 of the coder's work, but B-006 stays at 3 cycles —
+  §5.4 clause 2, the required finding was my broken check command).** Every number in the new
+  `## Re-specification` section reproduces exactly what I measured independently at that commit:
+  167 / 118 / flake8 0, `comm -23` empty so no cycle-3 test was retired, diff stat identical,
+  scope respected. The coder verified the crashed agent's code against the review line by line
+  and found it already closed every finding.
+  - **One resolution the reviewer must weigh, and I am not pre-judging it.** The forgery guard
+    catches a hand-built `_ValidationProof`, but **`dataclasses.replace` and `object.__new__`
+    still forge a `CompiledExpr`.** The coder chose to *narrow the docstring* — adding an explicit
+    "what this does not defend against" section — rather than close those two routes. That is the
+    honest option and it is the one this task keeps asking for. But **B-008 is told to treat this
+    type as a safety certificate**, so if the reviewer judges the residue unacceptable, the fix is
+    cheap now and expensive after the merge. Whichever way it lands, B-008's entry must be
+    corrected to match what the certificate actually guarantees.
   Previously: cycle-1 review dispatched, result lost — reconciled from git 2026-08-21. `main`
   carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
   ran, but the session ended before it reported and a sub-agent's context does not survive.
