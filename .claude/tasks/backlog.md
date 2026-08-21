@@ -345,6 +345,13 @@ and are historical now that #6 is merged.
   function still carries the old name. Naming only, no consequence to what it measures.
   _(from D-008 review, cycle 2)_
 
+- **`safe_eval` reports the least legible of three correct rejections.** `safe_eval.py:250` —
+  the canonical escape `l1.__class__.__init__.__globals__[...]('os')` is refused with *"Only
+  calling a named function or a method by name is allowed"*, because `ast.walk` is
+  breadth-first and reaches the `Call` node before the `Attribute`. Correct, but the message a
+  student sees on the payload that matters most pedagogically should be the underscore one.
+  Checking `Attribute`/`Name` before `Call` would surface it. _(from B-006 review, cycle 1)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light

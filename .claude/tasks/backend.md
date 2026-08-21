@@ -25,6 +25,15 @@ IDs are `B-nnn`, allocated in order and never reused.
   2026-08-20 21:36 UTC, with a full `## Cycle 2` section in the PR body. The coder's session
   ended before it reported back. **Fourth time on this project that the disk was right and the
   list was wrong** (B-003, D-008 ×3 — now B-005).
+  **Cycle 2 reviewed 2026-08-21 — 1 required, 1 suggested-major, 2 suggested-minor; cycle 3
+  dispatched.** The required is *against my dispatch*: none of my five criteria carried a
+  `Check:`/`Expect:`, so the reviewer had to invent the checks. All five criteria were **met**.
+  The suggested-major is the real one and it is well-earned: the reviewer deleted the
+  write-probe from `get_fce_home` entirely — first candidate returned unconditionally — and all
+  five paths tests still passed (`5 passed in 0.11s`, `after run, module fn is broken? True`).
+  The module's central contract is unasserted, on the most-churned path in the file. Cycle 3
+  adds the two probe tests and the `uicontrols` name that makes the import guard's separator
+  rule actually assertable. Review posted to PR #8.
   **§5.1 gate: PASSED, 2026-08-21.** Re-ran all four of the PR body's verification claims in a
   clean detached worktree at `ae1cc36` with its own venv (`~/gate-b005`, since removed —
   detached, so no branch touched) and `PLAYWRIGHT_BROWSERS_PATH` exported. All four reproduce
@@ -49,15 +58,35 @@ IDs are `B-nnn`, allocated in order and never reused.
   assertion mutation-tested against a broken whitelist, then restored.
 - **Depends on:** nothing — dispatched alongside B-005.
 - **Branch / PR:** `task/b-006-safe-eval` — #9
-- **Status:** **review dispatched, result lost — reconciled from git 2026-08-21.** `main`
+- **Status:** **cycle 2 dispatched 2026-08-21.** Previously: review dispatched, result
+  lost — reconciled from git 2026-08-21. `main`
   carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
   ran, but the session ended before it reported and a sub-agent's context does not survive.
   PR #9 carries **zero comments**, so nothing was captured there either — which is precisely
   the loss §6's *post the review to the PR* rule exists to prevent, and it has now cost a
   whole review. Branch head unmoved at `f9433e7`. **Cycle 1 is being re-dispatched**, and that
   re-dispatch is not a second cycle: no coder work happened between the two.
-- **Review:** cycle 1 re-dispatched 2026-08-21. Delivered at parity with raw `eval`
-  (0.85–1.38×); 104 tests.
+- **Review:** cycle 1 re-dispatched and returned 2026-08-21 — **2 required, 2
+  suggested-major, 3 suggested-minor**; cycle 2 dispatched. Review posted to PR #9.
+  - *Required 1 — a live denial of service, and the best finding of the session.* `ast.Pow`
+    is whitelisted with no bound on the exponent, so the 500-char / 200-node size caps do not
+    bound **cost**. `9**9**9` is 7 characters and 8 AST nodes, is **accepted**, and then never
+    returns — reviewer measured `exit=124` after 15s. `evaluate` runs once per event over
+    millions of events, on a teacher's laptop with thirty students connected. This is exactly
+    the billion-laughs case `.claude/backend/CLAUDE.md` §3.2 asks to be bounded; the coder
+    implemented size caps and stopped one step short of cost caps.
+  - *Required 2 — against my dispatch*, same as B-005: no criterion carried a command.
+  - *Suggested-major:* `tests/test_safe_eval.py:325` mutates `sys.path` process-wide with a
+    hard-coded home directory that shadows `engine/`, `objects.py` and `paths.py` — **latent
+    until B-007 lands those exact names**; and `SAFE_BUILTINS` is module-level mutable state
+    handed to `eval` as `__builtins__`, which shared §6 forbids unqualified.
+  - *Suggested-minor:* (a) docstring still says "eight `eval()` call sites" — folded in;
+    (b) `import re` inside `preprocess_hep_expr` — folded in; (c) `ast.walk` reaching `Call`
+    before `Attribute` so the canonical escape gets the least legible of three correct
+    messages — **backlogged**, not for this cycle.
+  - *What held:* 22 hand-written escape payloads all rejected; a 0.1% perturbation of
+    `evaluate()` fails 50 of 104 tests, so the corpus assertions are load-bearing; the two
+    locks are independent as claimed. Parity with raw `eval` (0.85–1.38×) reproduced.
 - **History:** [`archive/backend.md` § Post-mortems](archive/backend.md) — the coder caught
   two errors in my dispatch (seven `eval` sites, not eight; `Subscript` contradiction), both
   since corrected in `.claude/backend/CLAUDE.md` §3.2.

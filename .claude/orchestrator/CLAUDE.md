@@ -432,6 +432,42 @@ your own brief, not asking the coder to try again.
 criterion was clear.** You have been wrong about that clarity five times in writing — the table
 in §2 is the list, and every row of it was judged obvious when it was written.
 
+#### The hole in that test, found 2026-08-21, and the fix
+
+The question above assumes there *is* an unmet criterion. On 2026-08-21 both B-005 and B-006
+came back with findings against properties **no criterion of the task had ever named** — B-005's
+write-probe contract, B-006's unbounded `ast.Pow`. In both cases every stated criterion was
+*met*. Asked literally, "did that criterion ship with a command?" has no answer, and the loose
+reading — *no criterion, therefore no command, therefore a re-specification* — would make **every
+novel finding a free pass** and the §5.7 limit unreachable. Three tasks in one session would have
+been re-specifications and the cycle count would never have moved.
+
+So the diagnosis is **two questions, in order**:
+
+1. **Was the unmet property gated by an earlier criterion of this task, which the current
+   dispatch then dropped?** That is §5.3 substitution, and it is your act, not the coder's.
+   → **RE-SPECIFICATION.** Restore the floor, restate all the others, re-dispatch. Not a cycle.
+2. **Otherwise — did an unmet criterion ship without a command?**
+   → **RE-SPECIFICATION.** Write the command. Not a cycle.
+3. **Otherwise the finding is against a property no criterion ever gated.**
+   → **A CYCLE.** Your criterion set was *incomplete*, which is not the same defect as
+   *unenforceable*, and the coder held a standard elsewhere — a role manual, shared §6, ordinary
+   craft — that it did not meet. B-006's `Pow` is the clean case: `.claude/backend/CLAUDE.md`
+   §3.2 asks for billion-laughs to be bounded, the coder built size caps and stopped one step
+   short of cost caps. B-005's is the same shape: it changed the write-probe mechanism twice and
+   asserted neither branch.
+
+D-008 stays a re-specification under clause 1 and only clause 1: normal-vision separation was
+gated at D-004 cycle 3 (12.81) and **I stopped gating it**, so the coder optimised precisely
+what I asked and lost precisely what I stopped asking for. That is the distinguishing feature —
+something was *removed* — and without clause 1 the D-008 diagnosis would not survive either.
+
+**A `Required` filed against the dispatch rather than the code does not by itself make a
+re-specification.** Both reviews on 2026-08-21 filed one — none of my criteria carried a
+`Check:`/`Expect:`, so the reviewer had to invent the checks. That is a real defect and you fix
+it in the re-dispatch, but it is orthogonal to the cycle count: what decides that is whether the
+*unmet* property was one you dropped.
+
 ### 5.5 Re-review scope — narrow the diff, never the findings
 
 **Cycle 2+ re-reads only the incremental diff since the previous review, and re-runs every
