@@ -34,6 +34,14 @@ IDs are `B-nnn`, allocated in order and never reused.
   The module's central contract is unasserted, on the most-churned path in the file. Cycle 3
   adds the two probe tests and the `uicontrols` name that makes the import guard's separator
   rule actually assertable. Review posted to PR #8.
+  **Cycle 3 delivered `f33c667`, §5.1 gate PASSED 2026-08-21, review dispatched.** Re-ran the
+  claims in a clean detached worktree with its own venv: full suite **77 passed** (up from 75),
+  targeted **28 passed** (up from 26), flake8 exit 0, grep exit 1 — all exact. **And the check
+  that mattered: both new probe tests PASSED rather than SKIPPED.** They carry a
+  `pytest.skip` guard for the root case, where `chmod 0o500` does not remove write access, so
+  in the wrong environment they would have been vacuous. This container runs as uid 1002, so
+  they genuinely run. `src/fce_web/paths.py` was not touched — the implementation was already
+  correct; only its assertion was missing.
   **§5.1 gate: PASSED, 2026-08-21.** Re-ran all four of the PR body's verification claims in a
   clean detached worktree at `ae1cc36` with its own venv (`~/gate-b005`, since removed —
   detached, so no branch touched) and `PLAYWRIGHT_BROWSERS_PATH` exported. All four reproduce
