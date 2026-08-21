@@ -20,7 +20,30 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
   on 2026-08-17; corrected 2026-08-20.
 - **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
-- **Status:** re-dispatched as a **RE-SPECIFICATION** (§5.4 **clause 1**) — **still cycle 2**
+- **Status:** in review (**cycle 3 — the §5.7 limit**), head `0e945b8`, reviewer at raised effort
+- **Cycle-2 re-specification delivered `0e945b8`, gate passed.** Reproduced here: 134 passed /
+  134 collected / 18 `def test_` / 329 passed full suite / flake8 silent / 13 headings / scope still
+  the two permitted files / no `src/` change.
+- **Floors up again:** 76 → **134** cases, suite 271 → **329**, functions flat at 18, headings 13.
+- **The Required is closed the way the last one was — by construction.** A four-state presence
+  lattice (`REQUIRED`/`NULLABLE`/`OPTIONAL`/`OPTIONAL_NULLABLE`) is now actually consumed by
+  `_check_path_conformant`, walking all 30 `ALL_SCHEMA_PATHS`. `test_payload_conforms_to_schema_field`
+  (30 cases) is the positive check; `test_corrupting_field_makes_schema_check_fail` (30 cases) is its
+  permanent falsifiability proof. I verified the equality triple independently — 30 / 30 /
+  `len(ALL_SCHEMA_PATHS)` = 30 — reading the last one out of the module rather than the PR body.
+- **The suggested-major was fixed first, as instructed.** `samples[].systUp.jec/.lep/.btag` moved to
+  `OPTIONAL` *before* the tuples were wired up, so the schema-driven presence check never got the
+  chance to reject a legal partial-coverage payload.
+- **§5.3 substitution check, run rather than accepted.** Two tests were removed as "superseded":
+  `test_meta_fields_typed` and `test_fit_nullable_fields_typed`. `pytest --collect-only -q` diffed
+  across `f14e263..0e945b8` — the technique the B-006 cycle-4 lesson prescribes — shows exactly two
+  removed and two added. The removed pair covered 5 `meta` and 4 `fit` fields; the schema walk
+  covers **6 `meta` and 7 `fit` paths**, each now carrying its own falsifiability case. A genuine
+  superset, so nothing was traded away.
+- **This is the third coder→reviewer cycle.** If it returns any `Required` or un-overruled
+  `suggested-major`, §5.7 applies: stop, do not dispatch a fourth, and put the diagnosis to the
+  user. The two re-specifications do not count toward this and the diagnosis is already written
+  above — all three specification defects were mine, and all three were the same shape.
 - **Review (cycle 2, raised effort):** 1 required, 1 suggested-major, 1 suggested-minor,
   scope=pass. Posted verbatim to PR #10. The reviewer diffed every *retained* checker for
   softening — confirming `>=` logic unchanged, nullable coverage grown 2→4 fields, and all 28 old
