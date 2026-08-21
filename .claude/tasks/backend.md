@@ -20,7 +20,25 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
   on 2026-08-17; corrected 2026-08-20.
 - **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
-- **Status:** re-dispatched as a **RE-SPECIFICATION** (§5.4 clause 2) — **still cycle 1**
+- **Status:** in review (cycle 2) — reviewer dispatched at raised effort, head `f14e263`
+- **Re-specification delivered `f14e263`, gate passed.** All eight numbers reproduced in the
+  primary checkout: 76 passed / 60 passed 16 deselected / 5 passed 71 deselected / 76 collected /
+  18 `def test_` / 271 passed full suite / flake8 silent / 13 `^##` headings. Scope still exactly
+  the two permitted files; no `src/` change at all.
+- **Floors moved the right way.** 14 functions → **18**; 41 cases → **76**; suite 236 → **271**;
+  headings held at 13. These are the new floors.
+- **The Required is closed by construction, not by assertion.**
+  `test_removing_field_row_makes_documented_check_fail` runs **30 parametrised cases, one per
+  schema field**, pairing 1:1 with the 30 cases of `test_documented_schema_field_appears_in_api_md`
+  — so falsifiability is now a permanent property of the suite rather than a transcript somebody
+  pasted once. The reverse direction the reviewer asked for landed too:
+  `test_no_orphan_schema_table_rows` plus its own
+  `test_appending_orphan_row_makes_no_orphan_check_fail`. This is §5.3's "make it a command, not an
+  instruction", and it is the shape the original criterion should have had.
+- **Coder verified all eight findings against the reference before implementing** and reports none
+  technically wrong — `receiving-code-review` done as intended rather than as capitulation. Its one
+  flagged deviation: `fit.mu`/`significanceZ` resolved as *specify nullable* rather than *omit
+  `fit` entirely*, a choice I deliberately left open, with the reasoning in semantics 7.
 - **Review (cycle 1, raised effort):** 1 required, 4 suggested-major, 3 suggested-minor,
   scope=pass. Posted verbatim to PR #10. The reviewer reproduced all six numbers, then checked
   every physics citation against the reference checkout rather than reading the prose — band
