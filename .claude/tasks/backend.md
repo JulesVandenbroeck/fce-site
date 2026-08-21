@@ -19,8 +19,22 @@ IDs are `B-nnn`, allocated in order and never reused.
   `pytest tests/ -q` green and `flake8` clean.
 - **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
   on 2026-08-17; corrected 2026-08-20.
-- **Branch / PR:** `task/b-004-api-contract` — not yet opened
-- **Status:** dispatched (cycle 1) — backend-coder, worktree isolation
+- **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
+- **Status:** sent back on the §5.1 free gate (**not a cycle**) — PR-body-only correction, branch
+  head has not moved. All six verification numbers reproduced in the primary checkout: 41 passed /
+  28 passed 13 deselected / 4 passed 37 deselected / 236 passed full suite / flake8 silent /
+  13 `^##` headings with `stub` narrowed to M3+M5. File scope respected exactly — `gh pr diff 10
+  --name-only` returns the two permitted files and nothing else. 14 unique test functions, 41
+  collected: the surplus is parametrisation of the doc-drift check over schema field names, so the
+  "14 pairs" claim is coherent rather than a shortfall.
+  **What failed the gate:** the `Mutation-test transcripts` section carries no pytest output at
+  all — `grep -nE 'FAILED|1 failed|=+ FAILURES' ` over the whole body returns nothing. Each of the
+  14 entries is prose of the form ``RED: `schema field 'significanceZ' is not documented` ``. The
+  body further states the mutations ran through a scratch script that called the module's
+  `_check_*` **helpers directly** on an in-memory payload, never the pytest tests. So the
+  instrument does not observe the property it certifies — B-006 cycle 4's failure shape
+  (orchestrator manual §2), one level up from a wrong count, and worse because it produces
+  evidence. §5.1 names a reformatted transcript as a send-back that does not consume a cycle.
 - **Review:** raised effort — this is a **contract task**. `docs/api.md` is consumed read-only by
   every frontend consumer and by B-007, B-011 and B-012, so it does not merge with an open finding
   against a field name or a documented formula (§2).
