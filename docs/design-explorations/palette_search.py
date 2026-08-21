@@ -371,7 +371,7 @@ SWEEP_LADDER = (0.0, 8.0, 10.0, 12.0, 13.11, 14.0)
 # obvious fix"). Selection rule (stated here so it is re-derivable, not just
 # asserted): the largest `T` in `SWEEP_LADDER` whose achieved min-CVD ΔE
 # (`--sweep`'s own output) still clears `DELTA_E_FLOOR`.
-SELECTED_T = 12.0
+SELECTED_T = 14.0
 
 
 def objective_constrained(x, T):
@@ -575,8 +575,8 @@ def report(rgbs_by_name, label, t_floor=SELECTED_T):
     # Normal-vision separation -- gated on its own floor (D-008 cycle-3:
     # "normal vision needs its own floor, not a seat in the same min"), not
     # folded into the worst-of-3-CVD `rows` above and not merely printed as
-    # "context only" the way D-008 cycle 2 demoted it (verify.py:2949,
-    # before this cycle).
+    # informational commentary the way D-008 cycle 2 demoted it
+    # (verify.py, before this cycle).
     njab = normal_cam02ucs(rgbs_arr)
     nn_rows = []
     for i in range(len(names)):

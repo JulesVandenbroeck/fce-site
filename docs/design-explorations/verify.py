@@ -2789,8 +2789,13 @@ def cam02_jch_to_ucs(J: float, C: float, h: float) -> tuple[float, float, float]
 
 def srgb_to_cam02ucs(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
     """0-255 sRGB -> CAM02-UCS (J', a', b'), normal vision (no CVD
-    simulation) -- used below only for the aesthetic chroma-context note,
-    not for any pass/fail gate this function imposes."""
+    simulation). Called by `check_beamline_node_fill_normal_vision` below,
+    for every `--node-*` fill and every reserved colour, to compute the
+    normal-vision ΔE floor and the diagnostic hue-angle gap that function
+    gates and reports (D-008 cycle 3). Earlier cycles' docstring here
+    claimed this fed "the aesthetic chroma-context note" -- there was no
+    such note beneath it (D-008 cycle-3 review, criterion 6b); this is the
+    real, checked call site that replaces that claim."""
     xyz100 = tuple(100 * v for v in linear_rgb_to_xyz(srgb_to_linear(rgb)))
     return cam02_jch_to_ucs(*xyz100_to_cam02_jch(xyz100))
 
@@ -2813,14 +2818,30 @@ def cam02ucs_deltaE(jab1: tuple[float, float, float], jab2: tuple[float, float, 
 
     Cross-checked in throwaway scratch verification (not committed --
     `colorspacious` is a real third-party dependency and this task's scope
-    forbids adding one), reported in the D-008 cycle-2 PR body: this
-    module's `xyz100_to_cam02_jch` + `cam02_jch_to_ucs` pipeline, run
-    end-to-end from 500 random sRGB colours through Machado simulation the
-    same way `simulate_cvd_cam02ucs` does, against
-    `colorspacious.cspace_convert(..., "sRGB1", "CAM02-UCS")` fed the
-    equivalently-simulated colour -- worst absolute difference across all
-    three J'/a'/b' components, over the 500 colours, was 1.6e-13 (machine
-    precision). A second check compared raw (J, C, h) against
+    forbids adding one), reported in the D-008 cycle-2 PR body -- and
+    corrected here (D-008 cycle-3 review, criterion 9a): the 1.6e-13
+    agreement below is for the **CAM02-UCS transform itself**, not for the
+    end-to-end pipeline through CVD simulation the earlier wording of this
+    docstring claimed. What was actually checked: this module's
+    `xyz100_to_cam02_jch` + `cam02_jch_to_ucs`, fed 500 random sRGB colours
+    already run through this module's own `_simulate_cvd_linear`, against
+    `colorspacious.cspace_convert(..., "sRGB1", "CAM02-UCS")` fed the same
+    simulated colour -- worst absolute difference across all three
+    J'/a'/b' components was 1.6e-13 (machine precision) *for that shared
+    input*. The simulation step upstream of it is not part of that
+    agreement: `_simulate_cvd_linear` clamps its Machado-matrix output to
+    [0, 1] per channel and `colorspacious` does not, and on the same 500
+    colours the worst per-component J'a'b' difference between this
+    module's full simulate-then-convert pipeline and colorspacious's own
+    end-to-end equivalent was 26.84, not 1.6e-13 -- this is exactly why
+    `--node-multiplicity` vs `--vermillion`, cycle 1's own comparison
+    table, reads 2.62 here against colorspacious's 3.40 for the same pair.
+    Clamping is the conservative direction (a clamped colour cannot read as
+    *more* separated than an unclamped one would), so no verdict in this
+    file is made more permissive by it, but "agrees to 1.6e-13" is not a
+    claim this function can make past the transform stage.
+
+    A second check compared raw (J, C, h) against
     `colorspacious.CIECAM02Space.sRGB.XYZ100_to_CIECAM02` on random XYZ100
     triples covering the full display gamut and beyond; within the sRGB
     gamut this agrees to the same machine precision, and is not claimed for
@@ -2943,14 +2964,15 @@ def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
     DELTA_E_FLOOR = 4.0
     names = list(fills.keys())
 
-    # Normal vision used to be printed here as "context only, not checked
-    # here" (D-008 cycle 2; the exact line D-008 cycle-3 review flagged --
-    # "the same thing wearing a hat" as retiring a check by relabelling it).
-    # It is folded into the real white-on-fill gate below now, as a fourth
+    # Normal vision used to be printed here labelled as informational,
+    # not a pass/fail gate (D-008 cycle 2; the exact line D-008 cycle-3
+    # review flagged -- "the same thing wearing a hat" as retiring a check
+    # by relabelling it). It is folded into the real white-on-fill gate
+    # below now, as a fourth
     # condition alongside the 3 CVD simulations (criterion 4, D-008 cycle-3
     # dispatch: 32 = 8 fills x 4 conditions, not 24), rather than staying
     # printed but ungated -- this is a strengthening of the existing gate,
-    # not a new one, so it does not need its own `section()`.
+    # not a new one, so it does not need its own banner call.
     normal_lums = {n: relative_luminance(fills[n]) for n in names}
     label_normal_lum = relative_luminance(label_rgb)
     ok_dark = not any(normal_lums[n] < DARK_FLOOR for n in names)
@@ -3148,7 +3170,7 @@ def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
 # numbers against the same floor rather than by one importing the other's
 # module-level state. See the D-008 cycle-3 PR body for the sweep table
 # that produced this number.
-NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR = 12.0
+NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR = 14.0
 
 
 def check_beamline_node_fill_normal_vision(pw: Optional[Playwright] = None) -> bool:
@@ -3534,6 +3556,7 @@ def main() -> None:
             all_results.append(("beamline-paint-sweep", check_beamline_paint_sweep(pw)))
             all_results.append(("beamline-contrast", check_beamline_contrast(pw)))
             all_results.append(("beamline-pairwise-luminance", check_beamline_pairwise_luminance(pw)))
+            all_results.append(("beamline-node-fill-normal-vision", check_beamline_node_fill_normal_vision(pw)))
             all_results.append(("beamline-focus-walk", check_beamline_focus_walk(pw)))
             all_results.append(("beamline-reduced-motion", check_beamline_reduced_motion(pw)))
             all_results.append(("beamline-network-and-errors", check_beamline_network_and_errors(pw)))
