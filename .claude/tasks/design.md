@@ -23,7 +23,37 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-004 (done, `bac2f62`). **Must run before D-005 and D-006** — both consume
   `tokens.css` read-only, so this is a contract task (§2), not a styling task.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** **cycle-3 FIXES dispatched 2026-08-21 (second attempt — the first died on the
+- **Status:** **cycle-3 FIXES delivered `a27ff4a`, §5.1 gate PASSED 2026-08-21, review
+  dispatched. This is the §5.7 limit — if it comes back dirty it goes to the user.** Crash
+  recovery worked: the WIP commit preserved all ~135 recovered insertions and the coder built on
+  them. Gate re-run by me in a clean detached worktree at `a27ff4a`, not taken from the PR body:
+  `verify.py --all` exit 0, **535 lines, 0 FAIL**; `pytest tests/ -q` 49 passed; flake8 exit 0;
+  `palette_search.py --report` exit 0 reproducing all eight hexes exactly, including the nudged
+  `--node-data`. Anti-substitution holds and improved: `section(` **31** (floor 29, dispatch
+  required ≥31), `line(` **48** (floor 44), `grep 'context only'` empty, and
+  `NORMAL_VISION_DELTA_E_FLOOR` now returns nothing anywhere.
+- **The hue collision is closed, and the coder chose to nudge rather than overrule.**
+  `--node-data` `#8d5548 → #966746`, hand-nudged only — the search was not re-run, per the user's
+  ruling. Worst fill-vs-reserved hue gap **3.6° → 14.1°** (`--node-obs-object` vs
+  `--graphite-blue`) against a stated floor of 12.0°, and the gate is real rather than a printed
+  diagnostic. `--node-obs-custom` was already comfortable at 27.0° and was left alone.
+
+  | metric | floor | c3 (`6954e65`) | **c3-fixes (`a27ff4a`)** |
+  |---|---|---|---|
+  | min CVD ΔE | 4.0 | 5.948 | **5.129** |
+  | normal-vision node-node ΔE | 14.0 | 14.304 | **14.170** |
+  | white-on-fill | 4.5 | 4.935 | **4.595** |
+  | node-vs-reserved ΔE | 4.0 | 13.442 | **13.442** |
+  | fill-vs-reserved hue gap | 12.0 | *ungated, 3.6* | **14.1** |
+  | clamping excess | 0.01 | *unmeasured* | **+0.0051** |
+
+  **The nudge cost margin on three floors to buy the fourth, and every one still clears.** The
+  coder disclosed the 5.95 → 5.13 CVD fall in `tokens.css`'s own narrative alongside cycle 2's
+  7.18 → 5.95, which is exactly what suggested-major 3 asked for — so the file now records two
+  regressions rather than hiding one. **The reviewer's job is to judge whether 5.129 and 4.595
+  are enough margin for a token set two tasks consume read-only**, and that is the question I
+  want it looking at; I am not pre-empting it.
+- Previously: **cycle-3 fixes dispatched 2026-08-21 (second attempt — the first died on the
   session limit).** Reconciled against git before re-dispatching: branch `d008-cycle3fix-work`
   head is still `6954e65`, equal to PR #7's head, so the crashed agent committed nothing — **but
   it left ~135 insertions uncommitted** across all three in-scope files in its worktree
