@@ -28,8 +28,38 @@ IDs are `B-nnn`, allocated in order and never reused.
   (never returned); the class is closed at compile time. The coder dropped `ast.Pow` entirely
   rather than bounding the exponent, on the grounds that no corpus expression uses `**`.
   **The open question that ruling raises is B-008's, not B-006's** — see the B-008 entry.
-  Reviewer died on its first turn having produced nothing; branch head unmoved, coder worktree
-  clean. Previously: cycle-1 review dispatched, result lost — reconciled from git 2026-08-21. `main`
+  **Cycle 2 reviewed 2026-08-21 — 0 required, 1 suggested-major, 3 suggested-minor. NOT
+  approved; cycle 3 dispatched, and cycle 3 is the §5.7 limit.**
+  - *The suggested-major is a fix-induced regression — cycle 2's own fix created it* (§5.5, and
+    the third time on this project that a later cycle caught what a previous fix introduced).
+    `monkeypatch.syspath_prepend` undoes the path at teardown but **not the modules it
+    enabled**: `engine`, `ui`, `ui.state`, `engine.systematics`, `engine.path_filter` all stay
+    in `sys.modules` bound to the reference checkout. `ui.state` is the module holding the
+    global `RUN_STATE` this project exists to eliminate, and B-007 lands `path_filter.py` under
+    a colliding name.
+  - **The criterion was mine and the defect in it is worth naming.** I wrote *"the test suite
+    does not mutate `sys.path` process-wide"* — a **mechanism**, not the property. The coder met
+    it exactly and the leak simply moved to the vector nothing was checking. §2 now carries the
+    rule: state the property in the sentence, the method in the `Check:`.
+  - **§5.4 says this is a cycle, not a re-specification**, and I am applying my own test rather
+    than the flattering reading: nothing was *dropped* (clause 1 no), criterion 8 shipped with a
+    command and that command still passes (clause 2 no), so it falls to clause 3 — a property no
+    criterion gated. My criterion set was incomplete, not unenforceable.
+  - *Suggested-minor:* (1) the PR body pasted a criterion-1 transcript the command **cannot
+    print** — `ast.walk` reaches `Call` first, so the real message is `Cannot call '.system'.`
+    That is the D-004 "25 sections / listed 26" defect and it is folded in; (2) the `Pow`
+    rejection message tells a student to use "arithmetic", which is what they thought `**` was —
+    folded in; (3) `CompiledExpr`'s docstring claims existence proves `compile_expr` accepted it,
+    but its constructor is public and the reviewer built one around raw `compile()` in seconds —
+    folded in, because **B-008 is told to treat that type as a safety certificate.**
+  - *What held, and the review was the hardest this project has run:* the unbounded-cost
+    **class** attacked with 14 constructed payloads and found closed, not just the three named
+    ones; a 40-payload escape corpus with 39 rejected at compile time and the one acceptance
+    (`abs.mass.mass`) reaching nothing; `MappingProxyType` confirmed to restrict at **eval**
+    time via a hand-built `CompiledExpr` around raw `compile("__import__")` → `NameError`; all
+    five new assertions mutation-tested and each failing as claimed; check count 45 → 51 test
+    functions with `comm -23` proving none removed. Benchmark 0.94×.
+  Previously: cycle-1 review dispatched, result lost — reconciled from git 2026-08-21. `main`
   carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
   ran, but the session ended before it reported and a sub-agent's context does not survive.
   PR #9 carries **zero comments**, so nothing was captured there either — which is precisely

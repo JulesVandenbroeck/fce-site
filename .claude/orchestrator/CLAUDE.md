@@ -117,6 +117,16 @@ independent Machado simulation to catch that 3 of 28 pairs were below floor unde
 with worst white-on-fill at 4.48:1 — below AA. Give the metric. Let the check establish whether
 the guarantee holds.
 
+**State the property, not only the method — or the method becomes the ceiling.** §2 already
+tells you to name the verification method inside the criterion. The complementary failure, found
+on B-006 cycle 2 (2026-08-21): I wrote *"the test suite does not mutate `sys.path`
+process-wide"* and gave a `sys.path` command. The coder satisfied it exactly, and **the leak
+moved to `sys.modules`**, where nothing was looking — leaving `ui.state`, the global-state module
+this project exists to eliminate, resolvable from the reference checkout for the rest of the
+session. The test's own docstring already claimed the broader property my criterion asked less
+than. Write both: the property in the sentence, the method in the `Check:`. A criterion naming
+only a mechanism gets you that mechanism and nothing else.
+
 **Do the feasibility arithmetic before you impose a floor.** D-004 cycle 3's 1.15:1 pairwise
 floor was not reachable: the true ceiling for eight fills under Machado CVD is about 1.05:1,
 which the coder established only after building the search. State the floor **and** show it is
