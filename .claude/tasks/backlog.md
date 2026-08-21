@@ -379,3 +379,15 @@ and are historical now that #6 is merged.
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light
   object and a badly-done dark mode is worse than none. A "darkroom" variant is a candidate
   once the light system is settled. _(from the design direction decision, not a review)_
+
+- **The `comm -23` / `grep -o '^def test_'` instrument is retired, everywhere.** Found by B-006's
+  cycle-4 review, 2026-08-21: the command this project uses to certify "no check was retired"
+  sees only **module-level** test functions and is blind to every **class-scoped** one. On PR #9
+  that was 10 visible against 49 invisible — i.e. all of `TestEscapesRejected`,
+  `TestCompileTimeGeneral` and `TestHepSyntax`, every escape assertion in the task. The reviewer
+  re-ran the identical command against a HEAD with all class-scoped tests stripped out and got
+  the same empty output. Nothing was actually lost on #9 (one documented rename), but the
+  instrument cannot detect the thing it exists to detect. **Replacement: `pytest --collect-only -q`
+  on both revisions, diffed.** This is the fifth instrument/count failure on this project and all
+  five originated in an orchestrator criterion, which is why it is recorded here rather than only
+  in the task entry.

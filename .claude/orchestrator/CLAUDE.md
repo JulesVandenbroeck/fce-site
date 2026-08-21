@@ -108,6 +108,17 @@ count, after that count bit a *workflow* file rather than a source comment. **Na
 or name the command that enumerates them. If you need the list, dispatch `scout` — that is what
 it is for.**
 
+**And check that the enumerating command can see what it claims to.** B-006's cycle-4 review,
+2026-08-21: my "no check was retired" command was
+`comm -23 <(git show <rev>:tests/x.py | grep -o '^def test_[a-z_0-9]*' | sort) <(...)`. The
+anchored `^def` sees only **module-level** tests and is blind to every **class-scoped** one — 10
+visible against 49 invisible on that PR, which was every escape assertion in the task. The
+reviewer re-ran it against a HEAD with all class-scoped tests deleted and got the same empty
+output. A count you did not enumerate is one failure; **an instrument that structurally cannot
+observe the property it certifies is the same failure one level up**, and it is worse because it
+produces evidence. Use `pytest --collect-only -q` on both revisions. Before you put a command in
+a criterion, ask what it would print if the property were false.
+
 ### Two more ways a criterion goes wrong
 
 **Never hand a coder a proxy metric and a guarantee about it in the same breath.** I prescribed
