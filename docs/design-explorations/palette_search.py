@@ -339,11 +339,64 @@ def _reserved_rgb255():
     return out
 
 
+def _label_rgb255():
+    """`--node-label-on-fill` is a read-only input (D-008 cycle-3
+    dispatch), not a literal this file is free to assume -- read it from
+    the committed tokens.css the same way `_reserved_rgb255` reads
+    `--vermillion`/`--graphite-blue`, rather than hard-coding (255, 255,
+    255) as earlier cycles did."""
+    tokens = v.parse_root_tokens(v.TOKENS_CSS.read_text())
+    return np.array(v.hex_to_rgb(tokens["--node-label-on-fill"]), dtype=float)
+
+
 RESERVED = _reserved_rgb255()
-WHITE = np.array([255.0, 255.0, 255.0])
+WHITE = _label_rgb255()
 
 
-def objective(x):
+# Cross-referenced against `verify.py`'s own `NORMAL_VISION_DELTA_E_FLOOR` --
+# the two names are for the same swept floor `T`, kept as two constants in
+# two files (one per file's own conventions) rather than one file importing
+# the other's module-level state, and cross-checked below every run
+# (`_selftest_against_verify` and, for this value specifically, `--report`'s
+# own gate on the committed palette).
+SWEEP_LADDER = (0.0, 8.0, 10.0, 12.0, 13.11, 14.0)
+
+# The `T` this cycle's sweep selected -- see `--sweep`'s printed table and
+# the D-008 cycle-3 PR body for the run that produced it. This is what the
+# *default* `python palette_search.py` command (no `--sweep`, no `--report`)
+# now searches against, replacing cycle 2's unconstrained objective: a
+# maximin search over CVD ΔE alone spends everything the objective does not
+# ask for, and normal-vision separation was exactly the thing cycle 2's
+# objective never asked for (D-008 cycle-3 dispatch, "the trap in the
+# obvious fix"). Selection rule (stated here so it is re-derivable, not just
+# asserted): the largest `T` in `SWEEP_LADDER` whose achieved min-CVD ΔE
+# (`--sweep`'s own output) still clears `DELTA_E_FLOOR`.
+SELECTED_T = 12.0
+
+
+def objective_constrained(x, T):
+    """The search objective for a given normal-vision node-node floor `T`
+    (`--sweep` runs this once per rung of `SWEEP_LADDER`; the default
+    unadorned command runs it once, at `SELECTED_T`). Maximises the
+    worst-of-3-CVD-simulations CAM02-UCS delta-E across the 44 node-node +
+    node-vs-reserved pairs (unchanged from cycle 2's `objective`), subject
+    to two *additional* constraints cycle 2 did not have, both enforced as
+    steep penalty terms rather than scipy `NonlinearConstraint`s (consistent
+    with every other floor in this function, which are also margin-shaped
+    penalties, not hard constraints `differential_evolution` itself
+    understands):
+
+    - the worst of the 28 *normal-vision* node-node CAM02-UCS delta-E values
+      must clear `T` -- this is the floor this task's re-specification
+      exists to add, on its own axis, not folded into the CVD `min` above it
+      (D-008 cycle-3 dispatch: a shared `min` over 4 conditions lets the
+      harder CVD conditions pull normal vision up only as far as their own
+      ceiling, which is cycle 2's exact regression).
+    - the worst of the 16 *normal-vision* node-vs-reserved CAM02-UCS
+      delta-E values must clear `DELTA_E_FLOOR` (4.0) -- unconditional, not
+      swept, because a node fill reading as `--vermillion` or
+      `--graphite-blue` under ordinary normal vision was never an
+      acceptable outcome at any `T`, including `T=0`."""
     h, s, ell = x[0::3], x[1::3], x[2::3]
     rgbs = hsl_to_rgb255(h, s, ell)  # (8, 3)
 
@@ -358,6 +411,23 @@ def objective(x):
     penalty += np.sum(np.clip(SEARCH_DARK_FLOOR - nlum, 0, None)) * 800
 
     reserved_arr = np.stack(list(RESERVED.values()))
+
+    # Normal-vision white-on-fill: not swept, not new to this cycle's floor
+    # ladder, but criterion 4 (D-008 cycle-3 dispatch) now checks all *four*
+    # conditions, so the search needs to keep normal vision clear of this
+    # floor too, the same margin already applied to each CVD simulation.
+    white_lum_normal = normal_lum(WHITE)
+    wr_normal = ratio(white_lum_normal, nlum)
+    penalty += np.sum(np.clip(SEARCH_WHITE_FLOOR - wr_normal, 0, None)) * 50
+
+    # The two new, cumulative normal-vision floors (see docstring above).
+    njab = normal_cam02ucs(rgbs)
+    nn_de_normal = cam02ucs_deltaE(njab[IU], njab[JU])
+    res_jab_normal = normal_cam02ucs(reserved_arr)
+    nr_de_normal = cam02ucs_deltaE(njab[:, None, :], res_jab_normal[None, :, :]).reshape(-1)
+    penalty += np.sum(np.clip(T - nn_de_normal, 0, None)) * 500
+    penalty += np.sum(np.clip(DELTA_E_FLOOR - nr_de_normal, 0, None)) * 500
+
     de_worst = None
     for cvd in CVD_TYPES:
         slum = sim_lum(rgbs, cvd)
@@ -380,6 +450,18 @@ def objective(x):
     return -de_worst.min() + penalty
 
 
+def objective(x):
+    """`objective_constrained` at `T=0` -- kept as its own name because it
+    is what `--sweep`'s `T=0` control row runs (D-008 cycle-3 dispatch: "it
+    reproduces cycle 2's unconstrained result and shows the sweep is
+    measuring what it claims to"). Not fully unconstrained even at `T=0`:
+    the normal-vision node-vs-reserved floor in `objective_constrained` is
+    unconditional (see its docstring), so this is "cycle 2's objective plus
+    one floor cycle 2 was already, empirically, nowhere near violating" --
+    `--sweep`'s own `T=0` row reports how close."""
+    return objective_constrained(x, 0.0)
+
+
 def bounds():
     b = []
     for n in NAMES:
@@ -388,20 +470,52 @@ def bounds():
     return b
 
 
-def report(rgbs_by_name, label):
+def hue_angle_gap(rgbs_arr):
+    """Min pairwise circular gap, in degrees, between the 8 fills' CAM02-UCS
+    hue angles (`atan2(b', a')`, normal vision) -- a *diagnostic*, per the
+    D-008 cycle-3 dispatch ("the hue-angle gap is a reported diagnostic, not
+    a floor. Do not gate on it"): normal-vision hue diversity does not
+    survive dichromacy, so gating on it would fight the CVD floor directly.
+    It is reported because this is the mechanism cycle 2 broke by --
+    `--node-selection` drifting 38.9 degrees closed its hue gap to
+    `--node-multiplicity` from 72.2 degrees to 17.4, and that is what made
+    two pipeline-adjacent node kinds read as the same dark green even though
+    nothing computed a hue number at the time to show it."""
+    jab = normal_cam02ucs(rgbs_arr)
+    h = np.degrees(np.arctan2(jab[:, 2], jab[:, 1])) % 360
+    n = len(h)
+    worst = 360.0
+    for i in range(n):
+        for j in range(i + 1, n):
+            gap = min((h[i] - h[j]) % 360, (h[j] - h[i]) % 360)
+            worst = min(worst, gap)
+    return worst
+
+
+def report(rgbs_by_name, label, t_floor=SELECTED_T):
     print(f"\n=== {label} ===")
     names = list(rgbs_by_name.keys())
     rgbs = {n: np.array(rgbs_by_name[n], dtype=float) for n in names}
+    rgbs_arr = np.stack([rgbs[n] for n in names])
 
     print(f"{'kind':16s} {'hex':8s} {'H':>7s} {'drift':>6s} {'Lab C*':>7s}")
+    worst_chroma = (0.0, None)
     for n in names:
         r, g, b = rgbs[n] / 255.0
         hh, _, _ = colorsys.rgb_to_hls(r, g, b)
         hdeg = hh * 360
         drift = min((hdeg - D004_HUE[n]) % 360, (D004_HUE[n] - hdeg) % 360) if n in D004_HUE else float("nan")
         c = float(normal_lab_chroma(rgbs[n]))
+        if c > worst_chroma[0]:
+            worst_chroma = (c, n)
         hexval = "#{:02x}{:02x}{:02x}".format(*(int(round(x)) for x in rgbs[n]))
         print(f"{n:16s} {hexval:8s} {hdeg:7.1f} {drift:6.1f} {c:7.2f}")
+    # Criterion 6a (D-008 cycle-3 dispatch): this cap was printed above but,
+    # before this cycle, never fed into this function's pass/fail return --
+    # `tokens.css` stated it as an enforced constraint while nothing gated
+    # it. It is enforced here now.
+    ok_chroma = worst_chroma[0] <= CHROMA_CAP
+    print(f"chroma cap (<= {CHROMA_CAP}): worst {worst_chroma}  {'OK' if ok_chroma else 'FAIL'}")
 
     worst_dark = (1e9, None, None)
     for n in names:
@@ -414,13 +528,19 @@ def report(rgbs_by_name, label):
                 worst_dark = (sl, n, cvd)
     print(f"darkness floor (>= {DARK_FLOOR}): {worst_dark}  {'OK' if worst_dark[0] >= DARK_FLOOR else 'FAIL'}")
 
+    # White-on-fill, all 4 conditions (normal + 3 CVD) -- criterion 4
+    # (D-008 cycle-3 dispatch) widened this from cycle 2's CVD-only check.
     worst_white = (1e9, None, None)
     for n in names:
+        r = float(ratio(normal_lum(WHITE), normal_lum(rgbs[n])))
+        if r < worst_white[0]:
+            worst_white = (r, n, "normal")
         for cvd in CVD_TYPES:
             r = float(ratio(sim_lum(WHITE, cvd), sim_lum(rgbs[n], cvd)))
             if r < worst_white[0]:
                 worst_white = (r, n, cvd)
-    print(f"white-on-fill (>= {WHITE_FLOOR}): {worst_white}  {'OK' if worst_white[0] >= WHITE_FLOOR else 'FAIL'}")
+    print(f"white-on-fill, 4 conditions (>= {WHITE_FLOOR}): {worst_white}  "
+          f"{'OK' if worst_white[0] >= WHITE_FLOOR else 'FAIL'}")
 
     worst_pl = (1e9, None, None, None)
     for i in range(len(names)):
@@ -451,20 +571,169 @@ def report(rgbs_by_name, label):
         print(f"  {a:16s} vs {b:16s} = {w:7.3f} ({wt:13s}) {mark}")
     print(f"min: {rows[0]}  {'OK' if rows[0][0] >= DELTA_E_FLOOR else 'FAIL'}")
     print(f"median: {np.median([r[0] for r in rows]):.2f}")
+
+    # Normal-vision separation -- gated on its own floor (D-008 cycle-3:
+    # "normal vision needs its own floor, not a seat in the same min"), not
+    # folded into the worst-of-3-CVD `rows` above and not merely printed as
+    # "context only" the way D-008 cycle 2 demoted it (verify.py:2949,
+    # before this cycle).
+    njab = normal_cam02ucs(rgbs_arr)
+    nn_rows = []
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            de = float(cam02ucs_deltaE(njab[i], njab[j]))
+            nn_rows.append((de, names[i], names[j]))
+    nn_rows.sort()
+    nr_rows = []
+    for i, n in enumerate(names):
+        for rn, rrgb in RESERVED.items():
+            de = float(cam02ucs_deltaE(njab[i], normal_cam02ucs(rrgb)))
+            nr_rows.append((de, n, rn))
+    nr_rows.sort()
+    ok_normal_nn = nn_rows[0][0] >= t_floor
+    ok_normal_nr = nr_rows[0][0] >= DELTA_E_FLOOR
+    print(f"normal-vision node-node CAM02-UCS delta-E, {len(nn_rows)} pairs, floor T={t_floor}: "
+          f"min {nn_rows[0]}  {'OK' if ok_normal_nn else 'FAIL'}")
+    print(f"normal-vision node-vs-reserved CAM02-UCS delta-E, {len(nr_rows)} pairs, floor {DELTA_E_FLOOR}: "
+          f"min {nr_rows[0]}  {'OK' if ok_normal_nr else 'FAIL'}")
+    print(f"min pairwise CAM02-UCS hue-angle gap (normal vision, diagnostic only, not gated): "
+          f"{hue_angle_gap(rgbs_arr):.1f} deg")
+
     return (
         rows[0][0] >= DELTA_E_FLOOR
         and worst_dark[0] >= DARK_FLOOR
         and worst_white[0] >= WHITE_FLOOR
         and worst_pl[0] >= PAIR_LUM_FLOOR
+        and ok_chroma
+        and ok_normal_nn
+        and ok_normal_nr
     )
+
+
+def _run_search(T, seed, maxiter, popsize):
+    res = differential_evolution(
+        objective_constrained, bounds(), args=(T,), maxiter=maxiter, popsize=popsize, tol=1e-9,
+        seed=seed, polish=True, workers=1, mutation=(0.4, 1.3), recombination=0.85,
+    )
+    h, s, ell = res.x[0::3], res.x[1::3], res.x[2::3]
+    rgbs_arr = hsl_to_rgb255(h, s, ell)
+    rgbs = {n: tuple(int(round(c)) for c in rgbs_arr[i]) for i, n in enumerate(NAMES)}
+    return rgbs, res
+
+
+def run_sweep(seed, maxiter, popsize):
+    """D-008 cycle-3's feasibility arithmetic, as a committed command
+    (dispatch: "the floor is discovered by a committed command, not chosen
+    by me"). Runs the constrained search once per rung of `SWEEP_LADDER`
+    and prints one row per `T` with, at minimum, the achieved min-CVD ΔE,
+    the achieved min-normal-vision node-node ΔE, the worst white-on-fill
+    contrast across all 4 conditions, the min relative luminance, the min
+    pairwise CAM02-UCS hue-angle gap (diagnostic only), and feasible/
+    infeasible against every floor this task has ever gated on,
+    simultaneously."""
+    print(
+        f"\n--sweep: T in {SWEEP_LADDER}, seed={seed} maxiter={maxiter} popsize={popsize} "
+        f"({len(bounds())} dims per run, {len(SWEEP_LADDER)} runs)"
+    )
+    header = (
+        f"{'T':>6s} {'min-CVD dE':>11s} {'min-normal dE':>14s} {'worst white':>12s} "
+        f"{'min lum':>8s} {'min hue gap':>12s} {'feasible':>9s}"
+    )
+    print(header)
+    rows = []
+    for T in SWEEP_LADDER:
+        rgbs, res = _run_search(T, seed, maxiter, popsize)
+        names = list(rgbs.keys())
+        rgbs_f = {n: np.array(rgbs[n], dtype=float) for n in names}
+        rgbs_arr = np.stack([rgbs_f[n] for n in names])
+        reserved_arr = np.stack(list(RESERVED.values()))
+
+        # achieved min-CVD delta-E, over the full 132 pair x condition set
+        # (44 pairs x 3 dichromacies) -- worst-of-3 per pair, then min.
+        de_worst_cvd = None
+        worst_white = 1e9
+        for cvd in CVD_TYPES:
+            sjab = sim_cam02ucs(rgbs_arr, cvd)
+            de_nn = cam02ucs_deltaE(sjab[IU], sjab[JU])
+            res_jab = sim_cam02ucs(reserved_arr, cvd)
+            de_nr = cam02ucs_deltaE(sjab[:, None, :], res_jab[None, :, :]).reshape(-1)
+            de_all = np.concatenate([de_nn, de_nr])
+            de_worst_cvd = de_all if de_worst_cvd is None else np.minimum(de_worst_cvd, de_all)
+            wr = float(ratio(sim_lum(WHITE, cvd), sim_lum(rgbs_arr, cvd)).min())
+            worst_white = min(worst_white, wr)
+        wr_normal = float(ratio(normal_lum(WHITE), normal_lum(rgbs_arr)).min())
+        worst_white = min(worst_white, wr_normal)
+        min_cvd_de = float(de_worst_cvd.min())
+
+        njab = normal_cam02ucs(rgbs_arr)
+        nn_de_normal = cam02ucs_deltaE(njab[IU], njab[JU])
+        res_jab_normal = normal_cam02ucs(reserved_arr)
+        nr_de_normal = cam02ucs_deltaE(njab[:, None, :], res_jab_normal[None, :, :]).reshape(-1)
+        min_normal_nn = float(nn_de_normal.min())
+        min_normal_nr = float(nr_de_normal.min())
+
+        min_lum = float(min(
+            normal_lum(rgbs_arr).min(),
+            min(float(sim_lum(rgbs_arr, cvd).min()) for cvd in CVD_TYPES),
+        ))
+        min_hue_gap = hue_angle_gap(rgbs_arr)
+        worst_chroma = float(normal_lab_chroma(rgbs_arr).max())
+
+        pl_worst = 1e9
+        for cvd in CVD_TYPES:
+            slum = sim_lum(rgbs_arr, cvd)
+            pl_worst = min(pl_worst, float(ratio(slum[IU], slum[JU]).min()))
+
+        feasible = (
+            min_cvd_de >= DELTA_E_FLOOR
+            and min_normal_nn >= T
+            and min_normal_nr >= DELTA_E_FLOOR
+            and min_lum >= DARK_FLOOR
+            and worst_white >= WHITE_FLOOR
+            and pl_worst >= PAIR_LUM_FLOOR
+            and worst_chroma <= CHROMA_CAP
+        )
+        print(
+            f"{T:6.2f} {min_cvd_de:11.3f} {min_normal_nn:14.3f} {worst_white:12.3f} "
+            f"{min_lum:8.4f} {min_hue_gap:12.1f} {('yes' if feasible else 'no'):>9s}"
+        )
+        rows.append({
+            "T": T, "min_cvd_de": min_cvd_de, "min_normal_nn": min_normal_nn,
+            "min_normal_nr": min_normal_nr, "worst_white": worst_white, "min_lum": min_lum,
+            "min_hue_gap": min_hue_gap, "worst_chroma": worst_chroma, "pl_worst": pl_worst,
+            "feasible": feasible, "rgbs": rgbs, "fun": res.fun,
+        })
+
+    selected = None
+    for row in sorted(rows, key=lambda r: -r["T"]):
+        if row["min_cvd_de"] >= DELTA_E_FLOOR:
+            selected = row
+            break
+    print(
+        "\nselection rule: largest T whose achieved min-CVD delta-E >= "
+        f"{DELTA_E_FLOOR} -> "
+        + (f"T={selected['T']}" if selected else "no row clears the CVD floor")
+    )
+    if selected:
+        print(f"selected row's other floors: {'all hold' if selected['feasible'] else 'NOT ALL HOLD -- see row above'}")
+        for n, rgb in selected["rgbs"].items():
+            print(f"  {n:16s} #{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}")
+    return rows, selected
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", action="store_true", help="report on the committed tokens.css palette")
+    parser.add_argument("--sweep", action="store_true", help="run the T-ladder feasibility sweep")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--maxiter", type=int, default=800)
     parser.add_argument("--popsize", type=int, default=30)
+    parser.add_argument(
+        "--sweep-maxiter", type=int, default=250,
+        help="reduced maxiter for --sweep's 6 exploratory runs (the row actually committed is "
+             "re-run at --maxiter/--popsize's full defaults, per the D-008 cycle-3 dispatch's budget rule)",
+    )
+    parser.add_argument("--sweep-popsize", type=int, default=20)
     args = parser.parse_args()
 
     _selftest_against_verify()
@@ -472,23 +741,21 @@ def main():
     if args.report:
         tokens = v.parse_root_tokens(v.TOKENS_CSS.read_text())
         rgbs = {n: v.hex_to_rgb(tokens[f"--node-{n}"]) for n in NAMES}
-        ok = report(rgbs, "committed tokens.css palette")
+        ok = report(rgbs, "committed tokens.css palette", t_floor=SELECTED_T)
         sys.exit(0 if ok else 1)
+
+    if args.sweep:
+        _rows, selected = run_sweep(args.seed, args.sweep_maxiter, args.sweep_popsize)
+        sys.exit(0 if selected is not None else 1)
 
     dims = len(bounds())
     print(
         f"\nrunning differential evolution: seed={args.seed} maxiter={args.maxiter} "
-        f"popsize={args.popsize} ({dims} dims, ~{args.maxiter * args.popsize * dims} objective "
-        "calls -- a few minutes)"
+        f"popsize={args.popsize} T={SELECTED_T} ({dims} dims, ~{args.maxiter * args.popsize * dims} "
+        "objective calls -- a few minutes)"
     )
-    res = differential_evolution(
-        objective, bounds(), maxiter=args.maxiter, popsize=args.popsize, tol=1e-9,
-        seed=args.seed, polish=True, workers=1, mutation=(0.4, 1.3), recombination=0.85,
-    )
-    h, s, ell = res.x[0::3], res.x[1::3], res.x[2::3]
-    rgbs_arr = hsl_to_rgb255(h, s, ell)
-    rgbs = {n: tuple(int(round(c)) for c in rgbs_arr[i]) for i, n in enumerate(NAMES)}
-    ok = report(rgbs, f"search result (fun={res.fun:.3f}, nit={res.nit})")
+    rgbs, res = _run_search(SELECTED_T, args.seed, args.maxiter, args.popsize)
+    ok = report(rgbs, f"search result (fun={res.fun:.3f}, nit={res.nit}, T={SELECTED_T})", t_floor=SELECTED_T)
     sys.exit(0 if ok else 1)
 
 

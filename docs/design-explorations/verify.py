@@ -2943,22 +2943,34 @@ def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
     DELTA_E_FLOOR = 4.0
     names = list(fills.keys())
 
-    # Normal vision: informational context only, not a pass/fail gate here
-    # (that was cycle 3's mistake) -- printed so a reader can see how far a
-    # normal-vision read diverges from what each simulation below finds.
-    print("       normal vision (context only, not checked here):")
+    # Normal vision used to be printed here as "context only, not checked
+    # here" (D-008 cycle 2; the exact line D-008 cycle-3 review flagged --
+    # "the same thing wearing a hat" as retiring a check by relabelling it).
+    # It is folded into the real white-on-fill gate below now, as a fourth
+    # condition alongside the 3 CVD simulations (criterion 4, D-008 cycle-3
+    # dispatch: 32 = 8 fills x 4 conditions, not 24), rather than staying
+    # printed but ungated -- this is a strengthening of the existing gate,
+    # not a new one, so it does not need its own `section()`.
     normal_lums = {n: relative_luminance(fills[n]) for n in names}
     label_normal_lum = relative_luminance(label_rgb)
-    for n in names:
-        print(f"         {n:20s} L={normal_lums[n]:.4f}  white-on-fill="
-              f"{_ratio_from_luminance(label_normal_lum, normal_lums[n]):.3f}:1")
-
-    ok_white = True
-    ok_pairwise = True
     ok_dark = not any(normal_lums[n] < DARK_FLOOR for n in names)
     dark_failures = [(n, "normal", normal_lums[n]) for n in names if normal_lums[n] < DARK_FLOOR]
     worst_pairwise_overall = (float("inf"), "", "", "")
     worst_white_overall = (float("inf"), "", "")
+
+    print("       -- normal vision --")
+    print(f"       white-on-fill (needs >= {WHITE_FLOOR}:1):")
+    ok_white = True
+    for n in names:
+        ratio_n = _ratio_from_luminance(label_normal_lum, normal_lums[n])
+        passed = ratio_n >= WHITE_FLOOR
+        ok_white = ok_white and passed
+        if ratio_n < worst_white_overall[0]:
+            worst_white_overall = (ratio_n, n, "normal")
+        mark = "ok" if passed else "BELOW AA"
+        print(f"         {n:20s} {ratio_n:6.2f}:1  {mark}")
+
+    ok_pairwise = True
 
     # worst-of-3-simulations CAM02-UCS delta-E, per pair -- node-node (28)
     # and node-vs-reserved (8 fills x 2 reserved colours = 16), 44 in total.
@@ -3018,7 +3030,8 @@ def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
                 worst_de_per_pair[(a, b)] = (de, cvd_type)
 
     line(
-        f"White node-title text clears {WHITE_FLOOR}:1 against every --node-* fill, under all 3 simulations",
+        f"White node-title text clears {WHITE_FLOOR}:1 against every --node-* fill, under normal vision and "
+        f"all 3 simulations (32 = 8 fills x 4 conditions)",
         ok_white,
         f"worst is {worst_white_overall[1]} under {worst_white_overall[2]} at {worst_white_overall[0]:.3f}:1",
     )
@@ -3123,6 +3136,157 @@ def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
     )
 
     return ok_parsed and ok_white and ok_pairwise and ok_dark and ok_delta_e and ok_render and darkest3_ok
+
+
+# The swept floor `T` for the 28 normal-vision node-node pairs, selected by
+# `docs/design-explorations/palette_search.py --sweep` (D-008 cycle 3): the
+# largest rung of its ladder whose achieved min-CVD delta-E still cleared
+# 4.0. Must match that file's own `SELECTED_T` -- the two are independent
+# constants in two files (this file has no import of `palette_search.py`;
+# that file already imports this one, so the reverse would be circular),
+# cross-checked by both files reporting the same committed palette's
+# numbers against the same floor rather than by one importing the other's
+# module-level state. See the D-008 cycle-3 PR body for the sweep table
+# that produced this number.
+NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR = 12.0
+
+
+def check_beamline_node_fill_normal_vision(pw: Optional[Playwright] = None) -> bool:
+    """D-008 cycle 3's re-specification, added on top of -- not instead of
+    -- `check_beamline_pairwise_luminance` above. Three consecutive cycles
+    of this task each picked one property to gate on and, in doing so, let
+    a *different* property regress silently, because a maximin search
+    spends everything not in its objective (D-008 cycle-3 dispatch's
+    table): D-004 cycle 3 gated normal-vision luminance and let CVD safety
+    regress; D-008 cycle 1 gated CVD-simulated luminance and let chromatic
+    (ΔE) separation regress; D-008 cycle 2 gated CVD-simulated ΔE and let
+    *normal-vision* ΔE regress -- worst node-node CAM02-UCS delta-E fell
+    12.81 (D-004 cycle 3) -> 13.11 (D-008 cycle 1) -> 7.44 (D-008 cycle 2),
+    and nothing above this function in this file checked it: the CVD floor
+    in `check_beamline_pairwise_luminance` binds a shared `min` across
+    conditions, which pulls normal vision up only as far as the CVD
+    ceiling and no further.
+
+    This function is deliberately its own section rather than folded into
+    `check_beamline_pairwise_luminance`'s CAM02-UCS check above: that
+    section already establishes all 132 CVD pair x condition values (44
+    pairs x 3 dichromacies) clear `DELTA_E_FLOOR` (4.0). This one adds the
+    other 44 (normal vision) -- 176 in total, criterion 1's number -- and,
+    for the 28 node-node subset specifically, additionally gates the
+    higher, swept floor `NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR` above,
+    exactly the way the D-008 cycle-3 dispatch specified: "normal vision
+    needs its own floor, not a seat in the same min".
+
+    The 16 node-vs-reserved normal-vision pairs are held to `DELTA_E_FLOOR`
+    (4.0) rather than the swept `T`: a node fill reading as `--vermillion`
+    or `--graphite-blue` under ordinary vision was never acceptable at any
+    `T` on the sweep ladder, including `T=0`, so this floor does not move
+    with it.
+
+    Also reports (not gates -- D-008 cycle-3 dispatch: "the hue-angle gap
+    is a reported diagnostic, not a floor") the minimum pairwise CAM02-UCS
+    hue-angle gap among the 8 fills under normal vision, using
+    `srgb_to_cam02ucs` -- this is the mechanism cycle 2's regression ran
+    through (`--node-selection` drifting 38.9 degrees closed its hue gap to
+    `--node-multiplicity` from 72.2 degrees to 17.4), so it stays visible
+    here even though nothing below gates on it directly.
+
+    `pw` is accepted (unused) only so this function's call site in `main()`
+    matches the shape of every other beamline check in the same list; every
+    number here comes from `tokens.css`'s literal hex values, not a
+    rendered page -- `check_beamline_pairwise_luminance` above already
+    cross-checks that the live picker paints what `tokens.css` declares."""
+    section(
+        "Beamline node-fill normal-vision CAM02-UCS delta-E -- the floor D-008 cycle 2 dropped, restored"
+    )
+    tokens = parse_root_tokens(TOKENS_CSS.read_text())
+    DELTA_E_FLOOR = 4.0
+
+    fills: dict[str, tuple[int, int, int]] = {}
+    reserved: dict[str, tuple[int, int, int]] = {}
+    missing = []
+    for name in NODE_FILL_TOKENS:
+        rgb = hex_to_rgb(tokens.get(name))
+        (fills if rgb is not None else {})
+        if rgb is None:
+            missing.append((name, tokens.get(name)))
+        else:
+            fills[name] = rgb
+    for name in RESERVED_COLOR_TOKENS:
+        rgb = hex_to_rgb(tokens.get(name))
+        if rgb is None:
+            missing.append((name, tokens.get(name)))
+        else:
+            reserved[name] = rgb
+    ok_parsed = not missing
+    line(
+        f"All {len(NODE_FILL_TOKENS)} --node-* fills and {len(RESERVED_COLOR_TOKENS)} reserved colours "
+        "parsed as literal #rrggbb from tokens.css",
+        ok_parsed,
+        "ok" if ok_parsed else f"unparseable: {missing}",
+    )
+    if not ok_parsed:
+        return False
+
+    names = list(fills.keys())
+    jab_normal = {n: srgb_to_cam02ucs(fills[n]) for n in names}
+    jab_normal.update({r: srgb_to_cam02ucs(reserved[r]) for r in reserved})
+
+    node_node_pairs = [(names[i], names[j]) for i in range(len(names)) for j in range(i + 1, len(names))]
+    node_reserved_pairs = [(n, r) for n in names for r in reserved]
+    total_normal_pairs = len(node_node_pairs) + len(node_reserved_pairs)
+    total_all_conditions = total_normal_pairs * 4  # normal + 3 CVD simulations
+
+    nn_rows = sorted((cam02ucs_deltaE(jab_normal[a], jab_normal[b]), a, b) for a, b in node_node_pairs)
+    nr_rows = sorted((cam02ucs_deltaE(jab_normal[a], jab_normal[b]), a, b) for a, b in node_reserved_pairs)
+
+    print(
+        f"       normal vision, {total_normal_pairs} node-node + node-vs-reserved pairs -- combined "
+        f"with the {total_normal_pairs} pairs x 3 CVD simulations already checked by "
+        f"check_beamline_pairwise_luminance above, that is {total_all_conditions} pair x condition "
+        "values in total (criterion 1's 176):"
+    )
+    print(f"       node-node (needs >= {NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR} -- swept, not 4.0):")
+    for de, a, b in nn_rows[:8]:
+        mark = "ok" if de >= NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR else "BELOW FLOOR"
+        print(f"         {a:20s} vs {b:20s} = {de:7.3f}  {mark}")
+    print(f"       node-vs-reserved (needs >= {DELTA_E_FLOOR}):")
+    for de, a, b in nr_rows[:4]:
+        mark = "ok" if de >= DELTA_E_FLOOR else "BELOW FLOOR"
+        print(f"         {a:20s} vs {b:20s} = {de:7.3f}  {mark}")
+
+    ok_nn = nn_rows[0][0] >= NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR
+    ok_nr = nr_rows[0][0] >= DELTA_E_FLOOR
+    line(
+        f"All {len(nn_rows)} normal-vision node-node pairs clear the swept floor T="
+        f"{NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR} CAM02-UCS delta-E",
+        ok_nn,
+        f"worst is {nn_rows[0][1]} vs {nn_rows[0][2]} at dE={nn_rows[0][0]:.3f}",
+    )
+    line(
+        f"All {len(nr_rows)} normal-vision node-vs-reserved pairs clear {DELTA_E_FLOOR} CAM02-UCS delta-E",
+        ok_nr,
+        f"worst is {nr_rows[0][1]} vs {nr_rows[0][2]} at dE={nr_rows[0][0]:.3f}",
+    )
+
+    rgbs_arr = np.array([fills[n] for n in names], dtype=float)
+    jab_arr = np.array([jab_normal[n] for n in names])
+    hue_deg = np.degrees(np.arctan2(jab_arr[:, 2], jab_arr[:, 1])) % 360
+    worst_gap = 360.0
+    worst_pair = ("", "")
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            gap = min((hue_deg[i] - hue_deg[j]) % 360, (hue_deg[j] - hue_deg[i]) % 360)
+            if gap < worst_gap:
+                worst_gap = gap
+                worst_pair = (names[i], names[j])
+    del rgbs_arr  # kept only to show the array this hue-angle diagnostic is derived from
+    print(
+        f"       min pairwise CAM02-UCS hue-angle gap (normal vision, diagnostic only, not gated): "
+        f"{worst_gap:.1f} deg ({worst_pair[0]} vs {worst_pair[1]})"
+    )
+
+    return ok_parsed and ok_nn and ok_nr
 
 
 def check_beamline_focus_walk(pw: Playwright, html_path: Optional[Path] = None) -> bool:
