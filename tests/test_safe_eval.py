@@ -27,13 +27,14 @@ not against whatever ``safe_eval`` itself computes.
 """
 
 import math
-import sys
+import os
 import time
 
 import pytest
 import vector
 
 from fce_web.safe_eval import (
+    SAFE_BUILTINS,
     CompiledExpr,
     UnsafeExpression,
     compile_expr,
@@ -313,17 +314,58 @@ class TestEscapesRejected:
         with pytest.raises(UnsafeExpression):
             compile_expr(expr)
 
+    def test_power_operator_is_rejected(self):
+        # Criterion 6, B-006 cycle-2 review: the size caps (500 chars / 200
+        # AST nodes) bound parse cost, not evaluation cost. "9**9**9" is 7
+        # characters and 8 AST nodes -- well inside both caps -- and never
+        # returns once evaluated. No corpus entry uses "**" at all, so
+        # dropping ast.Pow from the whitelist entirely costs the language
+        # surface nothing. See test_power_chain_does_not_hang and
+        # test_huge_power_does_not_hang below for the payloads this closes.
+        with pytest.raises(UnsafeExpression):
+            compile_expr("2**3")
 
-def test_reference_eval_is_exploitable():
+    def test_power_chain_does_not_hang(self):
+        # The exact payload from the cycle-1 review: accepted by both size
+        # caps, never returns once evaluated, under the old whitelist.
+        with pytest.raises(UnsafeExpression):
+            compile_expr("9**9**9")
+
+    def test_huge_power_does_not_hang(self):
+        # 2**64**8 hangs identically to 9**9**9 under the old whitelist.
+        with pytest.raises(UnsafeExpression):
+            compile_expr("2**64**8")
+
+    def test_large_power_literal_is_rejected(self):
+        # 2**10000000 returns (0.03s, allocating a ~1.3MB int) rather than
+        # hanging, but evaluate() runs once per event over millions of
+        # events -- a compile-time reject is still correct here.
+        with pytest.raises(UnsafeExpression):
+            compile_expr("2**10000000")
+
+
+def test_reference_eval_is_exploitable(monkeypatch):
     """Proves the *reference* eval() sandbox is escapable, against the real module.
 
     Imports engine/path_filter.py from the read-only reference checkout and
     runs the same escape payload through its actual `_SAFE_BUILTINS` and `_P`
     -- not a reimplementation -- to show this fix is closing a real hole.
+
+    The reference checkout's location is read from the ``FCE_REFERENCE_ROOT``
+    environment variable rather than hard-coded, and prepended to ``sys.path``
+    with ``monkeypatch.syspath_prepend`` so pytest undoes it at teardown --
+    this must never leak into the rest of the session (see B-006 cycle-1
+    review, suggested-major 1: the reference checkout has top-level
+    ``engine/``, ``objects.py`` and ``paths.py``, the exact names this project
+    vendors, and B-007 lands those files).
     """
-    reference_root = "/home/julvdnbr/Documents/Phd/teaching/fce-project/fce"
-    if reference_root not in sys.path:
-        sys.path.insert(0, reference_root)
+    reference_root = os.environ.get(
+        "FCE_REFERENCE_ROOT",
+        os.path.expanduser("~/Documents/Phd/teaching/fce-project/fce"),
+    )
+    if not os.path.isdir(reference_root):
+        pytest.skip(f"reference checkout not available at {reference_root!r}")
+    monkeypatch.syspath_prepend(reference_root)
     try:
         import engine.path_filter as pf
     except ImportError:
@@ -366,6 +408,20 @@ class TestCompileTimeGeneral:
         compiled = compile_expr("l1.pt > 20")
         with pytest.raises(NameError):
             evaluate(compiled, {})
+
+    def test_safe_builtins_is_immutable(self):
+        # Criterion 7, B-006 cycle-2 review: SAFE_BUILTINS is a module-level
+        # object handed to eval() as __builtins__ on every call. Nothing in
+        # the whitelisted language can mutate it, but it is documented as a
+        # public drop-in for B-008 to reuse, and .claude/shared/CLAUDE.md §6
+        # is unqualified: "No module-level mutable state. Ever."
+        with pytest.raises(TypeError):
+            SAFE_BUILTINS["x"] = 1
+
+    def test_safe_builtins_still_usable_as_builtins_namespace(self):
+        # types.MappingProxyType is accepted by eval() as __builtins__ just
+        # like a plain dict -- immutability must not break evaluation.
+        assert run("sqrt(4)") == 2.0
 
 
 # ---------------------------------------------------------------------------

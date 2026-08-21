@@ -36,9 +36,9 @@ a Python loop over millions of events that already dominates the engine's
 wall time. Validation is what makes this safe; compilation is what keeps it
 fast enough to use.
 
-The language surface (verified against ``engine/path_filter.py``, the eight
-``eval()`` call sites' local-variable dicts, ``ui/graph.py``'s
-``SEL_ALL_VARS``, and ``fce.py``'s worked examples):
+The language surface (verified against ``engine/path_filter.py``, its seven
+``eval()`` call sites' local-variable dicts plus the one ``compile()`` call
+site, ``ui/graph.py``'s ``SEL_ALL_VARS``, and ``fce.py``'s worked examples):
 
 * Names: the per-event scalars ``nlep nel nmu njets nphot``; the per-event
   objects ``l1 l2 j1 j2 ph1 ph2 met``; the two helper functions ``deltaR``
@@ -46,7 +46,8 @@ The language surface (verified against ``engine/path_filter.py``, the eight
 * Attribute access, one or two levels deep: ``.pt .eta .phi .e .d0 .z0
   .charge .flavour .btag`` (plain numbers), ``.p4`` (a 4-vector), and on a
   4-vector ``.mass`` and the method call ``.deltaR(other)``.
-* Arithmetic (``+ - * / // % **``), comparison (``< <= > >= == !=``),
+* Arithmetic (``+ - * / // %``; note ``**`` is not allowed -- see the
+  ``_ALLOWED_NODE_TYPES`` comment on why), comparison (``< <= > >= == !=``),
   boolean (``and or not``, plus the HEP spellings ``&& || !`` translated by
   :func:`preprocess_hep_expr`), and numeric/``None`` literals.
 * Calls to the whitelisted functions only, positional arguments only.
@@ -63,8 +64,9 @@ from __future__ import annotations
 
 import ast
 import math
+import re
 from dataclasses import dataclass
-from types import CodeType
+from types import CodeType, MappingProxyType
 from typing import Any, Mapping
 
 #: Raw source length cap, in characters. Generous for anything a student
@@ -88,15 +90,21 @@ EVENT_NAMES = frozenset({
 })
 
 #: ``engine/path_filter.py:18-24``'s ``_SAFE_BUILTINS``, carried over
-#: verbatim. Supplied as the ``__builtins__`` mapping at evaluation time, so
-#: a bare name like ``sqrt`` resolves the same way the reference resolves it.
-SAFE_BUILTINS: dict[str, Any] = {
+#: verbatim in content. Supplied as the ``__builtins__`` mapping at evaluation
+#: time, so a bare name like ``sqrt`` resolves the same way the reference
+#: resolves it. Wrapped in ``MappingProxyType`` so it is read-only: nothing in
+#: the whitelisted language can mutate it, but it is a public module-level
+#: object (documented as a drop-in for other callers, e.g. B-008), and
+#: ``.claude/shared/CLAUDE.md`` §6 is unqualified -- "No module-level mutable
+#: state. Ever." ``eval()`` accepts a ``MappingProxyType`` as ``__builtins__``
+#: exactly as it accepts a plain ``dict``.
+SAFE_BUILTINS: Mapping[str, Any] = MappingProxyType({
     "abs": abs, "max": max, "min": min, "len": len,
     "float": float, "int": int, "bool": bool,
     "sqrt": math.sqrt, "cos": math.cos, "sin": math.sin,
     "tan": math.tan, "pi": math.pi, "exp": math.exp, "log": math.log,
     "True": True, "False": False, "None": None,
-}
+})
 
 #: Names that may appear as a bare ``Name`` node: the event names plus every
 #: key in SAFE_BUILTINS (functions, constants, and ``pi``).
@@ -131,10 +139,25 @@ ALLOWED_ATTRS = frozenset({
 #: ImportFrom, and every statement node (Assign, etc. -- most of these can
 #: never appear under ``ast.parse(..., mode="eval")`` in the first place,
 #: but NamedExpr and IfExp can, so they must be excluded explicitly here).
+#:
+#: ``ast.Pow`` is deliberately excluded too, even though it can appear under
+#: ``mode="eval"``. The size caps below (``MAX_EXPR_LENGTH``,
+#: ``MAX_AST_NODES``) bound parse cost, not evaluation cost: ``9**9**9`` is 7
+#: characters and 8 AST nodes -- comfortably inside both caps -- and never
+#: returns once evaluated, because CPython's big-int exponentiation is
+#: unbounded in the size of its result. ``evaluate()`` runs once per event
+#: over millions of events, so an accepted expression that can hang is a
+#: denial of service on a shared classroom host, exactly the "billion
+#: laughs" case ``.claude/backend/CLAUDE.md`` §3.2 asks to be bounded. No
+#: corpus entry in ``tests/test_safe_eval.py`` (SEL_ALL_VARS, the worked
+#: examples, or the saved-analysis expressions) uses ``**`` at all, so
+#: dropping it costs the language surface nothing; a bounded alternative
+#: (reject ``Pow`` unless the right operand is a small constant) was
+#: considered and rejected as more code for no expressiveness gained.
 _ALLOWED_NODE_TYPES = (
     ast.Expression,
     ast.BoolOp, ast.And, ast.Or,
-    ast.BinOp, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow,
+    ast.BinOp, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod,
     ast.UnaryOp, ast.UAdd, ast.USub, ast.Not,
     ast.Compare, ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE,
     ast.Call, ast.Attribute, ast.Name, ast.Load, ast.Constant,
@@ -177,8 +200,6 @@ def preprocess_hep_expr(expr: str) -> str:
     taught one syntax, and there is no reason an observable should reject
     the spelling a selection accepts.
     """
-    import re
-
     expr = re.sub(r'&&', ' and ', expr)
     expr = re.sub(r'\|\|', ' or ', expr)
     # Replace ! only when not followed by = (to preserve !=)
