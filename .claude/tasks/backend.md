@@ -101,6 +101,48 @@ IDs are `B-nnn`, allocated in order and never reused.
     type as a safety certificate**, so if the reviewer judges the residue unacceptable, the fix is
     cheap now and expensive after the merge. Whichever way it lands, B-008's entry must be
     corrected to match what the certificate actually guarantees.
+  **REVIEWED 2026-08-21 — 1 required, 2 suggested-major, 2 suggested-minor. NOT approved, and
+  this is the §5.7 LIMIT: 3 cycles are spent and I am not dispatching a fourth. ESCALATED TO
+  THE USER.** Review posted to PR #9. Cycle ledger: c1 (`f9433e7`), c2 (`ab5535a`), c3
+  (`7e45f7c`), then the re-specification (`b058166`) which §5.4 clause 2 correctly excluded.
+  Four coder passes, three cycles.
+  - **§5.4 diagnosis, applying the strict test rather than the flattering one — this is a
+    CYCLE, clause 3.** Clause 1: nothing was dropped; criterion 6 ("no accepted expression can
+    run unbounded") was restated in every dispatch from cycle 2 on. Clause 2: my re-spec
+    criterion 6 *did* ship with a command. So it falls to clause 3 — my criterion set was
+    incomplete, not unenforceable. Had clause 2 applied this would have been free, and the
+    temptation to read it that way is exactly what §5.4's carve-out warns about.
+  - *Required — the one cap with a real DoS job is the one cap with no test that can fail.*
+    `test_expression_over_length_cap_is_rejected`'s payload is 2809 chars **and** 1410 AST
+    nodes, so `MAX_AST_NODES` (limit 200) rejects it unaided: with `MAX_EXPR_LENGTH` set to
+    `10**9` the suite still reports `118 passed`. And the length cap guards a surface the node
+    cap **structurally cannot**, because `ast.parse` runs before any node counting — the
+    reviewer measured a 5.6 MB expression parsing in **1.68 s into a 2.8 M-node tree** before
+    `_validate` is reached, once per submission on a shared classroom host. The fix is small
+    and the reviewer specified it: a payload over the length cap but under the node cap (a
+    single 501-digit literal is 3 nodes), plus the isolation assertion the sibling node-cap
+    test already carries at `:316`.
+  - *Suggested-major 1:* `_ValidationProof`'s docstring still says "An unforgeable token" —
+    the exact overclaim `CompiledExpr`'s docstring 30 lines below now retracts. Two docstrings
+    contradict each other about the same security property, and the reader hits the wrong one
+    first because it is the class named "proof".
+  - *Suggested-major 2 — mine, and it is the fifth instrument failure on this project.* My
+    criterion-2 command `comm -23 <(grep -o '^def test_...')` sees only the **10 module-level**
+    tests and is blind to the **49 class-scoped** ones — which is every escape assertion in the
+    PR. The reviewer re-ran it against a HEAD with all class-scoped tests stripped: still
+    empty. Nothing was actually lost (one documented rename), but the instrument certifying
+    "nothing stopped being checked" cannot detect what it exists to detect. **Replace it
+    everywhere with `pytest --collect-only -q`.**
+  - *Suggested-minor:* (1) the two bypass tests assert the bypass *succeeds*, so closing the
+    gap later turns a security improvement into a red suite — `xfail(strict=False)` instead;
+    (2) `_ASSERT_STRIPPING_ENV_VARS` has no assertion of its own, the sentinel carries the
+    property. Both to `backlog.md` unless the user authorises another cycle.
+  - *What held, and it is most of the task.* The reviewer attacked the evaluator directly with
+    **26 escape payloads** and found no route to a class object, a module or a builtin; could
+    not build a big-int bomb inside the caps; and faithfully mutated the two hardest cycle-3
+    fixes — neutering `CompiledExpr.__post_init__` gave `1 failed, 117 passed` naming the
+    forgery test, and reverting the subprocess proof gave `2 failed`. Both are genuinely
+    closed. Scope pass. All body numbers reproduced.
   Previously: cycle-1 review dispatched, result lost — reconciled from git 2026-08-21. `main`
   carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
   ran, but the session ended before it reported and a sub-agent's context does not survive.
