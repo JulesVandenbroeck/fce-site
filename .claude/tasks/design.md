@@ -23,12 +23,41 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-004 (done, `bac2f62`). **Must run before D-005 and D-006** — both consume
   `tokens.css` read-only, so this is a contract task (§2), not a styling task.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** cycle 2 complete. **Cycle 3 is a re-specification, not a cycle** (§5.4): the
-  criterion has been non-cumulative three times running, which is a defect in my brief rather
-  than in the coder's work, so it does not count against the §5.7 limit.
+- **Status:** **cycle 3 re-specification dispatched 2026-08-21** (§5.4 — not a cycle, so the
+  §5.7 count stays at 2). The §5.4 test is mechanical and it passes cleanly: the property that
+  regressed was normal-vision ΔE, and **no command for it existed in the cycle-2 dispatch text,
+  because no criterion for it did.** My brief, not the coder's work.
+- **What the re-specification changes, and the one thing scout caught before I shipped it
+  wrong.** The obvious repair — fold normal vision in as a fourth condition inside the existing
+  `min` — **reproduces the bug.** `objective(x)` at `palette_search.py:346` returns
+  `-de_worst.min() + penalty` (`:380`) over `CVD_TYPES` (`:362`). The CVD pairs are the harder
+  ones, so they bind the minimum and normal vision is pulled up only to the CVD ceiling and no
+  further. That is exactly cycle 2's result: normal 7.44 sitting just above CVD 7.18. A single
+  `min` over four conditions is not a cumulative criterion, it is one criterion with a wider
+  index. **Normal vision gets its own floor, not a seat in the same min.**
+- **The floor is discovered by command, not asserted by me** (§2, feasibility before
+  imposition). Nobody knows whether a high normal-vision floor and the CVD ΔE 4.0 floor are
+  jointly reachable: cycle 1 hit normal 13.11 / CVD 2.62, cycle 2 hit normal 7.44 / CVD 7.18,
+  neither hit both. So `palette_search.py --sweep` maximises min-CVD ΔE over the 132 CVD
+  pair×condition values subject to min-normal-vision node-node ΔE ≥ T, for
+  T ∈ {0, 8, 10, 12, 13.11, 14}; T=0 is the control that reproduces cycle 2. **Selection rule:
+  the largest T whose achieved min-CVD ΔE ≥ 4.0.** Deterministic, so the reviewer can
+  re-derive which row should have been committed. **A documented infeasibility result is a
+  successful outcome and will not be sent back.**
+- **Anti-substitution is now two commands, not a sentence.** `grep -n 'context only'` must
+  return nothing — cycle 2 did not delete its predecessor's check, it relabelled
+  `verify.py:2949` "normal vision (context only, not checked here)", which is the same thing
+  wearing a hat, one entry below where I had already written that lesson down. And
+  `grep -c 'section(' verify.py` must exceed **28**.
 - **Review:** cycle 1 — 2 required, 2 suggested-major, 3 suggested-minor. Cycle 2 — 1
-  required, 1 suggested-major, 3 suggested-minor. `verify.py` section count: **26** — a fall
-  below this is `Required` (§5.3).
+  required, 1 suggested-major, 3 suggested-minor. Suggested-minor (c), the stale
+  `check_beamline_pairwise_luminance` name, is **backlogged** and explicitly excluded from
+  cycle 3; (a) and (b) fold in as criterion 6/9, both being "a stated constraint is not
+  actually checked" — the same class as the required finding.
+- **`verify.py` section count: 28** — 27 `section(` call sites plus the `def section(` at
+  `:232`, enumerated by scout on head `9480cac`, not estimated. The review's "26/26 sections
+  PASS" counts sections that *ran*, which is the smaller number; the grep is the durable one.
+  **A fall below 28 is `Required` (§5.3).**
 - **History:** [`archive/design.md` § Post-mortems](archive/design.md) — three cycles, three
   metrics, each replacing its predecessor. This entry is the origin of the cumulative-criteria
   rule and the worked example behind §2's criterion contract.
