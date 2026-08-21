@@ -2836,10 +2836,21 @@ def cam02ucs_deltaE(jab1: tuple[float, float, float], jab2: tuple[float, float, 
     end-to-end equivalent was 26.84, not 1.6e-13 -- this is exactly why
     `--node-multiplicity` vs `--vermillion`, cycle 1's own comparison
     table, reads 2.62 here against colorspacious's 3.40 for the same pair.
-    Clamping is the conservative direction (a clamped colour cannot read as
-    *more* separated than an unclamped one would), so no verdict in this
-    file is made more permissive by it, but "agrees to 1.6e-13" is not a
-    claim this function can make past the transform stage.
+    Clamping is **not** reliably the conservative direction -- checked here
+    rather than merely asserted (D-008 cycle-3 review, Required 1): running
+    this module's own clamped-vs-unclamped chain over 4000 random sRGB
+    pairs found 116 of 4000 (seed 42) read as *more* separated clamped than
+    unclamped, worst excess +3.13 ΔE, so no blanket direction claim holds.
+    Restricted to the **committed palette's 132 CVD-pair-condition values**
+    (44 node-node/node-reserved pairs x 3 CVD types), the effect is
+    negligible: only 1 of 132 reads more separated clamped, by +0.005 ΔE
+    (`--node-selection` vs `--node-obs-object`, tritanopia: clamped
+    18.151, unclamped 18.146), and the palette's actual worst-case pair
+    (`--node-data` vs `--node-obs-custom`) reads 5.948029 ΔE either way --
+    the min-CVD ΔE this palette is judged on is unaffected by clamping to
+    six decimal places. "Agrees to 1.6e-13" is a claim about the transform
+    stage only, past which clamping's direction is not fixed in general but
+    is measured, on this palette, to move nothing that matters.
 
     A second check compared raw (J, C, h) against
     `colorspacious.CIECAM02Space.sRGB.XYZ100_to_CIECAM02` on random XYZ100
@@ -3162,14 +3173,21 @@ def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
 
 # The swept floor `T` for the 28 normal-vision node-node pairs, selected by
 # `docs/design-explorations/palette_search.py --sweep` (D-008 cycle 3): the
-# largest rung of its ladder whose achieved min-CVD delta-E still cleared
-# 4.0. Must match that file's own `SELECTED_T` -- the two are independent
+# *top* rung of its ladder whose achieved min-CVD delta-E still cleared 4.0
+# -- stated plainly as that, not as a discovered ceiling, because "largest
+# feasible T" applied to a ladder that stops climbing at the answer cannot
+# have found one (D-008 cycle-3 review, suggested-major 1; the committed
+# palette clears this floor by 0.30, 14.30 achieved vs 14.00 required).
+# Must match that file's own `SELECTED_T` -- the two are independent
 # constants in two files (this file has no import of `palette_search.py`;
-# that file already imports this one, so the reverse would be circular),
-# cross-checked by both files reporting the same committed palette's
-# numbers against the same floor rather than by one importing the other's
-# module-level state. See the D-008 cycle-3 PR body for the sweep table
-# that produced this number.
+# that file already imports this one, so the reverse would be circular).
+# This is now an *asserted* equality, not merely a hoped-for one:
+# `palette_search.py`'s `_selftest_against_verify()` imports this module and
+# asserts `SELECTED_T == NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR` on every
+# invocation (D-008 cycle-3 review, Required 3 -- before this, lowering
+# either constant alone was undetected by every command either PR body
+# ran). See the D-008 cycle-3 PR body for the sweep table that produced
+# this number.
 NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR = 14.0
 
 
@@ -3182,9 +3200,10 @@ def check_beamline_node_fill_normal_vision(pw: Optional[Playwright] = None) -> b
     table): D-004 cycle 3 gated normal-vision luminance and let CVD safety
     regress; D-008 cycle 1 gated CVD-simulated luminance and let chromatic
     (ΔE) separation regress; D-008 cycle 2 gated CVD-simulated ΔE and let
-    *normal-vision* ΔE regress -- worst node-node CAM02-UCS delta-E fell
-    12.81 (D-004 cycle 3) -> 13.11 (D-008 cycle 1) -> 7.44 (D-008 cycle 2),
-    and nothing above this function in this file checked it: the CVD floor
+    *normal-vision* ΔE regress -- worst node-node CAM02-UCS delta-E went
+    12.81 (D-004 cycle 3) -> 13.11 (D-008 cycle 1, a rise) -> 7.44 (D-008
+    cycle 2, the fall that mattered), and nothing above this function in
+    this file checked it: the CVD floor
     in `check_beamline_pairwise_luminance` binds a shared `min` across
     conditions, which pulls normal vision up only as far as the CVD
     ceiling and no further.
@@ -3291,21 +3310,45 @@ def check_beamline_node_fill_normal_vision(pw: Optional[Playwright] = None) -> b
         f"worst is {nr_rows[0][1]} vs {nr_rows[0][2]} at dE={nr_rows[0][0]:.3f}",
     )
 
-    rgbs_arr = np.array([fills[n] for n in names], dtype=float)
+    # Hue-angle diagnostic (D-008 cycle 2's own mechanism -- see this
+    # function's docstring) -- reported, not gated. D-008 cycle-3 review's
+    # suggested-major 2: this used to compute gaps only among the 8 fills,
+    # never against `RESERVED_COLOR_TOKENS` -- structurally blind to a fill
+    # reading as a desaturated `--vermillion` (or `--graphite-blue`) even
+    # though the ΔE floor above passes that case comfortably (ΔE and
+    # hue-angle measure different things: two colours can sit far apart in
+    # CAM02-UCS space, and still share a hue, if they differ mainly in
+    # lightness or chroma). Both tables below are now printed in full, not
+    # just their worst row, so the numbers this diagnostic is judged by are
+    # visible rather than summarised away.
     jab_arr = np.array([jab_normal[n] for n in names])
-    hue_deg = np.degrees(np.arctan2(jab_arr[:, 2], jab_arr[:, 1])) % 360
-    worst_gap = 360.0
-    worst_pair = ("", "")
-    for i in range(len(names)):
-        for j in range(i + 1, len(names)):
-            gap = min((hue_deg[i] - hue_deg[j]) % 360, (hue_deg[j] - hue_deg[i]) % 360)
-            if gap < worst_gap:
-                worst_gap = gap
-                worst_pair = (names[i], names[j])
-    del rgbs_arr  # kept only to show the array this hue-angle diagnostic is derived from
+    hue_deg = {n: float(np.degrees(np.arctan2(jab_normal[n][2], jab_normal[n][1])) % 360) for n in names}
+    hue_deg.update(
+        {r: float(np.degrees(np.arctan2(jab_normal[r][2], jab_normal[r][1])) % 360) for r in reserved}
+    )
+    del jab_arr  # only ever used to derive hue_deg above; not needed past this line
+
+    def _gap(a: str, b: str) -> float:
+        return min((hue_deg[a] - hue_deg[b]) % 360, (hue_deg[b] - hue_deg[a]) % 360)
+
+    fill_gaps = sorted((_gap(names[i], names[j]), names[i], names[j])
+                        for i in range(len(names)) for j in range(i + 1, len(names)))
+    reserved_gaps = sorted((_gap(n, r), n, r) for n in names for r in reserved)
+
+    print("       CAM02-UCS hue angle (normal vision, degrees):")
+    for n in names + list(reserved.keys()):
+        print(f"         {n:20s} {hue_deg[n]:6.1f}")
+    print(f"       all {len(fill_gaps)} fill-vs-fill pairwise hue-angle gaps (diagnostic only, not gated):")
+    for gap, a, b in fill_gaps:
+        print(f"         {a:20s} vs {b:20s} = {gap:6.1f} deg")
+    print(f"       all {len(reserved_gaps)} fill-vs-reserved hue-angle gaps (diagnostic only, not gated):")
+    for gap, a, b in reserved_gaps:
+        print(f"         {a:20s} vs {b:20s} = {gap:6.1f} deg")
+    worst_gap, worst_pair_a, worst_pair_b = fill_gaps[0]
+    worst_reserved_gap, worst_r_a, worst_r_b = reserved_gaps[0]
     print(
-        f"       min pairwise CAM02-UCS hue-angle gap (normal vision, diagnostic only, not gated): "
-        f"{worst_gap:.1f} deg ({worst_pair[0]} vs {worst_pair[1]})"
+        f"       min fill-vs-fill hue-angle gap: {worst_gap:.1f} deg ({worst_pair_a} vs {worst_pair_b}); "
+        f"min fill-vs-reserved hue-angle gap: {worst_reserved_gap:.1f} deg ({worst_r_a} vs {worst_r_b})"
     )
 
     return ok_parsed and ok_nn and ok_nr

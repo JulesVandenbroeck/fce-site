@@ -173,24 +173,44 @@
    * (D-008 cycle 2) -- and each time, the property the *previous* floor was
    * not written in terms of regressed silently, because a maximin search
    * spends everything not in its objective. Cycle 2's own casualty: worst
-   * normal-vision node-node CAM02-UCS ΔE fell from 12.81 (D-004 cycle 3) to
-   * 13.11 (D-008 cycle 1) to 7.44 (D-008 cycle 2), and nothing checked it.
+   * normal-vision node-node CAM02-UCS ΔE went 12.81 (D-004 cycle 3) to
+   * 13.11 (D-008 cycle 1, a rise) to 7.44 (D-008 cycle 2, the fall that
+   * mattered), and nothing checked it.
    * This cycle adds normal-vision separation as its *own* floor rather than
    * folding it into the existing CVD `min` (a shared minimum over 4
    * conditions just pulls normal vision up only as far as the CVD ceiling,
    * reproducing exactly cycle 2's mistake -- see `objective_constrained`,
    * `palette_search.py`).
    *
-   * That floor's value, `T`, is not asserted here -- it is the output of a
-   * feasibility sweep (`palette_search.py --sweep`) over the ladder rungs
-   * 0, 8, 10, 12, 13.11 and 14, each rung searched under every constraint
-   * this task has ever gated on simultaneously. The sweep found every rung
-   * from 8 through 13.11 infeasible at its own (reduced-budget) search
+   * That floor's value, `T`, is set by a feasibility sweep
+   * (`palette_search.py --sweep`) over the ladder rungs 0, 8, 10, 12, 13.11
+   * and 14, each rung searched under every constraint this task has ever
+   * gated on simultaneously -- but say plainly what that sweep did and did
+   * not establish: `SELECTED_T` is the **top rung of the ladder**, and the
+   * selection rule is "largest feasible T on the ladder", a rule with no
+   * upper bound that this ladder happens to stop climbing at 14. That is a
+   * floor chosen at the top of a ladder, **not a discovered ceiling** --
+   * rungs at 16 or 18 were never tried, and the T=14 sweep row itself
+   * reached min-normal-vision ΔE 18.38 while still feasible, so a higher
+   * rung was plausibly reachable (D-008 cycle-3 review, suggested-major 1;
+   * the user has ruled against extending the ladder further -- ship this
+   * frontier position, D-008 cycle-3-fix dispatch). The sweep found every
+   * rung from 8 through 13.11 infeasible at its own (reduced-budget) search
    * effort and rung 14 feasible; re-running rung 14 at the committed
    * defaults (`--seed 7 --maxiter 800 --popsize 30`) reached a min-CVD ΔE
    * of 5.95 with every other floor cleared, so `T=14` is what shipped --
-   * see `palette_search.py`'s own `SELECTED_T`/`SWEEP_LADDER` and the
-   * D-008 cycle-3 PR body for the full table.
+   * the committed palette clears T itself by 0.30 (14.30 achieved vs 14.00
+   * required). See `palette_search.py`'s own `SELECTED_T`/`SWEEP_LADDER`
+   * and the D-008 cycle-3 PR body for the full table.
+   *
+   * That min-CVD ΔE of 5.95 is itself a regression from D-008 cycle 2's own
+   * 7.18 (-17%), the exact metric cycle 2 was selected against -- named
+   * here as a regression, not just printed as a number, because this
+   * comment block's own point is that every cycle of this task has let a
+   * different property regress silently (D-008 cycle-3 review,
+   * suggested-major 3). It still clears the 4.0 floor with room to spare;
+   * the trade is disclosed because the record should say so, not because
+   * the palette is in doubt.
    *
    * Found by `docs/design-explorations/palette_search.py` (committed,
    * differential evolution over each fill's HSL hue/saturation/lightness --

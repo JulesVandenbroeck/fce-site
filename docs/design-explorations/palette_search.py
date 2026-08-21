@@ -329,6 +329,25 @@ def _selftest_against_verify():
     if not ok:
         raise AssertionError("palette_search.py's vectorized pipeline disagrees with verify.py's scalar one")
 
+    # D-008 cycle-3 review, Required 3: the floor-name comment above
+    # `SELECTED_T` claimed the two constants were "cross-checked" while
+    # nothing checked it -- `report()` gates on this file's `SELECTED_T`,
+    # `check_beamline_node_fill_normal_vision` (verify.py) gates on its own
+    # `NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR`, and lowering either alone
+    # passed every command this task's PR bodies have run. This makes the
+    # claim true: if the two constants ever diverge, this self-test (run
+    # automatically, every invocation) fails before either gate does.
+    ok_t = SELECTED_T == v.NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR
+    print(
+        f"self-test: SELECTED_T ({SELECTED_T}) == verify.NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR "
+        f"({v.NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR})  {'OK' if ok_t else 'MISMATCH'}"
+    )
+    if not ok_t:
+        raise AssertionError(
+            "palette_search.py's SELECTED_T disagrees with verify.py's "
+            "NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR -- the two floors have diverged silently"
+        )
+
 
 def _reserved_rgb255():
     tokens = v.parse_root_tokens(v.TOKENS_CSS.read_text())
@@ -353,12 +372,16 @@ RESERVED = _reserved_rgb255()
 WHITE = _label_rgb255()
 
 
-# Cross-referenced against `verify.py`'s own `NORMAL_VISION_DELTA_E_FLOOR` --
-# the two names are for the same swept floor `T`, kept as two constants in
-# two files (one per file's own conventions) rather than one file importing
-# the other's module-level state, and cross-checked below every run
-# (`_selftest_against_verify` and, for this value specifically, `--report`'s
-# own gate on the committed palette).
+# Cross-referenced against `verify.py`'s own
+# `NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR` -- the two names are for the same
+# swept floor `T`, kept as two constants in two files (one per file's own
+# conventions) rather than one file importing the other's module-level
+# state. That equality is now an actual assertion, not just a claim: see
+# `_selftest_against_verify` below, which imports `verify` and asserts
+# `SELECTED_T == v.NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR` on every run
+# (D-008 cycle-3 review, Required 3 -- `_selftest_against_verify` used to
+# compare only luminance/J'a'b'/ΔE machinery, so lowering either constant
+# alone went undetected by every command this task's PR bodies have run).
 SWEEP_LADDER = (0.0, 8.0, 10.0, 12.0, 13.11, 14.0)
 
 # The `T` this cycle's sweep selected -- see `--sweep`'s printed table and
@@ -370,7 +393,13 @@ SWEEP_LADDER = (0.0, 8.0, 10.0, 12.0, 13.11, 14.0)
 # objective never asked for (D-008 cycle-3 dispatch, "the trap in the
 # obvious fix"). Selection rule (stated here so it is re-derivable, not just
 # asserted): the largest `T` in `SWEEP_LADDER` whose achieved min-CVD ΔE
-# (`--sweep`'s own output) still clears `DELTA_E_FLOOR`.
+# (`--sweep`'s own output) still clears `DELTA_E_FLOOR`. Say plainly what
+# this rule did and did not discover: `SELECTED_T` is the *top* rung of
+# `SWEEP_LADDER`, so "largest feasible T" applied to a ladder that stops
+# climbing at the answer has not found a ceiling -- 14 is a floor chosen at
+# the top of a ladder, not one discovered by exhausting higher rungs (D-008
+# cycle-3 review, suggested-major 1; the user has ruled against extending
+# the ladder further, so this is a wording fix, not a re-run).
 SELECTED_T = 14.0
 
 
