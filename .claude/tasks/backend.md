@@ -19,11 +19,23 @@ IDs are `B-nnn`, allocated in order and never reused.
   `FCE_HOME` return different paths in the same process; `flake8 src/ tests/` clean.
 - **Depends on:** nothing
 - **Branch / PR:** `task/b-005-vendor-paths-systematics` — #8
-- **Status:** cycle 2 in progress.
+- **Status:** **cycle 2 delivered, unreported — reconciled from git 2026-08-21.** The list
+  said "in progress"; `origin/task/b-005-vendor-paths-systematics` and PR #8 both carry
+  `ae1cc36` "backend: fix write-probe race, add import-graph guard (B-005 cycle 2)", pushed
+  2026-08-20 21:36 UTC, with a full `## Cycle 2` section in the PR body. The coder's session
+  ended before it reported back. **Fourth time on this project that the disk was right and the
+  list was wrong** (B-003, D-008 ×3 — now B-005).
+  **§5.1 gate: PASSED, 2026-08-21.** Re-ran all four of the PR body's verification claims in a
+  clean detached worktree at `ae1cc36` with its own venv (`~/gate-b005`, since removed —
+  detached, so no branch touched) and `PLAYWRIGHT_BROWSERS_PATH` exported. All four reproduce
+  exactly: targeted suite **26 passed**, full suite **75 passed**, `flake8 src/ tests/` exit 0,
+  `grep -rn "ui\.\|dearpygui" src/fce_web/` exit 1 (no match). First PR to clear this gate on
+  the first attempt — #8 cycle 1 and #9 both failed it. Cycle-2 review dispatched 2026-08-21,
+  reviewer told to reproduce the race itself rather than accept the PR's account of it.
 - **Review:** cycle 1 — 1 required (my bad criterion, waived), 3 suggested-major, 1
   suggested-minor. Cycle 2 fixes the concurrent write-probe defect, adds the import-graph
-  test, and corrects the `systematics.py` header prose; suggested-major 3 carries forward to
-  B-007.
+  test, and corrects the `systematics.py` header prose; suggested-major 3 overruled in writing
+  by the coder and carried forward to B-007.
 - **History:** [`archive/backend.md` § Post-mortems](archive/backend.md) — the 47%-wrong-home
   concurrency defect, and the false-green PR body that produced the §5.1 pre-review gate.
 
@@ -37,8 +49,15 @@ IDs are `B-nnn`, allocated in order and never reused.
   assertion mutation-tested against a broken whitelist, then restored.
 - **Depends on:** nothing — dispatched alongside B-005.
 - **Branch / PR:** `task/b-006-safe-eval` — #9
-- **Status:** in review (cycle 1), dispatched 2026-08-20.
-- **Review:** cycle 1 in flight. Delivered at parity with raw `eval` (0.85–1.38×); 104 tests.
+- **Status:** **review dispatched, result lost — reconciled from git 2026-08-21.** `main`
+  carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
+  ran, but the session ended before it reported and a sub-agent's context does not survive.
+  PR #9 carries **zero comments**, so nothing was captured there either — which is precisely
+  the loss §6's *post the review to the PR* rule exists to prevent, and it has now cost a
+  whole review. Branch head unmoved at `f9433e7`. **Cycle 1 is being re-dispatched**, and that
+  re-dispatch is not a second cycle: no coder work happened between the two.
+- **Review:** cycle 1 re-dispatched 2026-08-21. Delivered at parity with raw `eval`
+  (0.85–1.38×); 104 tests.
 - **History:** [`archive/backend.md` § Post-mortems](archive/backend.md) — the coder caught
   two errors in my dispatch (seven `eval` sites, not eight; `Subscript` contradiction), both
   since corrected in `.claude/backend/CLAUDE.md` §3.2.
