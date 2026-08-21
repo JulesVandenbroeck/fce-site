@@ -42,6 +42,9 @@ IDs are `B-nnn`, allocated in order and never reused.
   in the wrong environment they would have been vacuous. This container runs as uid 1002, so
   they genuinely run. `src/fce_web/paths.py` was not touched — the implementation was already
   correct; only its assertion was missing.
+  **Cycle-3 review dispatched and lost to the session limit 2026-08-21** — the reviewer died
+  on its first turn, having produced nothing. No state lost beyond the dispatch; branch head
+  unmoved at `f33c667`, coder worktree clean. Re-dispatch needed.
   **§5.1 gate: PASSED, 2026-08-21.** Re-ran all four of the PR body's verification claims in a
   clean detached worktree at `ae1cc36` with its own venv (`~/gate-b005`, since removed —
   detached, so no branch touched) and `PLAYWRIGHT_BROWSERS_PATH` exported. All four reproduce
@@ -66,8 +69,17 @@ IDs are `B-nnn`, allocated in order and never reused.
   assertion mutation-tested against a broken whitelist, then restored.
 - **Depends on:** nothing — dispatched alongside B-005.
 - **Branch / PR:** `task/b-006-safe-eval` — #9
-- **Status:** **cycle 2 dispatched 2026-08-21.** Previously: review dispatched, result
-  lost — reconciled from git 2026-08-21. `main`
+- **Status:** **cycle 2 delivered `ab5535a`, §5.1 gate PASSED 2026-08-21; review dispatched
+  and lost to the session limit, re-dispatch needed.** Gate re-ran the claims in a clean
+  detached worktree: `test_safe_eval.py` **110 passed** (up from 104), full suite **159
+  passed** (up from 153), flake8 exit 0, `SAFE_BUILTINS['x']=1` → `TypeError: 'mappingproxy'
+  object does not support item assignment`, and **all three DoS payloads now exit 1 inside
+  `timeout 15`** — `9**9**9`, `2**64**8`, `2**10000000`. Cycle 1's finding was exit **124**
+  (never returned); the class is closed at compile time. The coder dropped `ast.Pow` entirely
+  rather than bounding the exponent, on the grounds that no corpus expression uses `**`.
+  **The open question that ruling raises is B-008's, not B-006's** — see the B-008 entry.
+  Reviewer died on its first turn having produced nothing; branch head unmoved, coder worktree
+  clean. Previously: cycle-1 review dispatched, result lost — reconciled from git 2026-08-21. `main`
   carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
   ran, but the session ended before it reported and a sub-agent's context does not survive.
   PR #9 carries **zero comments**, so nothing was captured there either — which is precisely
@@ -161,6 +173,17 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   selection is refused before any event is read; mutation-tested
 - **New ground, not a port:** the reference suite has zero tests asserting what any expression
   evaluates to, so it would pass against a broken evaluator. That gap is why criterion 2 exists.
+- **OPEN QUESTION, raised 2026-08-21 by B-006 cycle 2 and unresolved — settle it before
+  dispatching B-008.** B-006 removed `ast.Pow` from the whitelist outright, so `**` is now
+  rejected at compile time. That was sound for B-006, whose corpus never used `**`. But this
+  task routes the reference's own seven `eval` sites through that evaluator, and **nobody has
+  yet checked whether any reference expression, saved config, or default selection uses `**`.**
+  If one does, B-008 breaks it and the failure is a student-visible physics change, not a
+  refactor. A scout was dispatched to answer exactly this and died on the session limit before
+  reporting. **Re-dispatch that scout before B-008 is specified**; if `**` is in use, the
+  resolution is to bound the exponent rather than to forbid the operator, and that is a change
+  to `safe_eval.py` — i.e. it goes back to B-006 while its PR is still open, which is cheap
+  now and expensive after the merge.
 - **Depends on:** B-006, B-007
 - **Branch / PR:** not yet opened
 

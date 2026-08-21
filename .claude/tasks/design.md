@@ -23,8 +23,27 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-004 (done, `bac2f62`). **Must run before D-005 and D-006** — both consume
   `tokens.css` read-only, so this is a contract task (§2), not a styling task.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** **cycle 3 re-specification dispatched 2026-08-21** (§5.4 — not a cycle, so the
-  §5.7 count stays at 2). The §5.4 test is mechanical and it passes cleanly: the property that
+- **Status:** **cycle 3 re-specification dispatched 2026-08-21; agent died on the session
+  limit (reset 12:00 CEST) with its work uncommitted. FOURTH crash on this task, same shape
+  every time.** `origin/task/d-008-cvd-palette` and PR #7 both remain at `9480cac` — cycle 2.
+  Nothing was committed and nothing was pushed.
+  **The work survives and is preserved.** Its worktree
+  `.claude/worktrees/agent-a2e8f31790eaebce5` carries **458 insertions / 27 deletions** across
+  `palette_search.py` (+299) and `verify.py` (+186), unstaged. Because a previous D-008
+  recovery lost uncommitted work to a `git checkout --`, and because an agent worktree can be
+  cleaned up, I have dumped the diff to
+  **`~/fce-crash-recovery/d008-cycle3-uncommitted-2026-08-21.patch`** (30 KB, applies to base
+  `9480cac`). I did **not** commit it: it is unverified coder output on source §1 forbids me,
+  `verify.py --all` has never been run against it, and committing it would be me doing a
+  coder's job. Same ruling as the cycle-2 crash, and that ruling was right then.
+  **Last thing it was seen doing**, from its final message: folding normal vision into the
+  gated white-on-fill check — "32 total values across 4 conditions", which is criterion 4. So
+  it had reached at least criterion 4 of 10.
+  **Recovery path: resume the agent rather than re-dispatch**, so the sweep evidence in its
+  context survives — that is what worked on the cycle-2 crash. Landing path unchanged: commit
+  on its own branch, then `git push <branch>:task/d-008-cvd-palette`, a fast-forward from
+  `9480cac`. No force, no rebase, no branch deleted.
+  (§5.4 — not a cycle, so the §5.7 count stays at 2; the crash does not change that.) The §5.4 test is mechanical and it passes cleanly: the property that
   regressed was normal-vision ΔE, and **no command for it existed in the cycle-2 dispatch text,
   because no criterion for it did.** My brief, not the coder's work.
 - **What the re-specification changes, and the one thing scout caught before I shipped it
