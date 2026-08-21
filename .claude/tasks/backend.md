@@ -20,7 +20,24 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
   on 2026-08-17; corrected 2026-08-20.
 - **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
-- **Status:** in review (cycle 2) — reviewer dispatched at raised effort, head `f14e263`
+- **Status:** re-dispatched as a **RE-SPECIFICATION** (§5.4 **clause 1**) — **still cycle 2**
+- **Review (cycle 2, raised effort):** 1 required, 1 suggested-major, 1 suggested-minor,
+  scope=pass. Posted verbatim to PR #10. The reviewer diffed every *retained* checker for
+  softening — confirming `>=` logic unchanged, nullable coverage grown 2→4 fields, and all 28 old
+  leaf cases still covered inside the new 30 dotted-path ones — which is the §5.3 check I ask for
+  and had not seen anyone actually perform before.
+- **The Required: 30 schema tuples that nothing reads.** The `(type, nullable)` second element of
+  every entry in `HISTOGRAM_SCHEMA`/`CUTFLOW_SCHEMA`/`FIT_SCHEMA` is never consumed — the dicts are
+  used only as `set(...)` of keys. Type and nullability checking is hand-written and reaches
+  `meta.*` and `fit.*` only. The reviewer deleted `cutflow.totalRaw` and set `samples[0].name` to
+  the integer `42`, both declared non-nullable, and got **`76 passed`**. A payload violating two
+  documented contracts passes the contract checker in full.
+- **The suggested-major is a landmine laid by the cycle-2 fix**, and it is the reason this must not
+  be fixed naively: `systUp.jec`/`.lep`/`.btag` are declared `(list, False)` — required in every
+  sample — while semantics 1, added the same cycle, says the key is present only for sources that
+  sample produced a template for. Inert today because the tuples are unread; the moment someone
+  wires them up, a schema-driven presence check rejects a legal partial-coverage payload and
+  re-breaks the very rule cycle 2 existed to establish.
 - **Re-specification delivered `f14e263`, gate passed.** All eight numbers reproduced in the
   primary checkout: 76 passed / 60 passed 16 deselected / 5 passed 71 deselected / 76 collected /
   18 `def test_` / 271 passed full suite / flake8 silent / 13 `^##` headings. Scope still exactly
@@ -69,6 +86,34 @@ IDs are `B-nnn`, allocated in order and never reused.
   any payload-only mutation, because they are structurally guaranteed by a correct `_compute_band`;
   showing them red required temporarily mutating `_compute_band` itself. The coder said so plainly
   rather than hiding it, which is the behaviour the gate exists to produce.
+
+#### §5.4 diagnosis, cycle 2 — RE-SPECIFICATION under clause 1. I dropped a criterion.
+
+**Clause 1 applies, and it is the clean case the manual describes.** My original criterion 2 read:
+
+> `docs/design-explorations/payload.json` validates against the documented contract, unedited.
+> **Required fields present, types correct, `null` accepted only where the schema marks a field
+> nullable.** Array-length coherence asserted: …
+
+My re-specification restated it as:
+
+> `payload.json` validates unedited; `len(edges) == len(counts)+1`; `counts`/`weightsSquared`/every
+> `systUp[src]` share one length per sample; `cutflow.counts` covers `stages × samples`; …
+
+**I kept the array-length half and deleted the presence/type/nullability half** while writing the
+words "cumulative, all of them must still hold" directly above it. That is §5.3 substitution — my
+act, not the coder's — so it is a re-specification and the cycle count stays at 2.
+
+This is the third specification defect on this one task and all three are the same shape: a
+property stated in prose with a `Check:` that runs against known-good inputs and therefore cannot
+observe it. Criterion 1 (cycle 1), criterion 5's denominator (cycle 1), criterion 2 (here).
+
+**The pattern that actually works is already in this task's own history.** The cycle-1 Required was
+closed not by a better sentence but by
+`test_removing_field_row_makes_documented_check_fail` — 30 parametrised cases that mutate and
+assert red, pairing 1:1 with the 30 they guard. Falsifiability became a property of the suite.
+**Every criterion of the form "X is checked" on this task now gets that treatment**, and the
+denominator is a number reported from `--collect-only`, not a word.
 
 #### §5.4 diagnosis — RE-SPECIFICATION, not a cycle, and the fault is the orchestrator's
 
