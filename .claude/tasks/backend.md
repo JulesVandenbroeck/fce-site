@@ -20,24 +20,26 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
   on 2026-08-17; corrected 2026-08-20.
 - **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
-- **Status:** sent back on the §5.1 free gate (**not a cycle**) — PR-body-only correction, branch
-  head has not moved. All six verification numbers reproduced in the primary checkout: 41 passed /
-  28 passed 13 deselected / 4 passed 37 deselected / 236 passed full suite / flake8 silent /
-  13 `^##` headings with `stub` narrowed to M3+M5. File scope respected exactly — `gh pr diff 10
-  --name-only` returns the two permitted files and nothing else. 14 unique test functions, 41
-  collected: the surplus is parametrisation of the doc-drift check over schema field names, so the
-  "14 pairs" claim is coherent rather than a shortfall.
-  **What failed the gate:** the `Mutation-test transcripts` section carries no pytest output at
-  all — `grep -nE 'FAILED|1 failed|=+ FAILURES' ` over the whole body returns nothing. Each of the
-  14 entries is prose of the form ``RED: `schema field 'significanceZ' is not documented` ``. The
-  body further states the mutations ran through a scratch script that called the module's
-  `_check_*` **helpers directly** on an in-memory payload, never the pytest tests. So the
-  instrument does not observe the property it certifies — B-006 cycle 4's failure shape
-  (orchestrator manual §2), one level up from a wrong count, and worse because it produces
-  evidence. §5.1 names a reformatted transcript as a send-back that does not consume a cycle.
-- **Review:** raised effort — this is a **contract task**. `docs/api.md` is consumed read-only by
-  every frontend consumer and by B-007, B-011 and B-012, so it does not merge with an open finding
-  against a field name or a documented formula (§2).
+- **Status:** in review (cycle 1) — reviewer dispatched at raised effort
+- **Gate:** passed on the second pass. **The send-back cost no cycle** — branch head never moved
+  from `372321e`; both passes were PR-body-only, as §5.1's two precedents were.
+  - *Pass 1 failed.* All six numbers reproduced (41 / 28+13 / 4+37 / 236 full suite / flake8 silent
+    / 13 `^##` headings, `stub` narrowed to M3+M5), but the 14 mutation entries carried **no pytest
+    output anywhere in the body** and the body stated the mutations called the module's `_check_*`
+    helpers directly rather than running the tests. A helper raising was shown; the named test
+    going red was not. B-006 cycle 4's shape — an instrument that cannot observe what it certifies.
+  - *Pass 2 passed.* 14 verbatim pytest pairs, each with a `=== FAILURES ===` block, an
+    `E AssertionError`, a `FAILED tests/test_api_contract.py::test_<name>` line and a
+    `1 failed, 40 deselected` summary, then a restored `1 passed`. All 14 collected functions
+    covered; `md5sum` of the test file identical after every restore; `git status` clean.
+- **Delivered counts, recorded so §5.3 can catch a fall:** `tests/test_api_contract.py` has **14
+  test functions / 41 collected** (the surplus is parametrisation of the doc-drift check over
+  schema field names); `docs/api.md` has **13** `^##` headings, up from 7 on main.
+- **Disclosed by the coder, and left for the reviewer to weigh:** 2 of the 14 —
+  `test_band_is_nonnegative` and `test_band_frac_zero_where_stack_zero` — cannot be turned red by
+  any payload-only mutation, because they are structurally guaranteed by a correct `_compute_band`;
+  showing them red required temporarily mutating `_compute_band` itself. The coder said so plainly
+  rather than hiding it, which is the behaviour the gate exists to produce.
 - **Plan:** `~/.claude/plans/continue-b-004-giggly-hanrahan.md`
 
 **Scope corrected 2026-08-21 (user ruling).** The entry previously read "`docs/api.md`, plus the
