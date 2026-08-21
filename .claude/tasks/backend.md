@@ -20,7 +20,18 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
   on 2026-08-17; corrected 2026-08-20.
 - **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
-- **Status:** in review (cycle 1) — reviewer dispatched at raised effort
+- **Status:** re-dispatched as a **RE-SPECIFICATION** (§5.4 clause 2) — **still cycle 1**
+- **Review (cycle 1, raised effort):** 1 required, 4 suggested-major, 3 suggested-minor,
+  scope=pass. Posted verbatim to PR #10. The reviewer reproduced all six numbers, then checked
+  every physics citation against the reference checkout rather than reading the prose — band
+  formula at `plotter.py:108-117`, `_SIG_CAP` on all three paths, `node_name or "Selection"`,
+  the mixed MC+data efficiency denominator. All accurate.
+- **The Required, and it is mine.** `_check_field_documented` greps `\b<leaf name>\b` across the
+  whole of `docs/api.md`, so five parametrised cases cannot detect the field disappearing: `data`
+  survives in "pseudo-data", `samples` in "over MC samples first", `edges` in "41 edges / 40 bins",
+  plus `name` and `stages`. The reviewer built a **negative control** — deleted every documenting
+  line for `data`, and `test_documented_schema_field_appears_in_api_md[data]` **still passed**.
+  Empirical proof of instrument blindness, not an opinion.
 - **Gate:** passed on the second pass. **The send-back cost no cycle** — branch head never moved
   from `372321e`; both passes were PR-body-only, as §5.1's two precedents were.
   - *Pass 1 failed.* All six numbers reproduced (41 / 28+13 / 4+37 / 236 full suite / flake8 silent
@@ -40,6 +51,36 @@ IDs are `B-nnn`, allocated in order and never reused.
   any payload-only mutation, because they are structurally guaranteed by a correct `_compute_band`;
   showing them red required temporarily mutating `_compute_band` itself. The coder said so plainly
   rather than hiding it, which is the behaviour the gate exists to produce.
+
+#### §5.4 diagnosis — RE-SPECIFICATION, not a cycle, and the fault is the orchestrator's
+
+**Clause 1** (was a property gated earlier then dropped?) — no, this is cycle 1.
+**Clause 2** (did an unmet criterion ship without a command?) — **yes, twice.**
+
+- **Criterion 1** stated the right property — *"Deleting any one field name from `docs/api.md`
+  makes it fail, and the failure message names that field"* — and paired it with
+  `Check: pytest tests/test_api_contract.py -q -k documented`. That command runs against the
+  **unmutated** document and prints `28 passed` whether the property holds or not. My own manual
+  §2 says to ask what a command would print if the property were false. It would print exactly
+  what it printed. This is the B-006 cycle-4 shape reproduced inside my own criterion.
+- **Criterion 5**'s `Check:` was prose — *"the PR body carries one transcript pair per
+  assertion"* — not a command, and "assertion" was ambiguous between 14 test functions and 41
+  collected cases. **I resolved that ambiguity in the coder's favour myself**, at the §5.1 gate,
+  writing that "14 pairs for 14 functions is coherent rather than a shortfall". The coder did
+  what I certified as correct.
+
+**The command I should have written:** make mutation coverage *a test*, not a transcript
+exercise — §5.3's "make it a command, not an instruction". For every schema field, rebind
+`API_MD` to a document with that field's row removed and assert the check fails. Then `pytest`
+proves it forever and the denominator cannot drift.
+
+**Two of the four suggested-majors are also mine.** I gave the coder the band formula from
+`plotter.py:107-118` but omitted the `if mc_up[src] is not None` guard, which is the
+partial-presence rule the reviewer found diverging. And I described three fit *methods* without
+ever mentioning that `run_fit` returns `(None, None)` on five paths, so nothing told the coder
+`fit.mu` could be absent. The other two — the fabricated `static/js/chart.js` reference and the
+module docstring endorsing the already-rejected direct-helper method — are genuine coder defects.
+
 - **Plan:** `~/.claude/plans/continue-b-004-giggly-hanrahan.md`
 
 **Scope corrected 2026-08-21 (user ruling).** The entry previously read "`docs/api.md`, plus the
