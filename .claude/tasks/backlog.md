@@ -391,3 +391,15 @@ and are historical now that #6 is merged.
   on both revisions, diffed.** This is the fifth instrument/count failure on this project and all
   five originated in an orchestrator criterion, which is why it is recorded here rather than only
   in the task entry.
+
+- **Extend `check_no_fabricated_identifiers` to `tokens.css`.** D-008's final review,
+  2026-08-21 (suggested-minor, approved anyway). The new lint at
+  `docs/design-explorations/verify.py:1908` catches comments and docstrings citing constants that
+  do not exist — the defect class that produced a `Required` on two separate D-008 cycles — but it
+  scans only `verify.py` and `palette_search.py`. **The first instance of this class was in
+  `tokens.css`**, which the lint does not cover. The reviewer checked `tokens.css` by hand and it
+  is clean today (`_VALID_CONNECTIONS`, `NODE_LABELS`, `SELECTED_T`, `SWEEP_LADDER`,
+  `RESERVED_HUE_GAP_FLOOR_DEG`, `PAINT_PROPS`, `REFERENCE_GRAPH_PY` — all real and correctly
+  attributed), so nothing is wrong now. The machinery already exists: `check_no_exhaustive_prose`
+  regex-scans four files including `tokens.css`. Cheap, and it closes the class rather than the
+  instance.
