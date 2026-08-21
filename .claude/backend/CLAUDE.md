@@ -49,6 +49,26 @@ Physics code gets tested against **known values**, not against whatever the code
 returns. If you cannot state the expected number independently of the implementation, you
 do not yet understand what you are testing.
 
+### Mutation-test by monkeypatch. Never by editing a tracked file.
+
+A new assertion is only worth having if you have watched it fail. But **how** you break the
+code to watch it fail matters:
+
+- **Do:** a `monkeypatch` fixture, a `conftest.py` plugin, or rebinding the symbol at collection
+  time. Nothing tracked is ever modified, so there is no restore step that can be skipped.
+- **Do not:** temporarily edit the source file and rely on a follow-up `git diff` to prove you
+  put it back.
+
+Both reach the same failure. The second has a failure mode the first does not: on 2026-08-21
+four agents on this project died mid-turn to a session limit, and a crash landing between
+*mutate* and *restore* leaves the mutation in your working tree — where the next `git add -A`
+commits it. B-005 cycle 3 mutated `src/fce_web/paths.py` in place and restored it correctly; its
+reviewer got the identical two failures with a plugin patching `tempfile.mkstemp`, touching no
+tracked file at all. Same evidence, no exposure.
+
+Report the mutation, its exact failure message, and the restored-green run — for every new
+assertion, named individually.
+
 ---
 
 ## 3. Working on the engine

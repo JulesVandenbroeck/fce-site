@@ -340,3 +340,118 @@ these when you are writing the next cycle's dispatch for one of them.
   **Flagged to the user as reversible** (§7 — it is a decision about the language students
   will type). If reversed, widening a whitelist is additive and nothing built here is wasted.
 
+---
+
+### B-005 — Vendor `paths.py` and `engine/systematics.py` — **DONE, merged `dca1a09` 2026-08-21**
+
+Three cycles, closed on a **clean gate**: 0 required, 0 suggested-major, scope pass. The first
+backend task to close clean after a review that actively tried to break it.
+
+**The cycle-2 finding that earned the third cycle.** The reviewer replaced `get_fce_home` with a
+version that had the write-probe **removed entirely** — first candidate returned unconditionally,
+writable or not — and re-ran the suite: `5 passed in 0.11s`, `after run, module fn is broken?
+True`. Every paths test, including the new concurrency test, passed with the module's central
+contract deleted. That contract is the whole reason the file exists, and it was the most-churned
+path in it (deviation 1 made the probe per-call; cycle 2 changed its mechanism again) and the
+least asserted. **Cycle 3 changed no production code at all** — the implementation was already
+correct; only its assertion was missing, and the coder said so rather than inventing a change.
+
+**The concurrency defect, cycle 1 → 2.** Removing the reference's module-level memoisation turned
+a once-per-process write probe into a per-call one, and under concurrency two callers raced on a
+shared `.write_test` filename: the second `unlink()` raised `FileNotFoundError`, caught by the
+coder's own `except OSError: continue`, which then misclassified a **writable** directory as
+unwritable. Measured `errors=165/1280 wrong=444/1280`. Fixed with `tempfile.mkstemp(dir=...)`.
+The coder chose it over `unlink(missing_ok=True)` on an argument worth preserving: the latter
+patches the one interleaving the reviewer instrumented and asserts "a missing probe file is
+always fine", which is only true if you have reasoned through every interleaving; `mkstemp`
+removes the shared name so there is nothing left to reason about. The reviewer reproduced the
+race independently (`146/1280`, `431/1280`) and confirmed the fix is safe **by mechanism**
+(`O_CREAT|O_EXCL`, no shared name), not by luck.
+
+**The coder corrected its own false claim without being asked.** Cycle 1's PR said "write-probe
+behaviour is preserved exactly". Cycle 2 retracted it: the observable contract was preserved, the
+*mechanism* was not. The reviewer called the retraction accurate. Given this project has shipped
+four false absolutes in self-describing comments, an unprompted retraction is the behaviour to
+copy.
+
+**The overrule that held.** Cycle 1's suggested-major 3 — `tests/test_systematics.py`'s
+`_count_bjets` reimplements b-tag counting locally and so exercises no production code — was
+overruled in writing on the grounds that `filter_raw_event_data` lives in `path_filter.py`, which
+this file scope forbade creating. Both the cycle-2 and cycle-3 reviewers accepted it and neither
+re-raised it. **Carried forward to B-007.**
+
+**My defects, both of them.**
+1. *Cycle 1's `Required` was my criterion, not the code.* I demanded 23 ported reference tests
+   when my own file scope made two of them impossible. The reviewer refused to grant it and
+   escalated rather than inventing a resolution — the right call, and the origin of §2's third
+   pre-dispatch question.
+2. *No criterion carried a command.* Both the cycle-2 and cycle-1 reviewers filed a `Required`
+   against the **dispatch**: five criteria written as prose, so the reviewer had to invent the
+   checks. §2's criterion contract already existed and I had not applied it to a backend task.
+   Fixed in the cycle-3 dispatch — every criterion got a `Check:` and an `Expect:`, and the
+   reviewer confirmed each one runs as written.
+
+**The §5.1 gate paid twice.** Cycle 1's PR body reported "4 failed, 11 errors" that "pre-date this
+branch"; `main` with `PLAYWRIGHT_BROWSERS_PATH` exported was 49 passed, 0 failed. The coder's
+comparison was honest and both sides of it were broken the same way — a fresh worktree venv with
+no browsers path — so the comparison was valid and the conclusion drawn from it was not. Cycles 2
+and 3 both cleared the gate on the first attempt, exactly. **Cycle 3's gate caught the thing that
+mattered:** both new probe tests PASSED rather than SKIPPED. They guard on root, where
+`chmod 0o500` does not remove write access, so in the wrong environment they would have certified
+nothing while reporting green.
+
+**Lost to a crash, twice.** Cycle 2 landed fully committed and pushed while the task list still
+said "in progress"; found by reading git on 2026-08-21, not by reading the list. Cycle 3's first
+reviewer died on a session limit having produced nothing. Neither cost work.
+
+**Original active entry, verbatim:**
+
+### B-005 — Vendor `paths.py` and `engine/systematics.py`
+- **Scope:** `src/fce_web/paths.py`, `src/fce_web/engine/__init__.py`,
+  `src/fce_web/engine/systematics.py`, `tests/test_paths.py`, `tests/test_systematics.py`
+  — extended for cycle 2 to add the import-graph test.
+- **Accept:** both modules import with zero `ui.*` and zero `dearpygui`; the **21** ported
+  reference tests pass (criterion amended from 23 by waiver 2026-08-20 — two were outside
+  this file scope); `get_fce_home` holds no module-level state and two calls with different
+  `FCE_HOME` return different paths in the same process; `flake8 src/ tests/` clean.
+- **Depends on:** nothing
+- **Branch / PR:** `task/b-005-vendor-paths-systematics` — #8
+- **Status:** **cycle 2 delivered, unreported — reconciled from git 2026-08-21.** The list
+  said "in progress"; `origin/task/b-005-vendor-paths-systematics` and PR #8 both carry
+  `ae1cc36` "backend: fix write-probe race, add import-graph guard (B-005 cycle 2)", pushed
+  2026-08-20 21:36 UTC, with a full `## Cycle 2` section in the PR body. The coder's session
+  ended before it reported back. **Fourth time on this project that the disk was right and the
+  list was wrong** (B-003, D-008 ×3 — now B-005).
+  **Cycle 2 reviewed 2026-08-21 — 1 required, 1 suggested-major, 2 suggested-minor; cycle 3
+  dispatched.** The required is *against my dispatch*: none of my five criteria carried a
+  `Check:`/`Expect:`, so the reviewer had to invent the checks. All five criteria were **met**.
+  The suggested-major is the real one and it is well-earned: the reviewer deleted the
+  write-probe from `get_fce_home` entirely — first candidate returned unconditionally — and all
+  five paths tests still passed (`5 passed in 0.11s`, `after run, module fn is broken? True`).
+  The module's central contract is unasserted, on the most-churned path in the file. Cycle 3
+  adds the two probe tests and the `uicontrols` name that makes the import guard's separator
+  rule actually assertable. Review posted to PR #8.
+  **Cycle 3 delivered `f33c667`, §5.1 gate PASSED 2026-08-21, review dispatched.** Re-ran the
+  claims in a clean detached worktree with its own venv: full suite **77 passed** (up from 75),
+  targeted **28 passed** (up from 26), flake8 exit 0, grep exit 1 — all exact. **And the check
+  that mattered: both new probe tests PASSED rather than SKIPPED.** They carry a
+  `pytest.skip` guard for the root case, where `chmod 0o500` does not remove write access, so
+  in the wrong environment they would have been vacuous. This container runs as uid 1002, so
+  they genuinely run. `src/fce_web/paths.py` was not touched — the implementation was already
+  correct; only its assertion was missing.
+  **Cycle-3 review dispatched and lost to the session limit 2026-08-21** — the reviewer died
+  on its first turn, having produced nothing. No state lost beyond the dispatch; branch head
+  unmoved at `f33c667`, coder worktree clean. Re-dispatch needed.
+  **§5.1 gate: PASSED, 2026-08-21.** Re-ran all four of the PR body's verification claims in a
+  clean detached worktree at `ae1cc36` with its own venv (`~/gate-b005`, since removed —
+  detached, so no branch touched) and `PLAYWRIGHT_BROWSERS_PATH` exported. All four reproduce
+  exactly: targeted suite **26 passed**, full suite **75 passed**, `flake8 src/ tests/` exit 0,
+  `grep -rn "ui\.\|dearpygui" src/fce_web/` exit 1 (no match). First PR to clear this gate on
+  the first attempt — #8 cycle 1 and #9 both failed it. Cycle-2 review dispatched 2026-08-21,
+  reviewer told to reproduce the race itself rather than accept the PR's account of it.
+- **Review:** cycle 1 — 1 required (my bad criterion, waived), 3 suggested-major, 1
+  suggested-minor. Cycle 2 fixes the concurrent write-probe defect, adds the import-graph
+  test, and corrects the `systematics.py` header prose; suggested-major 3 overruled in writing
+  by the coder and carried forward to B-007.
+- **History:** [`archive/backend.md` § Post-mortems](archive/backend.md) — the 47%-wrong-home
+  concurrency defect, and the false-green PR body that produced the §5.1 pre-review gate.

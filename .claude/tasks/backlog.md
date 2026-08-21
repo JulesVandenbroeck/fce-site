@@ -361,6 +361,19 @@ and are historical now that #6 is merged.
   the recipe builder, bound the exponent — do not re-admit the operator unbounded.**
   _(from B-006 review cycle 1 + scout enumeration, 2026-08-21)_
 
+- **Mutation-test by monkeypatch, never by editing a tracked file.** B-005 cycle 3's coder
+  mutation-tested criterion 6 by "temporarily replacing the probe loop in
+  `src/fce_web/paths.py`" and proving restoration with a follow-up `git diff`. The reviewer got
+  the same two failures with a pytest plugin patching `tempfile.mkstemp`, touching nothing
+  tracked. Result identical, risk not: on 2026-08-21 four agents died mid-turn, and a crash
+  between mutate and restore commits the mutation. _(from B-005 review, cycle 3 — promoted to
+  `.claude/backend/CLAUDE.md`)_
+- **`_make_unwritable` silently disarms criterion 6 under root.** `tests/test_paths.py:110-118`
+  — `chmod 0o500` does not remove write access for root, so both write-probe tests
+  `pytest.skip` and the run still reports green with the criterion unverified. Correct here
+  (uid 1002, neither skips), but if the suite ever moves to a root CI container it needs an
+  unwritable bind mount or a fault-injected `mkstemp` instead. _(from B-005 review, cycle 3)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light

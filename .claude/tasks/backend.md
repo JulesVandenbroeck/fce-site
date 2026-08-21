@@ -9,56 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-005 — Vendor `paths.py` and `engine/systematics.py`
-- **Scope:** `src/fce_web/paths.py`, `src/fce_web/engine/__init__.py`,
-  `src/fce_web/engine/systematics.py`, `tests/test_paths.py`, `tests/test_systematics.py`
-  — extended for cycle 2 to add the import-graph test.
-- **Accept:** both modules import with zero `ui.*` and zero `dearpygui`; the **21** ported
-  reference tests pass (criterion amended from 23 by waiver 2026-08-20 — two were outside
-  this file scope); `get_fce_home` holds no module-level state and two calls with different
-  `FCE_HOME` return different paths in the same process; `flake8 src/ tests/` clean.
-- **Depends on:** nothing
-- **Branch / PR:** `task/b-005-vendor-paths-systematics` — #8
-- **Status:** **cycle 2 delivered, unreported — reconciled from git 2026-08-21.** The list
-  said "in progress"; `origin/task/b-005-vendor-paths-systematics` and PR #8 both carry
-  `ae1cc36` "backend: fix write-probe race, add import-graph guard (B-005 cycle 2)", pushed
-  2026-08-20 21:36 UTC, with a full `## Cycle 2` section in the PR body. The coder's session
-  ended before it reported back. **Fourth time on this project that the disk was right and the
-  list was wrong** (B-003, D-008 ×3 — now B-005).
-  **Cycle 2 reviewed 2026-08-21 — 1 required, 1 suggested-major, 2 suggested-minor; cycle 3
-  dispatched.** The required is *against my dispatch*: none of my five criteria carried a
-  `Check:`/`Expect:`, so the reviewer had to invent the checks. All five criteria were **met**.
-  The suggested-major is the real one and it is well-earned: the reviewer deleted the
-  write-probe from `get_fce_home` entirely — first candidate returned unconditionally — and all
-  five paths tests still passed (`5 passed in 0.11s`, `after run, module fn is broken? True`).
-  The module's central contract is unasserted, on the most-churned path in the file. Cycle 3
-  adds the two probe tests and the `uicontrols` name that makes the import guard's separator
-  rule actually assertable. Review posted to PR #8.
-  **Cycle 3 delivered `f33c667`, §5.1 gate PASSED 2026-08-21, review dispatched.** Re-ran the
-  claims in a clean detached worktree with its own venv: full suite **77 passed** (up from 75),
-  targeted **28 passed** (up from 26), flake8 exit 0, grep exit 1 — all exact. **And the check
-  that mattered: both new probe tests PASSED rather than SKIPPED.** They carry a
-  `pytest.skip` guard for the root case, where `chmod 0o500` does not remove write access, so
-  in the wrong environment they would have been vacuous. This container runs as uid 1002, so
-  they genuinely run. `src/fce_web/paths.py` was not touched — the implementation was already
-  correct; only its assertion was missing.
-  **Cycle-3 review dispatched and lost to the session limit 2026-08-21** — the reviewer died
-  on its first turn, having produced nothing. No state lost beyond the dispatch; branch head
-  unmoved at `f33c667`, coder worktree clean. Re-dispatch needed.
-  **§5.1 gate: PASSED, 2026-08-21.** Re-ran all four of the PR body's verification claims in a
-  clean detached worktree at `ae1cc36` with its own venv (`~/gate-b005`, since removed —
-  detached, so no branch touched) and `PLAYWRIGHT_BROWSERS_PATH` exported. All four reproduce
-  exactly: targeted suite **26 passed**, full suite **75 passed**, `flake8 src/ tests/` exit 0,
-  `grep -rn "ui\.\|dearpygui" src/fce_web/` exit 1 (no match). First PR to clear this gate on
-  the first attempt — #8 cycle 1 and #9 both failed it. Cycle-2 review dispatched 2026-08-21,
-  reviewer told to reproduce the race itself rather than accept the PR's account of it.
-- **Review:** cycle 1 — 1 required (my bad criterion, waived), 3 suggested-major, 1
-  suggested-minor. Cycle 2 fixes the concurrent write-probe defect, adds the import-graph
-  test, and corrects the `systematics.py` header prose; suggested-major 3 overruled in writing
-  by the coder and carried forward to B-007.
-- **History:** [`archive/backend.md` § Post-mortems](archive/backend.md) — the 47%-wrong-home
-  concurrency defect, and the false-green PR body that produced the §5.1 pre-review gate.
-
 ### B-006 — `safe_eval.py`, the AST-whitelist expression evaluator
 - **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
 - **Accept:** whitelist enforced at **compile** time, not eval time; the
@@ -136,10 +86,6 @@ IDs are `B-nnn`, allocated in order and never reused.
   the engine ignores — so the choice of graph style never leaks into the physics config.
 - **Branch / PR:** not yet opened
 
-## Blocked
-
-_The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
-
 ### B-007 — Vendor `path_filter.py` and `path_final.py`, decoupled from `ui.state`
 - **Scope:** `src/fce_web/engine/path_filter.py`, `src/fce_web/engine/path_final.py`,
   `tests/test_path_filter.py`
@@ -159,8 +105,35 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   tests currently assert against a **local reimplementation** of `_count_bjets` and so
   exercise no production code at all. Point them at the real b-jet counting inside
   `filter_raw_event_data` once it exists here.
-- **Depends on:** B-005
+- **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
 - **Branch / PR:** not yet opened
+
+### B-010 — `RunConfig` loader and the content-addressed cache keys
+- **Scope:** `src/fce_web/engine/runconfig.py`, `content/analyses/zpeak-dilepton.json`,
+  `tests/test_runconfig.py`
+- **Accept:** the loader round-trips the fixture; `h5_sel` and `h5` computed from the fixture
+  match digests computed independently from the reference's own formula, shown side by side;
+  changing any covered field changes the digest **and** changing an uncovered field does not —
+  both asserted, which is what "content-addressed" actually means; a config carrying an
+  unknown field is rejected rather than silently ignored
+- **This is the gap the milestone map missed.** The `cfg` dict has **no headless producer**: it
+  is built only by `compile_graph_topology()` at `ui/graph.py:1696`, ~230 lines of
+  `dpg.get_value()` calls. Without something to build it, M2 has nothing to run and therefore
+  no proof. **This is not a reimplementation of that function** — that is M4's job. We take
+  only the six lines that compute the two md5 keys (`ui/graph.py:1866-1884`), and a
+  hand-authored fixture reproducing one of the reference's saved pipelines.
+- **What the keys cover, and it must not drift:** `h5_sel` = energy + detector +
+  `str(mult_cuts)` + `str(sel_exprs)`; `h5` extends it with observable, bins, min, max, target.
+  Shared §2 says do not break this — on a shared server it is why the second student to try the
+  same cuts gets an instant result.
+- **The dpg node IDs** currently threaded through `cfg` purely so the engine can colour nodes
+  green (`nid`, `prefix_nids`, `obs_nid`, `hist_nid`) become optional.
+- **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
+- **Branch / PR:** not yet opened
+
+## Blocked
+
+_The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
 - **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
@@ -233,29 +206,6 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   `status_msg`, making it a single-slot mailbox with lossy overwrite — under N workers,
   messages are silently dropped. A real sink has no such behaviour.
 - **Depends on:** B-007
-- **Branch / PR:** not yet opened
-
-### B-010 — `RunConfig` loader and the content-addressed cache keys
-- **Scope:** `src/fce_web/engine/runconfig.py`, `content/analyses/zpeak-dilepton.json`,
-  `tests/test_runconfig.py`
-- **Accept:** the loader round-trips the fixture; `h5_sel` and `h5` computed from the fixture
-  match digests computed independently from the reference's own formula, shown side by side;
-  changing any covered field changes the digest **and** changing an uncovered field does not —
-  both asserted, which is what "content-addressed" actually means; a config carrying an
-  unknown field is rejected rather than silently ignored
-- **This is the gap the milestone map missed.** The `cfg` dict has **no headless producer**: it
-  is built only by `compile_graph_topology()` at `ui/graph.py:1696`, ~230 lines of
-  `dpg.get_value()` calls. Without something to build it, M2 has nothing to run and therefore
-  no proof. **This is not a reimplementation of that function** — that is M4's job. We take
-  only the six lines that compute the two md5 keys (`ui/graph.py:1866-1884`), and a
-  hand-authored fixture reproducing one of the reference's saved pipelines.
-- **What the keys cover, and it must not drift:** `h5_sel` = energy + detector +
-  `str(mult_cuts)` + `str(sel_exprs)`; `h5` extends it with observable, bins, min, max, target.
-  Shared §2 says do not break this — on a shared server it is why the second student to try the
-  same cuts gets an instant result.
-- **The dpg node IDs** currently threaded through `cfg` purely so the engine can colour nodes
-  green (`nid`, `prefix_nids`, `obs_nid`, `hist_nid`) become optional.
-- **Depends on:** B-005
 - **Branch / PR:** not yet opened
 
 ### B-011 — Headless driver
@@ -336,6 +286,9 @@ Full entries — scope, criteria, and the cycle-by-cycle review record — are i
 [`archive/backend.md`](archive/backend.md). Read it only when a task's history is actually in
 question.
 
+- **B-005** — Vendor `paths.py` and `engine/systematics.py` — `task/b-005-vendor-paths-systematics`
+  #8, merged `dca1a09` (3 cycles, **clean gate — 0 required, 0 suggested-major**; 1 carry-forward
+  to B-007, 2 suggested-minor backlogged)
 - **B-003** — Playwright harness and a screenshot helper — `task/b-003-playwright-harness` #4,
   merged `a212e42` (2 cycles, clean gate)
 - **B-002** — FastAPI app factory and a served index route — `task/b-002-app-factory` #3,
