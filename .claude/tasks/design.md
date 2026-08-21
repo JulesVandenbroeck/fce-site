@@ -23,29 +23,38 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-004 (done, `bac2f62`). **Must run before D-005 and D-006** — both consume
   `tokens.css` read-only, so this is a contract task (§2), not a styling task.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** **cycle 3 re-specification dispatched 2026-08-21; agent died on the session
-  limit (reset 12:00 CEST) with its work uncommitted. FOURTH crash on this task, same shape
-  every time.** `origin/task/d-008-cvd-palette` and PR #7 both remain at `9480cac` — cycle 2.
-  Nothing was committed and nothing was pushed.
-  **The work survives and is preserved.** Its worktree
-  `.claude/worktrees/agent-a2e8f31790eaebce5` carries **458 insertions / 27 deletions** across
-  `palette_search.py` (+299) and `verify.py` (+186), unstaged. Because a previous D-008
-  recovery lost uncommitted work to a `git checkout --`, and because an agent worktree can be
-  cleaned up, I have dumped the diff to
-  **`~/fce-crash-recovery/d008-cycle3-uncommitted-2026-08-21.patch`** (30 KB, applies to base
-  `9480cac`). I did **not** commit it: it is unverified coder output on source §1 forbids me,
-  `verify.py --all` has never been run against it, and committing it would be me doing a
-  coder's job. Same ruling as the cycle-2 crash, and that ruling was right then.
-  **Last thing it was seen doing**, from its final message: folding normal vision into the
-  gated white-on-fill check — "32 total values across 4 conditions", which is criterion 4. So
-  it had reached at least criterion 4 of 10.
-  **Recovery path: resume the agent rather than re-dispatch**, so the sweep evidence in its
-  context survives — that is what worked on the cycle-2 crash. Landing path unchanged: commit
-  on its own branch, then `git push <branch>:task/d-008-cvd-palette`, a fast-forward from
-  `9480cac`. No force, no rebase, no branch deleted.
-  (§5.4 — not a cycle, so the §5.7 count stays at 2; the crash does not change that.) The §5.4 test is mechanical and it passes cleanly: the property that
-  regressed was normal-vision ΔE, and **no command for it existed in the cycle-2 dispatch text,
-  because no criterion for it did.** My brief, not the coder's work.
+- **Status:** **cycle 3 delivered `6954e65`, §5.1 gate PASSED 2026-08-21, review dispatched.**
+  Crash recovery worked exactly as instructed — `5079355` is the WIP-commit-first, `6954e65`
+  the completion. Nothing lost.
+- **THE RE-SPECIFICATION WORKED. Both floors hold simultaneously for the first time.** Verified
+  by me in a clean worktree, not taken from the PR body:
+
+  | | min CVD ΔE | worst normal-vision ΔE |
+  |---|---|---|
+  | D-004 c3 | 3.20 | 12.81 |
+  | D-008 c1 | 2.62 | 13.11 |
+  | D-008 c2 | **7.18** | **7.44** ← the regression |
+  | **D-008 c3** | **5.95** | **14.30** |
+
+  Normal-vision separation is now above **every** previous palette, including the 12.81 nobody
+  had complained about. CVD margin came down 7.18 → 5.95 to buy it, still well above the 4.0
+  floor. Other gates: chroma 58.8 ≤ 62, darkness 0.0656 ≥ 0.06, white-on-fill 4.94 ≥ 4.5 (up
+  from c1's 4.64), node-vs-reserved 13.44. Diagnostic min hue gap **23.2°**, against the 17.4°
+  that made two node kinds the same dark green in cycle 2.
+  Anti-substitution commands hold: `grep 'context only'` empty, `grep -c 'section('` = **29**
+  (required > 28), `verify.py --all` 469 lines / **0 FAIL** / exit 0, all 8 hexes reproduced
+  exactly by `--report`. The sweep table reproduces **digit for digit**.
+- **MY REMAINING DEFECT, and it is a decision for the user, not a finding against the coder.**
+  The T-ladder I specified topped out at 14, and **the selected row is not binding**: it
+  achieves min-normal **18.382** against its own T=14 constraint. So "largest feasible T" means
+  "top rung I wrote down", not "the ceiling". Worse, the full-budget re-run of that row spends
+  its extra budget pushing CVD up and lets normal fall back toward the constraint —
+  reduced-budget T=14 row was **5.091 CVD / 18.382 normal**, the committed full-budget palette
+  is **5.948 CVD / 14.304 normal**. **Neither dominates**, so this is a position on the
+  frontier rather than a free improvement, which is why it is the user's call and not mine
+  (§7). The non-monotonic "infeasible" verdicts on rows 8–13.11 are a reduced-budget
+  convergence artifact — those T values *are* feasible, since the T=14 solution satisfies them
+  — and the coder disclosed this rather than smoothing it.
 - **What the re-specification changes, and the one thing scout caught before I shipped it
   wrong.** The obvious repair — fold normal vision in as a fourth condition inside the existing
   `min` — **reproduces the bug.** `objective(x)` at `palette_search.py:346` returns
