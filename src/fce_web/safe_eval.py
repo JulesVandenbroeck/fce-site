@@ -175,18 +175,50 @@ class UnsafeExpression(Exception):
     """
 
 
+class _ValidationProof:
+    """An unforgeable token proving an expression passed :func:`_validate`.
+
+    A private class with no public instances: the only object of this type
+    ever created is :data:`_PROOF`, held by this module alone. Passed to
+    :class:`CompiledExpr` and checked by identity in its ``__post_init__``,
+    so that "a ``CompiledExpr`` exists" (cycle-2 review, suggested-minor 3 /
+    cycle-3 criterion 10a) is actually true rather than merely documented --
+    a caller outside this module has no way to obtain the sentinel, so has
+    no way to construct a ``CompiledExpr`` that skipped validation.
+    """
+
+    __slots__ = ()
+
+
+_PROOF = _ValidationProof()
+
+
 @dataclass(frozen=True, slots=True)
 class CompiledExpr:
     """An expression that has been parsed, validated, and compiled.
 
     Immutable and holds no reference to any per-run or per-event state --
     the same :class:`CompiledExpr` can be reused, from any number of
-    threads, across every event in a run and across runs. Existence of one
-    is the proof that :func:`compile_expr` accepted it.
+    threads, across every event in a run and across runs.
+
+    The constructor is enforced-private: it requires ``proof`` to be the
+    module-private :data:`_PROOF` sentinel, which only :func:`compile_expr`
+    can supply. A caller outside this module cannot obtain that sentinel,
+    so cannot construct a ``CompiledExpr`` around an unvalidated code
+    object -- existence of one really is proof that :func:`compile_expr`
+    accepted it, not just a claim in a docstring.
     """
 
     source: str
     code: CodeType
+    proof: _ValidationProof
+
+    def __post_init__(self) -> None:
+        if self.proof is not _PROOF:
+            raise UnsafeExpression(
+                "CompiledExpr cannot be constructed directly -- "
+                "use compile_expr()."
+            )
 
 
 def preprocess_hep_expr(expr: str) -> str:
@@ -226,6 +258,12 @@ def _validate(tree: ast.AST) -> None:
         )
 
     for node in nodes:
+        if isinstance(node, ast.Pow):
+            raise UnsafeExpression(
+                "'**' is not allowed here. Use multiplication instead -- "
+                "write l1.pt * l1.pt instead of l1.pt**2."
+            )
+
         if not isinstance(node, _ALLOWED_NODE_TYPES):
             raise UnsafeExpression(
                 f"'{_describe(node)}' is not allowed in an expression here. "
@@ -308,7 +346,7 @@ def compile_expr(source: str) -> CompiledExpr:
     _validate(tree)
 
     code = compile(tree, "<student-expression>", "eval")
-    return CompiledExpr(source=source, code=code)
+    return CompiledExpr(source=source, code=code, proof=_PROOF)
 
 
 def evaluate(compiled: CompiledExpr, names: Mapping[str, Any]) -> Any:

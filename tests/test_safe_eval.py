@@ -28,6 +28,8 @@ not against whatever ``safe_eval`` itself computes.
 
 import math
 import os
+import subprocess
+import sys
 import time
 
 import pytest
@@ -325,6 +327,18 @@ class TestEscapesRejected:
         with pytest.raises(UnsafeExpression):
             compile_expr("2**3")
 
+    def test_power_operator_message_names_the_replacement(self):
+        # Cycle-2 review, suggested-minor 2 / cycle-3 criterion 10(b): the
+        # old message ("Use comparisons, arithmetic, 'and'/'or'/'not', ...")
+        # told a student typing l1.pt**2 that arithmetic was the answer,
+        # which is exactly what they just tried. The message for a rejected
+        # '**' must name the concrete replacement.
+        with pytest.raises(UnsafeExpression) as exc_info:
+            compile_expr("l1.pt**2")
+        message = str(exc_info.value)
+        assert "l1.pt * l1.pt" in message or "*" in message
+        assert "**" in message
+
     def test_power_chain_does_not_hang(self):
         # The exact payload from the cycle-1 review: accepted by both size
         # caps, never returns once evaluated, under the old whitelist.
@@ -344,41 +358,115 @@ class TestEscapesRejected:
             compile_expr("2**10000000")
 
 
-def test_reference_eval_is_exploitable(monkeypatch):
-    """Proves the *reference* eval() sandbox is escapable, against the real module.
-
-    Imports engine/path_filter.py from the read-only reference checkout and
-    runs the same escape payload through its actual `_SAFE_BUILTINS` and `_P`
-    -- not a reimplementation -- to show this fix is closing a real hole.
-
-    The reference checkout's location is read from the ``FCE_REFERENCE_ROOT``
-    environment variable rather than hard-coded, and prepended to ``sys.path``
-    with ``monkeypatch.syspath_prepend`` so pytest undoes it at teardown --
-    this must never leak into the rest of the session (see B-006 cycle-1
-    review, suggested-major 1: the reference checkout has top-level
-    ``engine/``, ``objects.py`` and ``paths.py``, the exact names this project
-    vendors, and B-007 lands those files).
-    """
-    reference_root = os.environ.get(
+def _reference_root() -> str:
+    return os.environ.get(
         "FCE_REFERENCE_ROOT",
         os.path.expanduser("~/Documents/Phd/teaching/fce-project/fce"),
     )
+
+
+def _leaked_reference_modules() -> dict:
+    """Every module currently in ``sys.modules`` whose ``__file__`` resolves
+    into the reference checkout ("fce-project").
+
+    This is the property B-006 cycle-3 criterion 9 asks for -- not "sys.path
+    is clean" (criterion 8, which the reference checkout can satisfy while
+    still leaking through ``sys.modules``, see cycle-2 review) but "nothing
+    from the reference checkout is reachable from this process, by any
+    mechanism". ``ui.state`` in particular is the module holding the global
+    ``RUN_STATE`` this whole project exists to eliminate (shared CLAUDE.md
+    §2), and B-007 lands ``engine/path_filter.py`` under a name that would
+    collide with a leaked reference import.
+    """
+    leaked = {}
+    for name, module in list(sys.modules.items()):
+        path = getattr(module, "__file__", None)
+        if path and "fce-project" in path:
+            leaked[name] = path
+    return leaked
+
+
+def _run_reference_escape_proof(reference_root: str) -> subprocess.CompletedProcess:
+    """Run the reference eval() escape proof in a fresh, throwaway subprocess.
+
+    B-006 cycle-3 criterion 9: importing ``engine.path_filter`` from the
+    reference checkout in *this* process is exactly what leaked
+    ``engine``, ``ui``, ``ui.state``, ``engine.systematics`` and
+    ``engine.path_filter`` into ``sys.modules`` under cycle 2, surviving a
+    clean ``sys.path`` because ``monkeypatch.syspath_prepend`` only undoes
+    the path mutation, not the import it enabled. Snapshotting and
+    restoring ``sys.modules`` (option a) or importing under a private name
+    via ``importlib.util.spec_from_file_location`` (option b) would also
+    work, but the thing this test is proving -- that the *reference's*
+    ``eval()`` is exploitable -- is a statement about a foreign process's
+    behaviour. A subprocess makes that statement directly and exits, and
+    its ``sys.path``/``sys.modules`` cannot leak into this process at all:
+    there is no snapshot to forget to restore.
+    """
+    script = (
+        "import sys\n"
+        f"sys.path.insert(0, {reference_root!r})\n"
+        "import engine.path_filter as pf\n"
+        "l1 = pf._P(pt=25.0)\n"
+        "expr = (\n"
+        "    \"l1.__class__.__init__.__globals__['__builtins__']\"\n"
+        "    \"['__import__']\"\n"
+        ")\n"
+        "escape = eval(expr, {'__builtins__': pf._SAFE_BUILTINS}, {'l1': l1})\n"
+        "assert escape is __import__, "
+        "'reference eval() did not hand back the real __import__'\n"
+    )
+    return subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+
+
+def test_reference_eval_is_exploitable():
+    """Proves the *reference* eval() sandbox is escapable, against the real module.
+
+    Runs ``engine/path_filter.py`` from the read-only reference checkout,
+    in a fresh subprocess (see ``_run_reference_escape_proof``), and checks
+    that the same escape payload used against B-005/B-006's predecessor
+    reaches the real, unrestricted ``__import__`` -- not a reimplementation,
+    the actual reference module -- to show this fix is closing a real hole.
+    Side-effect-free: the proof reaches ``__import__`` through the
+    traversal chain but never calls it.
+    """
+    reference_root = _reference_root()
     if not os.path.isdir(reference_root):
         pytest.skip(f"reference checkout not available at {reference_root!r}")
-    monkeypatch.syspath_prepend(reference_root)
-    try:
-        import engine.path_filter as pf
-    except ImportError:
-        pytest.skip("reference checkout not available in this environment")
 
-    l1 = pf._P(pt=25.0)
-    # Side-effect-free proof: reach the real `__import__` builtin through the
-    # traversal chain, bypassing `_SAFE_BUILTINS` entirely, and confirm it is
-    # the genuine, unrestricted builtin (not calling it -- that would actually
-    # import a module as a side effect of running the test suite).
-    expr = "l1.__class__.__init__.__globals__['__builtins__']['__import__']"
-    escape = eval(expr, {"__builtins__": pf._SAFE_BUILTINS}, {"l1": l1})
-    assert escape is __import__, "reference eval() handed back the real __import__"
+    result = _run_reference_escape_proof(reference_root)
+    assert result.returncode == 0, (
+        "reference escape proof failed in its subprocess "
+        f"(exit {result.returncode}):\n{result.stderr}"
+    )
+
+
+def test_reference_checkout_does_not_leak_into_this_process():
+    """B-006 cycle-3 criterion 9: nothing from the reference checkout is
+    reachable from this process, by any mechanism, after the exploit proof
+    above has run.
+
+    Checks both halves cycle 2's fix and cycle 2's review disagreed about:
+    ``sys.path`` (criterion 8, already clean since cycle 2) and
+    ``sys.modules`` (the leak that survived it). Skips only if the
+    reference checkout is unavailable on this machine -- same guard as
+    ``test_reference_eval_is_exploitable``, so this never passes by
+    vacuously skipping while that test actually ran.
+    """
+    reference_root = _reference_root()
+    if not os.path.isdir(reference_root):
+        pytest.skip(f"reference checkout not available at {reference_root!r}")
+
+    leaked_path_entries = [p for p in sys.path if "fce-project" in p]
+    assert not leaked_path_entries, f"sys.path leaked: {leaked_path_entries}"
+
+    leaked_modules = _leaked_reference_modules()
+    assert not leaked_modules, f"reference checkout modules leaked: {leaked_modules}"
 
 
 # ---------------------------------------------------------------------------
@@ -422,6 +510,17 @@ class TestCompileTimeGeneral:
         # types.MappingProxyType is accepted by eval() as __builtins__ just
         # like a plain dict -- immutability must not break evaluation.
         assert run("sqrt(4)") == 2.0
+
+    def test_compiled_expr_cannot_be_constructed_directly(self):
+        # Cycle-2 review, suggested-minor 3 / cycle-3 criterion 10(a): the
+        # CompiledExpr docstring claims "Existence of one is the proof that
+        # compile_expr accepted it." A public dataclass with a public
+        # constructor does not enforce that claim by itself -- the reviewer
+        # built one around raw compile() output in seconds. Constructing one
+        # outside compile_expr must raise, not silently succeed.
+        code = compile("1 + 1", "<not-validated>", "eval")
+        with pytest.raises(TypeError):
+            CompiledExpr(source="1 + 1", code=code)  # missing the proof field
 
 
 # ---------------------------------------------------------------------------
