@@ -203,10 +203,31 @@ class CompiledExpr:
 
     The constructor is enforced-private: it requires ``proof`` to be the
     module-private :data:`_PROOF` sentinel, which only :func:`compile_expr`
-    can supply. A caller outside this module cannot obtain that sentinel,
-    so cannot construct a ``CompiledExpr`` around an unvalidated code
-    object -- existence of one really is proof that :func:`compile_expr`
-    accepted it, not just a claim in a docstring.
+    can supply. Calling ``CompiledExpr(source, code, proof)`` from outside
+    this module -- the ordinary way a caller would try to build one, with
+    an unvalidated ``code`` object and any ``proof`` value it can name --
+    raises :class:`UnsafeExpression`. That is the property this guard was
+    built for and the only one it enforces.
+
+    **What this does not defend against**, stated explicitly because B-008
+    is expected to treat this type as a safety certificate: a caller
+    already executing arbitrary Python *in this process* can still produce
+    a ``CompiledExpr`` wrapping an arbitrary code object, by two routes
+    that never call ``__init__``/``__post_init__`` at all --
+    ``dataclasses.replace(good, code=evil)`` (reuses a legitimately-earned
+    ``proof`` field with a substituted ``code``) and
+    ``object.__new__(CompiledExpr)`` followed by ``object.__setattr__`` on
+    each field. Both were demonstrated in the B-006 re-specification
+    review. Neither is reachable from a student's typed expression, or
+    from anything that only calls :func:`compile_expr` and :func:`evaluate`
+    -- reaching them requires the caller to already be running arbitrary
+    code in this interpreter, at which point it has no need of
+    ``CompiledExpr`` to do so. So: **a ``CompiledExpr`` obtained from
+    :func:`compile_expr` is proof its ``source`` passed validation.** It is
+    *not* a capability-secure token that resists forgery by co-located
+    Python code -- do not use it as a boundary against anything already
+    running inside this process, only as a boundary against unvalidated
+    *input* reaching :func:`evaluate`.
     """
 
     source: str

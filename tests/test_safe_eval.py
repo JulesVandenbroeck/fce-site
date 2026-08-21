@@ -26,6 +26,7 @@ every distinct expression found in the three saved analyses
 not against whatever ``safe_eval`` itself computes.
 """
 
+import dataclasses
 import math
 import os
 import subprocess
@@ -336,7 +337,13 @@ class TestEscapesRejected:
         with pytest.raises(UnsafeExpression) as exc_info:
             compile_expr("l1.pt**2")
         message = str(exc_info.value)
-        assert "l1.pt * l1.pt" in message or "*" in message
+        # B-006 re-specification, criterion 12: the old
+        # `"l1.pt * l1.pt" in message or "*" in message` clause was vacuous
+        # -- the next line's `"**" in message` already guarantees "*" in
+        # message, so the first clause could never be the reason this
+        # assertion passed or failed. This asserts the concrete replacement
+        # text is present, not merely some substring containing "*".
+        assert "l1.pt * l1.pt" in message
         assert "**" in message
 
     def test_power_chain_does_not_hang(self):
@@ -386,6 +393,17 @@ def _leaked_reference_modules() -> dict:
     return leaked
 
 
+#: The exact string the child process prints, on its own line, if and only
+#: if the escape reached the real `__import__`. Checked against stdout, not
+#: inferred from exit code alone -- see `_run_reference_escape_proof`.
+_ESCAPE_PROOF_SENTINEL = "ESCAPE-PROOF-REACHED-REAL-IMPORT"
+
+#: Environment variables that change whether a bare `assert` compiles into
+#: the child's bytecode at all. Stripped explicitly rather than relying on
+#: the parent's environment not having them set -- see criterion 11.
+_ASSERT_STRIPPING_ENV_VARS = ("PYTHONOPTIMIZE", "PYTHONDONTWRITEBYTECODE")
+
+
 def _run_reference_escape_proof(reference_root: str) -> subprocess.CompletedProcess:
     """Run the reference eval() escape proof in a fresh, throwaway subprocess.
 
@@ -402,6 +420,18 @@ def _run_reference_escape_proof(reference_root: str) -> subprocess.CompletedProc
     behaviour. A subprocess makes that statement directly and exits, and
     its ``sys.path``/``sys.modules`` cannot leak into this process at all:
     there is no snapshot to forget to restore.
+
+    B-006 re-specification, criterion 11: the child no longer proves success
+    with a bare ``assert`` (compiled out entirely under ``PYTHONOPTIMIZE``,
+    letting the script exit 0 having checked nothing) and no longer inherits
+    the parent's environment (so an inherited ``PYTHONOPTIMIZE`` cannot
+    strip that assert without the test knowing). The child instead branches
+    explicitly: on success it prints a fixed sentinel string and exits 0; on
+    failure -- whether the escape didn't reach ``__import__``, or raised --
+    it prints nothing and exits nonzero. The caller checks both the exit
+    code and the sentinel in stdout, so a child that exits 0 without having
+    printed the sentinel (e.g. because the whole check was compiled away)
+    is still caught.
     """
     script = (
         "import sys\n"
@@ -412,15 +442,29 @@ def _run_reference_escape_proof(reference_root: str) -> subprocess.CompletedProc
         "    \"l1.__class__.__init__.__globals__['__builtins__']\"\n"
         "    \"['__import__']\"\n"
         ")\n"
-        "escape = eval(expr, {'__builtins__': pf._SAFE_BUILTINS}, {'l1': l1})\n"
-        "assert escape is __import__, "
-        "'reference eval() did not hand back the real __import__'\n"
+        "try:\n"
+        "    escape = eval(expr, {'__builtins__': pf._SAFE_BUILTINS}, {'l1': l1})\n"
+        "except Exception as exc:\n"
+        "    print(f'ESCAPE-PROOF-RAISED: {exc!r}', file=sys.stderr)\n"
+        "    raise SystemExit(1)\n"
+        "if escape is __import__:\n"
+        f"    print({_ESCAPE_PROOF_SENTINEL!r})\n"
+        "    raise SystemExit(0)\n"
+        "print('ESCAPE-PROOF-FAILED: did not hand back the real __import__', "
+        "file=sys.stderr)\n"
+        "raise SystemExit(1)\n"
     )
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in _ASSERT_STRIPPING_ENV_VARS
+    }
     return subprocess.run(
         [sys.executable, "-c", script],
         capture_output=True,
         text=True,
         timeout=15,
+        env=env,
     )
 
 
@@ -434,6 +478,10 @@ def test_reference_eval_is_exploitable():
     the actual reference module -- to show this fix is closing a real hole.
     Side-effect-free: the proof reaches ``__import__`` through the
     traversal chain but never calls it.
+
+    Checks both the exit code *and* the positive sentinel in stdout -- see
+    criterion 11 in the B-006 re-specification -- so this cannot pass
+    because a stripped assertion let an empty script exit 0.
     """
     reference_root = _reference_root()
     if not os.path.isdir(reference_root):
@@ -444,12 +492,64 @@ def test_reference_eval_is_exploitable():
         "reference escape proof failed in its subprocess "
         f"(exit {result.returncode}):\n{result.stderr}"
     )
+    assert _ESCAPE_PROOF_SENTINEL in result.stdout, (
+        "subprocess exited 0 but never printed the success sentinel -- "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+
+
+def test_reference_escape_proof_still_proves_the_escape_under_pythonoptimize():
+    # B-006 re-specification, criterion 11: this is the literal repro
+    # command from the cycle-3 review
+    # ("$ PYTHONOPTIMIZE=1 pytest tests/test_safe_eval.py -q -k reference"
+    # -> "2 passed", proving nothing), run one call closer to the metal --
+    # directly against `_run_reference_escape_proof` with `PYTHONOPTIMIZE=1`
+    # forced into this *test* process's environment for the duration of the
+    # call, restored after. If `_run_reference_escape_proof` still inherited
+    # the caller's environment (the cycle-3 defect), the grandchild would
+    # run de-asserted and this would still pass having proved nothing --
+    # exactly why the assertion below checks the positive sentinel, not
+    # just the exit code.
+    reference_root = _reference_root()
+    if not os.path.isdir(reference_root):
+        pytest.skip(f"reference checkout not available at {reference_root!r}")
+
+    old_value = os.environ.get("PYTHONOPTIMIZE")
+    os.environ["PYTHONOPTIMIZE"] = "1"
+    try:
+        result = _run_reference_escape_proof(reference_root)
+    finally:
+        if old_value is None:
+            os.environ.pop("PYTHONOPTIMIZE", None)
+        else:
+            os.environ["PYTHONOPTIMIZE"] = old_value
+
+    assert result.returncode == 0, (
+        "reference escape proof failed in its subprocess even with the "
+        f"env stripped (exit {result.returncode}):\n{result.stderr}"
+    )
+    assert _ESCAPE_PROOF_SENTINEL in result.stdout, (
+        "subprocess exited 0 but never printed the success sentinel while "
+        f"the caller's PYTHONOPTIMIZE=1 -- stdout={result.stdout!r} "
+        f"stderr={result.stderr!r}"
+    )
 
 
 def test_reference_checkout_does_not_leak_into_this_process():
-    """B-006 cycle-3 criterion 9: nothing from the reference checkout is
-    reachable from this process, by any mechanism, after the exploit proof
-    above has run.
+    """Nothing from the reference checkout is reachable from this process,
+    by any mechanism, after the escape proof above has run.
+
+    B-006 re-specification, suggested-minor: this docstring used to say the
+    check ran "after the exploit proof above has run", true when cycle 2's
+    proof executed the reference module in-process. Since cycle 3 the proof
+    (``test_reference_eval_is_exploitable``) runs the reference module in a
+    *subprocess* -- see ``_run_reference_escape_proof`` -- so there is no
+    ordering dependency left to describe: this test's assertions would hold
+    identically whether that test ran first, ran at all, or is skipped.
+    What is actually being checked is unconditional: this process has never
+    imported anything from the reference checkout, and its ``sys.path`` was
+    never mutated to point at it, regardless of what other tests in this
+    session did.
 
     Checks both halves cycle 2's fix and cycle 2's review disagreed about:
     ``sys.path`` (criterion 8, already clean since cycle 2) and
@@ -511,16 +611,80 @@ class TestCompileTimeGeneral:
         # like a plain dict -- immutability must not break evaluation.
         assert run("sqrt(4)") == 2.0
 
-    def test_compiled_expr_cannot_be_constructed_directly(self):
-        # Cycle-2 review, suggested-minor 3 / cycle-3 criterion 10(a): the
-        # CompiledExpr docstring claims "Existence of one is the proof that
-        # compile_expr accepted it." A public dataclass with a public
-        # constructor does not enforce that claim by itself -- the reviewer
-        # built one around raw compile() output in seconds. Constructing one
-        # outside compile_expr must raise, not silently succeed.
+    def test_compiled_expr_missing_proof_field_is_a_typeerror(self):
+        # A plain arity check, not a test of the guard: dataclasses raises
+        # TypeError for a missing positional argument whether or not
+        # __post_init__ enforces anything at all. Kept because it documents
+        # that `proof` really is a required field, but
+        # test_compiled_expr_rejects_a_forged_proof below is the one that
+        # actually exercises the guard -- see B-006 cycle-3 review, required
+        # finding: this test alone passes identically under
+        # `CompiledExpr.__post_init__ = lambda self: None`.
         code = compile("1 + 1", "<not-validated>", "eval")
         with pytest.raises(TypeError):
             CompiledExpr(source="1 + 1", code=code)  # missing the proof field
+
+    def test_compiled_expr_rejects_a_forged_proof(self):
+        # B-006 re-specification, criterion 9: the cycle-3 test above calls
+        # CompiledExpr with the wrong arity, so it raises dataclasses' own
+        # "missing positional argument" TypeError whether or not
+        # __post_init__'s identity check exists at all -- it cannot
+        # distinguish "the guard fired" from "the guard was never called".
+        # This call supplies all three fields, so the *only* way it can
+        # raise is the identity check in __post_init__ rejecting a proof
+        # object that is not the module-private _PROOF sentinel.
+        code = compile("1 + 1", "<not-validated>", "eval")
+        with pytest.raises(UnsafeExpression):
+            CompiledExpr(source="1 + 1", code=code, proof=object())
+
+    def test_dataclasses_replace_bypasses_the_guard(self):
+        # B-006 re-specification, criterion 10: the class docstring used to
+        # claim outright that a caller "cannot construct a CompiledExpr
+        # around an unvalidated code object". dataclasses.replace() calls
+        # __init__ again, but with a legitimately-earned `proof` reused
+        # verbatim and only `code` substituted -- the identity check in
+        # __post_init__ has nothing to catch, because `proof` really is
+        # `_PROOF`. Documents the corrected, narrower claim; not a defect
+        # to fix, per the docstring's "what this does not defend against".
+        good = compile_expr("1 + 1")
+        evil_code = compile(
+            "().__class__.__bases__[0].__subclasses__()[0]", "<evil>", "eval"
+        )
+        forged = dataclasses.replace(good, code=evil_code)
+        # The forged object exists and evaluate() runs the substituted
+        # code -- this is the narrowed claim being demonstrated, not
+        # asserted as safe.
+        assert evaluate(forged, {}) is type
+
+    def test_object_new_bypasses_the_guard(self):
+        # B-006 re-specification, criterion 10, second route: object.__new__
+        # plus object.__setattr__ never calls __init__ at all, so
+        # __post_init__ never runs. Same conclusion as the replace() case
+        # above -- documents what the docstring now says explicitly.
+        evil_code = compile(
+            "().__class__.__bases__[0].__subclasses__()[0]", "<evil>", "eval"
+        )
+        forged = object.__new__(CompiledExpr)
+        object.__setattr__(forged, "source", "x")
+        object.__setattr__(forged, "code", evil_code)
+        object.__setattr__(forged, "proof", object())
+        assert evaluate(forged, {}) is type
+
+    def test_compiled_expr_guard_is_caught_by_mutation(self, monkeypatch):
+        # Mutation test for the assertion above, by monkeypatch per
+        # .claude/backend/CLAUDE.md §2 -- never by editing a tracked file.
+        # Named mutation: replace __post_init__ with a no-op, exactly the
+        # cycle-3 review's `se.CompiledExpr.__post_init__ = lambda self:
+        # None`, which produced "113 passed" against the old test. Against
+        # this test it must fail: with the guard gone, constructing a
+        # CompiledExpr around a forged proof no longer raises anything, so
+        # pytest.raises(UnsafeExpression) itself fails with
+        # "DID NOT RAISE".
+        monkeypatch.setattr(CompiledExpr, "__post_init__", lambda self: None)
+        code = compile("1 + 1", "<not-validated>", "eval")
+        with pytest.raises(pytest.fail.Exception):
+            with pytest.raises(UnsafeExpression):
+                CompiledExpr(source="1 + 1", code=code, proof=object())
 
 
 # ---------------------------------------------------------------------------
