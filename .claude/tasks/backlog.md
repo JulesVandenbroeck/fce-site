@@ -352,6 +352,15 @@ and are historical now that #6 is merged.
   student sees on the payload that matters most pedagogically should be the underscore one.
   Checking `Attribute`/`Name` before `Call` would surface it. _(from B-006 review, cycle 1)_
 
+- **Exponentiation is no longer available in student expressions.** B-006 dropped `ast.Pow`
+  from the whitelist to close an unbounded-cost DoS (`9**9**9` was accepted and never
+  returned), so `**` is refused at compile time. The reference's `eval` accepted it, since
+  `**` is an operator rather than a builtin — its `_SAFE_BUILTINS` has `sqrt` and `abs` but no
+  `pow`. Nothing in the reference, in any saved config, or in our corpus uses `**`, so this
+  costs nothing today and B-012's parity proof is unaffected. **If M4 wants exponentiation in
+  the recipe builder, bound the exponent — do not re-admit the operator unbounded.**
+  _(from B-006 review cycle 1 + scout enumeration, 2026-08-21)_
+
 ## Cross-cutting
 
 - **Dark colour variant.** V1 commits to light only — the lab-notebook aesthetic is a light

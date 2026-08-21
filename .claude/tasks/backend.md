@@ -173,8 +173,29 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   selection is refused before any event is read; mutation-tested
 - **New ground, not a port:** the reference suite has zero tests asserting what any expression
   evaluates to, so it would pass against a broken evaluator. That gap is why criterion 2 exists.
-- **OPEN QUESTION, raised 2026-08-21 by B-006 cycle 2 and unresolved — settle it before
-  dispatching B-008.** B-006 removed `ast.Pow` from the whitelist outright, so `**` is now
+- **RESOLVED 2026-08-21 — dropping `ast.Pow` breaks nothing, and B-006 is cleared to merge on
+  a clean review.** Scout enumerated the reference:
+  - The **7 genuine `**` sites** are all in *Python source* — `plotter.py:110,114` (the
+    quadrature sum for the systematics band) and `path_filter.py:60,65,73,81,113` (the `_P`
+    helper's `mass`, `pt`, `p`, and two `deltaR` implementations). They compile as ordinary
+    Python and **never pass through `eval`**, so `safe_eval` never sees them.
+  - **No saved config uses `**`.** All four (`test_systs.json`,
+    `test_selection_obs_bounds.json`, `test_selection_cutflow.json`, `config/samples.json`)
+    carry expression fields like `"l1.pt > 20"` and `"(l1.p4 + l2.p4).mass"`.
+  - The reference's own `_SAFE_BUILTINS` (`path_filter.py:18-24`) is
+    `abs, max, min, len, float, int, bool, sqrt, cos, sin, tan, pi, exp, log, True, False,
+    None` — **`sqrt` and `abs` are present, `pow` is not.**
+  - **Scout's own closing paragraph is wrong and I am not accepting it.** It wrote that
+    blocking `**` "will break all 7 physical exponentiation sites", then said in the same
+    sentence that those sites are "not in eval'd strings". The second clause is the true one
+    and it refutes the first. The sites are Python source; nothing breaks.
+- **What is genuinely given up, and it is small.** The reference's `eval` would have accepted
+  `l1.pt**2` in a student expression, because `**` is an operator rather than a builtin. Ours
+  now refuses it. Nothing in the project uses it, and `sqrt` is available, so the parity proof
+  (B-012) is unaffected. Backlogged rather than blocking: if the expression language should
+  offer exponentiation to students in M4, the resolution is to **bound the exponent, not to
+  re-admit the operator unbounded** — that is what the DoS finding was about.
+- **Superseded open question, kept for the record:** B-006 removed `ast.Pow` from the whitelist outright, so `**` is now
   rejected at compile time. That was sound for B-006, whose corpus never used `**`. But this
   task routes the reference's own seven `eval` sites through that evaluator, and **nobody has
   yet checked whether any reference expression, saved config, or default selection uses `**`.**
