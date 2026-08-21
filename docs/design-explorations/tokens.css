@@ -128,7 +128,7 @@
   --radius: 6px;
   --timing: 180ms;
 
-  /* ---- node type identity (D-004) ----------------------------------------
+  /* ---- node type identity (D-004, re-lit D-008) ---------------------------
    * One hue per concrete node kind the run payload can carry. The kind list
    * and every legal src -> dst pair are read from the vendored reference's
    * own allowlist, not guessed: `_VALID_CONNECTIONS` and `NODE_LABELS` in
@@ -142,48 +142,146 @@
    * the four Observable subtypes (ObsGlobal, ObsObject, ObsVectorSum,
    * ObsCustom), plus Histogram. Bare "Observable" is a key in the allowlist
    * dict but is never itself instantiated (`create_node("Observable")` does
-   * not appear in `fce.py`), so it is not given its own hue here. See each
-   * page's own annotation panel and the PR body for why this is 8 kinds and
-   * not the task dispatch's original 11.
+   * not appear in `fce.py`), so it is not given its own hue here.
    *
-   * Every one of the 8 fills below is paired with white node-title text
-   * (`--node-label-on-fill`); each pairing composites to >= 4.5:1. Measured
-   * by verify.py's `--beamline` contrast section (see `check_beamline_
-   * contrast`), which prints the per-swatch ratio it actually computed —
-   * not asserted here as a fact this file cannot check for itself.
+   * D-008 cycle 1 replaced the D-004 cycle-3 ladder below with one spaced on
+   * Machado-simulated *luminance*, after cycle 3's own docstring claim that
+   * its normal-vision-WCAG spacing "survives every CVD type by construction"
+   * was found false (D-004 cycle-3 review) -- WCAG's fixed 0.2126 red
+   * weight is not how a protanope's or deuteranope's own luminous-efficiency
+   * function weights red, so luminance *ordering* is not CVD-invariant.
    *
-   * `--node-histogram` was originally #38566b, 1.06:1 from `--graphite-blue`
-   * below (D-004 cycle-1 review, Required 1 / suggested-major 2) — the same
-   * slate doing node-identity duty and ordinary interactive-chrome duty on
-   * one screen, and the direct cause of the focus ring's worst-case failure
-   * against this fill.
+   * D-008 cycle 2 (this ladder) replaces cycle 1's fills in turn, for a
+   * different reason: cycle-2 review's Required 1 found that a *luminance*
+   * ratio between two CVD-simulated fills is not itself a distinguishability
+   * claim, because it discards the chromatic axis a dichromat still has --
+   * two of cycle 1's fills sat at 1.05:1 luminance and were also only
+   * 2.62 CAM02-UCS ΔE apart (genuinely close, in the same blue family,
+   * under deuteranopia -- the exact figure the D-008 cycle-2 review itself
+   * measured), but plenty of *other* pairs also near 1.05:1 luminance
+   * were tens of ΔE apart -- plainly different colours. Luminance ratio
+   * cannot tell those two cases apart. This ladder is selected against
+   * CAM02-UCS ΔE (Moroney et al. 2002 CIECAM02 + Luo, Cui & Li 2006's UCS
+   * transform -- `cam02ucs_deltaE`, verify.py) directly, Machado-simulated,
+   * alongside the still-checked luminance/white-AA/darkness floors below,
+   * not instead of them.
    *
-   * Every fill below was then re-lit at cycle 3 (D-004 cycle-2 review,
-   * suggested-major 1): the cycle-2 set only broke isoluminance for
-   * `--node-histogram` — the other seven still spanned relative luminance
-   * L = 0.111-0.158, a band so narrow that stripping hue (the effect of any
-   * CVD type) collapsed several pairs to near-identical greys, worst case
-   * `data` vs `multiplicity` at 1.01:1. Hue was kept exactly as it was for
-   * all 8 (same H in HSL, to one decimal) — this is luminance added as a
-   * *second* identity channel, not hue traded away for one. Each fill's
-   * lightness was retargeted on its own ladder rung, spaced so every one of
-   * the 28 unordered pairs clears 1.15:1 (worst case, printed by verify.py's
-   * `--beamline` pairwise-luminance section, is `obs-global` vs `selection`
-   * at 1.195:1 — comfortably inside the 1.246:1 ceiling the 4.5:1
-   * white-label floor admits for an 8-step ladder), while every white-label
-   * pairing still clears 4.5:1 (worst case now 4.79:1, up from the 4.61:1 a
-   * first pass at this ladder produced, given deliberate headroom rather
-   * than sitting on the floor). See `check_beamline_pairwise_luminance` for
-   * why luminance separation alone — with no CVD simulation matrix — is
-   * sufficient and preferred here. */
-  --node-data: #775315;
-  --node-multiplicity: #465315;
-  --node-selection: #26824c;
-  --node-obs-global: #1c726a;
-  --node-obs-object: #17264f;
-  --node-obs-vecsum: #4c245e;
-  --node-obs-custom: #732154;
-  --node-histogram: #1e122e;
+   * D-008 cycle 3 (this ladder) replaces cycle 2's fills for the reason the
+   * cycle-3 dispatch's own table lays out: three consecutive cycles each
+   * picked one property to gate on -- normal-vision luminance (D-004
+   * cycle 3), CVD-simulated luminance (D-008 cycle 1), CVD-simulated ΔE
+   * (D-008 cycle 2) -- and each time, the property the *previous* floor was
+   * not written in terms of regressed silently, because a maximin search
+   * spends everything not in its objective. Cycle 2's own casualty: worst
+   * normal-vision node-node CAM02-UCS ΔE went 12.81 (D-004 cycle 3) to
+   * 13.11 (D-008 cycle 1, a rise) to 7.44 (D-008 cycle 2, the fall that
+   * mattered), and nothing checked it.
+   * This cycle adds normal-vision separation as its *own* floor rather than
+   * folding it into the existing CVD `min` (a shared minimum over 4
+   * conditions just pulls normal vision up only as far as the CVD ceiling,
+   * reproducing exactly cycle 2's mistake -- see `objective_constrained`,
+   * `palette_search.py`).
+   *
+   * That floor's value, `T`, is set by a feasibility sweep
+   * (`palette_search.py --sweep`) over the ladder rungs 0, 8, 10, 12, 13.11
+   * and 14, each rung searched under every constraint this task has ever
+   * gated on simultaneously -- but say plainly what that sweep did and did
+   * not establish: `SELECTED_T` is the **top rung of the ladder**, and the
+   * selection rule is "largest feasible T on the ladder", a rule with no
+   * upper bound that this ladder happens to stop climbing at 14. That is a
+   * floor chosen at the top of a ladder, **not a discovered ceiling** --
+   * rungs at 16 or 18 were never tried, and the T=14 sweep row itself
+   * reached min-normal-vision ΔE 18.38 while still feasible, so a higher
+   * rung was plausibly reachable (D-008 cycle-3 review, suggested-major 1;
+   * the user has ruled against extending the ladder further -- ship this
+   * frontier position, D-008 cycle-3-fix dispatch). The sweep found every
+   * rung from 8 through 13.11 infeasible at its own (reduced-budget) search
+   * effort and rung 14 feasible; re-running rung 14 at the committed
+   * defaults (`--seed 7 --maxiter 800 --popsize 30`) reached a min-CVD ΔE
+   * of 5.95 with every other floor cleared, so `T=14` is what shipped --
+   * the committed palette clears T itself by 0.30 (14.30 achieved vs 14.00
+   * required). See `palette_search.py`'s own `SELECTED_T`/`SWEEP_LADDER`
+   * and the D-008 cycle-3 PR body for the full table.
+   *
+   * That min-CVD ΔE of 5.95 is itself a regression from D-008 cycle 2's own
+   * 7.18 (-17%), the exact metric cycle 2 was selected against -- named
+   * here as a regression, not just printed as a number, because this
+   * comment block's own point is that every cycle of this task has let a
+   * different property regress silently (D-008 cycle-3 review,
+   * suggested-major 3). It still clears the 4.0 floor with room to spare;
+   * the trade is disclosed because the record should say so, not because
+   * the palette is in doubt.
+   *
+   * `--node-data` was hand-nudged once more after that search, in the
+   * D-008 cycle-3-fix pass, from the searched `#8d5548` to the committed
+   * `#966746` -- not a re-run of the search above (the user ruled against
+   * that; the search's other 7 fills are untouched), but a manual HSL
+   * adjustment made to clear `RESERVED_HUE_GAP_FLOOR_DEG` below
+   * (D-008 cycle-3 review, suggested-major 2): `--node-data` sat 3.5deg
+   * from `--vermillion` in CAM02-UCS hue at the head of this cycle,
+   * reading as a desaturated vermillion in the rendered picker even
+   * though its ΔE cleared 17.3. The nudge opens that gap to 24.5deg and,
+   * because every floor in this file is checked simultaneously rather
+   * than one at a time, moved every number the search's fills are judged
+   * on: min-CVD ΔE 5.95 -> 5.129 (a second regression on top of the
+   * search's own, still clearing the 4.0 floor by more than a full ΔE
+   * unit), normal-vision node-node ΔE 14.30 -> 14.170 (still clearing
+   * `T=14` by 0.17), white-on-fill 4.935:1 -> 4.595:1 (still clearing
+   * 4.5:1). All three, plus the chroma (30.12) and darkness (0.0656)
+   * floors, are re-verified together every run -- `verify.py --all`'s
+   * `beamline-node-fill-normal-vision` and `beamline-pairwise-luminance`
+   * sections, not asserted here as a one-off measurement.
+   *
+   * Found by `docs/design-explorations/palette_search.py` (committed,
+   * differential evolution over each fill's HSL hue/saturation/lightness --
+   * reproducible by running it, not just read about). Hue was bounded to
+   * +-40° of the D-004 baseline per fill -- actual drift on the chosen
+   * palette ranges 0.9°-34.4° per fill, reported (along with every fill's
+   * CIE Lab chroma) by `palette_search.py --report` rather than asserted
+   * here as a single number. Constraints imposed *before* the search, not
+   * fitted after it: (1) L >= 0.06 (normal vision or any of the 3
+   * dichromacies); (2) white-on-fill >= 4.5:1 under normal vision and each
+   * of the 3 simulations (widened from cycle 2's CVD-only check); (3) CIE
+   * Lab chroma <= 62 under normal vision, so the search could not reach for
+   * separation by maxing out saturation -- this cap bounds only the node
+   * fills, not a comparison against the reserved colours: `--vermillion`
+   * sits at C*=65.9 and `--graphite-blue` at C*=15.8, and this palette's own
+   * highest fill (`--node-histogram`, C*=58.75) sits under the cap but
+   * still above `--graphite-blue`'s own chroma, which is expected -- the
+   * cap keeps node fills from reading as more saturated than either
+   * reserved colour is required to look, not from ever exceeding whichever
+   * of the two happens to be less saturated; (4) every fill's simulated
+   * CAM02-UCS ΔE from both `--vermillion` and `--graphite-blue`, under both
+   * normal vision and all 3 simulations, is subject to the same 4.0 floor
+   * as fill-vs-fill CVD separation; (5) normal-vision node-node ΔE clears
+   * the swept floor `T=14` described above, as its own constraint, not
+   * folded into (4).
+   *
+   * `check_beamline_pairwise_luminance` and `check_beamline_node_fill_
+   * normal_vision` (verify.py) check, per fill and per pair: the same
+   * 1.02:1 pairwise-luminance floor cycle 1 checked (CVD only); 4.5:1
+   * white-on-fill under all 4 conditions (32 values); the 0.06 darkness
+   * floor; a 4.0 CAM02-UCS ΔE floor across all 44 node-node/node-reserved
+   * pairs under the 3 CVD simulations (132 values) *and* under normal
+   * vision (44 more, 176 in total); and, on top of that last 4.0 floor, the
+   * swept `T=14` floor for the 28 normal-vision node-node pairs
+   * specifically; and, added in D-008 cycle-3-fix (suggested-major 2),
+   * every fill's CAM02-UCS hue angle against both reserved tokens clears
+   * `RESERVED_HUE_GAP_FLOOR_DEG` (12deg) -- a gate, not a diagnostic,
+   * because ΔE alone passed `--node-data` at a 3.5deg hue gap from
+   * `--vermillion` comfortably (17.3), and hue angle is what a "reads as
+   * a desaturated vermillion" complaint is actually about. Every floor is
+   * a fixed number the check tests independently of whatever a given
+   * search run happened to reach, not a target picked after the fact to
+   * make the check pass. */
+  --node-data: #966746;
+  --node-multiplicity: #706b30;
+  --node-selection: #1c5611;
+  --node-obs-global: #2a6b64;
+  --node-obs-object: #306baf;
+  --node-obs-vecsum: #6a387c;
+  --node-obs-custom: #993a5a;
+  --node-histogram: #4846a5;
   --node-label-on-fill: #ffffff;
 
   /* ---- node shadow (D-004) -------------------------------------------------

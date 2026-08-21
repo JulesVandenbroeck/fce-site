@@ -32,6 +32,10 @@ still exercises them too.
 Requires:
     - Playwright (Python) with a Chromium browser available — see the task
       body for the PLAYWRIGHT_BROWSERS_PATH note on this container.
+    - numpy — used by the D-008 CVD-simulation/CIEDE2000 colour-difference
+      machinery (`check_beamline_pairwise_luminance` and its helpers) only;
+      already this project's own dependency (`.claude/shared/CLAUDE.md` §3),
+      not a new one introduced here.
     - For `check_beamline_pairs` only (the 64-pair reference-parity section,
       run by `--all`/`--beamline`) — the vendored `fce` reference repo
       (`.claude/shared/CLAUDE.md` §2), so this checker can execute the
@@ -49,15 +53,19 @@ Requires:
       their benefit as much as this task's.
 """
 import argparse
+import ast
 import importlib.util
+import io
 import json
 import re
 import subprocess
 import sys
+import tokenize
 from pathlib import Path
 from typing import Optional
 
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
+import numpy as np
 
 # One line of a check function's report: (label, pass/fail, detail string).
 CheckLine = tuple[str, bool, str]
@@ -661,7 +669,7 @@ def check_anatomy(page: Page) -> CheckResult:
     )
 
     # Main-panel y-scale vs. the reference — Required 1, PR #5 review cycle 3,
-    # fixed cycle 4. REFERENCE_* below are not asserted from this file: they
+    # fixed cycle 4. `REFERENCE_PEAK_FRAC` and `REFERENCE_MAX_MAJOR_LABEL` below are not asserted from this file: they
     # were measured once by rendering engine/plotter.py's own _render_single
     # against this directory's payload.json (faking the uproot.open() ROOT
     # reads it expects, capturing the Axes right before plt.savefig() would
@@ -1533,7 +1541,7 @@ def check_contrast(pw: Playwright) -> bool:
     # time. A single measurement pass therefore only sees one figure's text
     # actually laid out — the other's `getBoundingClientRect()` collapses
     # to (0,0,0,0), same as check_paint_sweep's reason for sweeping both
-    # tabs (see that function). GATHER_JS excludes zero-area elements at
+    # tabs (see that function). The gather logic excludes zero-area elements at
     # the source (both from the shapes list a label could sit on, and from
     # the elements it measures), so running it once per tab and
     # concatenating the results checks every real, rendered piece of text
@@ -1868,6 +1876,121 @@ def check_no_exhaustive_prose() -> bool:
     line(f"{scanned} files scanned for exhaustive-claim phrasing", ok, f"{len(hits)} matches")
     for fname, ctx in hits:
         print(f"       {fname}: ...{ctx}...")
+    return ok
+
+
+# D-008 cycle-3 review, Required 2, generalised: `palette_search.py:356`
+# cited a name that does not exist -- the real constant is
+# `NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR`, and the stale comment had
+# dropped the node-node segment from the middle of its name -- the third
+# occurrence of this exact class of mistake across this task's three
+# cycles. `check_no_fabricated_identifiers` below scans every comment and
+# docstring in this file and `palette_search.py` for all-uppercase,
+# underscore-separated tokens six characters or longer
+# (`[A-Z][A-Z0-9_]{5,}`; ordinary mixed-case prose never matches this) and
+# FAILs on any that names neither a real identifier defined in either file
+# nor an entry on the short allowlist below. The allowlist is for two
+# kinds of legitimate all-caps token that are never going to be Python
+# names in these two files: standard colour-science acronyms/terms (`CIECAM02`,
+# `CIEDE2000`, `XYZ100`), and names that belong to something outside these
+# two files entirely -- an external package's own symbol
+# (`MACHADO_ET_AL_MATRICES`, `colorspacious`'s), a vendored engine's own
+# variable (`LUMI_UNC`, `engine/plotter.py`'s), an environment variable
+# (`PLAYWRIGHT_BROWSERS_PATH`), a project doc file (`CLAUDE.md`, hence
+# `CLAUDE`) or a generic document kind (`README`).
+IDENTIFIER_LINT_ALLOWLIST: frozenset[str] = frozenset({
+    "CIECAM02", "CIEDE2000", "XYZ100",
+    "MACHADO_ET_AL_MATRICES", "LUMI_UNC", "PLAYWRIGHT_BROWSERS_PATH",
+    "CLAUDE", "README",
+})
+_IDENTIFIER_LINT_PATTERN = re.compile(r"\b[A-Z][A-Z0-9_]{5,}\b")
+
+
+def _comments_and_docstrings(path: Path) -> str:
+    """All `#` comment text and all module/function/class docstrings in the
+    Python source at `path`, concatenated -- the two places a stale or
+    fabricated identifier reference can hide without ever touching code
+    that would fail to import. Comments come from `tokenize` (so an
+    all-caps run inside an ordinary string literal, e.g. an f-string, is
+    never mistaken for a comment); docstrings come from `ast.get_docstring`
+    (so only real docstrings are scanned, not arbitrary string literals
+    used as values)."""
+    text = path.read_text()
+    comments = [
+        tok.string for tok in tokenize.generate_tokens(io.StringIO(text).readline)
+        if tok.type == tokenize.COMMENT
+    ]
+    tree = ast.parse(text, filename=str(path))
+    docstrings = [
+        ast.get_docstring(node)
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        and ast.get_docstring(node)
+    ]
+    return "\n".join(comments) + "\n" + "\n".join(docstrings)
+
+
+def _defined_identifiers(path: Path) -> set[str]:
+    """Every name this source file itself binds -- function/class names,
+    assignment targets (module-level constants and otherwise), attribute
+    names, and parameter names -- as the set `check_no_fabricated_
+    identifiers` treats as "a real thing this codebase defines". Not
+    scoped to module level only: a comment can legitimately reference a
+    local variable, a keyword argument, or an attribute just as easily as
+    a module constant, and this lint's job is only to catch names that
+    refer to *nothing*, not to enforce where a name is allowed to live."""
+    tree = ast.parse(path.read_text(), filename=str(path))
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            names.add(node.attr)
+        elif isinstance(node, ast.arg):
+            names.add(node.arg)
+    return names
+
+
+def check_no_fabricated_identifiers() -> bool:
+    """D-008 cycle-3 review, Required 2, generalised (see
+    `IDENTIFIER_LINT_ALLOWLIST` above for the full rationale): scans this
+    file and `palette_search.py` for any all-uppercase, underscore-shaped
+    token in a comment or docstring that names neither a real identifier defined
+    in either file nor an allowlisted external/acronym term, and FAILs
+    naming every one it finds. Cross-file references are allowed without
+    special-casing -- `palette_search.py` citing this module's
+    `NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR` passes, because the defined-
+    identifier set is the union of both files, not each file checked in
+    isolation, which is exactly the shape of reference the fabricated
+    comment this criterion exists to catch was making."""
+    section("Prose/comment lint -- no comment or docstring names an identifier that does not exist")
+    files = [HERE / "verify.py", HERE / "palette_search.py"]
+    defined: set[str] = set()
+    for f in files:
+        defined |= _defined_identifiers(f)
+
+    hits: list[tuple[str, str]] = []
+    scanned = 0
+    for f in files:
+        scanned += 1
+        text = _comments_and_docstrings(f)
+        for m in _IDENTIFIER_LINT_PATTERN.finditer(text):
+            token = m.group(0)
+            if token in defined or token in IDENTIFIER_LINT_ALLOWLIST:
+                continue
+            start = max(0, m.start() - 40)
+            hits.append((f.name, f"{token}: ...{text[start:m.end() + 10].strip()}..."))
+    ok = len(hits) == 0
+    line(
+        f"{scanned} files scanned for comments/docstrings naming an identifier not defined in either "
+        f"file and not on the {len(IDENTIFIER_LINT_ALLOWLIST)}-entry allowlist",
+        ok,
+        f"{len(hits)} matches",
+    )
+    for fname, ctx in hits:
+        print(f"       {fname}: {ctx}")
     return ok
 
 
@@ -2535,6 +2658,22 @@ NODE_FILL_TOKENS = [
     "--node-histogram",
 ]
 
+# The two colours design manual §2 holds back from ordinary node-kind duty --
+# vermillion (significance thresholds, mission completion, the signal
+# sample) and graphite-blue (ordinary interactive chrome). D-008 cycle-2
+# review, suggested-major 2: nothing in cycle 1 checked a --node-* fill
+# against either of these, so a fill could (and one did -- `--node-
+# multiplicity` simulated within a couple ΔE of `--vermillion` under
+# deuteranopia) silently collide with a colour that is supposed to mean
+# something else entirely. `check_beamline_pairwise_luminance` includes both
+# in its ΔE comparison, though not in the pairwise-luminance one (that floor
+# is about node-kind-vs-node-kind separation specifically; the reserved
+# colours are not node kinds).
+RESERVED_COLOR_TOKENS = [
+    "--vermillion",
+    "--graphite-blue",
+]
+
 
 def hex_to_rgb(value: str) -> Optional[tuple[int, int, int]]:
     """Parse a literal `#rrggbb` (or `#rgb`) token value into an (r, g, b)
@@ -2552,48 +2691,457 @@ def hex_to_rgb(value: str) -> Optional[tuple[int, int, int]]:
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
-def check_beamline_pairwise_luminance() -> bool:
+# Machado, Oliveira & Fernandes (2009), "A Physiologically-based Model for
+# Simulation of Color Vision Deficiency" (IEEE TVCG 15(6)). Severity-100
+# (complete dichromacy) matrices, applied to linear-light RGB -- transcribed from
+# the authors' own published table and cross-checked against the
+# `colorspacious` package's `MACHADO_ET_AL_MATRICES[cvd_type][100]`, which
+# cites the same source (`inf.ufrgs.br/~oliveira/pubs_files/CVD_Simulation/
+# CVD_Simulation.html`); both agree to 6 decimal places. Each row sums to
+# ~1.0, which is what keeps a true grey (equal linear R=G=B) invariant under
+# every one of these three matrices -- relied on below so a white node label
+# does not itself shift when simulated.
+MACHADO_2009_DICHROMACY: dict[str, tuple[tuple[float, float, float], ...]] = {
+    "protanopia": (
+        (0.152286, 1.052583, -0.204868),
+        (0.114503, 0.786281, 0.099216),
+        (-0.003882, -0.048116, 1.051998),
+    ),
+    "deuteranopia": (
+        (0.367322, 0.860646, -0.227968),
+        (0.280085, 0.672501, 0.047413),
+        (-0.011820, 0.042940, 0.968881),
+    ),
+    "tritanopia": (
+        (1.255528, -0.076749, -0.178779),
+        (-0.078411, 0.930809, 0.147602),
+        (0.004733, 0.691367, 0.303900),
+    ),
+}
+CVD_TYPES: tuple[str, ...] = ("protanopia", "deuteranopia", "tritanopia")
+# The same three WCAG channel weights `relative_luminance` applies to a
+# linearised sRGB triple -- pulled out as a constant here because the CVD
+# simulation below needs to apply them to an already-linear, already
+# CVD-matrix-transformed triple, not to a fresh sRGB one.
+_WCAG_LUMINANCE_WEIGHTS = (0.2126, 0.7152, 0.0722)
+
+
+def srgb_to_linear(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+    """0-255 sRGB triple -> linear-light RGB, each channel in [0, 1] -- the
+    same transfer function `relative_luminance` applies internally, factored
+    out here as its own function because `simulate_cvd_luminance` below
+    needs the three linear channel values themselves, not their WCAG-
+    weighted sum."""
+
+    def chan(c: int) -> float:
+        c = c / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    return (chan(rgb[0]), chan(rgb[1]), chan(rgb[2]))
+
+
+def _simulate_cvd_linear(rgb: tuple[int, int, int], cvd_type: str) -> tuple[float, float, float]:
+    """Apply a Machado (2009) severity-100 matrix to `rgb` in linear space
+    (per the task dispatch: "The simulation is applied in linear RGB"), and
+    clamp the result to the displayable [0, 1] range per channel (the
+    matrices are a physiological model, not a gamut-preserving transform, so
+    a saturated input can simulate to a slightly out-of-range triple -- every
+    fill checked below needed this at least once). Factored out of
+    `simulate_cvd_luminance` (D-008 cycle 2) because the CIEDE2000 machinery
+    below needs this same simulated *linear RGB triple* to carry on into
+    XYZ/Lab, not just its WCAG-weighted luminance -- one simulation step,
+    two different things measured on top of it."""
+    lin = srgb_to_linear(rgb)
+    matrix = MACHADO_2009_DICHROMACY[cvd_type]
+    sim = tuple(sum(matrix[row][c] * lin[c] for c in range(3)) for row in range(3))
+    return tuple(min(1.0, max(0.0, c)) for c in sim)
+
+
+def simulate_cvd_luminance(rgb: tuple[int, int, int], cvd_type: str) -> float:
+    """The WCAG-weighted luminance of `rgb` after Machado (2009) CVD
+    simulation. That luminance is what `_ratio_from_luminance` below then
+    compares -- the CVD-simulated equivalent of an ordinary WCAG contrast
+    ratio, not a normal-vision one read off a simulated colour swatch."""
+    sim = _simulate_cvd_linear(rgb, cvd_type)
+    return sum(w * c for w, c in zip(_WCAG_LUMINANCE_WEIGHTS, sim))
+
+
+# ---- CAM02-UCS: a *chromatic* colour-difference metric ----------------------
+# D-008 cycle 1 measured only a luminance ratio between CVD-simulated fills,
+# and its docstring said as much -- but a luminance ratio discards the
+# chromatic axis a dichromat still has, so "1.05:1 luminance" was silently
+# read as "hard to tell apart", which does not follow (D-008 cycle-2 review,
+# Required 1). The review's own reproduction used `colorspacious`'s
+# CAM02-UCS ΔE (its default `deltaE` metric); this implements the same
+# metric in numpy -- CIECAM02 (Moroney et al. 2002) plus the CAM02-UCS J'a'b'
+# transform (Luo, Cui & Li 2006) -- rather than adding a colour-science
+# dependency (task scope forbids a new one). CIEDE2000 was tried first and
+# is not what shipped: `colorspacious` cannot compute CIEDE2000 at all (its
+# own docs say so), so a from-scratch CIEDE2000 could only be cross-checked
+# indirectly. CAM02-UCS can be checked directly, end-to-end, against a real
+# published implementation -- see `cam02ucs_deltaE`'s docstring for the
+# numbers -- and it is also, concretely, what reproduces every number this
+# review cited (3.20, 2.62, 7.77, 8.87, the 84-combination median) to two
+# decimal places, confirming this is the metric the review used.
+#
+# Viewing conditions: `colorspacious.CIECAM02Space.sRGB` (D65 white,
+# Y_b=20, L_A=4.074366543152521 [the standard "64 lux, 20% grey world"
+# assumption], "average" surround F=1.0/c=0.69/Nc=1.0) -- read directly off
+# that object in scratch verification and hard-coded here, not guessed.
+_CAM02_XYZ100_W = (95.047, 100.0, 108.883)
+_CAM02_Y_B = 20.0
+_CAM02_L_A = 4.074366543152521
+_CAM02_C_SURROUND = 0.69
+_CAM02_NC = 1.0
+
+# The same sRGB-primaries matrix `check_beamline_pairwise_luminance`'s CVD
+# simulation already relies on, reused here rather than duplicated with a
+# second name -- linear-light sRGB -> CIE XYZ (D65 white, Y normalised to 1,
+# *not* the 0-100 scale CIECAM02 below expects; callers multiply by 100).
+_SRGB_TO_XYZ_D65 = (
+    (0.4124564, 0.3575761, 0.1804375),
+    (0.2126729, 0.7151522, 0.0721750),
+    (0.0193339, 0.1191920, 0.9503041),
+)
+
+
+def linear_rgb_to_xyz(rgb_linear: tuple[float, float, float]) -> tuple[float, float, float]:
+    """Linear-light sRGB (as `srgb_to_linear` returns) -> CIE XYZ, D65
+    white, Y normalised to 1 -- via the standard sRGB primaries matrix (the
+    same one used to publish the sRGB spec itself)."""
+    return tuple(
+        sum(_SRGB_TO_XYZ_D65[row][c] * rgb_linear[c] for c in range(3)) for row in range(3)
+    )
+
+
+_M_CAT02 = (
+    (0.7328, 0.4296, -0.1624),
+    (-0.7036, 1.6975, 0.0061),
+    (0.0030, 0.0136, 0.9834),
+)
+_M_CAT02_INV = tuple(map(tuple, np.linalg.inv(np.array(_M_CAT02))))
+_M_HPE = (
+    (0.38971, 0.68898, -0.07868),
+    (-0.22981, 1.18340, 0.04641),
+    (0.0, 0.0, 1.0),
+)
+# HPE-from-adapted-XYZ = M_HPE @ inverse(_M_CAT02), precomputed once.
+_M_HPE_FROM_XYZ = tuple(map(tuple, np.array(_M_HPE) @ np.array(_M_CAT02_INV)))
+
+# `colorspacious.CIECAM02Space.sRGB` uses surround factor F=1.0 (the
+# "average" surround), which is what this constant folds in below;
+# `_CAM02_C_SURROUND` (0.69) is the separate impact-of-surround constant `c`
+# the lightness/chroma correlates use further down, not this one.
+_CAM02_F = 1.0
+_CAM02_D = min(1.0, max(0.0, _CAM02_F * (1 - (1 / 3.6) * np.exp(-(_CAM02_L_A + 42) / 92))))
+_CAM02_K = 1 / (5 * _CAM02_L_A + 1)
+_CAM02_FL = (
+    0.2 * _CAM02_K ** 4 * (5 * _CAM02_L_A)
+    + 0.1 * (1 - _CAM02_K ** 4) ** 2 * (5 * _CAM02_L_A) ** (1 / 3)
+)
+_CAM02_N = _CAM02_Y_B / _CAM02_XYZ100_W[1]
+_CAM02_NBB = _CAM02_NCB = 0.725 * (1 / _CAM02_N) ** 0.2
+_CAM02_Z = 1.48 + np.sqrt(_CAM02_N)
+
+
+def _cam02_adapt(xyz100: tuple[float, float, float]) -> tuple[float, float, float]:
+    """XYZ100 -> CAT02 chromatic-adaptation-transformed RGB, using this
+    module's fixed sRGB viewing conditions (`_CAM02_XYZ100_W` etc)."""
+    rgb = tuple(sum(_M_CAT02[r][c] * xyz100[c] for c in range(3)) for r in range(3))
+    rgb_w = tuple(sum(_M_CAT02[r][c] * _CAM02_XYZ100_W[c] for c in range(3)) for r in range(3))
+    return tuple(rgb[i] * (_CAM02_D * (100.0 / rgb_w[i]) + (1 - _CAM02_D)) for i in range(3))
+
+
+def _cam02_nonlinear(rgb_hpe: tuple[float, float, float]) -> tuple[float, float, float]:
+    """Hunt-Pointer-Estevez RGB' -> post-adaptation compressed R'a/G'a/B'a."""
+    out = []
+    for v in rgb_hpe:
+        x = _CAM02_FL * abs(v) / 100.0
+        compressed = 400 * x ** 0.42 / (27.13 + x ** 0.42) + 0.1
+        out.append(compressed if v >= 0 else -compressed)
+    return tuple(out)
+
+
+def xyz100_to_cam02_jch(xyz100: tuple[float, float, float]) -> tuple[float, float, float]:
+    """XYZ100 -> CIECAM02 (J, C, h) appearance correlates, h in degrees.
+    The standard CIECAM02 forward model (Moroney et al. 2002), under this
+    module's fixed sRGB viewing conditions. Cross-checked against
+    `colorspacious.CIECAM02Space.sRGB.XYZ100_to_CIECAM02` -- see
+    `cam02ucs_deltaE`'s docstring for how and with what result."""
+    rgb_c = _cam02_adapt(xyz100)
+    rgb_hpe = tuple(sum(_M_HPE_FROM_XYZ[r][c] * rgb_c[c] for c in range(3)) for r in range(3))
+    Ra, Ga, Ba = _cam02_nonlinear(rgb_hpe)
+
+    a = Ra - 12 * Ga / 11 + Ba / 11
+    b = (Ra + Ga - 2 * Ba) / 9
+    h = np.degrees(np.arctan2(b, a)) % 360
+
+    et = 0.25 * (np.cos(np.radians(h) + 2) + 3.8)
+    A = (2 * Ra + Ga + Ba / 20 - 0.305) * _CAM02_NBB
+
+    rgb_c_w = _cam02_adapt(_CAM02_XYZ100_W)
+    rgb_hpe_w = tuple(sum(_M_HPE_FROM_XYZ[r][c] * rgb_c_w[c] for c in range(3)) for r in range(3))
+    Ra_w, Ga_w, Ba_w = _cam02_nonlinear(rgb_hpe_w)
+    Aw = (2 * Ra_w + Ga_w + Ba_w / 20 - 0.305) * _CAM02_NBB
+
+    J = 100 * (A / Aw) ** (_CAM02_C_SURROUND * _CAM02_Z)
+    t = (50000 / 13 * _CAM02_NC * _CAM02_NCB * et * np.hypot(a, b)) / (Ra + Ga + 21 * Ba / 20)
+    C = t ** 0.9 * np.sqrt(J / 100) * (1.64 - 0.29 ** _CAM02_N) ** 0.73
+    return float(J), float(C), float(h)
+
+
+_CAM02UCS_C1 = 0.007
+_CAM02UCS_C2 = 0.0228
+
+
+def cam02_jch_to_ucs(J: float, C: float, h: float) -> tuple[float, float, float]:
+    """CIECAM02 (J, C, h) -> CAM02-UCS (J', a', b') (Luo, Cui & Li 2006).
+    Colourfulness M = C * F_L^0.25 is recomputed here from C rather than
+    threaded through as a fourth return value from `xyz100_to_cam02_jch`,
+    since J/C/h is what that function's own docstring promises."""
+    M = C * _CAM02_FL ** 0.25
+    Jp = (1 + 100 * _CAM02UCS_C1) * J / (1 + _CAM02UCS_C1 * J)
+    Mp = (1 / _CAM02UCS_C2) * np.log(1 + _CAM02UCS_C2 * M)
+    return float(Jp), float(Mp * np.cos(np.radians(h))), float(Mp * np.sin(np.radians(h)))
+
+
+def srgb_to_cam02ucs(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+    """0-255 sRGB -> CAM02-UCS (J', a', b'), normal vision (no CVD
+    simulation). Called by `check_beamline_node_fill_normal_vision` below,
+    for every `--node-*` fill and every reserved colour, to compute the
+    normal-vision ΔE floor and the diagnostic hue-angle gap that function
+    gates and reports (D-008 cycle 3). Earlier cycles' docstring here
+    claimed this fed "the aesthetic chroma-context note" -- there was no
+    such note beneath it (D-008 cycle-3 review, criterion 6b); this is the
+    real, checked call site that replaces that claim."""
+    xyz100 = tuple(100 * v for v in linear_rgb_to_xyz(srgb_to_linear(rgb)))
+    return cam02_jch_to_ucs(*xyz100_to_cam02_jch(xyz100))
+
+
+def simulate_cvd_cam02ucs(rgb: tuple[int, int, int], cvd_type: str) -> tuple[float, float, float]:
+    """0-255 sRGB -> CAM02-UCS (J', a', b') of its Machado (2009)
+    CVD-simulated equivalent -- `cam02ucs_deltaE`'s inputs below are always
+    a pair of these, never a normal-vision one, because the claim being
+    checked is about what a CVD viewer's simulated colour looks like next
+    to another one, not about the two fills as a normal viewer sees them."""
+    xyz100 = tuple(100 * v for v in linear_rgb_to_xyz(_simulate_cvd_linear(rgb, cvd_type)))
+    return cam02_jch_to_ucs(*xyz100_to_cam02_jch(xyz100))
+
+
+def cam02ucs_deltaE(jab1: tuple[float, float, float], jab2: tuple[float, float, float]) -> float:
+    """Euclidean distance between two CAM02-UCS (J', a', b') triples --
+    `check_beamline_pairwise_luminance` gates on this, not on a luminance
+    ratio alone (D-008 cycle-2 review, Required 1). Published
+    just-noticeable-difference is roughly 1-2 ΔE.
+
+    Cross-checked in throwaway scratch verification (not committed --
+    `colorspacious` is a real third-party dependency and this task's scope
+    forbids adding one), reported in the D-008 cycle-2 PR body -- and
+    corrected here (D-008 cycle-3 review, criterion 9a): the 1.6e-13
+    agreement below is for the **CAM02-UCS transform itself**, not for the
+    end-to-end pipeline through CVD simulation the earlier wording of this
+    docstring claimed. What was actually checked: this module's
+    `xyz100_to_cam02_jch` + `cam02_jch_to_ucs`, fed 500 random sRGB colours
+    already run through this module's own `_simulate_cvd_linear`, against
+    `colorspacious.cspace_convert(..., "sRGB1", "CAM02-UCS")` fed the same
+    simulated colour -- worst absolute difference across all three
+    J'/a'/b' components was 1.6e-13 (machine precision) *for that shared
+    input*. The simulation step upstream of it is not part of that
+    agreement: `_simulate_cvd_linear` clamps its Machado-matrix output to
+    [0, 1] per channel and `colorspacious` does not, and on the same 500
+    colours the worst per-component J'a'b' difference between this
+    module's full simulate-then-convert pipeline and colorspacious's own
+    end-to-end equivalent was 26.84, not 1.6e-13 -- this is exactly why
+    `--node-multiplicity` vs `--vermillion`, cycle 1's own comparison
+    table, reads 2.62 here against colorspacious's 3.40 for the same pair.
+    Clamping is **not** reliably the conservative direction -- checked here
+    rather than merely asserted (D-008 cycle-3 review, Required 1): running
+    this module's own clamped-vs-unclamped chain over 4000 random sRGB
+    pairs found 116 of 4000 (seed 42) read as *more* separated clamped than
+    unclamped, worst excess +3.13 ΔE, so no blanket direction claim holds.
+    That bound is not merely quoted here -- `check_cam02ucs_clamping_bound`
+    below recomputes it for the **committed palette's own 132 CVD-pair-
+    condition values** (44 node-node/node-reserved pairs x 3 CVD types)
+    every run and FAILs if the excess exceeds `CLAMPING_EXCESS_EPSILON`.
+    Measured there: only 1 of 132 reads more separated clamped, by
+    +0.0051 ΔE (`--node-selection` vs `--node-obs-object`, tritanopia:
+    clamped 18.151, unclamped 18.146) -- this is a fixed pair, unaffected
+    by which fill the CVD-ΔE floor's own worst case happens to be. "Agrees
+    to 1.6e-13" is a claim about the transform stage only, past which
+    clamping's direction is not fixed in general but is measured, on this
+    palette, to move nothing that matters.
+
+    A second check compared raw (J, C, h) against
+    `colorspacious.CIECAM02Space.sRGB.XYZ100_to_CIECAM02` on random XYZ100
+    triples covering the full display gamut and beyond; within the sRGB
+    gamut this agrees to the same machine precision, and is not claimed for
+    out-of-gamut inputs (some produce a negative achromatic response A,
+    which `colorspacious` special-cases and this function does not) --
+    irrelevant here since every input below is a real 0-255 sRGB triple."""
+    return float(((jab1[0] - jab2[0]) ** 2 + (jab1[1] - jab2[1]) ** 2 + (jab1[2] - jab2[2]) ** 2) ** 0.5)
+
+
+def _simulate_cvd_linear_unclamped(rgb: tuple[int, int, int], cvd_type: str) -> tuple[float, float, float]:
+    """Same Machado (2009) matrix multiply as `_simulate_cvd_linear`, minus
+    the per-channel [0, 1] clamp -- exists only so
+    `check_cam02ucs_clamping_bound` below can measure what the clamp
+    changes, by computing the same pair both ways. Not used by any check
+    that judges the committed palette otherwise; every floor this file
+    gates the palette on still goes through the clamped path, because that
+    is what a real browser's CVD-simulated 8-bit display would show."""
+    lin = srgb_to_linear(rgb)
+    matrix = MACHADO_2009_DICHROMACY[cvd_type]
+    return tuple(sum(matrix[row][c] * lin[c] for c in range(3)) for row in range(3))
+
+
+def _simulate_cvd_cam02ucs_unclamped(rgb: tuple[int, int, int], cvd_type: str) -> tuple[float, float, float]:
+    """The unclamped equivalent of `simulate_cvd_cam02ucs`, built the same
+    way -- see `_simulate_cvd_linear_unclamped`."""
+    xyz100 = tuple(100 * v for v in linear_rgb_to_xyz(_simulate_cvd_linear_unclamped(rgb, cvd_type)))
+    return cam02_jch_to_ucs(*xyz100_to_cam02_jch(xyz100))
+
+
+# D-008 cycle-3 review, Required 1: `cam02ucs_deltaE`'s docstring used to
+# assert clamping was the conservative direction -- disproved by the
+# reviewer (4000 random pairs, 107 read more separated clamped, worst
+# excess +2.32 dE) -- with no check beneath the claim. The measured bound
+# *for the values this file actually judges* is what replaces it: the
+# reviewer's own re-measurement on the committed palette's 132 CVD
+# pair-condition values found a worst excess of +0.005 dE (min-CVD dE
+# 5.948029 either way, on the palette that measurement was taken against).
+# This epsilon is set at roughly double that measured worst case -- enough
+# headroom that ordinary floating-point path differences between this
+# module and a re-run don't false-positive, tight enough that a genuine
+# clamping-driven distortion (the +3.13 dE seen over the unrestricted
+# 4000-pair sweep) still fails loudly.
+CLAMPING_EXCESS_EPSILON = 0.01
+
+
+def check_cam02ucs_clamping_bound() -> bool:
+    """Recomputes, every run, the one number `cam02ucs_deltaE`'s docstring
+    used to assert rather than check: whether clamping the Machado-matrix
+    output before the CAM02-UCS conversion ever makes a *verdict this file
+    actually renders* read more separated than the unclamped chain would.
+    Iterates the same 44 node-node + node-vs-reserved pairs x 3 CVD types
+    (132 values) that `check_beamline_pairwise_luminance` and
+    `check_beamline_node_fill_normal_vision` gate the committed palette's
+    CVD-simulated ΔE floor on, computes `cam02ucs_deltaE` both through the
+    ordinary clamped path (`simulate_cvd_cam02ucs`) and through
+    `_simulate_cvd_cam02ucs_unclamped` above, and FAILs if any pair's
+    clamped reading exceeds its unclamped reading by more than
+    `CLAMPING_EXCESS_EPSILON`. Reads `tokens.css` directly, no browser
+    needed -- the live-paint cross-check for these same fills already
+    happens in `check_beamline_pairwise_luminance`."""
+    section("CAM02-UCS clamping permissiveness -- measured bound on the committed palette's 132 CVD values")
+    tokens = parse_root_tokens(TOKENS_CSS.read_text())
+    fills = {n: hex_to_rgb(tokens[n]) for n in NODE_FILL_TOKENS}
+    reserved = {n: hex_to_rgb(tokens[n]) for n in RESERVED_COLOR_TOKENS}
+    names = list(fills.keys())
+
+    pairs = [(names[i], fills[names[i]], names[j], fills[names[j]])
+             for i in range(len(names)) for j in range(i + 1, len(names))]
+    pairs += [(n, fills[n], r, reserved[r]) for n in names for r in reserved]
+
+    worst_excess = -1e9
+    worst_detail = None
+    n_checked = 0
+    for a, rgb_a, b, rgb_b in pairs:
+        for cvd in ("protanopia", "deuteranopia", "tritanopia"):
+            clamped = cam02ucs_deltaE(simulate_cvd_cam02ucs(rgb_a, cvd), simulate_cvd_cam02ucs(rgb_b, cvd))
+            unclamped = cam02ucs_deltaE(
+                _simulate_cvd_cam02ucs_unclamped(rgb_a, cvd), _simulate_cvd_cam02ucs_unclamped(rgb_b, cvd)
+            )
+            excess = clamped - unclamped
+            n_checked += 1
+            if excess > worst_excess:
+                worst_excess = excess
+                worst_detail = (a, b, cvd, clamped, unclamped)
+
+    ok = worst_excess <= CLAMPING_EXCESS_EPSILON
+    a, b, cvd, clamped, unclamped = worst_detail
+    line(
+        f"Clamping never reads more than {CLAMPING_EXCESS_EPSILON} CAM02-UCS delta-E more permissive than "
+        f"unclamped, across all {n_checked} committed pair x condition values",
+        ok,
+        f"max excess {worst_excess:+.4f} dE ({a} vs {b}, {cvd}: clamped {clamped:.6f}, unclamped {unclamped:.6f})",
+    )
+    return ok
+
+
+def _ratio_from_luminance(l1: float, l2: float) -> float:
+    """WCAG's `(lighter + 0.05) / (darker + 0.05)` contrast formula, taking
+    two already-computed relative luminances directly rather than two RGB
+    triples -- `contrast_ratio` (above) cannot be reused for a
+    CVD-simulated comparison because it re-derives normal-vision luminance
+    from whatever RGB triple it is given, which is exactly the step a CVD
+    simulation has to skip."""
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def check_beamline_pairwise_luminance(pw: Playwright) -> bool:
     """Design manual §2 rule 1 makes node-kind hue "what makes the graph
     readable at a glance"; D-004 cycle-2 review's suggested-major 1 found
     that identity resting on hue *alone* fails under colour-vision
     deficiency, because CVD collapses hue while leaving luminance intact.
-    Three independent methods (two CVD-matrix simulations, one plain
-    relative-luminance read of the raw tokens) landed on the same pairs at
-    the same near-1:1 ratios -- worst case `data` vs `multiplicity` at
-    1.011:1, i.e. indistinguishable regardless of which CVD model is
-    trusted.
+    D-004 cycle 3's fix rested on normal-vision WCAG luminance and this
+    function's own docstring then claimed that separation "survives every
+    CVD type by construction" -- never checked by the code beneath it, and
+    reported false by two independent Machado (2009) simulations (D-004
+    cycle-3 review): WCAG luminance fixes the red/green/blue weights at
+    0.2126/0.7152/0.0722 regardless of viewer, but a protanope's or
+    deuteranope's own luminous-efficiency function weights those channels
+    differently, so luminance *ordering* is not preserved under every CVD
+    type. D-008 cycle 1 replaced that claim with a Machado-simulated
+    luminance ratio -- an improvement, but D-008 cycle-2 review's Required 1
+    found the same shape of mistake one level down: a *luminance* ratio
+    between two simulated fills is not a measure of distinguishability
+    either, because it discards the chromatic axis a dichromat still has.
+    Cycle 1's palette had pairs at 1.05:1 luminance that were nonetheless
+    tens of ΔE apart in CAM02-UCS -- plainly different colours to any
+    viewer -- alongside others near 1.05:1 that genuinely were close in
+    both metrics. Luminance ratio cannot tell those two cases apart; a
+    chromatic colour-difference metric can.
 
-    This check is deliberately NOT a CVD simulation. It does not ship a
-    Machado (or any other) confusion-line matrix, and it does not need to:
-    WCAG relative luminance is computed from linear-light RGB with fixed
-    channel weights, independent of which cone type failed, so two colours
-    separated in luminance stay separated under every CVD type by
-    construction -- protanopia, deuteranopia, tritanopia, and full
-    achromatopsia all preserve luminance ordering (they remove or attenuate
-    a cone response, not the eye's luminance channel). A hue-only palette
-    can collapse under any of them; a luminance-separated one cannot, by
-    the same arithmetic that makes WCAG contrast a colour-blind-safe metric
-    for *text* in the first place. That is also why this lives in
-    verify.py rather than only in a tokens.css comment: it is a measured,
-    re-checkable property, not an assertion D-005 and D-006 would have to
-    take on faith.
+    This version checks both, neither replacing the other: the luminance
+    ratio and white-on-fill checks below are unchanged from cycle 1 (same
+    1.02:1 / 4.5:1 / 0.06 floors), and a CAM02-UCS ΔE floor (`cam02ucs_
+    deltaE`, this module) is added alongside them -- over the 28 unordered
+    `--node-*` pairs *and* every fill against `--vermillion` and
+    `--graphite-blue` (`RESERVED_COLOR_TOKENS`), 44 pairs in total, because
+    nothing before this cycle checked a node fill against either reserved
+    colour and one fill (`--node-multiplicity`) turned out to sit within a
+    couple ΔE of `--vermillion` under deuteranopia (D-008 cycle-2 review,
+    suggested-major 2) -- silent, since design manual §2 holds vermillion
+    back specifically so a collision like that cannot happen. All of it, in
+    both the luminance and the ΔE halves, is checked per-simulation (not
+    pooled) across the same 3 Machado (2009) severity-100 dichromacies
+    (achromatopsia and the *-anomaly partial forms are not simulated here
+    and no claim is made about them).
 
-    The check: parse every `--node-*` fill directly from tokens.css's
-    source text (a literal `#rrggbb`, not a live-page resolution -- there
-    is nothing to resolve, these are not `var()`-of-`var()` chains), compute
-    all 28 unordered pairwise WCAG contrast ratios, and require every one to
-    clear 1.15:1 (the floor this task's dispatch set, well inside the
-    1.246:1 ceiling an 8-step luminance ladder admits before the white-label
-    4.5:1 floor below breaks) -- plus, on the same parsed values, that
-    white-on-fill contrast (`--node-label-on-fill` is `#ffffff`, asserted
-    rather than assumed) still clears 4.5:1 for all 8, since luminance is
-    being spent as a *new* identity channel and must not spend down the one
-    this palette already had. The full 28-ratio table is printed either
-    way, with the 4.5:1 denominator stated in the white-on-fill lines and
-    the 1.15:1 floor stated in the pairwise ones, so a future change to
-    this palette is checked against both numbers again rather than
-    re-derived from scratch."""
-    section("Beamline node-fill pairwise luminance -- CVD-robust separation, no simulation matrix needed")
+    Every fill's luminance is also checked against a 0.06 floor, under
+    normal vision and each of the 3 simulations, because a fill that never
+    gets this dark under any of the 4 luminance definitions is the thing
+    that made this task's 9x9 px picker swatch fail in the first place
+    (`.palette__add::before`, beamline.css) -- D-008 cycle 1's own baseline,
+    the D-004 cycle-3 palette, had four fills measuring 0.009-0.054 there.
+    Finally, the live page's own 8 picker swatches are read via
+    `getComputedStyle(el, '::before')` and cross-checked against the same
+    tokens.css values, so "the picker renders what tokens.css says" is
+    itself a measured claim rather than an assumption the rest of this
+    function's arithmetic depends on silently.
+
+    None of the four floors below (1.02:1 luminance, 4.5:1 white-on-fill,
+    0.06 darkness, and the CAM02-UCS ΔE floor) are derived by this
+    function -- they are the numbers this palette was searched for, by
+    `docs/design-explorations/palette_search.py` (committed, D-008 cycle 2 --
+    reproducible by running it, not just read about), after those floors
+    were imposed on the search *before* it ran; the ΔE floor stated below is
+    set with headroom under what repeated search runs actually reached, the
+    same "floor below the reachable ceiling, not sitting on it" principle
+    cycle 1 used for the luminance floor. The D-008 cycle-2 PR body carries
+    the full search output and the reasoning for where each floor was set."""
+    section("Beamline node-fill pairwise luminance + CAM02-UCS delta-E -- Machado (2009) CVD simulation")
     tokens = parse_root_tokens(TOKENS_CSS.read_text())
 
     fills: dict[str, tuple[int, int, int]] = {}
@@ -2605,53 +3153,457 @@ def check_beamline_pairwise_luminance() -> bool:
             missing.append((name, raw))
         else:
             fills[name] = rgb
+    reserved: dict[str, tuple[int, int, int]] = {}
+    for name in RESERVED_COLOR_TOKENS:
+        raw = tokens.get(name)
+        rgb = hex_to_rgb(raw) if raw is not None else None
+        if rgb is None:
+            missing.append((name, raw))
+        else:
+            reserved[name] = rgb
+    label_raw = tokens.get("--node-label-on-fill")
+    label_rgb = hex_to_rgb(label_raw) if label_raw is not None else None
+    if label_rgb is None:
+        missing.append(("--node-label-on-fill", label_raw))
     ok_parsed = not missing
     line(
-        f"All {len(NODE_FILL_TOKENS)} --node-* fills parsed as literal #rrggbb from tokens.css",
+        f"All {len(NODE_FILL_TOKENS)} --node-* fills, {len(RESERVED_COLOR_TOKENS)} reserved colours, "
+        "plus --node-label-on-fill parsed as literal #rrggbb from tokens.css",
         ok_parsed,
         "ok" if ok_parsed else f"unparseable: {missing}",
     )
     if not ok_parsed:
         return False
 
-    white = (255, 255, 255)
-    white_ok = True
-    print("       white-on-fill (needs >= 4.5:1):")
-    for name, rgb in fills.items():
-        ratio = contrast_ratio(white, rgb)
-        passed = ratio >= 4.5
-        white_ok = white_ok and passed
-        mark = "ok" if passed else "BELOW AA"
-        print(f"         {name:20s} {ratio:6.2f}:1  {mark}")
-    line("White node-title text clears 4.5:1 against every --node-* fill", white_ok)
-
+    PAIRWISE_FLOOR = 1.02
+    WHITE_FLOOR = 4.5
+    DARK_FLOOR = 0.06
+    DELTA_E_FLOOR = 4.0
     names = list(fills.keys())
-    pairs = []
-    for i in range(len(names)):
-        for j in range(i + 1, len(names)):
-            ratio = contrast_ratio(fills[names[i]], fills[names[j]])
-            pairs.append((ratio, names[i], names[j]))
-    pairs.sort()
-    print(f"       all {len(pairs)} unordered pairwise ratios (needs >= 1.15:1):")
-    for ratio, a, b in pairs:
-        mark = "ok" if ratio >= 1.15 else "BELOW FLOOR"
-        print(f"         {a:20s} vs {b:20s} = {ratio:6.3f}:1  {mark}")
-    worst_ratio, worst_a, worst_b = pairs[0]
-    ok_pairwise = worst_ratio >= 1.15
+
+    # Normal vision used to be printed here labelled as informational,
+    # not a pass/fail gate (D-008 cycle 2; the exact line D-008 cycle-3
+    # review flagged -- "the same thing wearing a hat" as retiring a check
+    # by relabelling it). It is folded into the real white-on-fill gate
+    # below now, as a fourth
+    # condition alongside the 3 CVD simulations (criterion 4, D-008 cycle-3
+    # dispatch: 32 = 8 fills x 4 conditions, not 24), rather than staying
+    # printed but ungated -- this is a strengthening of the existing gate,
+    # not a new one, so it does not need its own banner call.
+    normal_lums = {n: relative_luminance(fills[n]) for n in names}
+    label_normal_lum = relative_luminance(label_rgb)
+    ok_dark = not any(normal_lums[n] < DARK_FLOOR for n in names)
+    dark_failures = [(n, "normal", normal_lums[n]) for n in names if normal_lums[n] < DARK_FLOOR]
+    worst_pairwise_overall = (float("inf"), "", "", "")
+    worst_white_overall = (float("inf"), "", "")
+
+    print("       -- normal vision --")
+    print(f"       white-on-fill (needs >= {WHITE_FLOOR}:1):")
+    ok_white = True
+    for n in names:
+        ratio_n = _ratio_from_luminance(label_normal_lum, normal_lums[n])
+        passed = ratio_n >= WHITE_FLOOR
+        ok_white = ok_white and passed
+        if ratio_n < worst_white_overall[0]:
+            worst_white_overall = (ratio_n, n, "normal")
+        mark = "ok" if passed else "BELOW AA"
+        print(f"         {n:20s} {ratio_n:6.2f}:1  {mark}")
+
+    ok_pairwise = True
+
+    # worst-of-3-simulations CAM02-UCS delta-E, per pair -- node-node (28)
+    # and node-vs-reserved (8 fills x 2 reserved colours = 16), 44 in total.
+    # "worst-of-3, not pooled" mirrors the luminance/white checks above: a
+    # pair that is only close under one dichromacy still fails.
+    node_node_pairs = [(names[i], names[j]) for i in range(len(names)) for j in range(i + 1, len(names))]
+    node_reserved_pairs = [(n, r) for n in names for r in reserved]
+    all_de_pairs = node_node_pairs + node_reserved_pairs
+    worst_de_per_pair: dict[tuple[str, str], tuple[float, str]] = {
+        pair: (float("inf"), "") for pair in all_de_pairs
+    }
+
+    for cvd_type in CVD_TYPES:
+        print(f"       -- {cvd_type} (Machado 2009, severity 100, linear RGB) --")
+        cvd_lums = {n: simulate_cvd_luminance(fills[n], cvd_type) for n in names}
+        label_cvd_lum = simulate_cvd_luminance(label_rgb, cvd_type)
+
+        print(f"       white-on-fill (needs >= {WHITE_FLOOR}:1):")
+        white_ok_type = True
+        for n in names:
+            ratio = _ratio_from_luminance(label_cvd_lum, cvd_lums[n])
+            passed = ratio >= WHITE_FLOOR
+            white_ok_type = white_ok_type and passed
+            if ratio < worst_white_overall[0]:
+                worst_white_overall = (ratio, n, cvd_type)
+            mark = "ok" if passed else "BELOW AA"
+            print(f"         {n:20s} {ratio:6.2f}:1  {mark}")
+        ok_white = ok_white and white_ok_type
+
+        pairs = []
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                ratio = _ratio_from_luminance(cvd_lums[names[i]], cvd_lums[names[j]])
+                pairs.append((ratio, names[i], names[j]))
+        pairs.sort()
+        print(f"       all {len(pairs)} unordered pairwise ratios (needs >= {PAIRWISE_FLOOR}:1):")
+        for ratio, a, b in pairs:
+            mark = "ok" if ratio >= PAIRWISE_FLOOR else "BELOW FLOOR"
+            print(f"         {a:20s} vs {b:20s} = {ratio:6.4f}:1  {mark}")
+        worst_ratio, worst_a, worst_b = pairs[0]
+        if worst_ratio < worst_pairwise_overall[0]:
+            worst_pairwise_overall = (worst_ratio, worst_a, worst_b, cvd_type)
+        ok_pairwise = ok_pairwise and (worst_ratio >= PAIRWISE_FLOOR)
+
+        for n in names:
+            if cvd_lums[n] < DARK_FLOOR:
+                dark_failures.append((n, cvd_type, cvd_lums[n]))
+                ok_dark = False
+
+        # CAM02-UCS delta-E for this simulation -- every node-node pair and
+        # every node-vs-reserved pair, folded into the worst-of-3 tracker.
+        cvd_jab = {n: simulate_cvd_cam02ucs(fills[n], cvd_type) for n in names}
+        cvd_jab.update({r: simulate_cvd_cam02ucs(reserved[r], cvd_type) for r in reserved})
+        for a, b in all_de_pairs:
+            de = cam02ucs_deltaE(cvd_jab[a], cvd_jab[b])
+            if de < worst_de_per_pair[(a, b)][0]:
+                worst_de_per_pair[(a, b)] = (de, cvd_type)
+
     line(
-        "Every one of the 28 unordered --node-* fill pairs clears 1.15:1",
+        f"White node-title text clears {WHITE_FLOOR}:1 against every --node-* fill, under normal vision and "
+        f"all 3 simulations (32 = 8 fills x 4 conditions)",
+        ok_white,
+        f"worst is {worst_white_overall[1]} under {worst_white_overall[2]} at {worst_white_overall[0]:.3f}:1",
+    )
+    line(
+        f"Every one of the 28 unordered --node-* fill pairs clears {PAIRWISE_FLOOR}:1, under all 3 simulations",
         ok_pairwise,
-        f"worst is {worst_a} vs {worst_b} at {worst_ratio:.3f}:1",
+        f"worst is {worst_pairwise_overall[1]} vs {worst_pairwise_overall[2]} "
+        f"under {worst_pairwise_overall[3]} at {worst_pairwise_overall[0]:.4f}:1",
+    )
+    line(
+        f"No --node-* fill's luminance sits below {DARK_FLOOR} under normal vision or any of the 3 simulations "
+        "(criterion 3: the 9x9 px picker swatch must not read as near-black)",
+        ok_dark,
+        "ok" if ok_dark else f"{len(dark_failures)} below floor: {dark_failures}",
     )
 
-    return ok_parsed and white_ok and ok_pairwise
+    sorted_de = sorted((de, cvd, a, b) for (a, b), (de, cvd) in worst_de_per_pair.items())
+    print(f"       all {len(sorted_de)} node-node + node-reserved pairs, worst-of-3-simulations "
+          f"CAM02-UCS delta-E (needs >= {DELTA_E_FLOOR}):")
+    for de, cvd, a, b in sorted_de[:10]:
+        mark = "ok" if de >= DELTA_E_FLOOR else "BELOW FLOOR"
+        print(f"         {a:20s} vs {b:20s} = {de:6.3f}  ({cvd:13s})  {mark}")
+    if len(sorted_de) > 10:
+        print(f"       ... {len(sorted_de) - 10} more, all higher (this list is sorted ascending)")
+    worst_de_overall = sorted_de[0]
+    ok_delta_e = worst_de_overall[0] >= DELTA_E_FLOOR
+    line(
+        f"Every one of the {len(sorted_de)} --node-* pairs (28 node-node + 16 node-vs-reserved) "
+        f"clears {DELTA_E_FLOOR} CAM02-UCS delta-E, under all 3 simulations",
+        ok_delta_e,
+        f"worst is {worst_de_overall[2]} vs {worst_de_overall[3]} under {worst_de_overall[1]} "
+        f"at dE={worst_de_overall[0]:.3f}",
+    )
+
+    # Live-render cross-check: the picker's own 9x9 px swatch
+    # (`.palette__add--<kind>::before`) is read from the real page and
+    # compared against the value this function parsed from tokens.css's
+    # source text above, so "the picker paints what tokens.css declares" is
+    # itself measured rather than assumed by every check above this line.
+    # In a `try`/`finally` (D-008 cycle-2 review, suggested-minor 1): a
+    # `page.evaluate` exception used to leak this chromium process for the
+    # rest of a `--all` run, since the un-guarded `browser.close()` below it
+    # would never run.
+    browser, context, page, *_ = load_beamline_page(pw, 1024)
+    try:
+        suffixes = [name[len("--node-"):] for name in NODE_FILL_TOKENS]
+        rendered = page.evaluate(
+            """(suffixes) => suffixes.map(s => {
+                const el = document.querySelector(`.palette__add--${s}`);
+                if (!el) return null;
+                return getComputedStyle(el, '::before').backgroundColor;
+            })""",
+            suffixes,
+        )
+    finally:
+        browser.close()
+
+    rendered_fills: dict[str, tuple[int, int, int]] = {}
+    render_mismatches = []
+    for name, suffix, computed in zip(NODE_FILL_TOKENS, suffixes, rendered):
+        rgba = parse_rgba(computed) if computed else None
+        if rgba is None:
+            render_mismatches.append((name, computed))
+            continue
+        rendered_fills[name] = rgba[:3]
+        if rendered_fills[name] != fills[name]:
+            render_mismatches.append((name, f"tokens.css says {fills[name]}, picker paints {rendered_fills[name]}"))
+    ok_render = len(rendered_fills) == len(NODE_FILL_TOKENS) and not render_mismatches
+    line(
+        f"{len(rendered_fills)}/{len(NODE_FILL_TOKENS)} picker swatches "
+        "(`.palette__add--<kind>::before`, the 9x9 px kind swatch) rendered live and matched tokens.css",
+        ok_render,
+        "ok" if ok_render else f"{len(render_mismatches)} mismatch(es): {render_mismatches[:5]}",
+    )
+
+    darkest_source = rendered_fills if ok_render else fills
+    darkest3 = sorted(names, key=lambda n: relative_luminance(darkest_source[n]))[:3]
+    print(f"       darkest 3 picker swatches by normal-vision luminance: {darkest3}")
+    darkest3_ok = True
+    for i in range(len(darkest3)):
+        for j in range(i + 1, len(darkest3)):
+            a, b = darkest3[i], darkest3[j]
+            for cvd_type in CVD_TYPES:
+                ratio = _ratio_from_luminance(
+                    simulate_cvd_luminance(darkest_source[a], cvd_type),
+                    simulate_cvd_luminance(darkest_source[b], cvd_type),
+                )
+                passed = ratio >= PAIRWISE_FLOOR
+                darkest3_ok = darkest3_ok and passed
+                mark = "ok" if passed else "BELOW FLOOR"
+                print(f"         {a:20s} vs {b:20s} under {cvd_type:13s} = {ratio:6.4f}:1  {mark}")
+    # Named "luminance-separated", not "distinguishable" (D-008 cycle-2
+    # review, Required 1, on this exact line): a luminance ratio is not a
+    # distinguishability claim -- the ΔE check above already covers these
+    # same 3 swatches (they are 3 of the 28 node-node pairs) and is what
+    # actually establishes distinguishability for them.
+    line(
+        f"The 3 darkest picker swatches stay pairwise luminance-separated ({PAIRWISE_FLOOR}:1) under all 3 "
+        "simulations (chromatic distinguishability for this same trio is covered by the CAM02-UCS delta-E "
+        "check above, not by this luminance-only one)",
+        darkest3_ok,
+    )
+
+    return ok_parsed and ok_white and ok_pairwise and ok_dark and ok_delta_e and ok_render and darkest3_ok
+
+
+# The swept floor `T` for the 28 normal-vision node-node pairs, selected by
+# `docs/design-explorations/palette_search.py --sweep` (D-008 cycle 3): the
+# *top* rung of its ladder whose achieved min-CVD delta-E still cleared 4.0
+# -- stated plainly as that, not as a discovered ceiling, because "largest
+# feasible T" applied to a ladder that stops climbing at the answer cannot
+# have found one (D-008 cycle-3 review, suggested-major 1; the committed
+# palette clears this floor by 0.30, 14.30 achieved vs 14.00 required).
+# Must match that file's own `SELECTED_T` -- the two are independent
+# constants in two files (this file has no import of `palette_search.py`;
+# that file already imports this one, so the reverse would be circular).
+# This is now an *asserted* equality, not merely a hoped-for one:
+# `palette_search.py`'s `_selftest_against_verify()` imports this module and
+# asserts `SELECTED_T == NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR` on every
+# invocation (D-008 cycle-3 review, Required 3 -- before this, lowering
+# either constant alone was undetected by every command either PR body
+# ran). See the D-008 cycle-3 PR body for the sweep table that produced
+# this number.
+NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR = 14.0
+
+# D-008 cycle-3 review, suggested-major 2: the ΔE floor above is
+# structurally blind to a fill reading as a desaturated `--vermillion` (or
+# `--graphite-blue`), because CAM02-UCS ΔE and hue angle measure different
+# things -- `--node-data` sat 3.5deg from `--vermillion` at the head of
+# this cycle while clearing ΔE at 17.3. The reviewer's own dispatch
+# deliberately withheld a floor number, pending measurement of where every
+# reserved-token gap actually sits: measured on the committed palette
+# (`check_beamline_node_fill_normal_vision`'s own printed table), the 16
+# fill-vs-reserved gaps range 14.1deg (`--node-obs-object` vs
+# `--graphite-blue`, unaffected by this cycle's hand-nudge) up to
+# 179.4deg, with no gap between 0 and 14.1 -- i.e. every fill this cycle
+# shipped already clears a considerably higher bar than the 3.5deg
+# collision that triggered this finding. 12.0deg is set below that
+# measured minimum (2.1deg of margin against floating-point/render-path
+# noise) and is still nearly 3.5x the original collision, so it catches
+# the shape of defect that motivated it (a fill sharing vermillion's hue
+# family) without sitting exactly on the one number the current palette
+# happens to reach. `--node-data` (hand-nudged this cycle from `#8d5548`
+# to `#966746`, D-008 cycle-3-fix dispatch's "at most the two implicated
+# fills" allowance) now sits 24.5deg from `--vermillion`; `--node-obs-
+# custom` was already comfortable at 27.0deg and was left untouched.
+RESERVED_HUE_GAP_FLOOR_DEG = 12.0
+
+
+def check_beamline_node_fill_normal_vision(pw: Optional[Playwright] = None) -> bool:
+    """D-008 cycle 3's re-specification, added on top of -- not instead of
+    -- `check_beamline_pairwise_luminance` above. Three consecutive cycles
+    of this task each picked one property to gate on and, in doing so, let
+    a *different* property regress silently, because a maximin search
+    spends everything not in its objective (D-008 cycle-3 dispatch's
+    table): D-004 cycle 3 gated normal-vision luminance and let CVD safety
+    regress; D-008 cycle 1 gated CVD-simulated luminance and let chromatic
+    (ΔE) separation regress; D-008 cycle 2 gated CVD-simulated ΔE and let
+    *normal-vision* ΔE regress -- worst node-node CAM02-UCS delta-E went
+    12.81 (D-004 cycle 3) -> 13.11 (D-008 cycle 1, a rise) -> 7.44 (D-008
+    cycle 2, the fall that mattered), and nothing above this function in
+    this file checked it: the CVD floor
+    in `check_beamline_pairwise_luminance` binds a shared `min` across
+    conditions, which pulls normal vision up only as far as the CVD
+    ceiling and no further.
+
+    This function is deliberately its own section rather than folded into
+    `check_beamline_pairwise_luminance`'s CAM02-UCS check above: that
+    section already establishes all 132 CVD pair x condition values (44
+    pairs x 3 dichromacies) clear `DELTA_E_FLOOR` (4.0). This one adds the
+    other 44 (normal vision) -- 176 in total, criterion 1's number -- and,
+    for the 28 node-node subset specifically, additionally gates the
+    higher, swept floor `NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR` above,
+    exactly the way the D-008 cycle-3 dispatch specified: "normal vision
+    needs its own floor, not a seat in the same min".
+
+    The 16 node-vs-reserved normal-vision pairs are held to `DELTA_E_FLOOR`
+    (4.0) rather than the swept `T`: a node fill reading as `--vermillion`
+    or `--graphite-blue` under ordinary vision was never acceptable at any
+    `T` on the sweep ladder, including `T=0`, so this floor does not move
+    with it.
+
+    Also reports (not gates -- D-008 cycle-3 dispatch: "the hue-angle gap
+    is a reported diagnostic, not a floor") the minimum pairwise CAM02-UCS
+    hue-angle gap among the 8 fills under normal vision, using
+    `srgb_to_cam02ucs` -- this is the mechanism cycle 2's regression ran
+    through (`--node-selection` drifting 38.9 degrees closed its hue gap to
+    `--node-multiplicity` from 72.2 degrees to 17.4), so it stays visible
+    here even though nothing below gates on it directly.
+
+    `pw` is accepted (unused) only so this function's call site in `main()`
+    matches the shape of every other beamline check in the same list; every
+    number here comes from `tokens.css`'s literal hex values, not a
+    rendered page -- `check_beamline_pairwise_luminance` above already
+    cross-checks that the live picker paints what `tokens.css` declares."""
+    section(
+        "Beamline node-fill normal-vision CAM02-UCS delta-E -- the floor D-008 cycle 2 dropped, restored"
+    )
+    tokens = parse_root_tokens(TOKENS_CSS.read_text())
+    DELTA_E_FLOOR = 4.0
+
+    fills: dict[str, tuple[int, int, int]] = {}
+    reserved: dict[str, tuple[int, int, int]] = {}
+    missing = []
+    for name in NODE_FILL_TOKENS:
+        rgb = hex_to_rgb(tokens.get(name))
+        (fills if rgb is not None else {})
+        if rgb is None:
+            missing.append((name, tokens.get(name)))
+        else:
+            fills[name] = rgb
+    for name in RESERVED_COLOR_TOKENS:
+        rgb = hex_to_rgb(tokens.get(name))
+        if rgb is None:
+            missing.append((name, tokens.get(name)))
+        else:
+            reserved[name] = rgb
+    ok_parsed = not missing
+    line(
+        f"All {len(NODE_FILL_TOKENS)} --node-* fills and {len(RESERVED_COLOR_TOKENS)} reserved colours "
+        "parsed as literal #rrggbb from tokens.css",
+        ok_parsed,
+        "ok" if ok_parsed else f"unparseable: {missing}",
+    )
+    if not ok_parsed:
+        return False
+
+    names = list(fills.keys())
+    jab_normal = {n: srgb_to_cam02ucs(fills[n]) for n in names}
+    jab_normal.update({r: srgb_to_cam02ucs(reserved[r]) for r in reserved})
+
+    node_node_pairs = [(names[i], names[j]) for i in range(len(names)) for j in range(i + 1, len(names))]
+    node_reserved_pairs = [(n, r) for n in names for r in reserved]
+    total_normal_pairs = len(node_node_pairs) + len(node_reserved_pairs)
+    total_all_conditions = total_normal_pairs * 4  # normal + 3 CVD simulations
+
+    nn_rows = sorted((cam02ucs_deltaE(jab_normal[a], jab_normal[b]), a, b) for a, b in node_node_pairs)
+    nr_rows = sorted((cam02ucs_deltaE(jab_normal[a], jab_normal[b]), a, b) for a, b in node_reserved_pairs)
+
+    print(
+        f"       normal vision, {total_normal_pairs} node-node + node-vs-reserved pairs -- combined "
+        f"with the {total_normal_pairs} pairs x 3 CVD simulations already checked by "
+        f"check_beamline_pairwise_luminance above, that is {total_all_conditions} pair x condition "
+        "values in total (criterion 1's 176):"
+    )
+    print(f"       node-node (needs >= {NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR} -- swept, not 4.0):")
+    for de, a, b in nn_rows[:8]:
+        mark = "ok" if de >= NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR else "BELOW FLOOR"
+        print(f"         {a:20s} vs {b:20s} = {de:7.3f}  {mark}")
+    print(f"       node-vs-reserved (needs >= {DELTA_E_FLOOR}):")
+    for de, a, b in nr_rows[:4]:
+        mark = "ok" if de >= DELTA_E_FLOOR else "BELOW FLOOR"
+        print(f"         {a:20s} vs {b:20s} = {de:7.3f}  {mark}")
+
+    ok_nn = nn_rows[0][0] >= NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR
+    ok_nr = nr_rows[0][0] >= DELTA_E_FLOOR
+    line(
+        f"All {len(nn_rows)} normal-vision node-node pairs clear the swept floor T="
+        f"{NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR} CAM02-UCS delta-E",
+        ok_nn,
+        f"worst is {nn_rows[0][1]} vs {nn_rows[0][2]} at dE={nn_rows[0][0]:.3f}",
+    )
+    line(
+        f"All {len(nr_rows)} normal-vision node-vs-reserved pairs clear {DELTA_E_FLOOR} CAM02-UCS delta-E",
+        ok_nr,
+        f"worst is {nr_rows[0][1]} vs {nr_rows[0][2]} at dE={nr_rows[0][0]:.3f}",
+    )
+
+    # Hue-angle check (D-008 cycle 2's own mechanism -- see this function's
+    # docstring). D-008 cycle-3 review's suggested-major 2: this used to
+    # compute gaps only among the 8 fills, never against
+    # `RESERVED_COLOR_TOKENS`, and was printed as a diagnostic only --
+    # never gated -- so it was structurally blind to a fill reading as a
+    # desaturated `--vermillion` (or `--graphite-blue`) even though the ΔE
+    # floor above passes that case comfortably (ΔE and hue-angle measure
+    # different things: two colours can sit far apart in CAM02-UCS space,
+    # and still share a hue, if they differ mainly in lightness or
+    # chroma). `--node-data` sat 3.5deg from `--vermillion` at the head of
+    # this cycle -- visibly a desaturated vermillion in the rendered
+    # picker -- while clearing the ΔE floor at 17.3, exactly the case this
+    # diagnostic existed to catch and did not. Both tables below are
+    # printed in full, not just their worst row, so the numbers this check
+    # is judged by are visible rather than summarised away; the
+    # fill-vs-reserved worst case is now also gated, below, against
+    # `RESERVED_HUE_GAP_FLOOR_DEG`.
+    jab_arr = np.array([jab_normal[n] for n in names])
+    hue_deg = {n: float(np.degrees(np.arctan2(jab_normal[n][2], jab_normal[n][1])) % 360) for n in names}
+    hue_deg.update(
+        {r: float(np.degrees(np.arctan2(jab_normal[r][2], jab_normal[r][1])) % 360) for r in reserved}
+    )
+    del jab_arr  # only ever used to derive hue_deg above; not needed past this line
+
+    def _gap(a: str, b: str) -> float:
+        return min((hue_deg[a] - hue_deg[b]) % 360, (hue_deg[b] - hue_deg[a]) % 360)
+
+    fill_gaps = sorted((_gap(names[i], names[j]), names[i], names[j])
+                        for i in range(len(names)) for j in range(i + 1, len(names)))
+    reserved_gaps = sorted((_gap(n, r), n, r) for n in names for r in reserved)
+
+    print("       CAM02-UCS hue angle (normal vision, degrees):")
+    for n in names + list(reserved.keys()):
+        print(f"         {n:20s} {hue_deg[n]:6.1f}")
+    print(f"       all {len(fill_gaps)} fill-vs-fill pairwise hue-angle gaps (diagnostic only, not gated):")
+    for gap, a, b in fill_gaps:
+        print(f"         {a:20s} vs {b:20s} = {gap:6.1f} deg")
+    print(f"       all {len(reserved_gaps)} fill-vs-reserved hue-angle gaps "
+          f"(needs >= {RESERVED_HUE_GAP_FLOOR_DEG} deg):")
+    for gap, a, b in reserved_gaps:
+        mark = "ok" if gap >= RESERVED_HUE_GAP_FLOOR_DEG else "BELOW FLOOR"
+        print(f"         {a:20s} vs {b:20s} = {gap:6.1f} deg  {mark}")
+    worst_gap, worst_pair_a, worst_pair_b = fill_gaps[0]
+    worst_reserved_gap, worst_r_a, worst_r_b = reserved_gaps[0]
+    print(
+        f"       min fill-vs-fill hue-angle gap (diagnostic only, not gated): {worst_gap:.1f} deg "
+        f"({worst_pair_a} vs {worst_pair_b}); min fill-vs-reserved hue-angle gap: "
+        f"{worst_reserved_gap:.1f} deg ({worst_r_a} vs {worst_r_b})"
+    )
+    ok_hue = worst_reserved_gap >= RESERVED_HUE_GAP_FLOOR_DEG
+    line(
+        f"All {len(reserved_gaps)} fill-vs-reserved CAM02-UCS hue-angle gaps clear "
+        f"{RESERVED_HUE_GAP_FLOOR_DEG} degrees (D-008 cycle-3 review, suggested-major 2)",
+        ok_hue,
+        f"worst is {worst_r_a} vs {worst_r_b} at {worst_reserved_gap:.1f} deg",
+    )
+
+    return ok_parsed and ok_nn and ok_nr and ok_hue
 
 
 def check_beamline_focus_walk(pw: Playwright, html_path: Optional[Path] = None) -> bool:
     """Drive a real keyboard Tab walk from the top of the page (same method
     as D-003's `check_focus_walk`) and check every reachable stop for a
-    focus ring that is both PRESENT (`:focus-visible` matches, an outline is
-    actually painted) and PERCEIVABLE (that outline colour, alpha-composited
+    focus ring that is both *present* (`:focus-visible` matches, an outline is
+    actually painted) and *perceivable* (that outline colour, alpha-composited
     over what a viewer actually sees behind it, clears the WCAG 3:1
     non-text-contrast floor) -- the design manual's "keyboard focus is
     visible on every interactive element" requirement, measured rather than
@@ -2663,7 +3615,7 @@ def check_beamline_focus_walk(pw: Playwright, html_path: Optional[Path] = None) 
     on a page where 8 of those 17 rings independently measured as low as
     1.06:1 against their own node fill (cycle-1 review, Required 2): a
     presence test cannot fail in the way an invisible-but-painted ring
-    fails. This version adds the contrast half. An outline paints OUTSIDE
+    fails. This version adds the contrast half. An outline paints *outside*
     the focused element's own border box (in the offset gap and the ring
     itself), so the background it is judged against is the nearest painted
     ancestor found by walking up from the element's *parent* -- the same
@@ -2883,6 +3835,7 @@ def main() -> None:
             all_results.append(("network-and-errors", check_network_and_errors(pw)))
             all_results.append(("git-diff-clean", check_git_diff()))
             all_results.append(("no-exhaustive-prose", check_no_exhaustive_prose()))
+            all_results.append(("no-fabricated-identifiers", check_no_fabricated_identifiers()))
 
         if args.all or args.beamline:
             all_results.append(("beamline-persistence", check_beamline_persistence(pw)))
@@ -2891,7 +3844,9 @@ def main() -> None:
             all_results.append(("beamline-inventory", check_beamline_inventory(pw)))
             all_results.append(("beamline-paint-sweep", check_beamline_paint_sweep(pw)))
             all_results.append(("beamline-contrast", check_beamline_contrast(pw)))
-            all_results.append(("beamline-pairwise-luminance", check_beamline_pairwise_luminance()))
+            all_results.append(("beamline-pairwise-luminance", check_beamline_pairwise_luminance(pw)))
+            all_results.append(("beamline-clamping-bound", check_cam02ucs_clamping_bound()))
+            all_results.append(("beamline-node-fill-normal-vision", check_beamline_node_fill_normal_vision(pw)))
             all_results.append(("beamline-focus-walk", check_beamline_focus_walk(pw)))
             all_results.append(("beamline-reduced-motion", check_beamline_reduced_motion(pw)))
             all_results.append(("beamline-network-and-errors", check_beamline_network_and_errors(pw)))
