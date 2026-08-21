@@ -20,7 +20,53 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
   on 2026-08-17; corrected 2026-08-20.
 - **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
-- **Status:** in review (**cycle 3 — the §5.7 limit**), head `0e945b8`, reviewer at raised effort
+- **Status:** **STOPPED AT THE §5.7 LIMIT — awaiting the user's ruling.** Head `0e945b8`, PR #10
+  open, not merged. No fourth cycle dispatched.
+- **Review (cycle 3, raised effort):** 1 required, 1 suggested-major, 2 suggested-minor,
+  scope=pass. Posted verbatim to PR #10. 16 monkeypatch-only mutations run, tabulated in the review.
+- **The Required, and it is the same shape a third time, one level deeper.**
+  `test_corrupting_field_makes_schema_check_fail` corrupts only the **type**
+  (`_wrong_type_value`), so the *presence* and *nullability* halves of `_check_path_conformant`
+  have no falsifiability test. The reviewer rebound the checker to keep the `isinstance` assert
+  and drop both `assert may_be_missing` and `assert may_be_null` → **`134 passed`**. The
+  enforcement that a `REQUIRED` field must exist and must not be `null` can be deleted wholesale
+  and nothing goes red — silently re-opening the cycle-2 Required. Gutting the *type* half turns
+  30 red, and gutting the doc checker turns 30 red, so the pattern is established and only this
+  sub-part is unguarded.
+- **The suggested-major is latent, not live.** The doc↔schema check is name-level only: the `Type`
+  and `Nullable` columns of `docs/api.md` are never compared against the schema tuples. The
+  reviewer checked all 30 rows by hand and they **do agree today**, so nothing is wrong in the
+  shipped contract — but it is the one drift surface this task exists to close.
+- **What is verified correct, and it is most of the task.** All 30 doc rows agree with the schema;
+  every physics citation re-checked at the reference source including this cycle's `58-67`
+  correction; `_compute_band` matches `plotter.py:105-118` line by line; the cycle-2 Required
+  genuinely closed with both negative controls now failing at the correctly-named case; the two
+  deleted checkers mutation-proved as a strict strengthening (the old ones used `.get()`, so an
+  absent `fit.mu` was legal; `NULLABLE` now requires the key). Scope clean on all three cycles.
+
+#### §5.7 — why this stopped rather than cycling again
+
+Three coder→reviewer cycles. **Nothing is being argued about** — coder and reviewer agree on every
+finding, and the coder independently re-verified all of them at the reference before implementing.
+The loop is not stuck on a disagreement; it is stuck on **my criteria**, and the diagnosis is the
+same one three times running:
+
+| Cycle | My criterion | Its `Check:` | Why the check could not see the defect |
+|---|---|---|---|
+| 1 | c1 — "deleting any field name makes it fail" | `pytest -k documented` | runs the *unmutated* doc; prints `28 passed` either way |
+| 1 | c5 — "one pair per assertion" | prose, no command | denominator ambiguous; I resolved it in the coder's favour at the gate |
+| 2 | c2 — presence/type/nullability | *I deleted the clause* | §5.3 substitution, my act |
+| 3 | c6 — "falsifiability proven by a test in the suite" | `--collect-only` counts | counts cases, cannot see that a family mutates only one of three halves |
+
+Every one names a real property and pairs it with a command that runs against known-good inputs.
+**The command that works is already in this file's history** — a parametrised meta-test that
+mutates and asserts red, one case per guarded thing. It closed cycle 1's Required and cycle 2's.
+The cycle-3 Required is that same pattern applied to only one of three halves.
+
+**The fix is small and fully specified by the reviewer**: for every path with
+`may_be_missing == False`, delete the first occurrence and require a raise naming the path; for
+every path with `may_be_null == False`, set it to `None` and require the same. Both are no-ops for
+`fit.method`. All four mutations pass through the existing `_set_first_occurrence` seam.
 - **Cycle-2 re-specification delivered `0e945b8`, gate passed.** Reproduced here: 134 passed /
   134 collected / 18 `def test_` / 329 passed full suite / flake8 silent / 13 headings / scope still
   the two permitted files / no `src/` change.
