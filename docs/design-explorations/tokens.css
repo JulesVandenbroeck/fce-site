@@ -212,6 +212,26 @@
    * the trade is disclosed because the record should say so, not because
    * the palette is in doubt.
    *
+   * `--node-data` was hand-nudged once more after that search, in the
+   * D-008 cycle-3-fix pass, from the searched `#8d5548` to the committed
+   * `#966746` -- not a re-run of the search above (the user ruled against
+   * that; the search's other 7 fills are untouched), but a manual HSL
+   * adjustment made to clear `RESERVED_HUE_GAP_FLOOR_DEG` below
+   * (D-008 cycle-3 review, suggested-major 2): `--node-data` sat 3.5deg
+   * from `--vermillion` in CAM02-UCS hue at the head of this cycle,
+   * reading as a desaturated vermillion in the rendered picker even
+   * though its ΔE cleared 17.3. The nudge opens that gap to 24.5deg and,
+   * because every floor in this file is checked simultaneously rather
+   * than one at a time, moved every number the search's fills are judged
+   * on: min-CVD ΔE 5.95 -> 5.129 (a second regression on top of the
+   * search's own, still clearing the 4.0 floor by more than a full ΔE
+   * unit), normal-vision node-node ΔE 14.30 -> 14.170 (still clearing
+   * `T=14` by 0.17), white-on-fill 4.935:1 -> 4.595:1 (still clearing
+   * 4.5:1). All three, plus the chroma (30.12) and darkness (0.0656)
+   * floors, are re-verified together every run -- `verify.py --all`'s
+   * `beamline-node-fill-normal-vision` and `beamline-pairwise-luminance`
+   * sections, not asserted here as a one-off measurement.
+   *
    * Found by `docs/design-explorations/palette_search.py` (committed,
    * differential evolution over each fill's HSL hue/saturation/lightness --
    * reproducible by running it, not just read about). Hue was bounded to
@@ -245,10 +265,16 @@
    * pairs under the 3 CVD simulations (132 values) *and* under normal
    * vision (44 more, 176 in total); and, on top of that last 4.0 floor, the
    * swept `T=14` floor for the 28 normal-vision node-node pairs
-   * specifically. Every floor is a fixed number the check tests
-   * independently of whatever a given search run happened to reach, not a
-   * target picked after the fact to make the check pass. */
-  --node-data: #8d5548;
+   * specifically; and, added in D-008 cycle-3-fix (suggested-major 2),
+   * every fill's CAM02-UCS hue angle against both reserved tokens clears
+   * `RESERVED_HUE_GAP_FLOOR_DEG` (12deg) -- a gate, not a diagnostic,
+   * because ΔE alone passed `--node-data` at a 3.5deg hue gap from
+   * `--vermillion` comfortably (17.3), and hue angle is what a "reads as
+   * a desaturated vermillion" complaint is actually about. Every floor is
+   * a fixed number the check tests independently of whatever a given
+   * search run happened to reach, not a target picked after the fact to
+   * make the check pass. */
+  --node-data: #966746;
   --node-multiplicity: #706b30;
   --node-selection: #1c5611;
   --node-obs-global: #2a6b64;

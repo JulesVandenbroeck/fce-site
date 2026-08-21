@@ -394,7 +394,7 @@ SWEEP_LADDER = (0.0, 8.0, 10.0, 12.0, 13.11, 14.0)
 # obvious fix"). Selection rule (stated here so it is re-derivable, not just
 # asserted): the largest `T` in `SWEEP_LADDER` whose achieved min-CVD ΔE
 # (`--sweep`'s own output) still clears `DELTA_E_FLOOR`. Say plainly what
-# this rule did and did not discover: `SELECTED_T` is the *top* rung of
+# this rule did and did not discover: `SELECTED_T` is the top rung of
 # `SWEEP_LADDER`, so "largest feasible T" applied to a ladder that stops
 # climbing at the answer has not found a ceiling -- 14 is a floor chosen at
 # the top of a ladder, not one discovered by exhausting higher rungs (D-008
