@@ -75,6 +75,17 @@ IDs are `B-nnn`, allocated in order and never reused.
   `LEAKED PATH: []` — cycle 2's leak genuinely closed — the subprocess proof running rather
   than skipping, check count 110 → 113 with nothing retired, and the rewritten reference test
   judged **stricter** than cycle 2's.
+  **RE-SPECIFICATION DELIVERED `b058166` — reconciled from git 2026-08-21, the list was
+  wrong and the disk was right (§6).** The re-spec agent died on the session limit, but it died
+  *after* committing and pushing: "forge the CompiledExpr proof, narrow the docstring, harden the
+  subprocess ...". PR #9 head is `b058166`. I gated it in a clean detached worktree at that exact
+  commit: **167 passed** (body claims 162), **118 `test_safe_eval.py`** (body claims 113),
+  flake8 exit 0, only the two in-scope files touched. So the code work is real and substantial.
+  **§5.1 gate FAILED on the body, not the code, and that is not a cycle.** PR #9's body still ends
+  at `## Cycle 3` with no re-specification section at all, and its criterion-10 transcript is still
+  the wrong-arity `TypeError` the review filed `Required` against. Sent back to the same
+  backend-coder to verify at head and append the section with verbatim transcripts — including the
+  forgery test that *can* fail, which is the whole point of the required finding.
   Previously: cycle-1 review dispatched, result lost — reconciled from git 2026-08-21. `main`
   carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
   ran, but the session ended before it reported and a sub-agent's context does not survive.

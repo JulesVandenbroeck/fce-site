@@ -23,9 +23,16 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Depends on:** D-004 (done, `bac2f62`). **Must run before D-005 and D-006** — both consume
   `tokens.css` read-only, so this is a contract task (§2), not a styling task.
 - **Branch / PR:** `task/d-008-cvd-palette` — #7
-- **Status:** **cycle 3 delivered `6954e65`, §5.1 gate PASSED 2026-08-21, review dispatched.**
-  Crash recovery worked exactly as instructed — `5079355` is the WIP-commit-first, `6954e65`
-  the completion. Nothing lost.
+- **Status:** **cycle-3 FIXES dispatched 2026-08-21 (second attempt — the first died on the
+  session limit).** Reconciled against git before re-dispatching: branch `d008-cycle3fix-work`
+  head is still `6954e65`, equal to PR #7's head, so the crashed agent committed nothing — **but
+  it left ~135 insertions uncommitted** across all three in-scope files in its worktree
+  `.claude/worktrees/agent-a655b1189e1e79a9f`. That work is intact and the re-dispatch's first
+  instruction is to commit it as WIP before touching anything, with `git checkout --` and
+  `git reset --hard` named as forbidden. This is the §6 hazard that has already destroyed
+  uncommitted work once on this project.
+  Earlier: cycle 3 delivered `6954e65`, §5.1 gate PASSED. Crash recovery worked exactly as
+  instructed — `5079355` is the WIP-commit-first, `6954e65` the completion. Nothing lost.
 - **THE RE-SPECIFICATION WORKED. Both floors hold simultaneously for the first time.** Verified
   by me in a clean worktree, not taken from the PR body:
 
@@ -108,10 +115,12 @@ IDs are `D-nnn`, allocated in order and never reused.
   `check_beamline_pairwise_luminance` name, is **backlogged** and explicitly excluded from
   cycle 3; (a) and (b) fold in as criterion 6/9, both being "a stated constraint is not
   actually checked" — the same class as the required finding.
-- **`verify.py` section count: 28** — 27 `section(` call sites plus the `def section(` at
-  `:232`, enumerated by scout on head `9480cac`, not estimated. The review's "26/26 sections
-  PASS" counts sections that *ran*, which is the smaller number; the grep is the durable one.
-  **A fall below 28 is `Required` (§5.3).**
+- **`verify.py` check count: 29 `section(` and 44 `line(` at head `6954e65`**, both
+  enumerated by the cycle-3 reviewer, not estimated. (Was 28 at `9480cac`, enumerated by scout.)
+  The reviews' "N/N sections PASS" counts sections that *ran*, which is the smaller number; the
+  grep is the durable one. **A fall below 29 / 44 is `Required` (§5.3).** The cycle-3-fix dispatch
+  requires `section(` ≥ **31**, because it adds two gates: the clamping-bound gate (required 1)
+  and the fill-vs-reserved hue gate (suggested-major 2).
 - **History:** [`archive/design.md` § Post-mortems](archive/design.md) — three cycles, three
   metrics, each replacing its predecessor. This entry is the origin of the cumulative-criteria
   rule and the worked example behind §2's criterion contract.
