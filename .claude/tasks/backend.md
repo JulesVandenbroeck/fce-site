@@ -59,6 +59,22 @@ IDs are `B-nnn`, allocated in order and never reused.
     time via a hand-built `CompiledExpr` around raw `compile("__import__")` → `NameError`; all
     five new assertions mutation-tested and each failing as claimed; check count 45 → 51 test
     functions with `comm -23` proving none removed. Benchmark 0.94×.
+  **Cycle 3 delivered `7e45f7c`, gate PASSED, reviewed: 1 required, 3 suggested-major, 1
+  suggested-minor. RE-SPECIFICATION dispatched (§5.4 clause 2) — B-006 stays at 3 cycles.**
+  **The required finding is my check command, and I have direct evidence.** Criterion 10 gave
+  `CompiledExpr(compile('1+1','<s>','eval'))` with "adapt to the real signature" — a call with
+  the **wrong arity**, which raises `TypeError: missing required positional arguments` whether
+  or not any guard exists. The coder adapted it faithfully into a test asserting exactly that
+  `TypeError`, so the only test of the new security guard **cannot fail**: the reviewer set
+  `__post_init__` to a no-op and got `113 passed`. I hit the same wall running my own §5.1
+  probe, corrected it to pass a forged proof, and **never went back to fix the dispatch.**
+  Suggested-majors: an assertion made vacuous by the line beneath it; the unforgeability
+  docstring falsified by `dataclasses.replace` and `object.__new__` without touching `_PROOF`;
+  and the subprocess proof passing under `PYTHONOPTIMIZE=1`, which strips its only `assert`.
+  *What held:* a **47-payload** escape corpus with **zero accepted**, `LEAKED MODULES: {}` and
+  `LEAKED PATH: []` — cycle 2's leak genuinely closed — the subprocess proof running rather
+  than skipping, check count 110 → 113 with nothing retired, and the rewritten reference test
+  judged **stricter** than cycle 2's.
   Previously: cycle-1 review dispatched, result lost — reconciled from git 2026-08-21. `main`
   carries `4f78550` "B-006 PR body corrected, dispatched to review (cycle 1)", so the reviewer
   ran, but the session ended before it reported and a sub-agent's context does not survive.

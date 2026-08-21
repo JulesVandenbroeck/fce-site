@@ -44,7 +44,33 @@ IDs are `D-nnn`, allocated in order and never reused.
   Anti-substitution commands hold: `grep 'context only'` empty, `grep -c 'section('` = **29**
   (required > 28), `verify.py --all` 469 lines / **0 FAIL** / exit 0, all 8 hexes reproduced
   exactly by `--report`. The sweep table reproduces **digit for digit**.
-- **MY REMAINING DEFECT, and it is a decision for the user, not a finding against the coder.**
+- **Cycle-3 review: 3 required, 3 suggested-major, 2 suggested-minor. NOT clean; cycle 3
+  (the real one) dispatched. Cycle count is now 3 of 3 — §5.7 limit.** All three required are
+  the same class: *a stated claim the code does not enforce* — the defect this task exists to
+  remove — and **all three were introduced by this cycle's own work**, so §5.4 clause 3 applies
+  and it is a cycle, not another re-specification.
+  (1) `cam02ucs_deltaE`'s docstring asserts clamping is conservative "so no verdict is made
+  more permissive"; 4000 random pairs give **107 reading more separated clamped**, worst excess
+  **+2.32 ΔE**. Palette unaffected (≤ +0.005 on the committed 132). (2) a comment names
+  `NORMAL_VISION_DELTA_E_FLOOR`, which does not exist. (3) both files claim the two floor
+  constants are "cross-checked"; **lowering either alone is undetected by every command in the
+  PR body.**
+- **THE FINDING I COULD NOT HAVE MADE, and it is the important one.** `--node-data` `#8d5548`
+  sits at CAM02-UCS hue **33.8°**; `--vermillion` sits at **30.2°**. A 3.6° gap makes the Data
+  node a desaturated vermillion, which design manual §2 reserves so "red means the physics did
+  something" — visible at 1440 px, where the Data node body and the vermillion `LOGGED` stamp
+  read as one hue family. `--node-obs-custom` brackets it from the other side at 3.2°.
+  **The ΔE gate passes it comfortably at 17.3, so ΔE alone is blind to it** — and the hue
+  diagnostic at `verify.py:3294-3304` is computed *only among the eight fills*, never against
+  `RESERVED_COLOR_TOKENS`. This is cycle 1's vermillion finding reappearing in **normal vision**
+  because the new normal-vision floor pushed hues around, and no gate existed to see it.
+  Cycle 3 adds the missing gate and delegates the nudge-or-overrule judgement to the coder,
+  with an explicit instruction not to re-run the search.
+- **USER RULING 2026-08-21: ship the committed palette; do not extend the T-ladder.** So the
+  reviewer's suggested-major 1 is discharged by *accurate wording*, not by more search — the
+  files must say plainly that 14 is a floor chosen at the top of a ladder rather than a
+  discovered ceiling, and that the palette clears it by 0.30.
+- **My remaining defect, recorded because the ruling settles it rather than erases it.**
   The T-ladder I specified topped out at 14, and **the selected row is not binding**: it
   achieves min-normal **18.382** against its own T=14 constraint. So "largest feasible T" means
   "top rung I wrote down", not "the ceiling". Worse, the full-budget re-run of that row spends
