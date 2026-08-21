@@ -46,6 +46,20 @@ def test_offending_module_detection_flags_the_desktop_ui_toolkit():
     than silently passing because nothing was ever imported to catch.
     """
     bad = {"dearpygui", "dearpygui.core", "ui", "ui.state", "ui.state.run"}
-    safe = {"uproot", "uuid", "requests.utils", "fce_web.engine", "numpy", "buildui"}
+    #: ``uicontrols`` is the discriminator for the separator half of the
+    #: contract (B-005 cycle 3, criterion 7): the docstring claims the match
+    #: "requires a following '.' or end of string", but a regex mutated to a
+    #: bare prefix match (``^(dearpygui|ui)``, no separator) still passed
+    #: this test before ``uicontrols`` was added, because no other safe name
+    #: happens to start with the literal substring "ui".
+    safe = {
+        "uproot",
+        "uuid",
+        "requests.utils",
+        "fce_web.engine",
+        "numpy",
+        "buildui",
+        "uicontrols",
+    }
 
     assert _offending_modules(bad | safe) == sorted(bad)

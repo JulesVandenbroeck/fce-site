@@ -25,6 +25,9 @@ unwritable. See ``fce_web.paths`` for the fix.
 """
 import concurrent.futures
 import os
+import tempfile
+
+import pytest
 
 from fce_web.paths import get_fce_home
 
@@ -97,3 +100,76 @@ def test_get_fce_home_concurrent_calls_do_not_misclassify_writable_dir(tmp_path)
         f"{sum(1 for r in results if r != tmp_path)}/{n_calls} calls returned "
         f"the wrong directory"
     )
+
+
+def _make_unwritable(path):
+    """Make ``path`` (an existing directory) unwritable and return it.
+
+    Skips the calling test if the effective user cannot actually be denied
+    write access -- root ignores directory permission bits entirely, so
+    ``os.access(path, os.W_OK)`` still reports writable after ``chmod``, and
+    a test built on that assumption could never fail (B-005 cycle 3,
+    criterion 6's note).
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    os.chmod(path, 0o500)
+    if os.access(path, os.W_OK):
+        pytest.skip(
+            "running as a user for whom chmod 0o500 does not remove write "
+            "access (e.g. root) -- cannot exercise the unwritable-directory "
+            "branch in this environment"
+        )
+    return path
+
+
+def test_get_fce_home_skips_unwritable_candidate_for_the_next_one(tmp_path, monkeypatch):
+    """Criterion 6(a): an unwritable FCE_HOME is not the winner.
+
+    ``get_fce_home``'s contract is "first candidate whose write-probe
+    succeeds wins" -- not "first candidate, full stop". Point FCE_HOME at a
+    directory that exists but is not writable, and monkeypatch the real
+    process ``HOME`` (which ``os.path.expanduser`` reads directly, not the
+    ``env`` mapping ``get_fce_home`` accepts) at a writable one, so the
+    second candidate, ``<HOME>/.fce``, is the only writable one in the
+    chain. If the probe is ever removed or short-circuited, this returns the
+    unwritable FCE_HOME directory instead and fails.
+    """
+    unwritable = _make_unwritable(tmp_path / "unwritable-fce-home")
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    try:
+        result = get_fce_home(env={"FCE_HOME": str(unwritable)})
+        assert result == home / ".fce"
+        assert result != unwritable
+    finally:
+        os.chmod(unwritable, 0o700)
+
+
+def test_get_fce_home_raises_oserror_when_no_candidate_is_writable(tmp_path, monkeypatch):
+    """Criterion 6(b): if nothing in the chain is writable, it says so.
+
+    All three candidates -- ``FCE_HOME``, ``<HOME>/.fce``, and
+    ``{tempdir}/fce-{user}`` -- are made unreachable: the first two are
+    unwritable directories, and ``tempfile.gettempdir()`` is monkeypatched
+    to point at a third unwritable directory (rather than relying on the
+    real system temp dir, which this test cannot assume is unwritable, and
+    which ``tempfile`` caches process-wide once resolved). ``get_fce_home``
+    must raise ``OSError`` naming that it found nowhere writable, not
+    silently return something.
+    """
+    unwritable_fce_home = _make_unwritable(tmp_path / "unwritable-fce-home")
+    unwritable_home = _make_unwritable(tmp_path / "unwritable-home")
+    unwritable_tempdir = _make_unwritable(tmp_path / "unwritable-tempdir")
+
+    monkeypatch.setenv("HOME", str(unwritable_home))
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(unwritable_tempdir))
+
+    try:
+        with pytest.raises(OSError, match="No writable location found"):
+            get_fce_home(env={"FCE_HOME": str(unwritable_fce_home)})
+    finally:
+        os.chmod(unwritable_fce_home, 0o700)
+        os.chmod(unwritable_home, 0o700)
+        os.chmod(unwritable_tempdir, 0o700)
