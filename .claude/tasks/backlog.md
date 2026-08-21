@@ -403,3 +403,14 @@ and are historical now that #6 is merged.
   attributed), so nothing is wrong now. The machinery already exists: `check_no_exhaustive_prose`
   regex-scans four files including `tokens.css`. Cheap, and it closes the class rather than the
   instance.
+
+- **Add `fit.method` to the design payload.** Raised while specifying B-004, 2026-08-21.
+  `engine/fitter.py`'s `run_fit` returns `(mu, sig)` from **three statistically distinct code
+  paths** — a pyhf HistFactory MLE fit; a plain counting ratio `n_tot/s_tot` when there is no
+  background sample (`fitter.py:89-98`); and `s/√b` after a bare `except Exception` swallows a pyhf
+  failure (`:194-203`) — under the same two field names, with nothing indicating which ran. B-004
+  adds a `fit.method` field to `docs/api.md` and specifies it nullable, because
+  `docs/design-explorations/payload.json` (design-owned, read-only to B-004) does not carry it.
+  **The follow-up is a design task:** add `method` to `payload.json` and surface it in `plot.js`'s
+  fit readout, so a `mu` from `s/√b` is not presented to a student as a fitted signal strength.
+  Do this after the D-007 checkpoint, alongside whatever else `payload.json` gains.

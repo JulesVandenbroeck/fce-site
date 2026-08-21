@@ -9,7 +9,72 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
+### B-004 — Define the histogram, cutflow, and fit payload contracts
+- **Scope:** `docs/api.md`, `tests/test_api_contract.py`. `docs/design-explorations/payload.json`,
+  `plot.js` and `verify.py` are **read-only input** (design-owned).
+- **Accept:** every field in the enumeration below documented with type and nullability;
+  `payload.json` validates against the contract; the systematics band formula documented verbatim
+  and independently re-implemented in the test; the eight reference semantics written as
+  actionable prose; every assertion mutation-tested with both transcripts in the PR body;
+  `pytest tests/ -q` green and `flake8` clean.
+- **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
+  on 2026-08-17; corrected 2026-08-20.
+- **Branch / PR:** `task/b-004-api-contract` — not yet opened
+- **Status:** dispatched (cycle 1) — backend-coder, worktree isolation
+- **Review:** raised effort — this is a **contract task**. `docs/api.md` is consumed read-only by
+  every frontend consumer and by B-007, B-011 and B-012, so it does not merge with an open finding
+  against a field name or a documented formula (§2).
+- **Plan:** `~/.claude/plans/continue-b-004-giggly-hanrahan.md`
+
+**Scope corrected 2026-08-21 (user ruling).** The entry previously read "`docs/api.md`, plus the
+run-pipeline plumbing that has to persist the per-source variation histograms". **There is no run
+pipeline** — `path_filter.py`, `path_final.py`, `analytical_loop.py`, `runs.py` and `driver.py` do
+not exist; `src/fce_web/` is `app.py`, `paths.py`, `safe_eval.py`, `routes/pages.py` and
+`engine/systematics.py`. The files that would persist `h_{src}_up` are already inside **B-007's**
+file scope. B-004 is contract-only; the persistence requirements moved to B-007.
+
+**The gap this closes.** `docs/api.md` is 71 lines, still marked `Status: **stub.**`, and its
+`### Histogram payload` documents three things: `edges`, `samples[{name, counts, weightsSquared}]`,
+`data`. `docs/design-explorations/payload.json` — 788 lines, four D-003 review cycles, consumed by
+`plot.js` and `verify.py` — carries `meta`, `lumiUnc`, `systSources`, per-sample `systUp`,
+`cutflow` and `fit`. The contract and its only concrete instance disagree, and nothing checks that.
+
+**The field enumeration — named, not counted** (41 edges / 40 bins; samples `X1`, `X2`, `X3`; two
+cutflow stages): `meta{mission, detector, energy, xLabel, processNames}`, `edges`, `lumiUnc`,
+`systSources`, `samples[]{name, counts, weightsSquared, systUp{jec, lep, btag}}`, `data`,
+`cutflow{stages, samples, counts, totalRaw, efficiencyPct}`,
+`fit{mu, muErr, significanceZ, thresholds{evidence, discovery}}`, plus the new `fit.method`.
+`cutflow.counts` is nested `{stage: {sample: int}}`, **not** a flat array. Payload is camelCase
+throughout, and the contract says so.
+
+**Why the contract is more than a field list — three traps, none written down anywhere today:**
+- The band sums variations **over samples first**, then takes the per-bin fractional delta against
+  the summed nominal (`plotter.py:107-118`). Reversing that order gives a different band.
+  Variations are **up-only**; the band is mirrored, not separately fitted.
+- `significanceZ` is capped at `_SIG_CAP = 10.0` (`fitter.py:13`), in all three code paths.
+- `mu` and `significanceZ` come from three statistically distinct paths — a pyhf HistFactory MLE
+  fit, a counting ratio `n_tot/s_tot` when there is no background sample (`fitter.py:89-98`), and
+  `s/√b` after a bare `except Exception` (`:194-203`) — with **no field saying which**. Hence the
+  new `fit.method`.
+
+**Two ghost fields, documented nullable (user ruling).** `weightsSquared` has no producer: the
+reference builds `bh.Histogram(ax)` with default `Double()` storage, so no sumw2 is tracked or
+written anywhere, and `verify.py:993-1001` already records the field as unconsumed by the rendered
+error bars. `fit.muErr` has no producer either — `run_fit` returns a bare `(mu, sig)` tuple and
+`fitter.py` is not vendored until M5/M6. Neither triggers an engine change; both are specified
+nullable with a written note on what would produce them.
+
+**Cutflow efficiency is MC-only (user ruling)**, matching `payload.json`'s `efficiencyPct`. The
+reference divides by all active samples *including* pseudo-data (`cutflow_plotter.py:70-83`) while
+computing its stacked-bar composition from MC only (`:64-68`) — two sample sets, two formulas, one
+plot. Mixing pseudo-data into an efficiency denominator alongside MC is arithmetically meaningless.
+The divergence is deliberate and is written into the contract with its reason.
+
+**Deliberately out of scope: the run-request contract.** This entry used to float "a typed
+`nodes[] + edges[]` list with coordinates in a separate `ui` object". That is `POST /api/run`, not
+the histogram response, and it is **blocked on the user's D-007 choice** — Beamline, Bench and
+Board persist structurally different things (an ordered edge list vs `{x, y}` vs
+`{column, slotIndex}`). Specifying it now would guess at the decision the checkpoint exists to make.
 
 ## Ready
 
@@ -43,29 +108,6 @@ _none_
 - **Depends on:** nothing — B-006 is merged. Can run in parallel with B-007 and B-010.
 - **Branch / PR:** not yet opened
 
-### B-004 — Extend the histogram contract with systematics, cutflow, and fit payloads
-- **Scope:** `docs/api.md`, plus the run-pipeline plumbing that has to persist the
-  per-source variation histograms
-- **Accept:** §Histogram payload carries `systUp` (per-source up-variation counts),
-  `lumiUnc`, and `systSources`; the cutflow payload (stage names, per-stage per-sample
-  counts, efficiency) and the fit payload (mu, Z) are specified — neither exists anywhere
-  today
-- **Unblocked 2026-08-20.** Its stated blocker was D-003, which merged as `99ec8f3` on
-  2026-08-17; the field names in `docs/design-explorations/payload.json` have been through
-  four reviews. The list had simply not been updated. **It belongs to M3, not M2** — it is an
-  API-contract task whose consumer is the first vertical slice — so it waits here rather than
-  being dispatched with the M2 batch.
-- **Why it exists.** The user ruled for full plot parity, and parity commits this. The
-  reference `///` "Syst. unc." band is built in `fce-project/fce/engine/plotter.py:105-125`
-  from per-source up-variation templates `h_{src}_up` for `jec`, `lep`, `btag`, added in
-  quadrature with a flat `LUMI_UNC = 0.025`. `docs/api.md:44` carries `weightsSquared`,
-  which is the *statistical* error and **cannot produce that band**. Verified by reading both
-  files, not inferred from the docs.
-- **Related, and worth settling in the same task:** the run payload should carry a typed
-  `nodes[] + edges[]` list only, with coordinates and slot indices in a separate `ui` object
-  the engine ignores — so the choice of graph style never leaks into the physics config.
-- **Branch / PR:** not yet opened
-
 ### B-007 — Vendor `path_filter.py` and `path_final.py`, decoupled from `ui.state`
 - **Scope:** `src/fce_web/engine/path_filter.py`, `src/fce_web/engine/path_final.py`,
   `tests/test_path_filter.py`
@@ -85,6 +127,16 @@ _none_
   tests currently assert against a **local reimplementation** of `_count_bjets` and so
   exercise no production code at all. Point them at the real b-jet counting inside
   `filter_raw_event_data` once it exists here.
+- **Three criteria added 2026-08-21, moved here from B-004** when B-004 was ruled contract-only.
+  This task already owns both files where the variation histograms are produced and persisted.
+  (1) `write_final_histograms` persists **every** key in `outHist.h`; a test asserts the written
+  ROOT file carries `h` plus `h_jec_up`, `h_lep_up`, `h_btag_up` for an MC sample and `h` alone for
+  `data` — the reference gates this with `with_syst=(s != "data")` at `analytical_loop.py:199`.
+  (2) The variation histograms are keyed from the already-vendored `systematics.SYST_SOURCES`,
+  never a local literal list.
+  (3) **sumw2 stays absent** — `bh.Histogram(ax)` keeps its default `Double()` storage per the
+  user's ruling, and `weightsSquared` is contract-nullable in `docs/api.md`. Say so in the PR body
+  so the reviewer does not raise its absence as a finding.
 - **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
 - **Branch / PR:** not yet opened
 
