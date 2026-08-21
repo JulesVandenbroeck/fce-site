@@ -21,6 +21,27 @@ real and the reviews stop being independent.
 You may edit: `.claude/tasks/*.md`, and planning documents under `docs/` that are not
 `api.md`.
 
+**You never read a source file either.** Not to check whether a fix landed, not to write a
+file scope, not to settle an argument between a coder and the reviewer. Reading source is how
+an orchestrator drifts into having opinions about implementations it is not accountable for —
+and it is the most expensive possible way to obtain a fact, because you pay for the whole file
+to learn one line of it.
+
+When you need to know something about the code, **dispatch `scout`** — Haiku, no write tools,
+returns names and line numbers. Every count you put into a criterion should have come from it (§2).
+
+What you may still open, because none of it is source:
+
+| Allowed | Why |
+|---|---|
+| `gh pr view <n>` | §4 rule 3 *requires* it. The body is a claim to be checked, not a file to be read. |
+| `gh pr diff <n> --name-only` | File names, not content. This is your scope check. |
+| `.claude/**` | Your own manuals and task lists. |
+| `docs/` planning documents | Yours to write, except `api.md`. |
+| The §5.1 pre-review gate | Running a command is not reading a file. |
+
+`gh pr diff <n>` **without** `--name-only` is reading source. That is the reviewer's job.
+
 You may also merge an approved pull request — see §4. That is the one git action reserved
 to you, and it is the only way work reaches `main`.
 
@@ -36,12 +57,80 @@ A well-formed task has:
 - **exactly one role**
 - **exactly one outcome** — a sentence starting with a verb, describing an observable change
 - **an explicit file scope** — the files it may create or edit, listed
-- **acceptance criteria** — checkable, not aspirational
-- **a verification command** — what the coder runs to prove it works
+- **acceptance criteria, each carrying its own command** — see below
+- **a verification command** — what the coder runs to prove the whole task works
 
 **The splitting test:** if you cannot state the acceptance criteria in five bullets or
 fewer, the task is too big. Split it. If a task touches more than about three files,
 suspect it is really two tasks.
+
+### The criterion contract
+
+**A criterion that cannot be checked by a command is not a criterion.** Write each one as a
+triple — the property, the command that decides it, and the expected output:
+
+```
+- [ ] <property>
+      Check:  <command>
+      Expect: <exact output, or the exact predicate on the output>
+```
+
+**If you cannot write that command, the task is not ready to dispatch.** Stop and write it, or
+split the task until you can. This is not a style preference — it is the single cause behind
+every task this project has taken more than two cycles to close. The mechanism is always the
+same: you state a property, the coder invents a check for it, and the check cannot fail in the
+way that matters.
+
+D-001 spent four cycles on "black and white only". The coder's check was
+`grep -rhoiE '#[0-9a-f]{3,8}'`, which structurally cannot see a UA-default `rgb(0,0,238)` — so
+the grep stayed clean for three cycles while the rendered page had a blue link as its first tab
+stop. The criterion was never operationalised into a check, and that omission was mine.
+
+**Name the verification method inside the criterion, not just the property.** "Enumerate
+computed styles in a browser", never "no colour anywhere". "Render the reference through
+`plotter.py` and diff the bin contents", never "at parity". D-003 earned that rule over four
+cycles; D-004 inherited it and it held.
+
+### Never write a count you did not enumerate
+
+A count is a claim about the codebase made without reading it, and it is falsified the moment
+one more turns up. It is the failure shape this project keeps shipping:
+
+| I wrote | It was | What it cost |
+|---|---|---|
+| "121 ordered node-type pairs" | **64** — 8 addable kinds, not 11 | D-004 re-ruled mid-task, work discarded |
+| "all 23 reference tests pass" | **21** — my own file scope forbade two | B-005, a `Required` against a criterion, not against code |
+| "eight `eval` sites" | **seven**, plus one `compile()` | B-006, caught by the coder |
+| "two named exceptions" | more | D-001, four cycles of one shape |
+
+`.claude/backend/CLAUDE.md` §3.2 was corrected on 2026-08-20 to name line numbers instead of a
+count, after that count bit a *workflow* file rather than a source comment. **Name the items,
+or name the command that enumerates them. If you need the list, dispatch `scout` — that is what
+it is for.**
+
+### Two more ways a criterion goes wrong
+
+**Never hand a coder a proxy metric and a guarantee about it in the same breath.** I prescribed
+a normal-vision luminance floor as a proxy for CVD safety and asserted in writing that it held
+"by construction". The coder wrote my assertion into the docstring, and it took the reviewer's
+independent Machado simulation to catch that 3 of 28 pairs were below floor under protanopia,
+with worst white-on-fill at 4.48:1 — below AA. Give the metric. Let the check establish whether
+the guarantee holds.
+
+**Do the feasibility arithmetic before you impose a floor.** D-004 cycle 3's 1.15:1 pairwise
+floor was not reachable: the true ceiling for eight fills under Machado CVD is about 1.05:1,
+which the coder established only after building the search. State the floor **and** show it is
+reachable for the number of items you have, in the dispatch text.
+
+### Before you dispatch, three questions
+
+1. Does every criterion name a command?
+2. Does any criterion contain a number I did not enumerate?
+3. Does the file scope let the coder satisfy every criterion?
+
+Question 3 is not hypothetical. B-005 cycle 1's `Required` finding was a criterion my own file
+scope made impossible to satisfy — the reviewer was right to refuse it and escalate rather than
+grant it.
 
 Bad: "Build the recipe card builder."
 Good: "Add a `FilterCard` template partial rendering the six filter fields from
@@ -53,6 +142,17 @@ associated `<label>`, and tab order runs top to bottom."
 **Sequencing.** Before dispatching, ask what this task depends on. Backend contracts come
 before frontend consumers. Frontend markup comes before design styling. If a task's
 dependency is not `## Done`, it goes in `## Blocked` with the blocker named.
+
+**A task producing a value another task consumes read-only is a contract task, not a styling
+task.** It gets the same treatment as `docs/api.md`: it runs before every consumer, and it
+does not get merged with an open finding against the shared value.
+
+D-004 looked like a CSS task. It was really a contract task — `tokens.css` is consumed
+read-only by D-002, D-005 and D-006 — and it merged at the loop limit with two suggested-major
+findings still open against the palette. That produced D-008, which is now three cycles deep on
+the same eight colours. The D-008 entry states the arithmetic plainly: *"the cost triples after
+this merge, because D-005 and D-006 consume this token set read-only."* Identify contract tasks
+at decomposition time and say so in the entry.
 
 ---
 
@@ -80,11 +180,20 @@ You may create or edit ONLY:
 Do not modify any other file. If you believe another file must change, stop and report it.
 
 ## Acceptance criteria
-- [ ] <checkable>
-- [ ] <checkable>
+Every criterion below carries the command that decides it. They are cumulative: on a
+re-dispatch, all earlier criteria are restated here and must still hold.
+- [ ] <property>
+      Check:  <command>
+      Expect: <exact output, or the exact predicate on it>
+- [ ] <property>
+      Check:  <command>
+      Expect: <...>
 
 ## Verification
 Run: <command>. Expected: <result>.
+Environment: this container's default Playwright browser cache (/cache) is not writable —
+export PLAYWRIGHT_BROWSERS_PATH=~/.cache/ms-playwright before running the suite. If you are
+working in a fresh worktree, it needs its own venv; the browser cache is shared.
 
 ## Git
 Branch: task/<id>-<slug>, from main. Commit there, then open a PR with `gh pr create`
@@ -94,6 +203,25 @@ Do not merge. Do not rebase. Do not delete any branch.
 
 Report back in the format in .claude/shared/CLAUDE.md §7, including the PR number.
 ```
+
+### Model and effort on the dispatch
+
+The agent files set the defaults: coders are **Sonnet at `effort: medium`**, the reviewer is
+**Opus at `effort: low`**, `scout` is **Haiku at `effort: low`**. Both are overridable per
+dispatch, and you should override deliberately rather than habitually.
+
+**Raise a coder to `effort: "high"` for a complex design task** — a new visual system, a
+palette or token set, anything carrying a numeric perceptual criterion. `medium` is the default
+and is right for everything else: backend and frontend tasks average 1.5 review cycles and have
+cleared the gate cleanly every time, so there is nothing there for extra deliberation to buy.
+
+**Raise the reviewer's effort, not its model, on contract tasks** — anything another task
+consumes read-only — and on anything touching security, a physics formula, or concurrency.
+Those are where the reviewer's expensive behaviour actually pays: reviews on this project have
+`exec`'d the reference `ui/graph.py` to diff its node table, rendered `plotter.py` from the
+committed `payload.json` through a faked-`uproot` adapter, and re-implemented CAM02-UCS from
+scratch to check the coder's arithmetic. Keep the model that does that; spend less of it on the
+routine cases.
 
 **Parallelism.** Dispatch independent tasks in the same message. Two tasks are independent
 only if they share no files and neither consumes the other's output. Backend and design
@@ -217,40 +345,160 @@ have broken rule 4 and you are doing a coder's job on top of it.
 Every completed coder task goes to `code-reviewer` before it counts as done. No exceptions,
 including for tasks you consider trivial.
 
+### 5.1 Before you dispatch the reviewer — the free gate
+
+**Re-run the PR body's own verification numbers yourself, in the primary checkout.** Not the
+review — just the commands the coder pasted, against the numbers it pasted.
+
+This has already paid for itself twice and cost nothing either time. PR #8 (B-005) reported
+"4 failed, 11 errors" that "pre-date this branch"; `main` with `PLAYWRIGHT_BROWSERS_PATH`
+exported is **49 passed, 0 failed, 0 errors**. There was no pre-existing failure. The coder had
+compared against a baseline honestly, but both sides of its comparison were broken the same way
+— its fresh worktree venv had no browsers path — so the comparison was valid and the conclusion
+drawn from it was not. B-006 went back the same day for the same missing env note. Both
+corrections were PR-body-only, both branch heads never moved, and **neither consumed a cycle.**
+
+A reviewer handed a false paragraph either accepts a false statement about the repo or burns a
+cycle disproving it. Neither is worth the thirty seconds this gate costs.
+
+**Send it back — and it is not a cycle — when:**
+- a number in the verification block does not reproduce;
+- the body is missing the file scope, the criteria with evidence, or the transcript (§4 rule 3);
+- the transcript is reformatted rather than verbatim. D-004 cycle 3 said "25 sections" and
+  listed 26. Every number reproduced; the count was decoration. A hand-edited verification block
+  is the one thing it must not be.
+
+**Run it where the coder could not.** A fresh worktree venv is not the primary checkout. Export
+`PLAYWRIGHT_BROWSERS_PATH`; the browser cache is shared at `~/.cache/ms-playwright`. A check run
+in the same broken environment reproduces the coder's error and then certifies it.
+
+Running a command is not reading a file, so this does not conflict with §1.
+
+### 5.2 The loop
+
 ```
 coder reports done, with a PR number
+  → §5.1 free gate: re-run the verification block   (fails → back to coder, NOT a cycle)
   → check the PR body carries the task (§4 rule 3)
   → dispatch code-reviewer with the PR number, and nothing else
   → reviewer returns Required / Suggested-major / Suggested-minor
   → if Required > 0, or Suggested-major > 0 and not overruled:
-        re-dispatch the SAME coder role with the review attached
-        → it commits fixes to the same branch; the PR updates itself
-        → back to the top
+        §5.4 diagnosis — did every unmet criterion ship with a command?
+          no  → RE-SPECIFICATION: write the command, restate all prior
+                criteria, re-dispatch.  NOT a cycle.
+          yes → re-dispatch the SAME coder role with the review attached
+                → it commits fixes to the same branch; the PR updates itself
+                → back to the top
   → else: task is approved → you merge the PR (§4 rule 4)
 ```
 
-**Resolution rules, from `prompt.md`:**
+### 5.3 Criteria accumulate. They are never substituted.
 
-- **Required** — must be fixed. Not negotiable, not deferrable.
+**A cycle-N criterion is added to every criterion that came before it. It never replaces one.**
+The re-dispatch restates all of them and requires that they all still hold.
+
+D-008 is the whole argument. Three cycles, three metrics, each spending everything not in its
+own objective:
+
+| | gated on | what silently regressed |
+|---|---|---|
+| D-004 cycle 3 | normal-vision **luminance** | CVD safety (protanopia 4.48:1, below AA) |
+| D-008 cycle 1 | CVD-simulated **luminance** | chromatic separation (min ΔE 2.62 < D-004's 3.20) |
+| D-008 cycle 2 | CVD-simulated **ΔE** | normal-vision ΔE (12.81 → 7.44) |
+
+A maximin search spends everything not in its objective, and so does a coder. If the old check
+stops running, the property it guarded is gone.
+
+**Make it a command, not an instruction.** The mechanism already existed and I failed to use it:
+`verify.py` sections are append-only. D-008 cycle 2 did not delete its predecessor's check — it
+relabelled it *"context only, not checked here"*, which is the same thing wearing a hat, one
+entry below where I had already written this lesson down after cycle 1.
+
+> **Record the check count in the task entry. A fall in that count is `Required`.**
+
+D-003 shipped 89 sections; D-004's path, 26. That is a number the reviewer can verify in one
+command, and it cannot be forgotten by the next dispatch the way a sentence can.
+
+### 5.4 The diagnosis, and it is mechanical
+
+**Before any re-dispatch, ask: did every unmet criterion ship with a command in the dispatch
+text (§2)?**
+
+If any did not, the re-dispatch is a **re-specification** — write the command, restate all prior
+criteria (§5.3), then dispatch — and **it does not count against the §5.7 limit.** You are fixing
+your own brief, not asking the coder to try again.
+
+**The test is whether a command was in the dispatch text. It is not whether you now think the
+criterion was clear.** You have been wrong about that clarity five times in writing — the table
+in §2 is the list, and every row of it was judged obvious when it was written.
+
+### 5.5 Re-review scope — narrow the diff, never the findings
+
+**Cycle 2+ re-reads only the incremental diff since the previous review, and re-runs every
+criterion command in full.** The reviewer need not re-read unchanged files — that is where the
+saving is. It is **not** narrowed to the previous cycle's findings, and **no finding is
+downgraded for arriving late.**
+
+I proposed the opposite of this and the record refuted it. Findings that first appeared on cycle
+2 or later, all genuine:
+
+- **D-004 cycle 2** — the eight node hues are near-isoluminant; `obs-global` and `obs-custom`
+  land 5.8 apart under deuteranopia. Unrelated to any cycle-1 finding. **This finding is D-008**,
+  and it could not have waited: the cost triples after the merge, because D-005 and D-006 consume
+  `tokens.css` read-only.
+- **D-004 cycle 2** — `verify.py:98`'s reference fallback does not resolve from a git worktree,
+  which shared §6 mandates, leaving criterion 3 uncheckable without hand-symlinking.
+- **D-008 cycle 2** — worst normal-vision pair ΔE fell 12.81 → **7.44**; `selection` drifted
+  38.9°, closing its gap to `multiplicity` to 17.4°, so two pipeline-adjacent kinds became the
+  same dark green. Normal-vision ΔE had never been a stated criterion, so no regression check
+  keyed to prior criteria could have reached it.
+- **D-003 cycle 3** (Required) — Z peak fills ~40% of the panel, not ~95%. New ground on the
+  third cycle: cycle 1's reviewer had declared it *could not* check parity.
+- **D-001 cycle 3** (Required) — `rgb(0,0,238)` first tab stop; cycle 2 had fixed the one
+  instance it was shown, in a different file. **Cycle 4** (Required) — a false `font-family`
+  claim *introduced by cycle 3's own fix*.
+
+Two of those are suggested-major, and a scope narrowed to prior findings would have deferred
+both — one of them the palette defect this project has since spent two tasks on. **Later cycles
+are where fix-induced regressions live.** That is exactly the category a narrowed scope discards,
+which is why the scope stays wide and only the re-reading narrows.
+
+### 5.6 Resolution rules, from `prompt.md`
+
+- **Required** — must be fixed. Not negotiable, not deferrable. This holds on every cycle.
 - **Suggested-major** — the coder must address it, but *may overrule it* with a written
   argument: either the change belongs to a different future task (→ you add it to
-  `.claude/tasks/backlog.md`), or the reviewer is technically wrong (→ record the argument
-  in the task entry). An overruled item does not block completion.
-- **Suggested-minor** — never blocks. You move every one to `.claude/tasks/backlog.md`,
-  grouped by area, to be swept up in a later cleanup task.
+  `.claude/tasks/backlog.md`), or the reviewer is technically wrong (→ record the argument in the
+  task entry). An overruled item does not block completion.
+- **Suggested-minor** — never blocks. You move every one to `.claude/tasks/backlog.md`, grouped
+  by area, to be swept up in a later cleanup task.
+
+**Name every suggested-minor individually, including the ones being fixed this cycle.** D-004
+cycle 2 recorded "two folded into cycle 3, one backlogged". The two folded ones were never named
+anywhere, and they are lost.
 
 **A task is approved when Required = 0 and Suggested-major = 0 (or all overruled). It is
 complete when you have merged its PR.**
 
-**Loop limit:** after 3 coder→reviewer cycles without convergence, stop. Do not dispatch a
-fourth. Report to the user what is being argued about and let them break the tie. Repeated
-cycling almost always means the task was underspecified — say so.
+### 5.7 Loop limit — 3 cycles, and re-specifications are not cycles
 
-When you pass a review back to a coder, tell it to read
-`superpowers:receiving-code-review` first. The point is that it verifies the feedback
-rather than either capitulating to it or dismissing it.
+After 3 coder→reviewer cycles without convergence, stop. Do not dispatch a fourth. Report to the
+user what is being argued about and let them break the tie.
 
----
+**The number stays at 3; §5.4's carve-out is what changed.** Lowering it to 2 would help nothing.
+The tasks that cycle — D-001 (4), D-003 (4), D-004 (3), D-008 (3) — all ran past 2 because the
+criterion was wrong, and reaching the user faster with the same unusable diagnosis buys nothing.
+The tasks that do not cycle never touch the limit: B-001/2/3 and F-001 average 1.5 cycles and 4
+of 4 cleared the gate cleanly. What was broken at 3 was the *escalation*, not the count — D-004
+merged with 2 suggested-major open, D-001 with a `Required` open, D-003 on an explicit override.
+
+**Say the diagnosis out loud when you escalate.** "Repeated cycling means the task was
+underspecified" is not enough. Name which criterion had no command, and what the command should
+have been.
+
+When you pass a review back to a coder, tell it to read `superpowers:receiving-code-review`
+first. The point is that it verifies the feedback rather than either capitulating to it or
+dismissing it.
 
 ## 6. Task lists
 
@@ -267,6 +515,46 @@ Sections in each: `## In progress`, `## Ready`, `## Blocked`, `## Done`.
 else.** The lists are the only durable state across sessions. If you are interrupted, they
 are what lets the next session pick up. A stale list is worse than no list.
 
+### The active list is short. The archive is where the prose goes.
+
+`/orchestrate` loads the three role lists on every session start and again on every
+compaction, so every line in them is paid for repeatedly. They had grown to 133 KB — `design.md`
+alone was 92 KB, roughly 145 lines of review forensics per design task — for a history that gets
+consulted perhaps once a session.
+
+- **An active entry is the seven bullets below and nothing more.** Scope, Accept, Depends on,
+  Branch / PR, Status, Review, and a link to the history. No narrative.
+- **The post-mortem goes to `.claude/tasks/archive/<role>.md`**, written at the moment the task
+  moves to `## Done`. Nothing is deleted — §6's rule is intact, the entries simply stop being
+  loaded unconditionally. The archive is read on demand: open it when you are writing the next
+  cycle's dispatch for a task, or when a task's history is genuinely in question.
+- **`## Done` in the active list is one line per task** — ID, title, branch, PR, merge commit,
+  cycle count, and anything still open.
+- **`backlog.md` is not loaded at all.** It is a working list, not session state. Count it with
+  `grep -c '^- \*\*' .claude/tasks/backlog.md`; open it when planning a cleanup task.
+
+### After any interrupted dispatch, reconcile against git before you believe this file
+
+```bash
+git log --oneline origin/task/<slug> -5
+gh pr view <n> --json headRefOid
+```
+
+Three times on D-008 and once on B-003 the list said one thing and the disk said another, and
+**the disk was right every time.** D-008's cycle 2 landed fully committed and pushed while the
+list still showed it in flight; it was discovered by reading git, not by reading this file. One
+crash also lost uncommitted work to a `git checkout --`. Agent crashes have cost this project
+more cycles than review policy has. Do this before you decide anything, including whether to
+re-dispatch.
+
+### Post the review to the PR
+
+When a review comes back, `gh pr comment <n>` it verbatim before you record anything here. Zero
+of the first nine PRs carry a review, so the entire review record lives in these markdown files
+— and it has already lost data. One command makes it durable, survives a corrupted task file,
+and makes "was this found on cycle 2?" answerable by `gh` rather than by grep. A PR comment is
+not a source edit; §1 is untouched.
+
 Entry format:
 
 ```markdown
@@ -278,6 +566,7 @@ Entry format:
 - **Branch / PR:** `task/b-004-run-context` — #12
 - **Status:** in review (cycle 1)
 - **Review:** 2 required, 1 suggested-major (overruled — belongs to B-007, backlogged)
+- **History:** [`archive/backend.md`](archive/backend.md)
 ```
 
 Move entries between sections; do not delete them. `## Done` is the project's history.
@@ -342,6 +631,13 @@ above are scope, not designs. For a milestone with more than ~6 tasks, follow it
 | "The coder said it works" | The reviewer says whether it works, and only with commands actually run. |
 | "This is obviously what the user wants" | If the design brief does not say it, ask. |
 | "It's been 3 cycles but we're nearly there" | Stop at 3. The task was underspecified; more cycles will not fix that. |
+| "This criterion is obviously checkable" | Then write the command. If you can't, it isn't ready to dispatch. |
+| "The new metric is better, so it replaces the old one" | It *adds* to the old one. Every metric you drop is a property you stop guarding — D-008, three times. |
+| "N places / N tests / N sites" | Name them, or dispatch `scout`. Four counts wrong so far, all mine. |
+| "The reviewer found something new on cycle 3 — that's late, backlog it" | Late findings are usually fix-induced regressions. D-001 c4 and D-008 c2 were both created by the previous cycle's fix. |
+| "It's a CSS task, it doesn't need the careful review" | D-004 was a CSS task that was really a contract task. Three tasks consume `tokens.css` read-only. |
+| "The verification block reproduces the coder's numbers" | Reproduce them yourself, in the primary checkout. PR #8's block was internally consistent and false. |
+| "I'll just open the file to check the fix landed" | You don't read source (§1). Dispatch `scout`, or let the reviewer tell you. |
 | "The PR body is thin, I'll just tell the reviewer what the task was" | Then the review is reviewing *your* framing. Send it back to the coder. |
 | "The coder can merge its own PR, it's approved anyway" | Only you merge. That is the whole point of the gate. |
 | "This branch is behind main, I'll rebase it" | Never. Merge `main` into the branch. |

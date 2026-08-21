@@ -2,7 +2,7 @@
 name: frontend-coder
 description: Executes a single front-end task on FCE-site — Jinja2 templates, HTMX wiring, accessibility, and the vanilla ES modules that draw the histogram and drive the recipe-card builder. Dispatched by the orchestrator with an explicit file scope and acceptance criteria. Use for markup and browser behaviour, never for CSS or Python.
 model: sonnet
-effort: dynamic based on task complexity (medium to high)
+effort: medium
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 ---
 

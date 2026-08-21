@@ -277,6 +277,22 @@ ref. The two that exist:
 argument for what currently exists and what does not. Headless or over ssh, `--print` emits
 the URLs instead of launching anything.
 
+### Worktrees you are given, versus worktrees you make
+
+**If the orchestrator dispatched you with `isolation: "worktree"`, you are already in one.
+Do not run `git worktree add`.** Doing both is what produced twelve orphaned
+`worktree-agent-*` branches against six merged PRs — a second worktree whose directory is
+later cleaned up while its branch stays behind forever, because branches are never deleted.
+
+Check before you create one:
+
+```bash
+git rev-parse --git-common-dir     # differs from .git => you are in a worktree already
+```
+
+Removing a worktree is permitted and is not branch deletion (`git worktree remove <path>`);
+the branch it was checked out on stays. Creating one you were not asked for is what to avoid.
+
 Screenshots are the other half of this: `scripts/screenshot.py <route>` drives the real app
 headless and writes PNGs. That one is unaffected — it never asks a browser to read `/tmp`.
 

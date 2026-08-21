@@ -25,6 +25,7 @@ built by an agentic workflow of one orchestrator and four sub-agents.
 | Front-end coder — templates, HTMX, JS, accessibility | [`.claude/frontend/CLAUDE.md`](.claude/frontend/CLAUDE.md) | `frontend-coder` |
 | Design coder — CSS, tokens, type, motion | [`.claude/design/CLAUDE.md`](.claude/design/CLAUDE.md) | `design-coder` |
 | Code reviewer — tests everything, fixes nothing | [`.claude/review/CLAUDE.md`](.claude/review/CLAUDE.md) | `code-reviewer` |
+| Scout — answers one factual question about existing code | *(none — the agent file is the manual)* | `scout` |
 
 ## Task state
 
@@ -35,6 +36,10 @@ state that survives between sessions.
 - [`.claude/tasks/frontend.md`](.claude/tasks/frontend.md)
 - [`.claude/tasks/design.md`](.claude/tasks/design.md)
 - [`.claude/tasks/backlog.md`](.claude/tasks/backlog.md)
+
+Active entries only. Completed tasks and the long review post-mortems live in
+[`.claude/tasks/archive/`](.claude/tasks/archive/), which `/orchestrate` does not load — read
+it on demand. Nothing is ever deleted; it is only moved out of the startup path.
 
 ## Contracts
 
@@ -58,8 +63,8 @@ This applies to every role, including sub-agents.
 
 ## The four rules that matter most
 
-1. **The orchestrator never edits source.** It dispatches. Roles stay real only if the
-   boundary does.
+1. **The orchestrator never edits source — and never reads it either.** It dispatches. When it
+   needs a fact about the code, it dispatches `scout`. Roles stay real only if the boundary does.
 2. **File ownership is a hard boundary.** Backend owns Python, frontend owns markup and JS,
    design owns CSS. Checked on every review. See [`.claude/shared/CLAUDE.md`](.claude/shared/CLAUDE.md) §4.
 3. **Every task is reviewed before it is done.** Zero *required* and zero *suggested-major*

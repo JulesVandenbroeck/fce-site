@@ -2,7 +2,7 @@
 name: backend-coder
 description: Executes a single back-end task on FCE-site — FastAPI routes, the SQLite data layer, mission loading, the safe expression evaluator, or the vendored physics engine. Dispatched by the orchestrator with an explicit file scope and acceptance criteria. Use for any Python work under src/fce_web/ that is not templates or static assets.
 model: sonnet
-effort: dynamic based on task complexity (medium to high)
+effort: medium
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 ---
 

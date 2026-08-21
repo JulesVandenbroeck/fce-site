@@ -43,3 +43,8 @@ screenshots/
 .vscode/
 *.swp
 .DS_Store
+
+# Agent worktrees. Created by `Agent(isolation: "worktree")` for parallel
+# dispatches; they are scratch checkouts, not project content. Removing a
+# worktree is permitted (orchestrator manual §3) — deleting a branch is not.
+.claude/worktrees/

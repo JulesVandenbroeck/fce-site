@@ -11,6 +11,28 @@ Two things land here:
 
 Entries carry the task ID they came from, so context is recoverable.
 
+**This file is not loaded by `/orchestrate`.** It is a working list, not session state — read
+it when you are planning a cleanup task or filing a new finding, not at startup. For the
+count alone:
+
+```bash
+grep -c '^- \*\*' .claude/tasks/backlog.md
+```
+
+| Area | Items |
+|---|---:|
+| Backend | 15 |
+| Frontend | 4 |
+| Design | 6 |
+| Design explorations (`docs/design-explorations/`) | 13 |
+| Design explorations — D-004 (Beamline) | 7 |
+| Design explorations — D-008 | 1 |
+| Cross-cutting | 1 |
+| **Total** | **47** |
+
+*Counts are a convenience, not a contract — regenerate with the command above rather than
+trusting this table. (§2: never write a count you did not enumerate.)*
+
 ---
 
 ## Backend
