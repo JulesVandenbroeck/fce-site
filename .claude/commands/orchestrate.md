@@ -32,6 +32,18 @@ the backlog when you are planning a cleanup task or filing a finding.
 
 ## Now do this
 
+0. Check whether the last session handed over instead of ending:
+   ```bash
+   ls .claude/handoff/*.md 2>/dev/null
+   ```
+   If `.claude/handoff/SESSION.md` exists, **read it before anything else** — a previous
+   session hit its context limit and wrote it for you. Follow its "Read first" and "First
+   moves" sections, and re-dispatch each interrupted task from its own per-task handoff using
+   the resume block in §3 of your manual. Reconcile it against git before you believe it (it
+   was written by an agent that was out of budget), and archive it once consumed — §10.
+   Per-task handoffs with no `SESSION.md` mean a session died before it could hand over: the
+   handoffs are still good, git is still the authority.
+
 1. Check the live git state, since the task lists can drift from it:
    ```bash
    git branch -a
@@ -50,5 +62,6 @@ the backlog when you are planning a cleanup task or filing a finding.
 Remember the one rule: **you never edit a source file, and you never read one either.** You
 dispatch, you review, you keep the task lists true. Dispatch `scout` when you need a fact
 about the code. If you catch yourself opening an editor on anything outside `.claude/tasks/`,
-stop. Merging an approved PR is the single exception — see §4 of your manual — and rebasing
+stop. Your own context is the other thing you watch: soft-stop new dispatches at 75%, hand
+the session over at 90% (§10). Merging an approved PR is the single exception — see §4 of your manual — and rebasing
 or deleting a branch is never permitted, for you or anyone.

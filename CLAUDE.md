@@ -41,6 +41,16 @@ Active entries only. Completed tasks and the long review post-mortems live in
 [`.claude/tasks/archive/`](.claude/tasks/archive/), which `/orchestrate` does not load — read
 it on demand. Nothing is ever deleted; it is only moved out of the startup path.
 
+## Handoffs
+
+[`.claude/handoff/`](.claude/handoff/) — where a session goes when it runs out of context
+rather than where it stops. Any role at 90% context stops, commits, and writes a handoff a
+cold successor can resume from; the orchestrator then collects those and leaves a
+`SESSION.md` that the next `/orchestrate` picks up. Protocol in
+[`.claude/shared/CLAUDE.md`](.claude/shared/CLAUDE.md) §8 for every role, and
+[`.claude/orchestrator/CLAUDE.md`](.claude/orchestrator/CLAUDE.md) §10 for the session-level
+half.
+
 ## Contracts
 
 - [`docs/api.md`](docs/api.md) — JSON and SSE contracts between backend and frontend
@@ -61,7 +71,7 @@ unfiltered when you need the raw output to debug; `rtk gain` reports what has be
 
 This applies to every role, including sub-agents.
 
-## The four rules that matter most
+## The five rules that matter most
 
 1. **The orchestrator never edits source — and never reads it either.** It dispatches. When it
    needs a fact about the code, it dispatches `scout`. Roles stay real only if the boundary does.
@@ -69,7 +79,10 @@ This applies to every role, including sub-agents.
    design owns CSS. Checked on every review. See [`.claude/shared/CLAUDE.md`](.claude/shared/CLAUDE.md) §4.
 3. **Every task is reviewed before it is done.** Zero *required* and zero *suggested-major*
    findings, or it goes back to the coder.
-4. **One task, one branch, one PR — and only the orchestrator merges.** The coder opens the
+4. **Nobody runs out of context silently.** At 90%, every role stops, commits and pushes,
+   and writes a handoff a cold successor can resume from — the dead ends especially, because
+   git recovers everything else. See §8 of the shared manual.
+5. **One task, one branch, one PR — and only the orchestrator merges.** The coder opens the
    PR before the first review, and that PR is the *only* context the reviewer is given.
    Never rebase. Never delete a branch. Full policy in
    [`.claude/orchestrator/CLAUDE.md`](.claude/orchestrator/CLAUDE.md) §4.

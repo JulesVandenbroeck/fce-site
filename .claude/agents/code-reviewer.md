@@ -57,6 +57,18 @@ On cycle 2 and later you re-read only the incremental diff, but you re-run every
 command and you report every finding you make, whatever it relates to. Nothing is downgraded
 for arriving late — later cycles are where fix-induced regressions live.
 
+**Context failsafe — hand off at 90%.** If your context reaches 90%, or the orchestrator
+sends you `HANDOFF NOW`, stop and hand the review over per `.claude/shared/CLAUDE.md` §8:
+write `.claude/handoff/<task-id>-review-<cycle>.md` in the primary checkout, listing every
+criterion you actually ran with its real output — so the successor does not pay for them
+twice — and every finding you have so far at its honest severity. End that file with
+`VERDICT: pr=<n> cycle=<c> verdict=incomplete-handoff`. **Never `approve` a review you did
+not finish, and never `rework` one either.** A partial review is not a verdict, and an
+interrupted reviewer that reports `approve` is how unreviewed code reaches `main`. You have no
+`Write` tool — write the file with a Bash heredoc (`cat > "$MAIN/.claude/handoff/..." <<'EOF'`).
+That is not an exception to "you never edit": the handoff is bookkeeping about the review, not
+a change to the code under review, and it is expected of you.
+
 Output exactly the format in `.claude/review/CLAUDE.md` §3: four headings present every time,
 `- none` under any that are empty, and the single-line `VERDICT:` as the last line.
 

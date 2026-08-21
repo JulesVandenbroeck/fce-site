@@ -222,7 +222,23 @@ before you report done — see .claude/shared/CLAUDE.md §6 for what the PR body
 contain. The reviewer will see the PR and nothing else, so the body has to stand alone.
 Do not merge. Do not rebase. Do not delete any branch.
 
+## Context failsafe
+If your context reaches 90%, or if I send you `HANDOFF NOW`, stop the task and hand it over
+per .claude/shared/CLAUDE.md §8: commit and push what you have, write
+.claude/handoff/<id>-<role>-<cycle>.md in the primary checkout, and report the short form in
+§8.5. Do not try to finish. A described stop is worth more than a lost sprint.
+
 Report back in the format in .claude/shared/CLAUDE.md §7, including the PR number.
+```
+
+When you are re-dispatching a task that was handed over, the template gains one block, placed
+directly above `## Goal`, and the criteria below it are still restated in full:
+
+```
+## Resuming from a handoff
+This task was interrupted at a context limit. Read .claude/handoff/<file>.md first — it
+carries the branch state, what is already done, and the dead ends. Do not repeat them.
+Start from its "Not done" list. Verify the branch state against git before you trust it.
 ```
 
 ### Model and effort on the dispatch
@@ -346,8 +362,8 @@ conflict with §1.
 
 ### The one carve-out: your own bookkeeping
 
-`.claude/tasks/*.md` and the workflow files under `.claude/` are **yours, and you commit
-them straight to `main`.** They never appear on a task branch and never go through a PR.
+`.claude/tasks/*.md`, `.claude/handoff/*.md`, and the workflow files under `.claude/` are
+**yours, and you commit them straight to `main`.** They never appear on a task branch and never go through a PR.
 
 This is not a convenience. Without it the workflow deadlocks: you merge a PR, which
 obliges you to record the task as done, which under a strict reading would need its own PR,
@@ -699,3 +715,139 @@ above are scope, not designs. For a milestone with more than ~6 tasks, follow it
 | "The coder can merge its own PR, it's approved anyway" | Only you merge. That is the whole point of the gate. |
 | "This branch is behind main, I'll rebase it" | Never. Merge `main` into the branch. |
 | "The branch is merged, I'll tidy it up" | Branches are never deleted. The list is the build record. |
+| "I'm at 92% but this last review will fit" | It will not, and being cut off loses the session's bookkeeping too. Hand over at 90% (§10). |
+| "The sub-agents are still running, I'll write the handoff after they finish" | Send them `HANDOFF NOW` first. Their handoffs are what yours points at. |
+| "I'll put the state in the session handoff so it's all in one place" | The task lists are the state. The handoff points at them. Two copies drift, and yours is the one nobody updates. |
+| "A handoff means the task failed" | It means the task is resumable. The failure mode is the one that leaves no file. |
+
+---
+
+## 10. Context failsafe — handing over the session
+
+You are the only role that can end a session cleanly, because you are the only one that
+knows what every other role is doing. If you run out of context without doing that, the task
+lists are stale, the sub-agents are cut off mid-edit, and the next session inherits a repo it
+has to reverse-engineer from `git log`.
+
+The per-agent protocol is `.claude/shared/CLAUDE.md` §8. This section is your half of it.
+
+### Two thresholds
+
+**At ~75% — soft.** Stop opening new work. Finish the cycle in flight, do not dispatch a
+fresh batch, do not start a new milestone, and bring the task lists fully current now while
+you can still afford to write them properly. Prefer serial dispatch over parallel from here:
+one agent's handoff is cheap to collect, four at once is not.
+
+**At 90% — hard.** Hand the session over. Below, in order.
+
+### The order, and it is not negotiable
+
+1. **Stop dispatching.** Nothing new, however small. A dispatch you cannot collect is worse
+   than no dispatch — it leaves an agent writing to a branch nobody is tracking.
+
+2. **Call every running sub-agent home.** `ListAgents` to enumerate them, then `SendMessage`
+   to each:
+
+   ```
+   HANDOFF NOW — session context limit. Stop the task, follow .claude/shared/CLAUDE.md §8:
+   commit and push, write .claude/handoff/<id>-<role>-<cycle>.md in the primary checkout,
+   reply with the §8.5 short form only. Do not try to finish the task.
+   ```
+
+   Send to **all** of them in one message, then wait. Their short forms are small by design;
+   collecting four costs less than one more review. If an agent does not come back, record it
+   in the session handoff as `no handoff — branch state unverified`, and name its branch so
+   the next session knows where to look.
+
+3. **Reconcile against git.** §6's rule applies with full force here: `git branch -a`,
+   `gh pr list --state open`, and `git log --oneline origin/task/<slug> -3` for each live
+   branch. The disk is right and the list is wrong, every time it has come up.
+
+4. **Update the task lists — before you write the handoff, not after.** Each interrupted task
+   gets `**Status:** handed off (cycle <c>) — see [`handoff/<file>.md`](...)`. The lists stay
+   the durable state; the session handoff is an index over them, and if you invert that you
+   will have written two records and kept neither true.
+
+5. **Write `.claude/handoff/SESSION.md`** — template below.
+
+6. **Commit `.claude/` to `main`** under the §4 carve-out — the task lists, every sub-agent
+   handoff file they wrote into the primary checkout, and `SESSION.md`:
+   `git add .claude && git commit -m "orchestrator: session handoff at context limit"`.
+   Uncommitted bookkeeping is bookkeeping you are about to lose.
+
+7. **Tell the user, in about five lines:** why the session is ending, what is in flight, and
+   that the next session starts with `/orchestrate`. Then stop.
+
+**Do not merge anything you cannot also record.** If a review is already in hand and clean,
+merging is two commands and it removes a task from the next session's plate — do it, and
+write the `## Done` line immediately. If the review is incomplete, leave the PR open and name
+it in the handoff. A merged PR with no `## Done` entry is the one state nothing else recovers.
+
+### `SESSION.md` is deliberately small
+
+It is an **index and a first move**, not a summary of the session. It exists so a cold
+`/orchestrate` knows where to look and what to do first — the task lists, the archive, the
+sub-agent handoffs and `git` already hold the content, and every line you duplicate into here
+is a line that will disagree with its source by the next session.
+
+Aim for **under 60 lines**. If it is growing past that, the surplus belongs in a task list
+entry or an archive post-mortem, and it is worth spending your last tokens putting it there
+instead.
+
+**Never in this file:** source code or excerpts, review prose, backlog items, milestone plans
+that already live in `docs/`, or narrative about how the session went.
+
+```markdown
+# Session handoff — <YYYY-MM-DD HH:MM>
+
+**Why:** orchestrator context reached <n>%. <n> sub-agent(s) recalled and handed off.
+**Milestone:** M<n> — <one line on where it stands>
+
+## Read first
+1. This file.
+2. The per-task handoffs listed below — but only for tasks you are about to re-dispatch.
+3. `.claude/tasks/{backend,frontend,design}.md` — current as of this commit.
+
+Do not load `.claude/tasks/archive/` or `backlog.md`. Same reason as always.
+
+## In flight
+
+| Task | Role | Branch | PR | Cycle | State | Handoff |
+|---|---|---|---|---|---|---|
+| B-014 | backend | `task/b-014-...` | #21 | 1 | 3 of 5 criteria met | `handoff/b-014-backend-1.md` |
+| D-009 | design | `task/d-009-...` | — | 1 | no handoff — branch state unverified | — |
+
+## Git as of this commit
+
+    <paste the actual output of: git branch -a && gh pr list --state open>
+
+Re-run both before you act. If they disagree with the table above, **git is right.**
+
+## First moves, in order
+1. <e.g. "Re-dispatch B-014 to backend-coder with the resume block (§3), pointing at its handoff.">
+2. <e.g. "Verify task/d-009 on origin — the agent never reported; check whether its commit landed.">
+3. <e.g. "PR #19 is reviewed clean and unmerged — merge it and write its Done line.">
+
+## Waiting on the user
+- <a decision that was pending when the session ended, or "nothing">
+
+## Not carried over
+- <anything deliberately dropped, so the next session does not go looking for it — or "nothing">
+```
+
+### Resuming from one
+
+`/orchestrate` checks for `.claude/handoff/SESSION.md` at startup. When it finds one:
+
+- **Reconcile before you believe it.** It was written by an agent that was out of budget. Run
+  its git block again. A task it lists as in flight may have been merged since; a handoff whose
+  task is already in `## Done` is stale and git wins.
+- **Re-dispatch from the per-task handoff, not from the summary.** Use the resume block in §3.
+  The sub-agent handoff carries the verbatim file scope and criteria precisely so the task does
+  not quietly change shape on the way back in.
+- **Archive it once it is consumed** — when every task it lists has been re-dispatched or
+  closed, `git mv .claude/handoff/SESSION.md .claude/handoff/archive/session-<date>.md`, and
+  move each per-task handoff alongside it as its task closes. Nothing in `.claude/handoff/` is
+  deleted, for the same reason nothing in `.claude/tasks/` is.
+- **A stale `SESSION.md` at the root of `handoff/` is a trap for the session after this one.**
+  Archiving it is part of consuming it, not a tidy-up for later.

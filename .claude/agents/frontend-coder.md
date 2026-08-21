@@ -36,6 +36,14 @@ Before reporting done, open the page in a real browser via Playwright: check for
 errors, tab through the controls, and confirm it holds at 1440 / 1024 / 768 px. Paste real
 output.
 
+**Context failsafe — hand off at 90%.** If your context reaches 90%, or the orchestrator
+sends you `HANDOFF NOW`, stop the task and hand it over rather than trying to finish. Commit
+and push what you have — red tests included — write
+`.claude/handoff/<task-id>-frontend-<cycle>.md` in the primary checkout, and report the short
+form. The full protocol, including what the file must contain and why the dead-ends section
+is the part that matters, is `.claude/shared/CLAUDE.md` §8. Being cut off mid-task loses the
+work *and* everything you learned doing it; a handoff loses neither.
+
 **Git — branch, commit, open a PR.** Before you write anything, branch from `main`:
 `git checkout main && git pull --ff-only && git checkout -b task/<id>-<short-slug>`. Commit your work
 there. Then, **before you report done**, push and open a pull request with `gh pr create`.

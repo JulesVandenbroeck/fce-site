@@ -31,6 +31,14 @@ scope means the orchestrator's decomposition was wrong, and it needs to know.
 Before reporting done, actually run `pytest tests/ -q` and `flake8 src/ tests/`, and paste
 the real output.
 
+**Context failsafe — hand off at 90%.** If your context reaches 90%, or the orchestrator
+sends you `HANDOFF NOW`, stop the task and hand it over rather than trying to finish. Commit
+and push what you have — red tests included — write
+`.claude/handoff/<task-id>-backend-<cycle>.md` in the primary checkout, and report the short
+form. The full protocol, including what the file must contain and why the dead-ends section
+is the part that matters, is `.claude/shared/CLAUDE.md` §8. Being cut off mid-task loses the
+work *and* everything you learned doing it; a handoff loses neither.
+
 **Git — branch, commit, open a PR.** Before you write anything, branch from `main`:
 `git checkout main && git pull --ff-only && git checkout -b task/<id>-<short-slug>`. Commit your work
 there. Then, **before you report done**, push and open a pull request with `gh pr create`.

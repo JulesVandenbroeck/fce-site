@@ -120,6 +120,11 @@ under *Claims checked*, `- none asserted`, which is itself worth a second look.
 orchestrator records that line rather than copying your prose into a task file, so a malformed
 one costs a round trip.
 
+There is exactly one other legal verdict, and it belongs only in a handoff file: a review cut
+short at the context limit (`.claude/shared/CLAUDE.md` §8) ends with
+`VERDICT: pr=<n> cycle=<c> verdict=incomplete-handoff`, listing every criterion already run
+with its real output. `approve` and `rework` are both claims about a review you finished.
+
 Findings are **concise constructive bullets**. Each one names a location, states the
 problem, and says what would resolve it. Not paragraphs, not essays, not restating what
 the code does.
