@@ -414,3 +414,8 @@ and are historical now that #6 is merged.
   **The follow-up is a design task:** add `method` to `payload.json` and surface it in `plot.js`'s
   fit readout, so a `mu` from `s/√b` is not presented to a student as a fitted signal strength.
   Do this after the D-007 checkpoint, alongside whatever else `payload.json` gains.
+
+### From B-007 cycle-2 review (PR #12), 2026-08-22 — all suggested-minor, named individually per §5.6
+- **`tests/test_path_filter.py:255-275`** — `test_docstring_eval_compile_line_check_catches_a_perturbed_number` re-implements the comparison instead of exercising the real test's assertion, so it proves the *parser* is sensitive rather than that the primary test would go red. Both directions do go red (the reviewer proved it), but the in-repo mutation test does not demonstrate it. Calling the primary test under a perturbed `__doc__` would.
+- **PR #12 body, "Criterion 7 mutation" block** — the transcript is a reconstruction of a failure hit while authoring, presented in `$`-prompt shape rather than as re-runnable output. Prefer a reproducible one-liner. Recorded because a hand-shaped transcript is the one thing a verification block must not be (the D-004 cycle-3 lesson).
+- **`tests/test_path_filter.py:225-231`** — `_claimed_eval_compile_lines`'s regex requires the seven numbers to stay on one physical docstring line; a future reflow trips the "update this test's regex" assert rather than the real comparison. Safe (it fails loudly) but noisier than needed; `re.DOTALL` with `[0-9,\s]+` would survive a rewrap.

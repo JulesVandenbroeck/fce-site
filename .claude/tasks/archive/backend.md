@@ -734,3 +734,129 @@ The run-request contract (`nodes[] + edges[]` with coordinates in a separate `ui
 `POST /api/run`, not the histogram response, and is **blocked on the user's D-007 choice** —
 Beamline, Bench and Board persist structurally different things. Backlogged: a producer for
 `fit.method`; producers for `weightsSquared` and `fit.muErr`.
+
+---
+
+## B-007 — Vendor `path_filter.py` and `path_final.py` (merged `d906b59`, 2 cycles)
+
+### B-007 — Vendor `path_filter.py` and `path_final.py`, decoupled from `ui.state`
+- **Scope:** `src/fce_web/engine/path_filter.py`, `src/fce_web/engine/path_final.py`,
+  `tests/test_path_filter.py`
+- **Accept:** the decoupling is proven by BOTH checks in the correction below (not by the old
+  `ui\.` grep); the 11 ported reference tests pass; a new test drives a real cancellation
+  mid-loop and asserts the loop stops — the reference has no such test; `flake8` clean
+- **CORRECTION 2026-08-22 — the old criterion could not see the property it certified.** It was
+  `grep -rn "ui\." src/fce_web/engine/path_filter.py` returns empty. Scout enumerated the
+  reference: `path_filter.py` contains **exactly one** literal `ui.` occurrence, the import at
+  `:5` (`from ui.state import get_run_state`). Every real coupling is a **bare**
+  `get_run_state(...)` call the grep is structurally blind to, so deleting one import line
+  satisfies it. This is orchestrator §2's "instrument that structurally cannot observe the
+  property it certifies". Replaced by two checks, both required:
+  (a) `grep -rnE "\bui\.|get_run_state|update_run_state|RUN_STATE" src/fce_web/engine/` → empty;
+  (b) a **subprocess** import test that sets `sys.modules["ui"] = None` before importing
+  `fce_web.engine.path_filter`, and requires the import and a real filter call to still succeed.
+  (b) is the one that goes red when the property is false; (a) alone does not.
+- **The whole coupling is two lines — line numbers VERIFIED 2026-08-22, but the description of
+  them was wrong.** `get_run_state("stop")` at `path_filter.py:406` and `:453` are the only two
+  call sites in the file (`grep -n get_run_state`, 2 hits). They are **not** both "inside hot
+  loops":
+  - `:406` is inside `fill_histogram_from_cache` (def at `:336`), inside `for i in range(n)` at
+    `:404`, polled every `_step = max(1, n // 100)` iterations. Truthy branch → bare `return`.
+  - `:453` is the **first statement of** `filter_raw_event_data` (def at `:451`) — a single
+    entry guard, no loop. Truthy branch → `return [], [], True`.
+  Both become an explicit `cancel: threading.Event | None` threaded through the public functions.
+  **The mid-loop cancellation test must target `:406`'s site specifically** — a test that only
+  exercises the `:453` entry guard proves nothing about stopping a run already in progress, and
+  that is the criterion's actual point.
+- **`SYST_SOURCES` is already imported, never literal — so criterion (2) is nearly free and must
+  be gated by a mutation, not by a run.** The reference imports it at `path_filter.py:6`
+  (`from engine.systematics import BTAG_WP, SYST_SOURCES, event_syst_factor`) and loops it at
+  `:382,400,439`; scout found **no hard-coded `["jec","lep","btag"]` anywhere** in the file. A
+  faithful port satisfies "keyed from SYST_SOURCES" by doing nothing, so the check is: monkeypatch
+  `systematics.SYST_SOURCES` to add a fourth source and require the written ROOT file to gain the
+  matching `h_{src}_up` key. `BTAG_WP` is used at `:511`.
+- **File sizes, for the file scope:** reference `path_filter.py` is **643** lines,
+  `path_final.py` is **20**.
+- **The `eval` sites stay untouched in this task** — B-008 swaps them. This must be said in
+  the PR body so the reviewer does not raise it as a finding.
+- **Two carry-forwards owed from B-005's cycle-1 review, both to be discharged here.**
+  (1) Port `test_fill_histogram_syst_keys_created` from the reference's
+  `tests/test_systematics.py` — it was dropped from B-005 because it needs `path_filter.py`,
+  which this task creates, and it is the only reference test covering the `h_{src}_up`
+  systematic keys. (2) Repoint `tests/test_systematics.py:137-160` — five `test_nbjets_*`
+  tests currently assert against a **local reimplementation** of `_count_bjets` and so
+  exercise no production code at all. Point them at the real b-jet counting inside
+  `filter_raw_event_data` once it exists here.
+- **Three criteria added 2026-08-21, moved here from B-004** when B-004 was ruled contract-only.
+  This task already owns both files where the variation histograms are produced and persisted.
+  (1) `write_final_histograms` persists **every** key in `outHist.h`; a test asserts the written
+  ROOT file carries `h` plus `h_jec_up`, `h_lep_up`, `h_btag_up` for an MC sample and `h` alone for
+  `data` — the reference gates this with `with_syst=(s != "data")` at `analytical_loop.py:199`.
+  (2) The variation histograms are keyed from the already-vendored `systematics.SYST_SOURCES`,
+  never a local literal list.
+  (3) **sumw2 stays absent** — `bh.Histogram(ax)` keeps its default `Double()` storage per the
+  user's ruling, and `weightsSquared` is contract-nullable in `docs/api.md`. Say so in the PR body
+  so the reviewer does not raise its absence as a finding.
+- **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
+- **Branch / PR:** `task/b-007-vendor-path-filter` — #12 @ `0578c89`
+- **Status:** in review (cycle 2) — gate passed, reviewer re-dispatched 2026-08-22
+- **§5.1 gate, cycle 2: PASSED** at `6457e45`. grep empty, flake8 silent, **351 passed**,
+  `test_path_filter.py` + `test_systematics.py` 41 together, both new docstring tests pass.
+- **Review (cycle 1):** 0 required, **1 suggested-major**, 5 suggested-minor. Posted verbatim to
+  PR #12. The reviewer's verdict line read `verdict=approve` while reporting `major=1` — that is
+  self-contradictory and I did **not** merge on it; §5.6 requires suggested-major = 0. Recording
+  this because a verdict string that disagrees with its own counts will recur, and the counts win.
+- **The suggested-major, and it is a real trap for B-008:** `path_filter.py:23-24`'s docstring
+  cites the seven `eval` lines and one `compile` line as *"this file's"*. They are the
+  **reference's**. In our file they are `328,370,449,508,711,723,741` and `474`. That docstring
+  is the artifact B-008 navigates by, and backend §3.2 makes line numbers authoritative over
+  counts. Cycle 2 makes the claim **checkable by an `ast` test** rather than a comment that rots.
+- **The five suggested-minor, named individually per §5.6 — all folded into cycle 2, none lost:**
+  (a) `path_filter.py:4-5` and `filter_raw_event_data`'s docstring carry a duplicated broken
+  sentence left by grep-avoidance rewording; (b) `path_filter.py:46-50`'s `#:` doc-comment is
+  attached to nothing; (c) `tests/test_path_filter.py:212-214` claims `_obj_from_cache` is called
+  once per iteration when it is called **six times per event**, so the cancel fires at event ~19
+  (5.5%), not ~117 (33%) — the PR body repeats the false claim; (d) the cycle-1 criterion-3
+  mutation transcript proves the *setup guard* failing, not `assert 0 < filled < n`;
+  (e) the vectorized fast path has **no cancellation poll at all**, so effective granularity is
+  one *basket*, not one event — B-009 and B-011 must not assume per-event responsiveness.
+- **What the review established positively, so it is not re-litigated:** a `diff -u` against the
+  reference showed **no numerical or control-flow change** in 348 diff lines — only formatting,
+  docstrings, type hints, the import style, the two `cancel` sites and the `_count_bjets`
+  extraction. 10 of the 11 ported tests are byte-identical to the reference, the 11th differs
+  only in its import path, and no assertion was softened. Two-thread cancellation isolation was
+  verified independently: `A(cancelled)=0.0 B(untouched)=3000.0`.
+- **§5.1 gate: PASSED.** Re-run in a detached worktree at the PR head under the *primary* venv,
+  `PYTHONPATH` confirmed resolving `path_filter` into the worktree: the widened grep is empty
+  (exit 1), flake8 silent, **349 passed**, `test_path_filter.py` 19, `test_systematics.py` 20.
+  All reproduce the PR body exactly.
+- **The coder caught a bad count of MINE, and it was right.** Criterion 5 said *"Expect: the
+  collected count is 21 (20 today + the one ported test)"*. Our `tests/test_systematics.py`
+  collects **19** on `main`, not 20 — I had transposed the **reference's** count (which is
+  genuinely 20) onto our file. 19 + 1 = 20, which is what shipped. Verified with
+  `pytest --collect-only -q` on both revisions, **not** `grep '^def test_'`, which is blind to
+  class-scoped tests (the B-006 cycle-4 lesson). `test_fill_histogram_syst_keys_created` is
+  genuinely present. **This is the fifth wrong count in the §2 table and the second this
+  session** — the rule is not "enumerate our code", it is "enumerate the code the number is
+  about". A scout enumerated the reference for me and I applied its number to us.
+- **Three deviations the coder declared, all sound, none needing a ruling:** `systematics` is now
+  accessed module-qualified rather than via `from ... import`, and `_count_bjets` was extracted
+  as its own function — both *required* to make my own mandated monkeypatch mutations exercise
+  production code instead of a dead-bound name, so my criteria forced these. Several vendored
+  `E701`/`E702` lines were reformatted one-statement-per-line with arithmetic untouched.
+- **The seam B-009 and B-011 plug into:** `cancel: Optional[threading.Event] = None` on both
+  `fill_histogram_from_cache` and `filter_raw_event_data`.
+
+### Cycle-by-cycle
+- **Cycle 1** — 0 required, 1 suggested-major, 5 suggested-minor. The major: the module
+  docstring cited the *reference's* `eval`/`compile` line numbers as this file's, and that
+  docstring is the artifact B-008 navigates by. The reviewer's verdict string read
+  `approve` while reporting `major=1`; the orchestrator went with the counts, not the string.
+- **Cycle 2** — 0 required, 0 suggested-major, 3 suggested-minor. The coder chose to
+  re-derive our own line numbers and guard them with an `ast` test rather than label them as
+  the reference's. The reviewer mutated that check in **both** directions — docstring rot and
+  code motion — and it went red for each.
+- **The orchestrator's own defect, for the §2 table:** criterion 5 demanded `21` collected in
+  `tests/test_systematics.py`. Our file has **19** on `main`; the *reference's* has 20, and
+  the count was transposed from a scout report about the reference onto our file. The coder
+  flagged it rather than padding to hit the number. Fifth wrong count on this project.
