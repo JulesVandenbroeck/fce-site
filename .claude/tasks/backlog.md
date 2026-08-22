@@ -468,3 +468,12 @@ and are historical now that #6 is merged.
 - **B-012 m2** — PR #15 body, C1: says "all 6 samples"; the golden covers seven (`X1`-`X6` plus `data`). PR-body-only.
 - **B-012 m3** — `tests/test_engine_parity.py:304,314`: `worst` unpacked and never used in both perturbation tests. Assert on it at `:314` or discard it.
 - **B-012 m4** — `tests/test_engine_parity.py:186-190`: `_compare` iterates the golden's keys only, so a spurious extra histogram key or sample in our output is invisible. Set-equality per sample closes it.
+
+- **m5 (B-012 cycle 2)** — `tests/test_engine_parity.py:353` `_output_fingerprint` is annotated
+  `Dict[str, Tuple[int, float]]` but returns `st_mtime_ns`, an `int`. The `float` reads as
+  "seconds" and invites a later tolerance comparison. Cosmetic.
+
+- **m6 (B-012 cycle 3)** — `tests/test_engine_parity.py:384-396` `_bytes_without_following_symlinks`
+  double-counts each subdirectory inode (4096 B): the entry's `lstat` size is added, then again as
+  the recursed path's own size. Errs upward, so C10's assertion stays sound; the printed 24.6 MB
+  is a slight overstatement.

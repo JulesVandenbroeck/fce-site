@@ -17,17 +17,29 @@ IDs are `B-nnn`, allocated in order and never reused.
   per-source `h_{src}_up`; C2 perturbing one bin fails *naming that bin*, sub-tolerance still
   passes; C3 skips with a named reason when datasets or the reference checkout are absent;
   C4 the content-addressed cache cannot cross the two runs, mutation-gated; C5 `"ui" not in
-  sys.modules`; C6 `pytest tests/` green, floor **406**, flake8 0 across `src/ tests/ scripts/`;
+  sys.modules`; C6 `pytest tests/` green, floor **413**, flake8 0 across `src/ tests/ scripts/`;
   C7 `reference_render`'s own fresh output diffed against the committed golden; C8 the
   cache-crossing probe does not overwrite `reference_render`'s output dir; C9 the variation-key
-  coverage guard asserts per-sample. **checks=9.**
+  coverage guard asserts per-sample; C10 the cache-crossing probe's `copytree` does not
+  dereference the dataset symlink, footprint-bounded and mutation-gated. **checks=10.**
 - **Depends on:** B-011 (merged `82ef336`). Last task before the M2 checkpoint.
 - **Branch / PR:** `task/b-012-parity-proof` — #15
-- **Status:** cycle 2 dispatched 2026-08-22. Cycle 1: **3 required, 2 suggested-major, 4
-  suggested-minor** — https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381713608.
-  §5.1 gate passed first (406 passed, flake8 0, reproduced). Diagnosed a **cycle**, not a
-  re-specification. Four minors backlogged individually. **C4's answer:** the cache **does** cross
-  on a shared `FCE_HOME` (0.08 s vs 78.9 s) — the fixtures' isolation is load-bearing.
+- **Status:** **APPROVED cycle 3 — awaiting the merge command.** Cycle 1: **3R / 2M / 4m** —
+  https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381713608 — diagnosed a
+  **cycle**; four minors backlogged. Cycle 2 recovered 177 uncommitted lines from an interrupted
+  attempt (patch: `handoff/b-012-cycle2-interrupted.patch`). §5.1 gate re-run in `~/fce-gate-b012`
+  at `5a2a91a`: **411 passed, flake8 0** — reproduced. Suite floor 406 → **411**.
+  Cycle 2: **1R / 1M / 1m** — https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381993475.
+  R1/R2/M1/M2 fixed; R3 (no `Check:`/`Expect:` in the PR body) carried — my defect, fixed in the
+  cycle-3 dispatch, which supplies all ten verbatim. **M3 is fix-induced by M1's own fix**
+  (§5.5): `copytree(symlinks=False)` dereferences the dataset symlink, 376.3 MB per suite run
+  → C10. Diagnosed a **cycle** under §5.4 clause 3 — M3 was gated by no prior criterion.
+  m5 backlogged. Cycle 3: **0R / 0M / 1m**, `scope=pass`, `verdict=approve` —
+  https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5382168276. R3 and M3 fixed,
+  R1/R2/M1/M2 not regressed, m5 fixed free, m6 backlogged. §5.1 gate at `57939b5`: **413 passed,
+  flake8 0**, `src/ content/ pyproject.toml` byte-identical to `main`. Converged **on** the §5.7
+  limit, not past it. `gh pr merge 15 --merge` was blocked by the sandbox classifier — the user
+  runs it, then this entry moves to `## Done` and the M2 checkpoint is reported.
   Checkpoint task: stop and report to the user when it merges.
 - **History:** [`archive/backend.md`](archive/backend.md) — method ruling and rejected
   alternatives, the headless-feasibility evidence, the observed import transcript, and why C4
@@ -144,4 +156,4 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - `RunConfig.from_dict` **raises** `RunConfigError` on any digest mismatch — never warns (B-010)
 - Cancellation seam: `cancel: Optional[threading.Event] = None` on `fill_histogram_from_cache`
   and `filter_raw_event_data`. Granularity is one **basket**; the vectorised path never polls (B-007)
-- Suite floor **398 passed**; flake8 0 across `src/ tests/ scripts/`
+- Suite floor **413 passed**; flake8 0 across `src/ tests/ scripts/`

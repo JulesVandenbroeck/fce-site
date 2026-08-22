@@ -1524,3 +1524,48 @@ Beamline, Bench and Board persist structurally different things. Backlogged: a p
   cycle-1 agent's worktree, so it pushed `work-b010-cycle2:task/b-010-runconfig`. Verified
   `ae239f5` still an ancestor of `b7119a9` — not a force-push. This will recur whenever a
   harness worktree outlives its agent; check it, do not assume it.
+
+### B-012 — The parity proof — cycle-by-cycle record
+
+- **Cycle 1** (`199a6ac`): 3 required / 2 suggested-major / 4 suggested-minor —
+  [comment 5381713608](https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381713608).
+  R1 the `reference_render` fixture rendered the reference and never compared it to the golden —
+  the circular proof C4 exists to preclude, present as a *broken instrument* rather than a wrong
+  number. R2 the reference-checkout skip test failed instead of skipping on any machine without
+  the checkout. R3 none of C1–C6 shipped a `Check:`/`Expect:` — a finding against the dispatch.
+  M1 the cache probe wrote our engine's output over the reference render's. M2 the coverage guard
+  aggregated variation keys across samples. Diagnosed a **cycle** (§5.4 clause 3). → C7, C8, C9.
+- **Interrupted.** The session dispatching cycle 2 died at its context limit with 177 uncommitted
+  lines in `.claude/worktrees/b012-resume`, and C7–C9's verbatim text existed nowhere but that
+  dead dispatch. Recovered: the diff was snapshotted to
+  `.claude/handoff/b-012-cycle2-interrupted.patch`, the criteria were rewritten with commands, and
+  the coder was told to judge the recovered work rather than trust it. It kept all of it. **Not a
+  cycle** — no review had seen it. *Lesson: the criteria's only durable copy is the PR body. C7–C9
+  were written into a dispatch and nowhere else, and a crash erased them.*
+- **Cycle 2** (`5a2a91a`): 1 required / 1 suggested-major / 1 suggested-minor —
+  [comment 5381993475](https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381993475).
+  R1/R2/M1/M2 fixed, each mutation-gated by the reviewer *independently of the coder's transcript*.
+  R3 carried: the body claimed the commands were "carried forward unedited" and they were not.
+  **M3 was created by M1's own fix** — `shutil.copytree(dirs_exist_ok=True)` defaults to
+  `symlinks=False` and so dereferenced the dataset symlink, writing 376.3 MB per suite run. This
+  is §5.5's whole argument in one finding: a scope narrowed to the previous cycle's findings would
+  have missed a defect that the previous cycle's fix introduced. Diagnosed a **cycle** under
+  clause 3 — no criterion had ever gated the probe's footprint. → C10.
+- **Cycle 3** (`57939b5`): **0 / 0 / 1**, `scope=pass`, `verdict=approve` —
+  [comment 5382168276](https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5382168276).
+  R3 closed by writing all ten `Check:`/`Expect:` pairs into the body; M3 closed by `symlinks=True`
+  gated by C10, whose *instrument* the reviewer also mutation-tested — replacing the
+  non-following size walk with a following one turns the gate red, so the measurement cannot
+  launder a dereferenced copy under the cap. m6 backlogged.
+
+**Suite floor:** 398 → 406 → 411 → **413**. Parity module 8 → 13 → 15 tests. checks 6 → 9 → **10**.
+
+**What this task taught the process.** Three things, all of them cheap next time:
+1. **A criterion that lives only in a dispatch is one crash from gone.** C7–C9 had to be
+   reconstructed. The PR body is the durable copy; get new criteria into it the same cycle.
+2. **R3 is the §5.4 carve-out working as designed.** A `Required` filed against the dispatch did
+   not make either cycle a re-specification, because the *unmet* properties (R1, R2, M1, M2, M3)
+   were coder defects or new ground. The limit stayed reachable and the task converged on cycle 3.
+3. **Mutation-gate the instrument, not only the assertion.** Cycle 3's reviewer mutated the size
+   walk itself. That is the §2 lesson — "an instrument that structurally cannot observe the
+   property it certifies" — applied one level deeper than the task asked for.
