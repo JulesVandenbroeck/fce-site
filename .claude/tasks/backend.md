@@ -9,6 +9,68 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
+### B-009 — `RunContext`, replacing `RUN_STATE` in `analytical_loop.py`
+- **Scope:** `src/fce_web/runs.py`, `src/fce_web/engine/analytical_loop.py`,
+  `tests/test_run_context.py`
+- **Accept:** `grep -rn "ui\." src/fce_web/engine/` empty across the whole package; two
+  concurrent `run_physics_loop` calls with different contexts keep separate progress **and**
+  separate cancellation, proven by a real two-thread test; no module-level mutable state
+  (reuse the guard already in `tests/test_app.py`); the dead `samples` and `en` parameters
+  removed or their retention justified in writing; `flake8` clean
+- **RESOLVED 2026-08-22 — the coupling surface is fully enumerated. 27 call-site lines across
+  FIVE names, not 24 across two.** The scout the last session drafted has now been run, against
+  the reference's `engine/analytical_loop.py` (353 lines). The import at `:9-10` is the only
+  `ui` reference in the file, and there is **no bare `ui.` attribute access anywhere** (`ui.state.X`
+  never appears), so the five imported names are the entire surface:
+  - `get_run_state` (7) — `:76,118,126,139,182,225,319`
+  - `update_run_state` (17) — `:92,115,119,127,145,151,172,192,270,274,304,305,322,328,341,348,350`
+  - `add_completed_node` (1) — `:300`
+  - `add_active_node` (1) — `:303`
+  - `mark_nodes_completed` (1) — `:339`
+- **One unreconciled line, recorded rather than smoothed over.** This entry previously listed
+  `update_run_state` at `:183`; the scout's grep reports `:305` in that slot and not `:183`.
+  A line-level grep counts a line carrying two calls once, so both readings may be true. **Do not
+  resolve this by picking one — the criteria below are gated on a grep and a poison test, neither
+  of which depends on the count being right.** That is why they are written that way.
+- **What the three node functions actually are, and why they are cheap.** From `ui/state.py:78-96`,
+  all three mutate two sets in `RUN_STATE` under a shared `threading.RLock` (`STATE_LOCK`, `:4`):
+  `add_active_node` unions `active_nodes`; `add_completed_node` moves one id from `active_nodes`
+  to `completed_nodes`; `mark_nodes_completed` does the same for a collection, atomically.
+  **`analytical_loop.py` is their ONLY caller in the entire reference** — scout grepped the whole
+  repo and found definitions in `ui/state.py` and call sites in `analytical_loop.py`, nothing else.
+  So they collapse to a single `on_node` callback with no second consumer to satisfy.
+- **The grouping — this IS the `RunContext` design**, and it came from reading the code:
+  cancellation (`:76,118,126,139,182,319`) -> a `threading.Event`; cancellation
+  *acknowledgement* (`:119,127,145,183,322`) -> **deleted**, driver-owned and already
+  redundant; progress (`:172-175,270,274,341`) -> `on_progress` / `on_worker`; status and
+  phase (`:92,115,151,192,304,328`) -> `on_log` / `on_phase`; node highlighting
+  (`:300,303,339`) -> `on_node`; `n_workers` (`:225`) -> a field; `cutflow_ready`
+  (`:348-350`) -> a returned `RunResult`.
+- **Two things to kill rather than port.** `progress_ctx` (`:258-267`) is a live mutable dict
+  sharing **two `threading.Lock`s** with the DPG render thread; its slot-pool machinery exists
+  only to drive N stacked progress bars and has no physics meaning. And the hard-coded UI layout
+  constants baked into the engine — `0.78` at `:174` (twice) and `:274`, `0.80` at `:341` —
+  the engine reports 0..1 of its own work and the driver scales it.
+- **A bug fixed for free:** the status consumer at `ui/components.py:385-387` reads-then-blanks
+  `status_msg` (written at `:92,115,151,192,328`), making it a single-slot mailbox with lossy
+  overwrite — under N workers, messages are silently dropped. A real sink has no such behaviour.
+- **The entry point:** `run_physics_loop(cfg, samples, active_samples, en)` at `:205`.
+- **Depends on:** ~~B-007~~ (merged `d906b59`)
+- **Branch / PR:** `task/b-009-run-context` — PR not yet opened
+- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree, effort medium
+- **Floors — a fall in any is a `Required`:** full suite at **376 passed** (measured by the
+  orchestrator in the primary checkout at `57a2d6b`); flake8 exits 0.
+- **Feasibility settled before dispatch.** All seven non-`ui` names `analytical_loop.py`
+  imports already exist in our tree — `filter_raw_event_data:551`, `fill_histogram_from_cache:417`,
+  `make_cache_acc:223`, `save_cache:291`, `preprocess_hep_expr:55` in `engine/path_filter.py`;
+  `write_final_histograms:13` in `engine/path_final.py`; `get_fce_home:27` in `paths.py`.
+  So this is vendor-plus-decouple with no dependency cascade.
+- **The poison-test pattern to copy is `tests/test_path_filter.py:165`**
+  (`test_path_filter_imports_with_ui_poisoned`), and the module-level-state guard to extend is
+  `tests/test_app.py:142` (`test_no_module_level_mutable_state_in_the_app_module`, via its
+  `_module_level_state` helper — `tests/` is a package, so it imports).
+
+
 ## Ready
 
 **Both entries below are DEFERRED behind the M2 checkpoint by the user's ruling 2026-08-22.**
@@ -167,54 +229,6 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   (255, 296, 368, 426, 606, 615, 630 / 393); the cycle-1 review caught exactly that confusion
   baked into our docstring.
 - **Depends on:** ~~B-006~~ (merged `ce4dcd6`), B-007
-- **Branch / PR:** not yet opened
-
-### B-009 — `RunContext`, replacing `RUN_STATE` in `analytical_loop.py`
-- **Scope:** `src/fce_web/runs.py`, `src/fce_web/engine/analytical_loop.py`,
-  `tests/test_run_context.py`
-- **Accept:** `grep -rn "ui\." src/fce_web/engine/` empty across the whole package; two
-  concurrent `run_physics_loop` calls with different contexts keep separate progress **and**
-  separate cancellation, proven by a real two-thread test; no module-level mutable state
-  (reuse the guard already in `tests/test_app.py`); the dead `samples` and `en` parameters
-  removed or their retention justified in writing; `flake8` clean
-- **The 24 `RUN_STATE` sites grouped by what they are for** — this grouping *is* the
-  `RunContext` design, and it came from reading the code, not from the milestone map.
-  **Count corrected 2026-08-22: 24, not "~22".** Scout enumerated `engine/analytical_loop.py`:
-  7 `get_run_state` at `:76,118,126,139,182,225,319` and 17 `update_run_state` at
-  `:92,115,119,127,145,151,172,183,192,270,274,304,322,328,341,348,350`. The grouping below was
-  sound; only the total was invented. `run_physics_loop` is at `:205`, signature
-  `def run_physics_loop(cfg, samples, active_samples, en):`.
-  cancellation (`:76,118,126,139,182,319`) -> a `threading.Event`; cancellation
-  *acknowledgement* (`:119,127,145,183,322`) -> **deleted**, driver-owned and already
-  redundant; progress (`:172-175,270,274,341`) -> `on_progress` / `on_worker`; status and
-  phase (`:92,115,151,192,304,328`) -> `on_log` / `on_phase`; node highlighting
-  (`:300,303,339`) -> `on_node`; `n_workers` (`:225`) -> a field; `cutflow_ready`
-  (`:348-350`) -> a returned `RunResult`.
-- **Two things to kill rather than port.** `progress_ctx` (`:258-267`) is a live mutable dict
-  sharing **two `threading.Lock`s** with the DPG render thread; its slot-pool machinery exists
-  only to drive N stacked progress bars and has no physics meaning. And the hard-coded `0.78`
-  / `0.80` in the progress arithmetic are *UI layout constants baked into the engine* — the
-  engine reports 0..1 of its own work and the driver scales it.
-- **A bug fixed for free:** the status consumer at `ui/components.py:385-387` reads-then-blanks
-  `status_msg`, making it a single-slot mailbox with lossy overwrite — under N workers,
-  messages are silently dropped. A real sink has no such behaviour.
-- **UNRESOLVED, and it must be enumerated before this task is dispatched.** The `24 RUN_STATE
-  sites` figure above counts only `get_run_state` and `update_run_state`. But the reference's
-  import at `analytical_loop.py:9-10` pulls **five** names from `ui.state`:
-  ```python
-  from ui.state import (get_run_state, update_run_state,
-                        add_active_node, add_completed_node, mark_nodes_completed)
-  ```
-  The three node-highlighting functions are **additional coupling that the 24 does not cover**,
-  and this entry's own grouping already gestures at them ("node highlighting (`:300,303,339`)"),
-  which is why the numbers never reconciled. **A scout was drafted to enumerate all five call-site
-  sets and was never run — the session ended first.** Dispatch it before writing the B-009
-  dispatch; do not carry the 24 forward as if it described the whole surface.
-  **The criterion is safe regardless**, because it is the widened grep plus a subprocess
-  `sys.modules["ui"] = None` poison test — the same pair that worked for B-007. That pair
-  catches all five names without depending on my count being right, which is precisely why it
-  is written that way.
-- **Depends on:** B-007
 - **Branch / PR:** not yet opened
 
 ### B-011 — Headless driver
