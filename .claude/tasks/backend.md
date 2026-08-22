@@ -37,6 +37,27 @@ _none_
   second-language reader can act on (shared §1). Fix the copy when wiring the stream.
   (b) `runs.py:92`'s `n_workers: int = 4` is an unexplained magic default; this is the first code
   that actually picks a worker count, so give it a reason or source it from the config.
+- **Branch / PR:** `task/b-011-headless-driver` — PR not yet opened
+- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree, effort medium
+- **Floors — a fall in any is a `Required`:** full suite at **386 passed** (measured by the
+  orchestrator in the primary checkout at `1689b27`); flake8 exits 0.
+- **SCOPE WIDENED BY THE ORCHESTRATOR AT DISPATCH, and this entry was wrong before.** The entry's
+  scope was `driver.py` + `tests/test_driver.py`, but the acceptance clause "cancelling mid-run
+  returns a `RunResult` marked cancelled with partial output" **cannot be satisfied inside it**:
+  `RunResult` is a frozen dataclass at `runs.py:110` carrying only `processed_any` and
+  `cutflow_ready`. `src/fce_web/runs.py` is therefore in scope. Caught by scout before dispatch
+  rather than by the coder hitting it and stopping — which would have been a §7 checkpoint.
+  This is §2 question 3 ("does the file scope let the coder satisfy every criterion?") paying
+  for itself; B-005 cycle 1 is the precedent where it did not.
+- **The seams, enumerated before dispatch so the coder does not re-derive them:**
+  `RunConfig.to_dict()` at `runconfig.py:435` is the dict bridge — `RunConfig`'s 13 fields are
+  exactly the 13 top-level keys `run_physics_loop` reads, so the dict is never hand-built.
+  `from_file:430`, `from_dict:377` (**raises `RunConfigError` on digest mismatch**),
+  `compute_h5:368`, `compute_h5_sel:362`. `get_fce_home(env=...)` at `paths.py:27` is the seam
+  for testing the datasets-absent path without touching the real directory.
+- **The vendor-scope ruling is a criterion, not a footnote.** The reference's
+  `execute_analysis` calls `render_plots` at `run_engine.py:55`; that call is **not** ported, and
+  criterion 5 greps `driver.py` for `render_plots|plotter|fitter|pyhf|matplotlib|mplhep`.
 - **Branch / PR:** not yet opened
 
 
