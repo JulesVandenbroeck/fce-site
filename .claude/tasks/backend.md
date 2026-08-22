@@ -68,8 +68,29 @@ IDs are `B-nnn`, allocated in order and never reused.
   user's ruling, and `weightsSquared` is contract-nullable in `docs/api.md`. Say so in the PR body
   so the reviewer does not raise its absence as a finding.
 - **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
-- **Branch / PR:** `task/b-007-vendor-path-filter` — PR not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree isolation
+- **Branch / PR:** `task/b-007-vendor-path-filter` — #12 @ `0578c89`
+- **Status:** in review (cycle 1) — reviewer dispatched 2026-08-22 at raised effort (physics +
+  concurrency, per §3)
+- **§5.1 gate: PASSED.** Re-run in a detached worktree at the PR head under the *primary* venv,
+  `PYTHONPATH` confirmed resolving `path_filter` into the worktree: the widened grep is empty
+  (exit 1), flake8 silent, **349 passed**, `test_path_filter.py` 19, `test_systematics.py` 20.
+  All reproduce the PR body exactly.
+- **The coder caught a bad count of MINE, and it was right.** Criterion 5 said *"Expect: the
+  collected count is 21 (20 today + the one ported test)"*. Our `tests/test_systematics.py`
+  collects **19** on `main`, not 20 — I had transposed the **reference's** count (which is
+  genuinely 20) onto our file. 19 + 1 = 20, which is what shipped. Verified with
+  `pytest --collect-only -q` on both revisions, **not** `grep '^def test_'`, which is blind to
+  class-scoped tests (the B-006 cycle-4 lesson). `test_fill_histogram_syst_keys_created` is
+  genuinely present. **This is the fifth wrong count in the §2 table and the second this
+  session** — the rule is not "enumerate our code", it is "enumerate the code the number is
+  about". A scout enumerated the reference for me and I applied its number to us.
+- **Three deviations the coder declared, all sound, none needing a ruling:** `systematics` is now
+  accessed module-qualified rather than via `from ... import`, and `_count_bjets` was extracted
+  as its own function — both *required* to make my own mandated monkeypatch mutations exercise
+  production code instead of a dead-bound name, so my criteria forced these. Several vendored
+  `E701`/`E702` lines were reformatted one-statement-per-line with arithmetic untouched.
+- **The seam B-009 and B-011 plug into:** `cancel: Optional[threading.Event] = None` on both
+  `fill_histogram_from_cache` and `filter_raw_event_data`.
 
 ### B-010 — `RunConfig` loader and the content-addressed cache keys
 - **Scope:** `src/fce_web/engine/runconfig.py`, `content/analyses/zpeak-dilepton.json`,
