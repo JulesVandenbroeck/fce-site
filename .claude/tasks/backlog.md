@@ -463,3 +463,8 @@ and are historical now that #6 is merged.
   is absent. Correct and consistent with the existing pattern, so not blocking. **Whoever sets up
   CI must know this check vanishes there**, or CI will be green on a class of drift that this
   machine catches.
+
+- **B-012 m1** — `tests/test_engine_parity.py:341`: the 10s cache-hit bound's docstring justifies itself with "a fresh run takes ~30s"; measured 78-83s. Stale number in the one place the headroom is argued.
+- **B-012 m2** — PR #15 body, C1: says "all 6 samples"; the golden covers seven (`X1`-`X6` plus `data`). PR-body-only.
+- **B-012 m3** — `tests/test_engine_parity.py:304,314`: `worst` unpacked and never used in both perturbation tests. Assert on it at `:314` or discard it.
+- **B-012 m4** — `tests/test_engine_parity.py:186-190`: `_compare` iterates the golden's keys only, so a spurious extra histogram key or sample in our output is invisible. Set-equality per sample closes it.

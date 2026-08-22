@@ -14,21 +14,35 @@ IDs are `B-nnn`, allocated in order and never reused.
   `tests/test_engine_parity.py`. `src/fce_web/` is out of scope deliberately — a parity proof
   whose author adjusted the implementation until it matched proves nothing.
 - **Accept:** C1 every bin matches within a stated, justified tolerance, and the per-source
-  `h_{src}_up` variations too; C2 perturbing one bin in the golden file fails the test *naming
-  that bin*; C3 the test skips with a named reason when the datasets or the reference checkout
-  are absent; C4 the content-addressed cache cannot cross between the two runs — point both at
-  one `FCE_HOME` and show the proof still distinguishes them, mutation-gated; C5 `"ui" not in
-  sys.modules` after the golden file is produced; C6 `pytest tests/` green, floor **398 passed**,
-  flake8 0 across `src/ tests/ scripts/`. checks=6.
-- **Depends on:** B-011 (merged `82ef336`) — unblocked. Last task before the checkpoint.
+  `h_{src}_up` variations too; C2 perturbing one bin fails the test *naming that bin*, and a
+  sub-tolerance perturbation still passes; C3 the test skips with a named reason when either the
+  datasets or the reference checkout is absent; C4 the content-addressed cache cannot cross
+  between the two runs, mutation-gated; C5 `"ui" not in sys.modules` after the golden is
+  produced; C6 `pytest tests/` green, floor **406 passed**, flake8 0 across `src/ tests/ scripts/`;
+  **C7** the `reference_render` fixture's own fresh output is diffed against the committed golden
+  (closes R1 — today nothing compares them, so a golden regenerated from *our* engine would still
+  pass and the proof would be circular); **C8** the cache-crossing probe does not overwrite
+  `reference_render`'s output dir (M1); **C9** the variation-key coverage guard asserts per-sample,
+  not aggregated across samples (M2). **checks=9.**
+- **Depends on:** B-011 (merged `82ef336`). Last task before the M2 checkpoint.
 - **Branch / PR:** `task/b-012-parity-proof` — #15
-- **Status:** in review (cycle 1). Work landed `199a6ac` in an interrupted session; resumed
-  2026-08-22 to verify C1–C6 and open the PR — no fixes were needed, so this is still cycle 1.
-  §5.1 gate re-run in a detached worktree under `$HOME`: **406 passed**, flake8 exit 0 — both
-  reproduce. C4's answer: the cache **does** cross when both runs share one `FCE_HOME`
-  (0.08 s vs 78.9 s), so the fixtures' `FCE_HOME` isolation is load-bearing, not decorative.
-  Checkpoint task: stop and report to the user when it merges. If our engine genuinely disagrees
-  with the reference the coder stops and reports — that is the checkpoint working, not a failure.
+- **Status:** cycle 2 dispatched 2026-08-22. Cycle 1 (work landed `199a6ac` in an interrupted
+  session, PR opened on resume): **3 required, 2 suggested-major, 4 suggested-minor** —
+  https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381713608. §5.1 gate passed
+  first: 406 passed, flake8 0, both reproduced in a detached `$HOME` worktree.
+  **Diagnosis (§5.4):** a cycle, not a re-specification. R2 (a test that goes red on any machine
+  without the reference checkout) and M1 (the probe mutating a fixture documented as immutable)
+  are coder defects against standards held elsewhere. R1 is mine as well as the coder's — C1's
+  `Check:` ran the parity test, which passes whether or not the reference render is ever
+  consulted; that is §2's "instrument that structurally cannot observe the property", and C7 is
+  the corrected instrument. R3 (no `Check:`/`Expect:` survived into the PR body) is fixed in the
+  cycle-2 dispatch and does not by itself make a re-specification.
+  Checkpoint task: stop and report to the user when it merges. **C4's answer, from cycle 1:** the
+  cache **does** cross when both runs share one `FCE_HOME` (0.08 s vs 78.9 s), so the fixtures'
+  `FCE_HOME` isolation is load-bearing, not decorative.
+- **Suggested-minor, all four backlogged individually:** m1 stale ~30s figure in the 10s-bound
+  docstring at `:341`; m2 PR body says "6 samples", golden has 7; m3 unused `worst` at `:304,314`;
+  m4 `_compare` iterates golden keys only, so an extra key in our output is invisible.
 - **History:** [`archive/backend.md`](archive/backend.md) — method ruling and rejected
   alternatives, the headless-feasibility evidence, the observed import transcript, and why C4
   exists (circular-proof hazard). Read it before writing the next cycle's dispatch.
