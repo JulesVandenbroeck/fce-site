@@ -25,6 +25,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -268,16 +269,38 @@ def test_render_reference_leaves_no_ui_module_in_the_test_process(reference_rend
 # Criterion 2
 # ---------------------------------------------------------------------------
 
+# Every non-``data`` sample's per-source variation keys the golden fixture
+# must carry -- ``data`` is real pseudo-data, has no simulated systematics,
+# and is excluded deliberately (criterion 9), not by omission.
+_REQUIRED_VARIATION_KEYS = {"h_jec_up", "h_lep_up", "h_btag_up"}
+
+
+def _assert_variation_coverage_per_sample(golden: dict) -> None:
+    """Every non-``data`` sample in *golden* must carry every per-source
+    variation key, checked **per sample** (criterion 9). An aggregated check
+    across all samples (the pre-C9 shape) would be satisfied by a single
+    sample carrying a key while every other sample's variations went
+    uncompared -- weaker than criterion 1's claim that every per-source
+    variation of every sample is compared.
+    """
+    for plot_idx, samples in golden.items():
+        for sample, hists in samples.items():
+            if sample == "data":
+                continue
+            missing = _REQUIRED_VARIATION_KEYS - set(hists)
+            assert not missing, (
+                f"sample={sample!r} (plot_idx={plot_idx!r}) is missing "
+                f"systematic-variation keys: {sorted(missing)}"
+            )
+
+
 def test_every_bin_and_every_systematic_variation_matches_within_tolerance(isolated_run):
     golden = _load_golden()
     # Sanity: the golden fixture actually carries the per-source variations,
     # not only the nominal -- otherwise this test would certify nothing about
     # them (the B-009 c1 trap: a check whose run never reaches what it claims
-    # to certify).
-    all_keys = {k for samples in golden.values() for h in samples.values() for k in h}
-    assert {"h_jec_up", "h_lep_up", "h_btag_up"} <= all_keys, (
-        f"golden fixture is missing systematic-variation keys: {all_keys}"
-    )
+    # to certify). Checked per sample (criterion 9), not aggregated.
+    _assert_variation_coverage_per_sample(golden)
 
     worst, failures = _compare(golden, isolated_run, TOLERANCE)
     print(f"\nparity: worst observed |deviation| across all bins = {worst!r}")
@@ -327,8 +350,24 @@ def test_reference_and_our_run_use_distinct_fce_homes(reference_render, isolated
     )
 
 
+def _output_fingerprint(fce_home: str) -> Dict[str, Tuple[int, float]]:
+    """``{relative_path: (size, mtime_ns)}`` for every file under
+    ``<fce_home>/output`` -- used by criterion 8 to prove a probe run left
+    ``reference_render``'s own output untouched.
+    """
+    out_dir = os.path.join(fce_home, "output")
+    fingerprint: Dict[str, Tuple[int, float]] = {}
+    if not os.path.isdir(out_dir):
+        return fingerprint
+    for name in sorted(os.listdir(out_dir)):
+        full = os.path.join(out_dir, name)
+        st = os.stat(full)
+        fingerprint[name] = (st.st_size, st.st_mtime_ns)
+    return fingerprint
+
+
 def test_pointing_both_runs_at_the_same_fce_home_lets_the_second_reuse_the_firsts_cache(
-    reference_render,
+    reference_render, tmp_path_factory,
 ):
     """Mutation for criterion 4: point our engine at the SAME FCE_HOME the
     reference just rendered into, instead of an isolated one. Because both
@@ -338,14 +377,34 @@ def test_pointing_both_runs_at_the_same_fce_home_lets_the_second_reuse_the_first
     (``sel_{h5_sel}_{s}.npz`` and ``h5_{h5}_{s}.root``) and copies them
     straight through instead of computing anything -- exactly the danger
     this criterion exists to rule out. Demonstrated by wall-clock: a fresh,
-    isolated run of this fixture takes ~30s (see PR body); a run pointed at
+    isolated run of this fixture takes ~78s (measured -- see PR body), which
+    is also the number the 10s bound below is set against; a run pointed at
     an already-populated home finishes in a small fraction of that, which is
     only explainable by a cache hit, not a genuine independent computation.
+
+    Criterion 8: probes a **copy** of ``reference_render``'s FCE_HOME, not
+    that fixture's own directory. ``reference_render`` is module-scoped and
+    its docstring promises its output is never mutated between tests; probing
+    it directly would let ``_run_our_engine`` overwrite
+    ``output/hist0_*.root`` in place, corrupting the very files the
+    criterion-7 tests read from that same fixture later in the module.
     """
     _result, ref_home = reference_render
+    before = _output_fingerprint(ref_home)
+
+    probe_home = str(tmp_path_factory.mktemp("cache_probe_home"))
+    shutil.copytree(ref_home, probe_home, dirs_exist_ok=True)
+
     t0 = time.time()
-    _run_our_engine(ref_home)
+    _run_our_engine(probe_home)
     elapsed = time.time() - t0
+
+    after = _output_fingerprint(ref_home)
+    assert before == after, (
+        "the cache-crossing probe must not mutate reference_render's own "
+        "output -- see criterion 8"
+    )
+
     # Loose bound (independent of the exact machine): a fresh run in this
     # fixture takes tens of seconds (see PR body); reusing every cache entry
     # finishes in a small fraction of that. 10s is generous headroom above
@@ -366,13 +425,123 @@ def test_pointing_both_runs_at_the_same_fce_home_lets_the_second_reuse_the_first
 
 def test_skip_reason_names_a_missing_reference_checkout(monkeypatch, tmp_path):
     monkeypatch.setenv(_REFERENCE_ROOT_ENV, str(tmp_path / "does-not-exist"))
+    # R2 (cycle 2): the datasets branch must not leak in from whatever the
+    # *real* environment or machine happens to have -- give it a datasets
+    # dir that unambiguously exists, so this test is reachable regardless of
+    # any outer $FCE_PARITY_DATASETS_DIR and regardless of whether the real
+    # reference checkout or dataset tree exist on the machine running it.
+    datasets_dir = tmp_path / "datasets"
+    os.makedirs(datasets_dir / "IDEA" / "91GeV")
+    monkeypatch.setenv(_DATASETS_DIR_ENV, str(datasets_dir))
     reason = _skip_reason_if_unavailable()
     assert "reference checkout not found" in reason
     assert str(tmp_path / "does-not-exist") in reason
 
 
 def test_skip_reason_names_a_missing_datasets_dir(monkeypatch, tmp_path):
+    # R2 (cycle 2): mirror image of the test above. Before this fix,
+    # `_skip_reason_if_unavailable` checks the reference checkout first and
+    # returns early, so on a machine without the real reference checkout
+    # (e.g. any CI box, or a dev machine that never cloned kskovpen/fce) this
+    # test observed "reference checkout not found" instead of "datasets not
+    # found" and failed -- the datasets branch was not independently
+    # reachable. Give it a reference checkout that unambiguously exists.
+    reference_root = tmp_path / "reference"
+    os.makedirs(reference_root / "engine")
+    monkeypatch.setenv(_REFERENCE_ROOT_ENV, str(reference_root))
     monkeypatch.setenv(_DATASETS_DIR_ENV, str(tmp_path / "no-datasets-here"))
     reason = _skip_reason_if_unavailable()
     assert "datasets not found" in reason
     assert str(tmp_path / "no-datasets-here") in reason
+
+
+# ---------------------------------------------------------------------------
+# Criterion 7 -- the golden fixture itself must be checked against a fresh
+# *reference* render inside the suite, not merely trusted. Before this,
+# nothing in the module compared reference_render's own output to the
+# committed golden: criterion 2 only compares OUR engine to golden, so a
+# golden regenerated from our own engine would leave every existing
+# assertion green and the parity proof would compare a number against
+# itself -- one step short of circular. The module docstring already claims
+# parity "against the reference repo's own histogram output"; this makes the
+# suite check what the docstring claims.
+#
+# `_compare` and `_read_our_output` are pure I/O over whatever FCE_HOME they
+# are pointed at (uproot `to_numpy()`, no engine code involved -- see their
+# docstrings), so reusing them against `reference_render`'s `ref_home`
+# instead of `isolated_run`'s home is exactly "diff a fresh output against
+# golden", just aimed at the other side of the proof.
+# ---------------------------------------------------------------------------
+
+def test_reference_render_matches_the_committed_golden(reference_render):
+    """The reference's OWN fresh output, diffed against the committed golden
+    fixture bin-for-bin. This is the comparison that closes the parity
+    proof: criterion 2 already proves ours == golden; this proves
+    reference == golden; together they establish ours == reference without
+    either side of the engine ever computing the other's expectation.
+    """
+    _result, ref_home = reference_render
+    golden = _load_golden()
+    worst, failures = _compare(golden, ref_home, TOLERANCE)
+    print(f"\nreference-vs-golden: worst observed |deviation| across all bins = {worst!r}")
+    assert not failures, "\n".join(failures)
+
+
+def test_perturbing_one_bin_of_golden_fails_the_reference_comparison_naming_that_bin(
+    reference_render,
+):
+    """Mutation gate for criterion 7, run against `reference_render`
+    specifically (not `isolated_run`, which criterion 3's mutation tests
+    already cover) -- proves the assertion above actually reaches the
+    reference-vs-golden comparison, and is not merely re-exercising the
+    ours-vs-golden path under a new name. Same in-memory perturbation
+    technique as criterion 3: nothing tracked is ever touched.
+    """
+    _result, ref_home = reference_render
+    golden = _perturbed_golden(TOLERANCE * 100)
+    worst, failures = _compare(golden, ref_home, TOLERANCE)
+    assert failures, "expected the perturbed bin to be reported as a failure"
+    assert len(failures) == 1, failures
+    assert "sample='X1'" in failures[0] and "key='h'" in failures[0] and "bin=12" in failures[0], (
+        f"failure message does not name the perturbed bin: {failures[0]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Criterion 9 -- variation-key coverage is checked per sample, not
+# aggregated. Mutation gate: remove one variation key from one non-``data``
+# sample in an in-memory copy of the golden and show the guard fails naming
+# that sample and that key; restore; show green. Nothing tracked is touched.
+# ---------------------------------------------------------------------------
+
+def test_variation_coverage_passes_on_the_real_golden():
+    golden = _load_golden()
+    _assert_variation_coverage_per_sample(golden)  # must not raise
+
+
+def test_removing_a_variation_key_from_one_sample_fails_naming_that_sample():
+    golden = _load_golden()
+    # X2, deliberately distinct from criterion 3/7's X1, so the two mutation
+    # gates cannot be confused with each other in a failure report.
+    sample_to_break = "X2"
+    plot_idx = "0"
+    assert sample_to_break in golden[plot_idx], (
+        f"fixture assumption broken: {sample_to_break!r} not in golden[{plot_idx!r}]"
+    )
+    del golden[plot_idx][sample_to_break]["h_jec_up"]
+
+    with pytest.raises(AssertionError) as excinfo:
+        _assert_variation_coverage_per_sample(golden)
+    message = str(excinfo.value)
+    assert sample_to_break in message, message
+    assert "h_jec_up" in message, message
+
+
+def test_removing_a_variation_key_from_data_is_not_flagged():
+    """``data`` is nominal-only, legitimately -- confirm it is excluded
+    deliberately (it has no variation keys to begin with in the real
+    fixture) rather than by an accident of iteration order.
+    """
+    golden = _load_golden()
+    assert set(golden["0"]["data"]) == {"h"}, golden["0"]["data"].keys()
+    _assert_variation_coverage_per_sample(golden)  # must not raise
