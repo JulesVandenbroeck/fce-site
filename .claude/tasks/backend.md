@@ -85,7 +85,25 @@ _none_
   `FCE_HOME` in the child environment is what defeats it. **This must be an acceptance
   criterion with its own mutation, not a note** — point both runs at the same `FCE_HOME` and
   show the proof still distinguishes them, or show it does not and fix the isolation.
-- **Branch / PR:** not yet opened
+- **Branch / PR:** `task/b-012-parity-proof` — PR not yet opened
+- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree,
+  effort medium. **This is the M2 checkpoint task**; the orchestrator stops and reports to the
+  user when it merges.
+- **Floors:** full suite at **398 passed** (measured in the primary checkout at `c9eb879`);
+  flake8 exits 0 across `src/ tests/ scripts/`.
+- **The coder is forbidden from touching `src/fce_web/` on this task, deliberately.** A parity
+  proof whose author adjusted the implementation until it matched proves nothing. If our engine
+  genuinely disagrees with the reference, the coder **stops and reports** — that is a §7
+  checkpoint and the most valuable output this task can produce, not a failure.
+- **Criterion 4 is the one that decides whether the proof means anything**, and its answer is
+  genuinely unknown to me. The coder is asked to report which of two things it found — that the
+  cache cannot cross between the two runs, with evidence, or that the isolation is load-bearing
+  and must fail loudly when removed. It was explicitly told I am not asking it to make the
+  answer come out a particular way.
+- **Tolerance discipline:** stated and justified from a physical or floating-point cause, with
+  the observed worst-case deviation shown next to it, and a second mutation *just under* the
+  tolerance to prove the tolerance does work rather than decorate. A tolerance widened until the
+  test passed is the failure the criterion exists to prevent.
 
 **Both entries below are DEFERRED behind the M2 checkpoint by the user's ruling 2026-08-22.**
 Neither blocks B-012, and nothing on the B-007 → B-009 → B-011 → B-012 chain touches
