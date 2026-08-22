@@ -57,7 +57,16 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **The entry point:** `run_physics_loop(cfg, samples, active_samples, en)` at `:205`.
 - **Depends on:** ~~B-007~~ (merged `d906b59`)
 - **Branch / PR:** `task/b-009-run-context` — #13, head `619dc3c`
-- **Status:** in progress (cycle 2) — review returned rework, re-dispatched 2026-08-22
+- **Status:** in review (cycle 2) — head `1da3d9e`, reviewer dispatched 2026-08-22, Opus, effort high
+- **§5.1 gate PASSED on cycle 2**, re-run in `~/fce-gate-b009` at `1da3d9e` (== PR headRefOid):
+  **386 passed** / 0 failed (floor 383, +3); flake8 exit 0; both greps empty; `gh pr diff --name-only`
+  shows exactly the three scoped files; import verified to resolve to the worktree copy.
+- **Cycle 2 shipped:** the progress test now drives the real `_process_sample` through a fake
+  `uproot` source and asserts the exact sequence `[0.0, 1/3, 2/3, 1.0, 1.0]` rather than the two
+  endpoints; the `cutflow_plotter` `except` narrowed to `ImportError` with the M5/M6 deferral
+  logged via `ctx.on_log` and pinned by a test that distinguishes "deferred" from "failed";
+  `cancel=ctx.cancel` now passed to `fill_histogram_from_cache`; the terminal `1.0` report made
+  conditional on `processed_any`. Test count 383 -> 386.
 - **Review (cycle 1):** 1 required, 1 suggested-major, 3 suggested-minor, **scope pass**.
   Posted verbatim to PR #13 as `issuecomment-5379780960`.
 - **§5.4 diagnosis — this IS a cycle, not a re-specification, and the mechanical test says so.**
