@@ -38,7 +38,26 @@ _none_
   (b) `runs.py:92`'s `n_workers: int = 4` is an unexplained magic default; this is the first code
   that actually picks a worker count, so give it a reason or source it from the config.
 - **Branch / PR:** `task/b-011-headless-driver` — PR not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree, effort medium
+- **Status:** in review (cycle 1) — #14, head `4b2b97f`, reviewer dispatched 2026-08-22, Opus,
+  **effort high** (§3: concurrency — cancellation is set from a second thread; and this is the
+  last gate before the parity proof).
+- **§5.1 gate PASSED**, re-run in `~/fce-gate-b011` at `4b2b97f` (== PR headRefOid): **401 passed**
+  / 0 failed (floor 386, +15); flake8 exit 0; `ui` grep and plotting grep both empty; scope exactly
+  the three permitted files; import verified to resolve to the worktree copy.
+- **One extra gate check this time, and it was warranted.** The coder applied its four mutations
+  **directly to the tracked `driver.py`** rather than to a monkeypatch or scratch copy, against the
+  dispatch's instruction — and disclosed it. The risk that rule exists to prevent is a mutation
+  surviving into the commit, so the gate greps the committed tree for `0\.78|0\.80` residue in
+  `driver.py` and `runs.py`: **none**. Disclosed and clean, so it is a deviation for the reviewer
+  to weigh, not a gate failure.
+- **Signature deviation, and it follows from my own dispatch:** `run_analysis(config, ctx,
+  env=None)` gained a third parameter. I named `get_fce_home(env=...)` as the seam for testing the
+  datasets-absent path, so this is downstream of my instruction. Whether it belongs in the public
+  signature is the reviewer's call.
+- **Open question the coder raised, for the reviewer and then for me:** active-sample discovery
+  lists `<fce home>/datasets/<detector>/<energy>/*.root` directly, because `samples.json` is not
+  vendored anywhere. It matches `analytical_loop._find_data_file`'s own lookup. If a vendored
+  `samples.json` is preferred, that is a small follow-up — do not let it block B-012.
 - **Floors — a fall in any is a `Required`:** full suite at **386 passed** (measured by the
   orchestrator in the primary checkout at `1689b27`); flake8 exits 0.
 - **SCOPE WIDENED BY THE ORCHESTRATOR AT DISPATCH, and this entry was wrong before.** The entry's
