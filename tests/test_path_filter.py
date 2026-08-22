@@ -6,7 +6,10 @@ only the import path changed. The rest are new for task B-007: the ``cancel``
 seam that replaces ``ui.state.RUN_STATE["stop"]``, the ``ui``-poisoned import
 guard, and ``write_final_histograms``'s persistence of every ``outHist.h`` key.
 """
+import ast
+import inspect
 import math
+import re
 import subprocess
 import sys
 import threading
@@ -188,6 +191,84 @@ def test_path_filter_imports_with_ui_poisoned():
 
 
 # ---------------------------------------------------------------------------
+# Criterion 7 (PR #12 cycle-2 suggested-major): the module docstring's claimed
+# ``eval``/``compile`` line numbers must be this file's real ones, re-derived by
+# parsing the file rather than hand-copied -- so a later edit that shifts lines
+# breaks this test instead of silently rotting the docstring B-008 will navigate by.
+# ---------------------------------------------------------------------------
+
+def _actual_eval_compile_lines(source: str):
+    """Return (sorted eval() call lines, sorted compile() call lines) found by ast."""
+    tree = ast.parse(source)
+    eval_lines, compile_lines = [], []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id == "eval":
+                eval_lines.append(node.lineno)
+            elif node.func.id == "compile":
+                compile_lines.append(node.lineno)
+    return sorted(eval_lines), sorted(compile_lines)
+
+
+def _claimed_eval_compile_lines(docstring: str):
+    """Parse the "this file's lines ..." claim out of the module docstring."""
+    eval_m = re.search(
+        r"``eval\(\)`` calls \(this file's lines ([0-9, ]+)\)", docstring
+    )
+    compile_m = re.search(
+        r"``compile\(\)`` call \(this file's line ([0-9]+)\)", docstring
+    )
+    assert eval_m and compile_m, (
+        "module docstring no longer states this file's eval/compile line numbers "
+        "in the expected format -- update this test's regex to match"
+    )
+    eval_lines = sorted(int(x) for x in eval_m.group(1).split(","))
+    compile_lines = [int(compile_m.group(1))]
+    return eval_lines, compile_lines
+
+
+def test_docstring_eval_compile_line_numbers_match_this_file():
+    """The docstring's claimed line numbers for every ``eval``/``compile`` call site
+    must equal what ``ast`` actually finds in this file, right now.
+    """
+    import fce_web.engine.path_filter as pf
+
+    source = inspect.getsource(pf)
+    actual_eval, actual_compile = _actual_eval_compile_lines(source)
+    claimed_eval, claimed_compile = _claimed_eval_compile_lines(pf.__doc__)
+
+    assert claimed_eval == actual_eval, (
+        f"docstring claims eval() at {claimed_eval}, ast finds {actual_eval}"
+    )
+    assert claimed_compile == actual_compile, (
+        f"docstring claims compile() at {claimed_compile}, ast finds {actual_compile}"
+    )
+
+
+def test_docstring_eval_compile_line_check_catches_a_perturbed_number():
+    """Mutation test (string substitution on the in-memory docstring, no tracked file
+    touched): if one claimed line number is wrong, the comparison used by the test
+    above must actually notice.
+    """
+    import fce_web.engine.path_filter as pf
+
+    source = inspect.getsource(pf)
+    actual_eval, actual_compile = _actual_eval_compile_lines(source)
+
+    perturbed_docstring = pf.__doc__.replace(
+        f"line {actual_compile[0]})", f"line {actual_compile[0] + 1})"
+    )
+    assert perturbed_docstring != pf.__doc__, (
+        "perturbation did not change the docstring -- fix this test's substitution"
+    )
+
+    _claimed_eval, claimed_compile = _claimed_eval_compile_lines(perturbed_docstring)
+    assert claimed_compile != actual_compile, (
+        "perturbed docstring still matches ast output -- the check is not sensitive"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Criterion 3: cancellation
 # ---------------------------------------------------------------------------
 
@@ -208,13 +289,19 @@ def _make_syst_cache(tmp_path, n, name="cancel_cache.npz"):
 def test_fill_histogram_from_cache_cancel_mid_loop(tmp_path, monkeypatch):
     """Setting ``cancel`` partway through the event loop stops the fill early.
 
-    n=350 -> _step = max(1, 350 // 100) = 3, so the loop polls ``cancel`` roughly
-    350 // 3 ~= 117 times, comfortably over the "at least 3 polls" floor. A real
-    ``threading.Event`` is set by a callback (a monkeypatched wrapper around
-    ``_obj_from_cache``, the per-event reconstruction called once per iteration)
-    that fires once processing is partway through the cache, not before the first
-    event and not after the last -- so the early return is provably mid-loop, not
-    the entry guard exercised by ``filter_raw_event_data``.
+    n=350 -> _step = max(1, 350 // 100) = 3, so the loop polls ``cancel.is_set()``
+    roughly 350 // 3 ~= 117 times, comfortably over the "at least 3 polls" floor --
+    that is a fact about how often the *loop* checks ``cancel``, separate from when
+    ``cancel`` actually gets set below.
+
+    A real ``threading.Event`` is set by a callback (a monkeypatched wrapper around
+    ``_obj_from_cache``, the per-event reconstruction called **six times per event**
+    -- once each for l1, l2, j1, j2, ph1, ph2). ``fire_after = n // 3 = 116`` counts
+    those *calls*, not events, so the callback actually fires at call 116, i.e. partway
+    through event ~19 (116 // 6), not event ~117 -- still comfortably mid-cache (not
+    before the first event and not after the last), which is all this test needs: the
+    early return is provably mid-loop, not the entry guard exercised by
+    ``filter_raw_event_data``.
 
     The observable is ``"int(njets)"``, not the simpler ``"njets"``: a plain ``njets``
     eval succeeds on the module's vectorized fast path (all of it, in one numpy call,

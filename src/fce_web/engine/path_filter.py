@@ -1,16 +1,21 @@
 """Per-event and per-cache filtering, and the observable/cache proxies they use.
 
 Vendored from the reference repo's ``engine/path_filter.py`` (kskovpen/fce), 643 lines,
-with one deliberate deviation (task B-007): the reference polls a module-level
-the reference-module global ``state`` flag ("stop") at two call sites to let a student cancel a
-long-running analysis. ``.claude/shared/CLAUDE.md`` §6 forbids module-level mutable
-state, and a global flag would also mean two concurrent students' runs could cancel each
-other. Both sites now take an explicit ``cancel: Optional[threading.Event]`` parameter
-instead:
+with one deliberate deviation (task B-007): the reference polls a module-level global
+flag ("stop") at two call sites to let a student cancel a long-running analysis.
+``.claude/shared/CLAUDE.md`` §6 forbids module-level mutable state, and a global flag
+would also mean two concurrent students' runs could cancel each other. Both sites now
+take an explicit ``cancel: Optional[threading.Event]`` parameter instead:
 
 - :func:`fill_histogram_from_cache` polls it once per ``max(1, n // 100)`` events inside
-  its event loop (the reference's line 406) and returns early, leaving the histogram
-  partially filled.
+  its **per-event fallback** loop (the reference's line 406) and returns early, leaving
+  the histogram partially filled. The **vectorized fast path has no cancellation poll at
+  all** (faithful to the reference's own vectorized path, which has none either), so for
+  an observable that vectorizes, this function is effectively uncancellable -- it returns
+  once the single numpy call finishes, which is milliseconds. The effective cancellation
+  granularity this module offers is therefore **one basket in** :func:`filter_raw_event_data`,
+  not one event -- B-009's ``RunContext`` and B-011's headless driver should reason about
+  cancellation at that grain, not assume per-event responsiveness.
 - :func:`filter_raw_event_data` checks it once as an entry guard before processing its
   basket (the reference's line 453) and returns ``([], [], True)`` unfilled.
 
@@ -20,10 +25,13 @@ headless driver plug into; neither is built by this task.
 
 **Not done here, on purpose:**
 
-- The seven ``eval()`` calls (this file's lines 255, 296, 368, 426, 606, 615, 630) and the
-  one ``compile()`` call (line 393) are unsafe against a student-supplied expression --
-  see ``.claude/backend/CLAUDE.md`` §3.2. They are vendored unchanged. B-008 swaps them for
-  ``fce_web.safe_eval``, not this task.
+- The seven ``eval()`` calls (this file's lines 335, 377, 456, 515, 718, 730, 748) and the
+  one ``compile()`` call (this file's line 481) are unsafe against a student-supplied
+  expression -- see ``.claude/backend/CLAUDE.md`` §3.2. They are vendored unchanged from
+  the reference (whose own line numbers differ from these -- these are re-derived for
+  *this* file, and ``tests/test_path_filter.py::test_docstring_eval_compile_line_numbers_match_this_file``
+  parses this file with ``ast`` on every run so this paragraph cannot go stale silently).
+  B-008 swaps them for ``fce_web.safe_eval``, not this task.
 - ``sumw2`` (``bh.storage.Weight()``) is deliberately absent. ``bh.Histogram(ax)`` keeps
   the reference's default ``Double()`` storage everywhere in this file, per the user's
   ruling that ``weightsSquared`` stays contract-nullable in ``docs/api.md``.
@@ -36,13 +44,12 @@ from typing import List, Optional, Tuple
 import numpy as np
 import vector
 
+# Kept as an attribute lookup on the module (``systematics.SYST_SOURCES``, not a
+# ``from ... import SYST_SOURCES`` bound name) deliberately: this is what lets tests
+# monkeypatch ``fce_web.engine.systematics.SYST_SOURCES`` and have the per-event and
+# vectorized loops below actually pick up the change, proving the ``h_{src}_up`` keys
+# are driven by that module rather than a literal list here.
 from fce_web.engine import systematics
-
-#: Kept as an attribute lookup on the module (``systematics.SYST_SOURCES``, not a
-#: ``from ... import SYST_SOURCES`` bound name) deliberately: this is what lets tests
-#: monkeypatch ``fce_web.engine.systematics.SYST_SOURCES`` and have the per-event and
-#: vectorized loops below actually pick up the change, proving the ``h_{src}_up`` keys
-#: are driven by that module rather than a literal list here.
 
 
 def preprocess_hep_expr(expr: str) -> str:
@@ -548,9 +555,9 @@ def filter_raw_event_data(arrays, nev, cfg, outHist, observable_target,
     cache accumulation, and observable histogramming.
 
     ``cancel``, if given, is checked once as an entry guard before any event in this
-    basket is processed (mirroring the reference's poll of
-    the reference's global stop flag at that same call site); when it is set the function
-    returns ``([], [], True)`` without touching ``outHist`` or ``cache_acc``.
+    basket is processed (mirroring the reference's poll of its global stop flag at that
+    same call site); when it is set the function returns ``([], [], True)`` without
+    touching ``outHist`` or ``cache_acc``.
     ``cancel=None`` means never cancel. The third element of the return tuple is that
     same cancelled flag for both the cancelled and completed paths.
     """
