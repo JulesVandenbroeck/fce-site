@@ -33,7 +33,29 @@ Two properties of that formula are load-bearing and easy to break by
   builds ``mult_cuts`` as a ``list`` of ``tuple``s
   (``mult_cuts.append((nlep, op_lep, ...))`` at ``ui/graph.py``:1719), so
   this loader reproduces that exact shape rather than a JSON-native
-  list-of-lists.
+  list-of-lists. Element *types* matter for the same reason: a JSON ``"2"``
+  where the reference's ``int(dpg.get_value(...))`` produces ``2`` changes
+  ``str(mult_cuts)`` and therefore the digest, so ``_load_mult_cuts``
+  enforces the 7-tuple's ``(int, str, int, str, str, int, str)`` shape.
+
+``from_dict`` raises :class:`RunConfigError` -- rather than silently
+accepting -- when a stored digest does not match the one recomputed from a
+config's other fields. This is deliberate (B-010 cycle 1): a mis-authored
+fixture failing loudly at load time is worth more than one that misses the
+disk cache forever. **This now covers the nested digests, not just the
+top-level ones.** ``cfg["h5"]`` / ``cfg["h5_sel"]`` are validated as before,
+and in addition every ``selections[i]["h5_sel"]`` and every
+``selections[i]["histograms"][j]["h5"]`` is recomputed and compared. This
+matters because the top-level ``h5``/``h5_sel``/``histograms`` fields are
+`ui/graph.py`'s backward-compat flattening of the *first* selection only
+(``ui/graph.py``:1907-1923) -- the engine itself never reads them when
+``cfg["selections"]`` is present. ``engine/analytical_loop.py``:68,79,183-186
+read ``sel_cfg["h5_sel"]`` and ``hcfg["h5"]`` out of ``cfg["selections"]``,
+so top-level validation alone leaves the digests that are actually used for
+cache addressing unchecked. (The top-level fields are still validated,
+because they remain the source of truth for the fallback path
+``engine/analytical_loop.py``:203-212 takes when ``cfg["selections"]`` is
+empty.)
 """
 
 from __future__ import annotations
@@ -109,6 +131,15 @@ def _require_str(data: dict, keys: tuple, context: str) -> None:
             )
 
 
+# The element types of one Multiplicity node's cut, from ui/graph.py:1709-1719
+# -- (nlep, op_lep, njets, op_jet, ltype, nphot, op_phot), where the counts are
+# ``int(dpg.get_value(...))`` and the rest are dpg combo-box strings. A count
+# stored as a JSON string ("2" instead of 2) still passes the length/container
+# checks below but changes ``str(mult_cuts)`` -- the same trap _require_str
+# exists to close for bins/min/max/target, one level down.
+_MULT_CUT_TYPES = (int, str, int, str, str, int, str)
+
+
 def _load_mult_cuts(raw) -> list:
     """Reproduce the reference's ``mult_cuts``: a *list* of 7-tuples.
 
@@ -125,6 +156,21 @@ def _load_mult_cuts(raw) -> list:
             raise RunConfigError(
                 f"'mult_cuts[{i}]' must be a {_MULT_CUT_LEN}-element sequence, got {cut!r}"
             )
+        for j, (element, expected_type) in enumerate(zip(cut, _MULT_CUT_TYPES)):
+            # bool is a subclass of int; reject it explicitly so a JSON
+            # `true`/`false` cannot slip past an `isinstance(x, int)` check.
+            if expected_type is int and (
+                not isinstance(element, int) or isinstance(element, bool)
+            ):
+                raise RunConfigError(
+                    f"'mult_cuts[{i}][{j}]' must be an int, got "
+                    f"{type(element).__name__}: {element!r}"
+                )
+            if expected_type is str and not isinstance(element, str):
+                raise RunConfigError(
+                    f"'mult_cuts[{i}][{j}]' must be a string, got "
+                    f"{type(element).__name__}: {element!r}"
+                )
         cuts.append(tuple(cut))
     return cuts
 
@@ -250,6 +296,42 @@ class SelectionConfig:
         }
 
 
+def _validate_nested_digests(cfg: "RunConfig") -> None:
+    """Recompute and compare ``h5_sel``/``h5`` per selection and per
+    histogram, not just at the top level.
+
+    ``engine/analytical_loop.py``:68,79,183-186 read ``sel_cfg["h5_sel"]``
+    and ``hcfg["h5"]`` out of ``cfg["selections"]`` -- never the top-level
+    flattened fields ``from_dict`` already checks -- so a nested digest that
+    disagrees with its own selection's cuts is exactly the silent,
+    permanent cache miss the top-level check was meant to prevent.
+    """
+    mult_h5_base = cfg.energy + cfg.detector + str(cfg.mult_cuts)
+    for i, sel in enumerate(cfg.selections):
+        expected_h5_sel = hashlib.md5(
+            (mult_h5_base + str(sel.sel_exprs)).encode()
+        ).hexdigest()
+        if sel.h5_sel != expected_h5_sel:
+            raise RunConfigError(
+                f"'selections[{i}].h5_sel' ({sel.h5_sel}) does not match the value "
+                f"computed from energy/detector/mult_cuts/selections[{i}].sel_exprs "
+                f"({expected_h5_sel})"
+            )
+        for j, hist in enumerate(sel.histograms):
+            expected_h5 = hashlib.md5(
+                (
+                    expected_h5_sel + hist.observable + hist.bins
+                    + hist.min + hist.max + hist.target
+                ).encode()
+            ).hexdigest()
+            if hist.h5 != expected_h5:
+                raise RunConfigError(
+                    f"'selections[{i}].histograms[{j}].h5' ({hist.h5}) does not match "
+                    f"the value computed from selections[{i}].h5_sel/observable/bins/"
+                    f"min/max/target ({expected_h5})"
+                )
+
+
 @dataclass(frozen=True)
 class RunConfig:
     """A typed ``cfg``: the 13-key shape ``compile_graph_topology()`` returns
@@ -340,6 +422,8 @@ class RunConfig:
                 f"'h5' in config ({data['h5']}) does not match the value computed "
                 f"from h5_sel/observable/bins/min/max/target ({expected_h5})"
             )
+
+        _validate_nested_digests(cfg)
 
         return cfg
 

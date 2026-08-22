@@ -69,7 +69,7 @@ def test_roundtrip_fixture():
 # ---------------------------------------------------------------------------
 
 
-def test_digest_h5_sel_matches_reference_formula(capsys):
+def test_digest_h5_sel_matches_reference_formula():
     raw = _fixture_dict()
     cfg = RunConfig.from_dict(copy.deepcopy(raw))
 
@@ -79,7 +79,7 @@ def test_digest_h5_sel_matches_reference_formula(capsys):
     assert cfg.h5_sel == expected
 
 
-def test_digest_h5_matches_reference_formula(capsys):
+def test_digest_h5_matches_reference_formula():
     raw = _fixture_dict()
     cfg = RunConfig.from_dict(copy.deepcopy(raw))
 
@@ -186,7 +186,7 @@ def test_bins_as_json_number_is_rejected():
     """
     raw = _fixture_dict()
     raw["bins"] = 50  # JSON number, not a string
-    with pytest.raises(RunConfigError):
+    with pytest.raises(RunConfigError, match="must be a string"):
         RunConfig.from_dict(raw)
 
 
@@ -201,3 +201,61 @@ def test_unknown_top_level_field_is_rejected():
     with pytest.raises(RunConfigError) as exc_info:
         RunConfig.from_dict(raw)
     assert "totallyMadeUp" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# 6. from_file loads by path (closes the untested entry point B-011/B-012
+#    are told to use)
+# ---------------------------------------------------------------------------
+
+
+def test_from_file_loads_fixture_by_path():
+    cfg = RunConfig.from_file(FIXTURE_PATH)
+    assert cfg.h5 == "fbb913c18c34530d355fdd949974ac58"
+    assert cfg.h5_sel == "c9873a70ca371612fc24cf976ff7fd5c"
+
+
+# ---------------------------------------------------------------------------
+# 7. nested digests (selections[i].h5_sel, selections[i].histograms[j].h5)
+#    are validated too -- these, not the top-level h5/h5_sel, are what the
+#    engine actually addresses the cache with (engine/analytical_loop.py:
+#    68,79,183-186 read sel_cfg["h5_sel"] and hcfg["h5"] out of cfg["selections"],
+#    never out of the top-level flattened "histograms" list).
+# ---------------------------------------------------------------------------
+
+
+def test_wrong_nested_selection_h5_sel_is_rejected():
+    raw = _fixture_dict()
+    raw["selections"][0]["h5_sel"] = "0" * 32
+    with pytest.raises(RunConfigError) as exc_info:
+        RunConfig.from_dict(raw)
+    assert "selections[0]" in str(exc_info.value)
+    assert "h5_sel" in str(exc_info.value)
+
+
+def test_wrong_nested_histogram_h5_is_rejected():
+    raw = _fixture_dict()
+    raw["selections"][0]["histograms"][0]["h5"] = "2" * 32
+    with pytest.raises(RunConfigError) as exc_info:
+        RunConfig.from_dict(raw)
+    assert "selections[0].histograms[0]" in str(exc_info.value)
+    assert "h5" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# 8. mult_cuts element types are enforced, not just length and container type
+# ---------------------------------------------------------------------------
+
+
+def test_mult_cuts_element_type_is_enforced():
+    """A fixture author writing "2" instead of 2 for the leptons-count slot
+    gets a self-consistent-looking config that hashes to a *different*,
+    silently-wrong digest (independently reproduced: a68ec19856f3ae17c6736
+    691b6bc18d2 instead of c9873a70ca371612fc24cf976ff7fd5c) rather than the
+    RunConfigError this test requires.
+    """
+    raw = _fixture_dict()
+    raw["mult_cuts"][0][0] = "2"  # str, must be int
+    with pytest.raises(RunConfigError) as exc_info:
+        RunConfig.from_dict(raw)
+    assert "mult_cuts[0][0]" in str(exc_info.value)
