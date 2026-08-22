@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.claude/worktrees/*/CLAUDE.md)",
+      "Read(./.claude/worktrees/*/.claude/**/CLAUDE.md)",
+      "Read(./**/.venv/**)",
+      "Read(./**/node_modules/**)",
+      "Read(./**/__pycache__/**)",
+      "Read(./**/.pytest_cache/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/context-watchdog.sh\"",
+            "timeout": 10,
+            "suppressOutput": false
+          }
+        ]
+      }
+    ]
+  }
+}
