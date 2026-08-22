@@ -69,8 +69,31 @@ IDs are `B-nnn`, allocated in order and never reused.
   so the reviewer does not raise its absence as a finding.
 - **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
 - **Branch / PR:** `task/b-007-vendor-path-filter` — #12 @ `0578c89`
-- **Status:** in review (cycle 1) — reviewer dispatched 2026-08-22 at raised effort (physics +
-  concurrency, per §3)
+- **Status:** in rework (cycle 2) — dispatched 2026-08-22
+- **Review (cycle 1):** 0 required, **1 suggested-major**, 5 suggested-minor. Posted verbatim to
+  PR #12. The reviewer's verdict line read `verdict=approve` while reporting `major=1` — that is
+  self-contradictory and I did **not** merge on it; §5.6 requires suggested-major = 0. Recording
+  this because a verdict string that disagrees with its own counts will recur, and the counts win.
+- **The suggested-major, and it is a real trap for B-008:** `path_filter.py:23-24`'s docstring
+  cites the seven `eval` lines and one `compile` line as *"this file's"*. They are the
+  **reference's**. In our file they are `328,370,449,508,711,723,741` and `474`. That docstring
+  is the artifact B-008 navigates by, and backend §3.2 makes line numbers authoritative over
+  counts. Cycle 2 makes the claim **checkable by an `ast` test** rather than a comment that rots.
+- **The five suggested-minor, named individually per §5.6 — all folded into cycle 2, none lost:**
+  (a) `path_filter.py:4-5` and `filter_raw_event_data`'s docstring carry a duplicated broken
+  sentence left by grep-avoidance rewording; (b) `path_filter.py:46-50`'s `#:` doc-comment is
+  attached to nothing; (c) `tests/test_path_filter.py:212-214` claims `_obj_from_cache` is called
+  once per iteration when it is called **six times per event**, so the cancel fires at event ~19
+  (5.5%), not ~117 (33%) — the PR body repeats the false claim; (d) the cycle-1 criterion-3
+  mutation transcript proves the *setup guard* failing, not `assert 0 < filled < n`;
+  (e) the vectorized fast path has **no cancellation poll at all**, so effective granularity is
+  one *basket*, not one event — B-009 and B-011 must not assume per-event responsiveness.
+- **What the review established positively, so it is not re-litigated:** a `diff -u` against the
+  reference showed **no numerical or control-flow change** in 348 diff lines — only formatting,
+  docstrings, type hints, the import style, the two `cancel` sites and the `_count_bjets`
+  extraction. 10 of the 11 ported tests are byte-identical to the reference, the 11th differs
+  only in its import path, and no assertion was softened. Two-thread cancellation isolation was
+  verified independently: `A(cancelled)=0.0 B(untouched)=3000.0`.
 - **§5.1 gate: PASSED.** Re-run in a detached worktree at the PR head under the *primary* venv,
   `PYTHONPATH` confirmed resolving `path_filter` into the worktree: the widened grep is empty
   (exit 1), flake8 silent, **349 passed**, `test_path_filter.py` 19, `test_systematics.py` 20.
