@@ -9,83 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-010 — `RunConfig` loader and the content-addressed cache keys
-- **Scope:** `src/fce_web/engine/runconfig.py`, `content/analyses/zpeak-dilepton.json`,
-  `tests/test_runconfig.py`
-- **Accept:** the loader round-trips the fixture; `h5_sel` and `h5` computed from the fixture
-  match digests computed independently from the reference's own formula, shown side by side;
-  changing any covered field changes the digest **and** changing an uncovered field does not —
-  both asserted, which is what "content-addressed" actually means; a config carrying an
-  unknown field is rejected rather than silently ignored
-- **This is the gap the milestone map missed.** The `cfg` dict has **no headless producer**: it
-  is built only by `compile_graph_topology()` at `ui/graph.py:1696`, ~230 lines of
-  `dpg.get_value()` calls. Without something to build it, M2 has nothing to run and therefore
-  no proof. **This is not a reimplementation of that function** — that is M4's job. We take
-  only the six lines that compute the two md5 keys (`ui/graph.py:1866-1884`), and a
-  hand-authored fixture reproducing one of the reference's saved pipelines.
-- **CORRECTION 2026-08-22 — the fixture cannot be lifted from a saved config, and the digest
-  has a trap.** Scout enumerated the reference. (1) The saved pipelines
-  (`test_selection_cutflow.json`, `test_selection_obs_bounds.json`, `test_systs.json`) are
-  **node-graph serialisations** — top-level keys `{version, next_id, nodes[], links[]}` — **not**
-  `cfg`-shaped. So `content/analyses/zpeak-dilepton.json` is **hand-authored** to the `cfg` shape,
-  which is the 13-key return at `ui/graph.py:1914-1923`: `energy, detector, observable, bins, min,
-  max, target, h5, h5_sel, mult_cuts, sel_exprs, histograms, selections`. (2) The md5 inputs are
-  **raw string concatenation with no separators**, and `bins`/`min`/`max`/`target` are **strings**
-  (they come from dpg text widgets), never numbers:
-  ```python
-  mult_h5_base = energy + detector + str(mult_cuts)                          # ui/graph.py:1866
-  h5_sel = hashlib.md5((mult_h5_base + str(sel_exprs)).encode()).hexdigest() # :1877
-  h5_full = hashlib.md5(
-      (h5_sel + hcfg_raw["observable"] + hcfg_raw["bins"]
-       + hcfg_raw["min"] + hcfg_raw["max"] + hcfg_raw["target"]).encode()
-  ).hexdigest()                                                              # :1881-1884
-  ```
-  If `RunConfig` normalises `bins` to `int`, the digest changes and the content-addressed cache
-  silently misses every entry the desktop app wrote. The criterion asserts our digest **equals**
-  one computed independently from the formula above, both shown side by side.
-- **What the keys cover, and it must not drift:** `h5_sel` = energy + detector +
-  `str(mult_cuts)` + `str(sel_exprs)`; `h5` extends it with observable, bins, min, max, target.
-  Shared §2 says do not break this — on a shared server it is why the second student to try the
-  same cuts gets an instant result.
-- **The dpg node IDs** currently threaded through `cfg` purely so the engine can colour nodes
-  green (`nid`, `prefix_nids`, `obs_nid`, `hist_nid`) become optional.
-- **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
-- **Branch / PR:** `task/b-010-runconfig` — #11 @ `ae239f5`
-- **Status:** in review (cycle 2) — gate passed, reviewer re-dispatched 2026-08-22
-- **Review (cycle 1):** 0 required, **2 suggested-major**, 3 suggested-minor. Both majors were
-  against properties **no criterion of mine gated** — §5.4 clause 3, so a cycle, not a
-  re-specification. (i) `from_dict` validated only the *top-level* `h5`/`h5_sel`, while the engine
-  addresses the cache with the **nested** `selections[i].h5_sel` (`analytical_loop.py:68,79`) —
-  so the loud-failure guarantee missed the digests that matter. (ii) `mult_cuts` element types
-  were unchecked, so `["2", ...]` instead of `[2, ...]` gives a *self-consistent* config hashing
-  to `a68ec198…` instead of `c9873a70…` — a permanent silent cache miss. Both fixed in cycle 2.
-- **§5.1 gate, cycle 2: PASSED** at `b7119a9`. flake8 silent, **354 passed**, `test_runconfig.py`
-  25. Verified independently, not just by re-running their tests: both digests **unchanged** at
-  `c9873a70…`/`fbb913c1…`; the reviewer's `a68ec198…` string-`mult_cuts` claim reproduced from
-  scratch; and a direct probe confirmed a wrong nested `h5_sel` and a wrong nested `h5` are now
-  each rejected with a `RunConfigError` **naming the offending path**.
-- **Push-path anomaly, checked and clean.** The cycle-2 coder found the branch already checked
-  out in the cycle-1 agent's worktree, so it worked on a local `work-b010-cycle2` and pushed
-  `work-b010-cycle2:task/b-010-runconfig`. Verified: `ae239f5` is still an ancestor of `b7119a9`
-  (`git merge-base --is-ancestor` → true), PR #11 shows 2 commits, no second PR was opened. **Not
-  a force-push, no history rewritten.** The `work-b010-cycle2` branch stays, per never-delete.
-- **§5.1 gate: PASSED**, and it went beyond re-running the coder's numbers. All reproduced in a
-  detached worktree at the PR head under the *primary* venv (`PYTHONPATH` confirmed resolving
-  `fce_web` to the worktree, not the primary checkout): flake8 silent, **350 passed**, both
-  digests identical, 15 parametrised covered/uncovered cases collected. The coder also
-  re-verified the 329 baseline itself and matched — no baseline mismatch, unlike PR #8 and #9.
-- **Digests independently confirmed by the orchestrator**, computed straight from the reference
-  formula without touching the coder's test file — the fix and its verification do not share a
-  hand here. `h5_sel=c9873a70ca371612fc24cf976ff7fd5c`, `h5=fbb913c18c34530d355fdd949974ac58`,
-  both matching the committed fixture. All six digest inputs confirmed `str` at hash time, so
-  the normalisation trap this entry warns about was avoided.
-- **One design addition the coder flagged, needing a ruling if the reviewer disputes it:**
-  `from_dict` *verifies* the stored `h5`/`h5_sel` against the recomputed digest and raises on
-  mismatch, rather than trusting the file. Stricter than the criteria asked. It catches a
-  mis-authored fixture at load time instead of silently missing the cache forever, which is the
-  failure shared §2 warns about — I am inclined to keep it. B-011/B-012 must know it raises.
-
-
 ## Ready
 
 **Both entries below are DEFERRED behind the M2 checkpoint by the user's ruling 2026-08-22.**
@@ -275,6 +198,22 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
 - **A bug fixed for free:** the status consumer at `ui/components.py:385-387` reads-then-blanks
   `status_msg`, making it a single-slot mailbox with lossy overwrite — under N workers,
   messages are silently dropped. A real sink has no such behaviour.
+- **UNRESOLVED, and it must be enumerated before this task is dispatched.** The `24 RUN_STATE
+  sites` figure above counts only `get_run_state` and `update_run_state`. But the reference's
+  import at `analytical_loop.py:9-10` pulls **five** names from `ui.state`:
+  ```python
+  from ui.state import (get_run_state, update_run_state,
+                        add_active_node, add_completed_node, mark_nodes_completed)
+  ```
+  The three node-highlighting functions are **additional coupling that the 24 does not cover**,
+  and this entry's own grouping already gestures at them ("node highlighting (`:300,303,339`)"),
+  which is why the numbers never reconciled. **A scout was drafted to enumerate all five call-site
+  sets and was never run — the session ended first.** Dispatch it before writing the B-009
+  dispatch; do not carry the 24 forward as if it described the whole surface.
+  **The criterion is safe regardless**, because it is the widened grep plus a subprocess
+  `sys.modules["ui"] = None` poison test — the same pair that worked for B-007. That pair
+  catches all five names without depending on my count being right, which is precisely why it
+  is written that way.
 - **Depends on:** B-007
 - **Branch / PR:** not yet opened
 
@@ -415,6 +354,15 @@ question.
   functions / 134 cases, four parametrised families where each guard is paired 1:1 with a
   meta-test that mutates and asserts red. Suite 236 → 329. **All three specification defects were
   the orchestrator's**, same shape each time; the table is in the archive.
+- **B-010** — `RunConfig` loader and the content-addressed cache keys —
+  `task/b-010-runconfig` #11, merged `d017ead` (2 cycles, **clean gate — 0 required,
+  0 suggested-major**; 2 suggested-minor backlogged). Ships `RunConfig` (frozen dataclasses),
+  the hand-authored 13-key fixture `content/analyses/zpeak-dilepton.json`, and 25 tests.
+  **The digests B-011 and B-012 consume:** `h5_sel=c9873a70ca371612fc24cf976ff7fd5c`,
+  `h5=fbb913c18c34530d355fdd949974ac58` — verified independently three times (coder, reviewer,
+  orchestrator) from the reference formula rather than from the loader's own code.
+  **`from_dict` RAISES `RunConfigError`** on any digest mismatch, top-level or nested — B-011
+  and B-012 must expect that rather than a warning.
 - **B-007** — Vendor `path_filter.py` and `path_final.py`, decoupled from `ui.state` —
   `task/b-007-vendor-path-filter` #12, merged `d906b59` (2 cycles, **clean gate — 0 required,
   0 suggested-major**; 3 suggested-minor backlogged). Suite 329 → **351**. The cycle-1 review
