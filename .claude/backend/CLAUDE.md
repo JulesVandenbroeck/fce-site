@@ -56,8 +56,17 @@ code to watch it fail matters:
 
 - **Do:** a `monkeypatch` fixture, a `conftest.py` plugin, or rebinding the symbol at collection
   time. Nothing tracked is ever modified, so there is no restore step that can be skipped.
+- **Do:** for a seam that is *inline* and therefore has no symbol to rebind — a literal in the
+  middle of an expression, a bare `1.0`, a conditional — build an **in-memory copy of the
+  module**: read the source, apply the substitution to the string, `exec` it into a fresh module
+  object, and run the assertion against that. Nothing tracked is touched. This is not a
+  workaround; it is how B-009's cycle-2 review mutated `analytical_loop.py:188-189`, which is
+  inline and not monkeypatchable, and it is the answer whenever "I had to edit the file because
+  there was nothing to patch" feels true. **It is never true.**
 - **Do not:** temporarily edit the source file and rely on a follow-up `git diff` to prove you
-  put it back.
+  put it back. B-011 cycle 1 did this for four mutations and disclosed it honestly; there was no
+  residue and no harm done, and it still gets a finding, because the rule is about the crash that
+  did not happen this time.
 
 Both reach the same failure. The second has a failure mode the first does not: on 2026-08-21
 four agents on this project died mid-turn to a session limit, and a crash landing between

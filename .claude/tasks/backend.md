@@ -38,9 +38,43 @@ _none_
   (b) `runs.py:92`'s `n_workers: int = 4` is an unexplained magic default; this is the first code
   that actually picks a worker count, so give it a reason or source it from the config.
 - **Branch / PR:** `task/b-011-headless-driver` — PR not yet opened
-- **Status:** in review (cycle 1) — #14, head `4b2b97f`, reviewer dispatched 2026-08-22, Opus,
-  **effort high** (§3: concurrency — cancellation is set from a second thread; and this is the
-  last gate before the parity proof).
+- **Status:** in progress (cycle 2) — review returned rework, re-dispatched 2026-08-22
+- **Review (cycle 1):** 1 required, 2 suggested-major, 3 suggested-minor, **scope pass**.
+  Posted verbatim to PR #14 as `issuecomment-5380589785`.
+- **The driver itself is sound and was proven so.** The reviewer ran it **end to end against the
+  real 91 GeV datasets** — `RunResult(processed_any=True, ...)`, progress
+  `[0.0, 0.129, ..., 0.9, 0.9, 1.0]`, monotonic, ending at exactly 1.0. **Every cycle-1 finding is
+  against the test net, not the code it guards.**
+- **§5.4 diagnosis — a CYCLE.** Criterion 2 shipped with a command and a mutation instruction, so
+  neither carve-out applies; the property was gated from cycle 1, so clause 1 does not either.
+- **The Required is the THIRD variant of one theme in this milestone, and naming the family is the
+  point:** a check that passes over a false property.
+  | | the defect | how it stayed green |
+  |---|---|---|
+  | B-009 c1 | the run never reached the code under test | only two literal endpoints recorded |
+  | B-011 c1 | the expectation is computed from the implementation | `expected` derived from `_ENGINE_PROGRESS_SHARE`, so it self-adjusts |
+  Setting that constant to `1.0` removes the driver-owned scaling entirely — the exact property
+  criterion 2 exists to protect — and all 15 tests stayed green. **Rule: a check must not be
+  computed from the thing it checks.**
+- **RULING on the process finding, and it is now durable.** The coder mutated the tracked
+  `driver.py` for four mutations, against `.claude/backend/CLAUDE.md` §2, and disclosed it; the
+  gate confirmed no residue. The tension it raised is real — inline seams have no symbol to
+  rebind — so **the backend manual's "Do" list now carries the in-memory module copy technique**
+  (read the source, substitute in the string, `exec` into a fresh module object). That is how
+  B-009's reviewer mutated an inline call site. "Nothing to patch" is never a reason to edit a
+  tracked file.
+- **An explicit, recorded exception to the §5.3 never-shrink floor, and the only one.** Three of
+  the 15 new tests assert against locally re-implemented copies of `run_analysis`, or against a
+  hand-built `RunResult` that never reaches `driver.py`; one is
+  `with pytest.raises(AssertionError): assert '<path>' in 'Run failed.'`, true by construction.
+  **None can fail as a result of any change to the driver**, demonstrated per-test by the
+  reviewer. The floor rule guards properties that stop being guarded; it does not apply to checks
+  that never guarded anything. Cycle 2 must state which were removed, the new total, and why.
+  **A silent drop of any other test remains a `Required`.**
+- **Criterion 7 is the one that protects the milestone.** `run_physics_loop` is stubbed in every
+  test that calls `run_analysis`, so `config.to_dict()` -> `run_physics_loop(cfg, active_samples,
+  ctx)` is never executed by the suite — and **B-012 is built directly on that seam**. Cycle 2
+  adds one real end-to-end run, skipping with a named reason when the datasets are absent.
 - **§5.1 gate PASSED**, re-run in `~/fce-gate-b011` at `4b2b97f` (== PR headRefOid): **401 passed**
   / 0 failed (floor 386, +15); flake8 exit 0; `ui` grep and plotting grep both empty; scope exactly
   the three permitted files; import verified to resolve to the worktree copy.
