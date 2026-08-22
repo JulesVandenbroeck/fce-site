@@ -6,7 +6,9 @@
       "Read(./**/.venv/**)",
       "Read(./**/node_modules/**)",
       "Read(./**/__pycache__/**)",
-      "Read(./**/.pytest_cache/**)"
+      "Read(./**/.pytest_cache/**)",
+      "Bash(cd .claude/worktrees/*)",
+      "Bash(cd ./.claude/worktrees/*)"
     ]
   },
   "hooks": {

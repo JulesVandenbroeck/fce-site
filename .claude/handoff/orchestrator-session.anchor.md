@@ -21,8 +21,10 @@
 
 ## Dead ends / hazards
 - `cd` into `.claude/worktrees/**` is denied by `.claude/settings.json`; use `git -C`.
-  The cycle-3 coder ALSO could not Read there and worked around it with git plumbing —
-  **relay to the user; that deny rule may be over-broad.**
+  (The Bash deny rule was added 2026-08-22; before that the note was wrong — only Read
+  was ever denied.) The Read deny is now narrowed to `worktrees/*/CLAUDE.md` and its
+  nested `.claude/**/CLAUDE.md` copies, so a coder CAN read the rest of its own worktree;
+  the cycle-3 git-plumbing workaround is no longer needed.
 - Uncommitted on `main`: the whole token-diet workflow rewrite (12 modified + 4 new files
   under `.claude/`, plus CLAUDE.md). User has not been asked whether to commit it. ASK.
 
