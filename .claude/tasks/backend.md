@@ -9,117 +9,36 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-009 — `RunContext`, replacing `RUN_STATE` in `analytical_loop.py`
-- **Scope:** `src/fce_web/runs.py`, `src/fce_web/engine/analytical_loop.py`,
-  `tests/test_run_context.py`
-- **Accept:** `grep -rn "ui\." src/fce_web/engine/` empty across the whole package; two
-  concurrent `run_physics_loop` calls with different contexts keep separate progress **and**
-  separate cancellation, proven by a real two-thread test; no module-level mutable state
-  (reuse the guard already in `tests/test_app.py`); the dead `samples` and `en` parameters
-  removed or their retention justified in writing; `flake8` clean
-- **RESOLVED 2026-08-22 — the coupling surface is fully enumerated. 27 call-site lines across
-  FIVE names, not 24 across two.** The scout the last session drafted has now been run, against
-  the reference's `engine/analytical_loop.py` (353 lines). The import at `:9-10` is the only
-  `ui` reference in the file, and there is **no bare `ui.` attribute access anywhere** (`ui.state.X`
-  never appears), so the five imported names are the entire surface:
-  - `get_run_state` (7) — `:76,118,126,139,182,225,319`
-  - `update_run_state` (17) — `:92,115,119,127,145,151,172,192,270,274,304,305,322,328,341,348,350`
-  - `add_completed_node` (1) — `:300`
-  - `add_active_node` (1) — `:303`
-  - `mark_nodes_completed` (1) — `:339`
-- **One unreconciled line, recorded rather than smoothed over.** This entry previously listed
-  `update_run_state` at `:183`; the scout's grep reports `:305` in that slot and not `:183`.
-  A line-level grep counts a line carrying two calls once, so both readings may be true. **Do not
-  resolve this by picking one — the criteria below are gated on a grep and a poison test, neither
-  of which depends on the count being right.** That is why they are written that way.
-- **What the three node functions actually are, and why they are cheap.** From `ui/state.py:78-96`,
-  all three mutate two sets in `RUN_STATE` under a shared `threading.RLock` (`STATE_LOCK`, `:4`):
-  `add_active_node` unions `active_nodes`; `add_completed_node` moves one id from `active_nodes`
-  to `completed_nodes`; `mark_nodes_completed` does the same for a collection, atomically.
-  **`analytical_loop.py` is their ONLY caller in the entire reference** — scout grepped the whole
-  repo and found definitions in `ui/state.py` and call sites in `analytical_loop.py`, nothing else.
-  So they collapse to a single `on_node` callback with no second consumer to satisfy.
-- **The grouping — this IS the `RunContext` design**, and it came from reading the code:
-  cancellation (`:76,118,126,139,182,319`) -> a `threading.Event`; cancellation
-  *acknowledgement* (`:119,127,145,183,322`) -> **deleted**, driver-owned and already
-  redundant; progress (`:172-175,270,274,341`) -> `on_progress` / `on_worker`; status and
-  phase (`:92,115,151,192,304,328`) -> `on_log` / `on_phase`; node highlighting
-  (`:300,303,339`) -> `on_node`; `n_workers` (`:225`) -> a field; `cutflow_ready`
-  (`:348-350`) -> a returned `RunResult`.
-- **Two things to kill rather than port.** `progress_ctx` (`:258-267`) is a live mutable dict
-  sharing **two `threading.Lock`s** with the DPG render thread; its slot-pool machinery exists
-  only to drive N stacked progress bars and has no physics meaning. And the hard-coded UI layout
-  constants baked into the engine — `0.78` at `:174` (twice) and `:274`, `0.80` at `:341` —
-  the engine reports 0..1 of its own work and the driver scales it.
-- **A bug fixed for free:** the status consumer at `ui/components.py:385-387` reads-then-blanks
-  `status_msg` (written at `:92,115,151,192,328`), making it a single-slot mailbox with lossy
-  overwrite — under N workers, messages are silently dropped. A real sink has no such behaviour.
-- **The entry point:** `run_physics_loop(cfg, samples, active_samples, en)` at `:205`.
-- **Depends on:** ~~B-007~~ (merged `d906b59`)
-- **Branch / PR:** `task/b-009-run-context` — #13, head `619dc3c`
-- **Status:** in review (cycle 2) — head `1da3d9e`, reviewer dispatched 2026-08-22, Opus, effort high
-- **§5.1 gate PASSED on cycle 2**, re-run in `~/fce-gate-b009` at `1da3d9e` (== PR headRefOid):
-  **386 passed** / 0 failed (floor 383, +3); flake8 exit 0; both greps empty; `gh pr diff --name-only`
-  shows exactly the three scoped files; import verified to resolve to the worktree copy.
-- **Cycle 2 shipped:** the progress test now drives the real `_process_sample` through a fake
-  `uproot` source and asserts the exact sequence `[0.0, 1/3, 2/3, 1.0, 1.0]` rather than the two
-  endpoints; the `cutflow_plotter` `except` narrowed to `ImportError` with the M5/M6 deferral
-  logged via `ctx.on_log` and pinned by a test that distinguishes "deferred" from "failed";
-  `cancel=ctx.cancel` now passed to `fill_histogram_from_cache`; the terminal `1.0` report made
-  conditional on `processed_any`. Test count 383 -> 386.
-- **Review (cycle 1):** 1 required, 1 suggested-major, 3 suggested-minor, **scope pass**.
-  Posted verbatim to PR #13 as `issuecomment-5379780960`.
-- **§5.4 diagnosis — this IS a cycle, not a re-specification, and the mechanical test says so.**
-  Criterion 4 shipped with a command *and* a named mutation, so clause 2 does not apply; the
-  property was gated from cycle 1, so clause 1 does not apply either. **But the specification
-  defect underneath it is still mine**, and it is §2's own failure shape: I named the mutation
-  (`* 0.78` on the progress value) without naming the *seam*, so the coder applied it at
-  `_report_progress` — the one place the test does observe — and it went red exactly as I asked
-  while the property stayed false everywhere else. The check could not fail at
-  `_TaskTracker.increment` or at the mid-run call site, because the test drives a run with no
-  data files and therefore records only the two literal endpoints `[0.0, 1.0]`.
-  **The lesson, and it generalises: a mutation criterion must name the seam, or the coder will
-  pick the one seam already under observation.** Cycle 2 names all three.
-- **The suggested-major resolves against a recorded user ruling.** `cutflow_plotter` is deferred
-  to M5/M6 by the vendor-scope ruling (see "What M2 does not do" below), so the import is dead
-  *by design* rather than by accident. The reviewer's second option — document the deferral and
-  pin `cutflow_ready is False` with a test — is the correct one, and cycle 2 takes it.
-- **All three suggested-minor named individually (§5.6), none lost:**
-  (a) `analytical_loop.py:210` does not pass `ctx.cancel` to `fill_histogram_from_cache`, so
-  B-007's cancellation seam has no caller and latency is one full histogram fill — **folded
-  into cycle 2**, because B-011 is built on this cancellation and shipping it uncalled would
-  hand B-011 a capability nothing exercises.
-  (b) `analytical_loop.py:353` reports `1.0` even when `processed_any` is `False`, so a run that
-  did nothing reads as 100% success in B-011's SSE stream — **folded into cycle 2**, adjacent to
-  the Required's own rework.
-  (c) `runs.py:92`'s magic `n_workers = 4` — **backlogged**, because the right value probably
-  comes from B-011, the first code that actually picks a worker count.
-- **§5.1 gate PASSED**, re-run by the orchestrator in a detached worktree `~/fce-gate-b009`:
-  suite **383 passed** / 0 failed (floor 376, +7); flake8 exit 0; criterion-4 grep empty.
-  Import verified to resolve to the worktree copy, not the primary checkout — a `PYTHONPATH`
-  shadow would otherwise have certified `main`'s code as the branch's.
-- **Criterion 1's grep is MY specification defect, and it is not a finding against the code.**
-  The pattern's `from ui` alternative matches prose, so it hits `engine/runconfig.py:134`, a
-  comment reading `from ui/graph.py:1709-1719`. **Present verbatim on `origin/main`** — it
-  predates the branch and is outside B-009's file scope. The coder reported it rather than
-  reaching outside scope to silence it. If this recurs, anchor the pattern to import syntax
-  (`^\s*(from|import)\s+ui\b`) rather than the bare words.
-- **New signature, which B-011 consumes:** `run_physics_loop(cfg: dict, active_samples: List[str],
-  ctx: RunContext) -> RunResult` at `analytical_loop.py:217`. `samples` and `en` removed.
-- **Floors — a fall in any is a `Required`:** full suite at **376 passed** (measured by the
-  orchestrator in the primary checkout at `57a2d6b`); flake8 exits 0.
-- **Feasibility settled before dispatch.** All seven non-`ui` names `analytical_loop.py`
-  imports already exist in our tree — `filter_raw_event_data:551`, `fill_histogram_from_cache:417`,
-  `make_cache_acc:223`, `save_cache:291`, `preprocess_hep_expr:55` in `engine/path_filter.py`;
-  `write_final_histograms:13` in `engine/path_final.py`; `get_fce_home:27` in `paths.py`.
-  So this is vendor-plus-decouple with no dependency cascade.
-- **The poison-test pattern to copy is `tests/test_path_filter.py:165`**
-  (`test_path_filter_imports_with_ui_poisoned`), and the module-level-state guard to extend is
-  `tests/test_app.py:142` (`test_no_module_level_mutable_state_in_the_app_module`, via its
-  `_module_level_state` helper — `tests/` is a package, so it imports).
-
+_none_
 
 ## Ready
+
+### B-011 — Headless driver
+- **Scope:** `src/fce_web/engine/driver.py`, `tests/test_driver.py`
+- **Accept:** a run driven entirely from Python with no `ui` import anywhere in the process;
+  progress callbacks fire monotonically from 0 to 1; cancelling mid-run returns a `RunResult`
+  marked cancelled with partial output; skips cleanly with a **named reason** when
+  `~/.fce/datasets/` is absent
+- `run_analysis(config: RunConfig, ctx: RunContext) -> RunResult`, replacing
+  `run_engine.execute_analysis` — which is already dearpygui-free and already headless, and
+  whose only real defect is that it returns `None` and puts its answers in globals. Per the
+  vendor-scope ruling it stops once the histogram ROOT files are written: no plotting, no fit.
+- **Depends on:** ~~B-009~~ (merged `1689b27`), ~~B-010~~ (merged `d017ead`) — **UNBLOCKED 2026-08-22**
+- **The seam it consumes, authoritative:** `run_physics_loop(cfg: dict, active_samples: List[str],
+  ctx: RunContext) -> RunResult` in `src/fce_web/engine/analytical_loop.py`. `RunContext` lives in
+  `src/fce_web/runs.py` and carries a cancellation `threading.Event`, `on_progress` / `on_log` /
+  `on_phase` / `on_node` callbacks, and `n_workers`.
+- **The engine now reports 0..1 of its OWN work.** The `0.78`/`0.80` scale factors were UI layout
+  constants and B-009 deleted them — **scaling for a progress bar is this task's job.**
+- **Two carry-forwards from B-009's cycle-2 review, both suggested-minor, both landing here:**
+  (a) `analytical_loop.py:349-352` logs `"Cutflow plot skipped: fce_web.engine.cutflow_plotter is
+  deferred to M5/M6..."` on **every** run. `ctx.on_log` becomes this task's student-facing SSE
+  log, and a dotted module path plus an internal milestone label is not copy a 15-year-old
+  second-language reader can act on (shared §1). Fix the copy when wiring the stream.
+  (b) `runs.py:92`'s `n_workers: int = 4` is an unexplained magic default; this is the first code
+  that actually picks a worker count, so give it a reason or source it from the config.
+- **Branch / PR:** not yet opened
+
 
 **Both entries below are DEFERRED behind the M2 checkpoint by the user's ruling 2026-08-22.**
 Neither blocks B-012, and nothing on the B-007 → B-009 → B-011 → B-012 chain touches
@@ -279,19 +198,6 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
 - **Depends on:** ~~B-006~~ (merged `ce4dcd6`), B-007
 - **Branch / PR:** not yet opened
 
-### B-011 — Headless driver
-- **Scope:** `src/fce_web/engine/driver.py`, `tests/test_driver.py`
-- **Accept:** a run driven entirely from Python with no `ui` import anywhere in the process;
-  progress callbacks fire monotonically from 0 to 1; cancelling mid-run returns a `RunResult`
-  marked cancelled with partial output; skips cleanly with a **named reason** when
-  `~/.fce/datasets/` is absent
-- `run_analysis(config: RunConfig, ctx: RunContext) -> RunResult`, replacing
-  `run_engine.execute_analysis` — which is already dearpygui-free and already headless, and
-  whose only real defect is that it returns `None` and puts its answers in globals. Per the
-  vendor-scope ruling it stops once the histogram ROOT files are written: no plotting, no fit.
-- **Depends on:** B-009, B-010
-- **Branch / PR:** not yet opened
-
 ### B-012 — The parity proof — **M2 checkpoint**
 - **Scope:** `scripts/render_reference.py`, `tests/fixtures/golden/zpeak-dilepton.json`,
   `tests/test_engine_parity.py`
@@ -409,6 +315,16 @@ Full entries — scope, criteria, and the cycle-by-cycle review record — are i
 [`archive/backend.md`](archive/backend.md). Read it only when a task's history is actually in
 question.
 
+- **B-009** — `RunContext`, replacing `RUN_STATE` in `analytical_loop.py` —
+  `task/b-009-run-context` #13, merged `1689b27` (2 cycles, **clean gate — 0 required,
+  0 suggested-major**; 3 suggested-minor backlogged). Suite 376 → **386**. Eliminated the
+  27-call-site `ui.state.RUN_STATE` coupling across **five** names — the three node-highlighting
+  functions were uncounted by the old "~24 sites" figure. `progress_ctx` and the `0.78`/`0.80` UI
+  constants killed rather than ported. **The signature B-011 consumes:**
+  `run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> RunResult`.
+  Cycle 1's Required was an orchestrator specification defect — a mutation criterion that named
+  the mutation but not the **seam**, so the check went red exactly as asked while the property
+  stayed false elsewhere. Lesson recorded in the archive.
 - **B-004** — Histogram, cutflow and fit payload contracts — `task/b-004-api-contract` #10,
   merged `d4ddec8` (**3 cycles + 2 re-specifications, §5.7 limit; 1 required + 1 suggested-major
   still open → became B-014 on the user's ruling**; 2 suggested-minor folded into B-014). Grew

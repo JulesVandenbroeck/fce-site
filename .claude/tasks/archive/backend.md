@@ -12,6 +12,77 @@ it. Never at startup.
 ## Done — most recent first
 
 
+### B-009 — `RunContext`, replacing `RUN_STATE` in `analytical_loop.py`
+- **Scope:** `src/fce_web/runs.py`, `src/fce_web/engine/analytical_loop.py`,
+  `tests/test_run_context.py`
+- **Branch / PR:** `task/b-009-run-context` — #13, merged `1689b27`
+- **Result:** 2 cycles, **clean gate — 0 required, 0 suggested-major**; 3 suggested-minor
+  backlogged (1 from cycle 1, 2 from cycle 2). Suite 376 -> **386**.
+
+#### What it eliminated
+The reference drove its physics loop through a single module-level `ui.state.RUN_STATE` dict
+guarded by one `RLock` — one of the two named defects this project exists to fix. The coupling
+surface was **27 call-site lines across five names**, enumerated by scout before dispatch:
+`get_run_state` (7), `update_run_state` (17), `add_completed_node`/`add_active_node`/
+`mark_nodes_completed` (1 each). The three node functions were **entirely uncounted** by the
+"~24 RUN_STATE sites" figure this entry carried for weeks; they turned out cheap, because
+`analytical_loop.py` is their only caller anywhere in the reference.
+
+Also killed rather than ported: `progress_ctx`, a live mutable dict sharing two `Lock`s with the
+DearPyGui render thread; and the `0.78`/`0.80` UI layout constants baked into the engine's
+progress arithmetic. The engine now reports 0..1 of its own work and the driver scales it.
+`run_physics_loop`'s dead `samples` and `en` parameters were removed. **The signature B-011
+consumes is `run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> RunResult`.**
+
+#### The cycle-1 Required, and it was the orchestrator's specification defect
+`test_progress_values_are_bounded_monotonic_and_reach_one` **could not fail in the way criterion 4
+mattered.** The run it drove had no data files, so `_TaskTracker.increment` never fired and the
+recorded sequence was exactly the two literal endpoints `[0.0, 1.0]`. Monkeypatching a `0.78`
+factor into the tracker changed nothing — in-range, monotonic and final-`== 1.0` all still passed.
+
+**The defect was the dispatch's, not the coder's.** Criterion 4 named the mutation (`* 0.78` on
+the progress value) but did not name the **seam**. The coder applied it at `_report_progress` —
+the one place the test does observe — and it went red exactly as asked, while the property stayed
+false everywhere else.
+
+> **The generalisable lesson: a mutation criterion must name the seam, or the coder will pick the
+> one seam already under observation.** This is §2's "an instrument that structurally cannot
+> observe the property it certifies", in a new disguise: the instrument was fine, the *input* was
+> degenerate. Ask not only "what does this print if the property is false" but "does the run this
+> check drives even reach the code the property is about".
+
+Cycle 2 named all three seams and required red at each independently. The strengthened test now
+drives the real `_process_sample` through a fake `uproot` source and asserts the exact sequence
+`[0.0, 1/3, 2/3, 1.0, 1.0]`. **§5.4 diagnosis: this was a CYCLE, not a re-specification** —
+criterion 4 shipped with both a command and a named mutation, so neither carve-out applied.
+
+#### The suggested-major, resolved against a recorded ruling
+`analytical_loop.py` imports `fce_web.engine.cutflow_plotter`, which does not exist, and a bare
+`except Exception` swallowed the `ImportError` — so `RunResult.cutflow_ready` was unconditionally
+`False` with nothing saying so. The right resolution came from the **user's vendor-scope ruling**
+deferring `cutflow_plotter` to M5/M6: the import is dead *by design*, so cycle 2 narrowed the
+`except` to `ImportError`, logged the deferral via `ctx.on_log`, and pinned `cutflow_ready is
+False` with a test distinguishing "deferred" from "failed". The reviewer independently verified
+that provenance against `.claude/tasks/backend.md` rather than taking the PR body's word.
+
+#### What the reviewer did that justified effort: high
+Both cycles it built its **own** mutations rather than replaying the coder's. Cycle 1 broke
+concurrency with a *shared cancellation `Event`* rather than a shared context, confirming
+criterion 2 fails for a defect model the coder had not tested. Cycle 2 reproduced criterion 4's
+seam (b) by mutating an inline, non-monkeypatchable call site at source level in an in-memory
+module copy, and re-verified isolation against a fresh `__init__` wrapper. It also confirmed
+**no test was removed** (`git diff 619dc3c..HEAD -- tests/ | grep -c '^-.*def test_'` -> `0`),
+which is the §5.3 check-count floor made mechanical.
+
+#### Orchestrator gate notes
+The §5.1 free gate ran on both cycles in a detached worktree `~/fce-gate-b009`, and both times
+the extra step that mattered was verifying `import fce_web.engine.analytical_loop` **resolved to
+the worktree copy** — a `PYTHONPATH` shadow would otherwise have certified `main`'s code as the
+branch's. Cycle 1's criterion-1 grep also carried an orchestrator defect: the pattern's `from ui`
+alternative matched English prose, hitting a comment at `engine/runconfig.py:134` reading
+`from ui/graph.py:1709-1719`. Anchor such patterns to import syntax — `^\s*(from|import)\s+ui\b`.
+
+
 ### B-003 — Playwright harness and a screenshot helper
 - **Scope:** `pyproject.toml` (dev extra), `tests/e2e/__init__.py`,
   `tests/e2e/conftest.py`, `tests/e2e/test_smoke.py`, `scripts/screenshot.py`

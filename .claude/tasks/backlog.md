@@ -429,3 +429,18 @@ and are historical now that #6 is merged.
   Not folded into B-009 cycle 2: it is a documentation choice, and the right answer probably comes
   from B-011, which is the first code to actually pick a worker count. Raised by the PR #13 cycle-1
   review, 2026-08-22.
+
+- **B-009 c2 suggested-minor — `analytical_loop.py:349-352`, student-facing log copy.** The line
+  `"Cutflow plot skipped: fce_web.engine.cutflow_plotter is deferred to M5/M6 and is not vendored
+  yet."` fires on every run, and `ctx.on_log` becomes B-011's student-facing SSE log. A dotted
+  module path plus an internal milestone label is not copy a 15-year-old second-language reader can
+  act on (shared §1). "Cutflow plot is not available yet." says the same thing; the detail belongs
+  in the code comment where it already is. **Folded into B-011's dispatch** — recorded here so it
+  is not lost if B-011 is re-scoped.
+- **B-009 c2 suggested-minor — `analytical_loop.py:348`, two edges for whoever lands
+  `cutflow_plotter` in M5/M6.** Narrowing to `except ImportError` was correct, but (i) an
+  `ImportError` raised *inside* `generate_cutflow_plot` will still be reported as "deferred", and
+  (ii) any other exception now propagates out of `run_physics_loop`, discarding a `RunResult` whose
+  physics already completed because a *plot* failed. Unreachable today, zero current cost. **This
+  belongs to the M5/M6 task that vendors `cutflow_plotter`** — attach it there when that task is
+  written.
