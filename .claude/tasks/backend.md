@@ -352,6 +352,20 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   which `os.makedirs` its candidate and writes a `.write_test` probe (`paths.py:32-36`). Harmless
   here — `~/.fce` exists and is writable — but importing the reference has side effects on disk,
   so the script sets `FCE_HOME` explicitly rather than inheriting it by accident.
+- **PROVEN BY EXECUTION 2026-08-22, not merely by static analysis.** The orchestrator ran, in
+  the primary checkout under `./.venv/bin/python`, a script that prepends the reference checkout
+  to `sys.path` and imports the reference's own entry point. Real output:
+  ```
+  IMPORT OK
+  signature: (cfg, samples, active_samples, en)
+  hdir at import time: /home/julvdnbr/.fce
+  dearpygui loaded? False
+  ui.state loaded? True
+  ```
+  So `render_reference.py` is viable exactly as B-012 specifies it. Two things that transcript
+  settles: `dearpygui` is genuinely never imported, and **`ui.state` IS pulled into `sys.modules`**
+  — which is the contamination hazard stated above, now observed rather than predicted. That is
+  the evidence for the subprocess criterion; do not relax it.
 - **The reference checkout has no venv and no installed deps** (no `.venv`, no `pyvenv.cfg`,
   `import uproot` fails under system python). So the script runs under **our** interpreter,
   `./.venv/bin/python`, with the reference checkout prepended to `sys.path`. There is no
