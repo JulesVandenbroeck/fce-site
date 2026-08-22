@@ -350,13 +350,13 @@ def test_reference_and_our_run_use_distinct_fce_homes(reference_render, isolated
     )
 
 
-def _output_fingerprint(fce_home: str) -> Dict[str, Tuple[int, float]]:
+def _output_fingerprint(fce_home: str) -> Dict[str, Tuple[int, int]]:
     """``{relative_path: (size, mtime_ns)}`` for every file under
     ``<fce_home>/output`` -- used by criterion 8 to prove a probe run left
     ``reference_render``'s own output untouched.
     """
     out_dir = os.path.join(fce_home, "output")
-    fingerprint: Dict[str, Tuple[int, float]] = {}
+    fingerprint: Dict[str, Tuple[int, int]] = {}
     if not os.path.isdir(out_dir):
         return fingerprint
     for name in sorted(os.listdir(out_dir)):
@@ -364,6 +364,37 @@ def _output_fingerprint(fce_home: str) -> Dict[str, Tuple[int, float]]:
         st = os.stat(full)
         fingerprint[name] = (st.st_size, st.st_mtime_ns)
     return fingerprint
+
+
+def _copy_fce_home(src: str, dst: str) -> None:
+    """Copy an FCE_HOME for the cache-crossing probe, preserving symlinks
+    rather than dereferencing them.
+
+    ``shutil.copytree``'s default (``symlinks=False``) walks *through* the
+    ``<fce_home>/datasets/<detector>/<energy>`` symlink ``_link_dataset``
+    creates and copies the real, shared ROOT tree behind it -- cycle-2
+    review's M3, measured at ~336 MB of dataset per probe copy, on top of
+    which every ``pytest tests/`` run retains pytest's last three tmp
+    sessions. ``symlinks=True`` copies the symlink itself instead. See
+    criterion 10.
+    """
+    shutil.copytree(src, dst, dirs_exist_ok=True, symlinks=True)
+
+
+def _bytes_without_following_symlinks(path: str) -> int:
+    """Total size in bytes of every entry under *path*, counting a symlink's
+    own (tiny) size rather than descending into whatever it points to. Used
+    by criterion 10 to bound the cache-crossing probe's footprint without
+    the measurement itself dereferencing the thing it is checking was not
+    dereferenced.
+    """
+    total = os.lstat(path).st_size
+    with os.scandir(path) as entries:
+        for entry in entries:
+            total += os.lstat(entry.path).st_size
+            if entry.is_dir(follow_symlinks=False):
+                total += _bytes_without_following_symlinks(entry.path)
+    return total
 
 
 def test_pointing_both_runs_at_the_same_fce_home_lets_the_second_reuse_the_firsts_cache(
@@ -393,7 +424,7 @@ def test_pointing_both_runs_at_the_same_fce_home_lets_the_second_reuse_the_first
     before = _output_fingerprint(ref_home)
 
     probe_home = str(tmp_path_factory.mktemp("cache_probe_home"))
-    shutil.copytree(ref_home, probe_home, dirs_exist_ok=True)
+    _copy_fce_home(ref_home, probe_home)
 
     t0 = time.time()
     _run_our_engine(probe_home)
@@ -414,6 +445,93 @@ def test_pointing_both_runs_at_the_same_fce_home_lets_the_second_reuse_the_first
         f"expected a same-FCE_HOME run to reuse the reference's cache and finish "
         f"fast; it took {elapsed:.1f}s instead, which would undermine the "
         f"conclusion that the two runs are proven independent -- see criterion 4"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Criterion 10 -- the cache-crossing probe's copy must not dereference the
+# dataset symlink (cycle-2 review, M3: ``shutil.copytree``'s default,
+# ``symlinks=False``, does exactly that). Measured 2026-08-22, with the fix
+# (``symlinks=True``, see ``_copy_fce_home``) in place: ``probe_home`` is
+# ~24.6 MB. The cap below is set at 60 MB -- comfortable headroom over that,
+# and well under the ~376 MB a dereferencing copy produces, so the mutation
+# gate that follows actually distinguishes the two rather than passing
+# either way.
+# ---------------------------------------------------------------------------
+
+_PROBE_FOOTPRINT_CAP_BYTES = 60 * 1024 * 1024
+
+
+def test_cache_probe_preserves_the_dataset_symlink_and_bounds_its_footprint(
+    reference_render, tmp_path_factory,
+):
+    """Criterion 10, the real (fixed) path: the probe copy keeps the dataset
+    entry a symlink, and the copy's total footprint -- measured without
+    following symlinks, so the measurement cannot itself launder a
+    dereferenced copy back under the cap -- stays under
+    ``_PROBE_FOOTPRINT_CAP_BYTES``.
+    """
+    _result, ref_home = reference_render
+    probe_home = str(tmp_path_factory.mktemp("cache_probe_symlink_home"))
+    _copy_fce_home(ref_home, probe_home)
+
+    dataset_link = os.path.join(probe_home, "datasets", "IDEA", "91GeV")
+    assert os.path.islink(dataset_link), (
+        f"expected {dataset_link!r} to still be a symlink after the probe "
+        f"copy -- see criterion 10"
+    )
+
+    footprint = _bytes_without_following_symlinks(probe_home)
+    print(f"\nprobe_home footprint (not following symlinks) = {footprint / 1e6:.1f} MB")
+    assert footprint < _PROBE_FOOTPRINT_CAP_BYTES, (
+        f"probe_home footprint {footprint / 1e6:.1f} MB exceeds the "
+        f"{_PROBE_FOOTPRINT_CAP_BYTES / 1e6:.0f} MB cap -- the dataset symlink "
+        f"may have been dereferenced (see criterion 10)"
+    )
+
+
+def test_cache_probe_footprint_check_would_catch_a_dereferencing_copy(tmp_path):
+    """Mutation gate for criterion 10, self-contained: build a small
+    synthetic FCE_HOME whose ``datasets/IDEA/91GeV`` entry is a symlink to a
+    directory holding one file sized just over the footprint cap, then show
+    ``_copy_fce_home`` (the fix, ``symlinks=True``) stays under the cap while
+    ``shutil.copytree`` with its *default* (``symlinks=False`` -- cycle-2's
+    M3, the pre-fix behavior) exceeds it. Deliberately independent of
+    ``reference_render`` and the real, shared dataset tree: gating this with
+    the real ~336 MB dataset would itself perform, on every suite run, the
+    same dereferencing copy criterion 10 exists to rule out.
+    """
+    real_home = tmp_path / "real_home"
+    shared_dataset = tmp_path / "shared_dataset"
+    shared_dataset.mkdir()
+    big_file = shared_dataset / "big.root"
+    oversized = _PROBE_FOOTPRINT_CAP_BYTES + 1024 * 1024
+    with open(big_file, "wb") as f:
+        f.seek(oversized - 1)
+        f.write(b"\0")
+    dataset_link = real_home / "datasets" / "IDEA" / "91GeV"
+    dataset_link.parent.mkdir(parents=True)
+    os.symlink(str(shared_dataset), str(dataset_link))
+
+    preserved_home = tmp_path / "preserved_home"
+    _copy_fce_home(str(real_home), str(preserved_home))
+    assert os.path.islink(preserved_home / "datasets" / "IDEA" / "91GeV")
+    preserved_footprint = _bytes_without_following_symlinks(str(preserved_home))
+    assert preserved_footprint < _PROBE_FOOTPRINT_CAP_BYTES, (
+        f"the symlink-preserving copy measured {preserved_footprint / 1e6:.1f} "
+        f"MB, at or above the {_PROBE_FOOTPRINT_CAP_BYTES / 1e6:.0f} MB cap -- "
+        f"the synthetic fixture itself is miscalibrated"
+    )
+
+    dereferenced_home = tmp_path / "dereferenced_home"
+    shutil.copytree(str(real_home), str(dereferenced_home), dirs_exist_ok=True, symlinks=False)
+    assert not os.path.islink(dereferenced_home / "datasets" / "IDEA" / "91GeV")
+    dereferenced_footprint = _bytes_without_following_symlinks(str(dereferenced_home))
+    assert dereferenced_footprint >= _PROBE_FOOTPRINT_CAP_BYTES, (
+        f"expected the pre-fix, dereferencing copy to exceed the "
+        f"{_PROBE_FOOTPRINT_CAP_BYTES / 1e6:.0f} MB cap (the mutation "
+        f"criterion 10 must catch); got {dereferenced_footprint / 1e6:.1f} MB "
+        f"instead"
     )
 
 
