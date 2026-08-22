@@ -627,3 +627,110 @@ reviewer died on a session limit having produced nothing. Neither cost work.
   two errors in my dispatch (seven `eval` sites, not eight; `Subscript` contradiction), both
   since corrected in `.claude/backend/CLAUDE.md` §3.2.
 
+
+---
+
+## B-004 — Histogram, cutflow and fit payload contracts
+
+- **Branch / PR:** `task/b-004-api-contract` — #10, merged `d4ddec8` on 2026-08-22
+- **Cycles:** 3 coder→reviewer cycles, plus 2 re-specifications and 1 pre-review send-back, none of
+  which counted. Closed at the §5.7 limit on the user's ruling, with 1 required and 1
+  suggested-major open → **B-014**.
+- **Final scope:** `docs/api.md`, `tests/test_api_contract.py`. Nothing else, on any cycle.
+
+### What shipped
+
+`docs/api.md` went from a 71-line stub documenting three fields — `edges`,
+`samples[{name, counts, weightsSquared}]`, `data` — to 13 sections covering all 30 schema paths
+with type, nullability and meaning, plus eight documented semantics of the reference engine that
+existed nowhere in writing before. `tests/test_api_contract.py` is new: 18 test functions / 134
+collected cases. Full suite 236 → 329.
+
+The architecture that emerged is worth reusing: **four parametrised families, each paired 1:1 with
+a meta-test that mutates and asserts red.**
+
+| Guard | Meta-test | Cases |
+|---|---|---|
+| `test_payload_conforms_to_schema_field` | `test_corrupting_field_makes_schema_check_fail` | 30 |
+| `test_documented_schema_field_appears_in_api_md` | `test_removing_field_row_makes_documented_check_fail` | 30 |
+| `test_no_orphan_schema_table_rows` | `test_appending_orphan_row_makes_no_orphan_check_fail` | 1 |
+
+Falsifiability stopped being a transcript somebody pasted once and became a property of the suite.
+That is the transferable result.
+
+### The scope correction, before any code was written
+
+The entry said "`docs/api.md`, plus the run-pipeline plumbing that has to persist the per-source
+variation histograms". There was no run pipeline — `path_filter.py`, `path_final.py`,
+`analytical_loop.py`, `runs.py`, `driver.py` all absent — and the files that would persist
+`h_{src}_up` were already inside **B-007's** scope. Ruled contract-only; three criteria moved to
+B-007. Two further user rulings: `weightsSquared` and `fit.muErr` are nullable with no producer
+(the reference uses default `Double()` storage and `run_fit` returns a bare tuple), and cutflow
+efficiency is MC-only, a deliberate divergence from `cutflow_plotter.py:70-83`.
+
+### The three specification defects, all mine, all one shape
+
+| Cycle | Criterion | Its `Check:` | Why it could not see the defect |
+|---|---|---|---|
+| 1 | c1 — "deleting any field name makes it fail" | `pytest -k documented` | runs the *unmutated* doc; prints `28 passed` either way |
+| 1 | c5 — "one pair per assertion" | prose, no command | denominator ambiguous between 14 functions and 41 cases; **I resolved it in the coder's favour at the gate** |
+| 2 | c2 — presence/type/nullability | *I deleted the clause on re-dispatch* | §5.3 substitution, my act, while writing "cumulative" above it |
+| 3 | c6 — "falsifiability proven by a test in the suite" | `--collect-only` counts | counts cases; cannot see a family mutating one of three halves |
+
+Each names a real property and pairs it with a command that runs against known-good inputs. **The
+rule this earns: when a criterion says "X is checked", the `Check:` must be a mutation that makes
+the check fail — not a run of the check.** Ask what the command prints when the property is false.
+If the answer is "the same thing", it is not a criterion.
+
+### What each cycle found
+
+- **Send-back (§5.1, not a cycle).** All six numbers reproduced, but the 14 mutation entries were
+  prose with no pytest output anywhere, and the body admitted the mutations called `_check_*`
+  helpers directly rather than running the tests. A helper raising was shown; the named test going
+  red was not. Branch head never moved.
+- **Cycle 1 — required.** `_check_field_documented` grepped `\b<leaf name>\b` across the whole
+  document, so five parametrised cases could not detect the field disappearing: `data` survives in
+  "pseudo-data", `samples` in "over MC samples first", `edges` in "41 edges / 40 bins", plus `name`
+  and `stages`. The reviewer built a **negative control** — deleted every documenting line for
+  `data` and showed `…[data]` still passing. Also: a fabricated `static/js/chart.js` citation.
+- **Cycle 2 — required.** The 30 `(type, nullable)` tuples were **never read**; the dicts were
+  consumed only as `set(...)` of keys. Deleting `cutflow.totalRaw` and setting `samples[0].name` to
+  `42`, both declared non-nullable, gave `76 passed`. The paired suggested-major was a landmine the
+  cycle-1 fix had laid: `systUp.*` declared `(list, False)` contradicted the partial-presence rule
+  added the same cycle, so wiring the tuples up naively would have re-broken it. The coder fixed
+  the declaration first.
+- **Cycle 3 — required.** The schema meta-test corrupts only the **type**, leaving the presence and
+  nullability halves unfalsified: gut both asserts and the suite still reports `134 passed`. Same
+  shape, one level deeper. → B-014.
+
+Every cycle's Required was found in the *previous* cycle's fix. §5.5's "later cycles are where
+fix-induced regressions live" held three times out of three.
+
+### What the reviewer did that is worth copying
+
+- Built **negative controls**, not just positive ones — the `data` case is the whole cycle-1
+  finding, and "delete `systUp.jec` → `134 passed`, correct by design" is how you show a check is
+  calibrated rather than merely loud.
+- Diffed every *retained* checker for softening across revisions, confirming `>=` logic unchanged
+  and all 28 old leaf cases still covered inside the new 30 — the §5.3 regression check, actually
+  performed.
+- Re-verified every physics citation at the reference source rather than reading the prose,
+  including catching `plotter.py:52-64` as really `58-67`, where `52-57` is the `uproot.open` guard
+  and `65-67` is the cross-sample accumulation the rule is about.
+- Mutated only by monkeypatch, via pytest plugins on `PYTHONPATH` outside the repo. Tree clean
+  every cycle.
+
+### Coder behaviour worth noting
+
+Independently re-verified every finding at the reference before implementing, on all three cycles,
+and reported none technically wrong — `receiving-code-review` as intended rather than capitulation.
+Disclosed unprompted that two assertions could not be falsified by payload-only mutation. Fixed the
+suggested-major *before* the Required when told the order mattered. Scope was clean on every cycle;
+`src/` was never touched.
+
+### Left open, deliberately
+
+The run-request contract (`nodes[] + edges[]` with coordinates in a separate `ui` object) is
+`POST /api/run`, not the histogram response, and is **blocked on the user's D-007 choice** —
+Beamline, Bench and Board persist structurally different things. Backlogged: a producer for
+`fit.method`; producers for `weightsSquared` and `fit.muErr`.

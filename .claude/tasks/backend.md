@@ -9,263 +9,58 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-004 — Define the histogram, cutflow, and fit payload contracts
-- **Scope:** `docs/api.md`, `tests/test_api_contract.py`. `docs/design-explorations/payload.json`,
-  `plot.js` and `verify.py` are **read-only input** (design-owned).
-- **Accept:** every field in the enumeration below documented with type and nullability;
-  `payload.json` validates against the contract; the systematics band formula documented verbatim
-  and independently re-implemented in the test; the eight reference semantics written as
-  actionable prose; every assertion mutation-tested with both transcripts in the PR body;
-  `pytest tests/ -q` green and `flake8` clean.
-- **Depends on:** nothing. Its stated D-003 blocker was stale bookkeeping — D-003 merged `99ec8f3`
-  on 2026-08-17; corrected 2026-08-20.
-- **Branch / PR:** `task/b-004-api-contract` — #10, head `372321e`
-- **Status:** **STOPPED AT THE §5.7 LIMIT — awaiting the user's ruling.** Head `0e945b8`, PR #10
-  open, not merged. No fourth cycle dispatched.
-- **Review (cycle 3, raised effort):** 1 required, 1 suggested-major, 2 suggested-minor,
-  scope=pass. Posted verbatim to PR #10. 16 monkeypatch-only mutations run, tabulated in the review.
-- **The Required, and it is the same shape a third time, one level deeper.**
-  `test_corrupting_field_makes_schema_check_fail` corrupts only the **type**
-  (`_wrong_type_value`), so the *presence* and *nullability* halves of `_check_path_conformant`
-  have no falsifiability test. The reviewer rebound the checker to keep the `isinstance` assert
-  and drop both `assert may_be_missing` and `assert may_be_null` → **`134 passed`**. The
-  enforcement that a `REQUIRED` field must exist and must not be `null` can be deleted wholesale
-  and nothing goes red — silently re-opening the cycle-2 Required. Gutting the *type* half turns
-  30 red, and gutting the doc checker turns 30 red, so the pattern is established and only this
-  sub-part is unguarded.
-- **The suggested-major is latent, not live.** The doc↔schema check is name-level only: the `Type`
-  and `Nullable` columns of `docs/api.md` are never compared against the schema tuples. The
-  reviewer checked all 30 rows by hand and they **do agree today**, so nothing is wrong in the
-  shipped contract — but it is the one drift surface this task exists to close.
-- **What is verified correct, and it is most of the task.** All 30 doc rows agree with the schema;
-  every physics citation re-checked at the reference source including this cycle's `58-67`
-  correction; `_compute_band` matches `plotter.py:105-118` line by line; the cycle-2 Required
-  genuinely closed with both negative controls now failing at the correctly-named case; the two
-  deleted checkers mutation-proved as a strict strengthening (the old ones used `.get()`, so an
-  absent `fit.mu` was legal; `NULLABLE` now requires the key). Scope clean on all three cycles.
-
-#### §5.7 — why this stopped rather than cycling again
-
-Three coder→reviewer cycles. **Nothing is being argued about** — coder and reviewer agree on every
-finding, and the coder independently re-verified all of them at the reference before implementing.
-The loop is not stuck on a disagreement; it is stuck on **my criteria**, and the diagnosis is the
-same one three times running:
-
-| Cycle | My criterion | Its `Check:` | Why the check could not see the defect |
-|---|---|---|---|
-| 1 | c1 — "deleting any field name makes it fail" | `pytest -k documented` | runs the *unmutated* doc; prints `28 passed` either way |
-| 1 | c5 — "one pair per assertion" | prose, no command | denominator ambiguous; I resolved it in the coder's favour at the gate |
-| 2 | c2 — presence/type/nullability | *I deleted the clause* | §5.3 substitution, my act |
-| 3 | c6 — "falsifiability proven by a test in the suite" | `--collect-only` counts | counts cases, cannot see that a family mutates only one of three halves |
-
-Every one names a real property and pairs it with a command that runs against known-good inputs.
-**The command that works is already in this file's history** — a parametrised meta-test that
-mutates and asserts red, one case per guarded thing. It closed cycle 1's Required and cycle 2's.
-The cycle-3 Required is that same pattern applied to only one of three halves.
-
-**The fix is small and fully specified by the reviewer**: for every path with
-`may_be_missing == False`, delete the first occurrence and require a raise naming the path; for
-every path with `may_be_null == False`, set it to `None` and require the same. Both are no-ops for
-`fit.method`. All four mutations pass through the existing `_set_first_occurrence` seam.
-- **Cycle-2 re-specification delivered `0e945b8`, gate passed.** Reproduced here: 134 passed /
-  134 collected / 18 `def test_` / 329 passed full suite / flake8 silent / 13 headings / scope still
-  the two permitted files / no `src/` change.
-- **Floors up again:** 76 → **134** cases, suite 271 → **329**, functions flat at 18, headings 13.
-- **The Required is closed the way the last one was — by construction.** A four-state presence
-  lattice (`REQUIRED`/`NULLABLE`/`OPTIONAL`/`OPTIONAL_NULLABLE`) is now actually consumed by
-  `_check_path_conformant`, walking all 30 `ALL_SCHEMA_PATHS`. `test_payload_conforms_to_schema_field`
-  (30 cases) is the positive check; `test_corrupting_field_makes_schema_check_fail` (30 cases) is its
-  permanent falsifiability proof. I verified the equality triple independently — 30 / 30 /
-  `len(ALL_SCHEMA_PATHS)` = 30 — reading the last one out of the module rather than the PR body.
-- **The suggested-major was fixed first, as instructed.** `samples[].systUp.jec/.lep/.btag` moved to
-  `OPTIONAL` *before* the tuples were wired up, so the schema-driven presence check never got the
-  chance to reject a legal partial-coverage payload.
-- **§5.3 substitution check, run rather than accepted.** Two tests were removed as "superseded":
-  `test_meta_fields_typed` and `test_fit_nullable_fields_typed`. `pytest --collect-only -q` diffed
-  across `f14e263..0e945b8` — the technique the B-006 cycle-4 lesson prescribes — shows exactly two
-  removed and two added. The removed pair covered 5 `meta` and 4 `fit` fields; the schema walk
-  covers **6 `meta` and 7 `fit` paths**, each now carrying its own falsifiability case. A genuine
-  superset, so nothing was traded away.
-- **This is the third coder→reviewer cycle.** If it returns any `Required` or un-overruled
-  `suggested-major`, §5.7 applies: stop, do not dispatch a fourth, and put the diagnosis to the
-  user. The two re-specifications do not count toward this and the diagnosis is already written
-  above — all three specification defects were mine, and all three were the same shape.
-- **Review (cycle 2, raised effort):** 1 required, 1 suggested-major, 1 suggested-minor,
-  scope=pass. Posted verbatim to PR #10. The reviewer diffed every *retained* checker for
-  softening — confirming `>=` logic unchanged, nullable coverage grown 2→4 fields, and all 28 old
-  leaf cases still covered inside the new 30 dotted-path ones — which is the §5.3 check I ask for
-  and had not seen anyone actually perform before.
-- **The Required: 30 schema tuples that nothing reads.** The `(type, nullable)` second element of
-  every entry in `HISTOGRAM_SCHEMA`/`CUTFLOW_SCHEMA`/`FIT_SCHEMA` is never consumed — the dicts are
-  used only as `set(...)` of keys. Type and nullability checking is hand-written and reaches
-  `meta.*` and `fit.*` only. The reviewer deleted `cutflow.totalRaw` and set `samples[0].name` to
-  the integer `42`, both declared non-nullable, and got **`76 passed`**. A payload violating two
-  documented contracts passes the contract checker in full.
-- **The suggested-major is a landmine laid by the cycle-2 fix**, and it is the reason this must not
-  be fixed naively: `systUp.jec`/`.lep`/`.btag` are declared `(list, False)` — required in every
-  sample — while semantics 1, added the same cycle, says the key is present only for sources that
-  sample produced a template for. Inert today because the tuples are unread; the moment someone
-  wires them up, a schema-driven presence check rejects a legal partial-coverage payload and
-  re-breaks the very rule cycle 2 existed to establish.
-- **Re-specification delivered `f14e263`, gate passed.** All eight numbers reproduced in the
-  primary checkout: 76 passed / 60 passed 16 deselected / 5 passed 71 deselected / 76 collected /
-  18 `def test_` / 271 passed full suite / flake8 silent / 13 `^##` headings. Scope still exactly
-  the two permitted files; no `src/` change at all.
-- **Floors moved the right way.** 14 functions → **18**; 41 cases → **76**; suite 236 → **271**;
-  headings held at 13. These are the new floors.
-- **The Required is closed by construction, not by assertion.**
-  `test_removing_field_row_makes_documented_check_fail` runs **30 parametrised cases, one per
-  schema field**, pairing 1:1 with the 30 cases of `test_documented_schema_field_appears_in_api_md`
-  — so falsifiability is now a permanent property of the suite rather than a transcript somebody
-  pasted once. The reverse direction the reviewer asked for landed too:
-  `test_no_orphan_schema_table_rows` plus its own
-  `test_appending_orphan_row_makes_no_orphan_check_fail`. This is §5.3's "make it a command, not an
-  instruction", and it is the shape the original criterion should have had.
-- **Coder verified all eight findings against the reference before implementing** and reports none
-  technically wrong — `receiving-code-review` done as intended rather than as capitulation. Its one
-  flagged deviation: `fit.mu`/`significanceZ` resolved as *specify nullable* rather than *omit
-  `fit` entirely*, a choice I deliberately left open, with the reasoning in semantics 7.
-- **Review (cycle 1, raised effort):** 1 required, 4 suggested-major, 3 suggested-minor,
-  scope=pass. Posted verbatim to PR #10. The reviewer reproduced all six numbers, then checked
-  every physics citation against the reference checkout rather than reading the prose — band
-  formula at `plotter.py:108-117`, `_SIG_CAP` on all three paths, `node_name or "Selection"`,
-  the mixed MC+data efficiency denominator. All accurate.
-- **The Required, and it is mine.** `_check_field_documented` greps `\b<leaf name>\b` across the
-  whole of `docs/api.md`, so five parametrised cases cannot detect the field disappearing: `data`
-  survives in "pseudo-data", `samples` in "over MC samples first", `edges` in "41 edges / 40 bins",
-  plus `name` and `stages`. The reviewer built a **negative control** — deleted every documenting
-  line for `data`, and `test_documented_schema_field_appears_in_api_md[data]` **still passed**.
-  Empirical proof of instrument blindness, not an opinion.
-- **Gate:** passed on the second pass. **The send-back cost no cycle** — branch head never moved
-  from `372321e`; both passes were PR-body-only, as §5.1's two precedents were.
-  - *Pass 1 failed.* All six numbers reproduced (41 / 28+13 / 4+37 / 236 full suite / flake8 silent
-    / 13 `^##` headings, `stub` narrowed to M3+M5), but the 14 mutation entries carried **no pytest
-    output anywhere in the body** and the body stated the mutations called the module's `_check_*`
-    helpers directly rather than running the tests. A helper raising was shown; the named test
-    going red was not. B-006 cycle 4's shape — an instrument that cannot observe what it certifies.
-  - *Pass 2 passed.* 14 verbatim pytest pairs, each with a `=== FAILURES ===` block, an
-    `E AssertionError`, a `FAILED tests/test_api_contract.py::test_<name>` line and a
-    `1 failed, 40 deselected` summary, then a restored `1 passed`. All 14 collected functions
-    covered; `md5sum` of the test file identical after every restore; `git status` clean.
-- **Delivered counts, recorded so §5.3 can catch a fall:** `tests/test_api_contract.py` has **14
-  test functions / 41 collected** (the surplus is parametrisation of the doc-drift check over
-  schema field names); `docs/api.md` has **13** `^##` headings, up from 7 on main.
-- **Disclosed by the coder, and left for the reviewer to weigh:** 2 of the 14 —
-  `test_band_is_nonnegative` and `test_band_frac_zero_where_stack_zero` — cannot be turned red by
-  any payload-only mutation, because they are structurally guaranteed by a correct `_compute_band`;
-  showing them red required temporarily mutating `_compute_band` itself. The coder said so plainly
-  rather than hiding it, which is the behaviour the gate exists to produce.
-
-#### §5.4 diagnosis, cycle 2 — RE-SPECIFICATION under clause 1. I dropped a criterion.
-
-**Clause 1 applies, and it is the clean case the manual describes.** My original criterion 2 read:
-
-> `docs/design-explorations/payload.json` validates against the documented contract, unedited.
-> **Required fields present, types correct, `null` accepted only where the schema marks a field
-> nullable.** Array-length coherence asserted: …
-
-My re-specification restated it as:
-
-> `payload.json` validates unedited; `len(edges) == len(counts)+1`; `counts`/`weightsSquared`/every
-> `systUp[src]` share one length per sample; `cutflow.counts` covers `stages × samples`; …
-
-**I kept the array-length half and deleted the presence/type/nullability half** while writing the
-words "cumulative, all of them must still hold" directly above it. That is §5.3 substitution — my
-act, not the coder's — so it is a re-specification and the cycle count stays at 2.
-
-This is the third specification defect on this one task and all three are the same shape: a
-property stated in prose with a `Check:` that runs against known-good inputs and therefore cannot
-observe it. Criterion 1 (cycle 1), criterion 5's denominator (cycle 1), criterion 2 (here).
-
-**The pattern that actually works is already in this task's own history.** The cycle-1 Required was
-closed not by a better sentence but by
-`test_removing_field_row_makes_documented_check_fail` — 30 parametrised cases that mutate and
-assert red, pairing 1:1 with the 30 they guard. Falsifiability became a property of the suite.
-**Every criterion of the form "X is checked" on this task now gets that treatment**, and the
-denominator is a number reported from `--collect-only`, not a word.
-
-#### §5.4 diagnosis — RE-SPECIFICATION, not a cycle, and the fault is the orchestrator's
-
-**Clause 1** (was a property gated earlier then dropped?) — no, this is cycle 1.
-**Clause 2** (did an unmet criterion ship without a command?) — **yes, twice.**
-
-- **Criterion 1** stated the right property — *"Deleting any one field name from `docs/api.md`
-  makes it fail, and the failure message names that field"* — and paired it with
-  `Check: pytest tests/test_api_contract.py -q -k documented`. That command runs against the
-  **unmutated** document and prints `28 passed` whether the property holds or not. My own manual
-  §2 says to ask what a command would print if the property were false. It would print exactly
-  what it printed. This is the B-006 cycle-4 shape reproduced inside my own criterion.
-- **Criterion 5**'s `Check:` was prose — *"the PR body carries one transcript pair per
-  assertion"* — not a command, and "assertion" was ambiguous between 14 test functions and 41
-  collected cases. **I resolved that ambiguity in the coder's favour myself**, at the §5.1 gate,
-  writing that "14 pairs for 14 functions is coherent rather than a shortfall". The coder did
-  what I certified as correct.
-
-**The command I should have written:** make mutation coverage *a test*, not a transcript
-exercise — §5.3's "make it a command, not an instruction". For every schema field, rebind
-`API_MD` to a document with that field's row removed and assert the check fails. Then `pytest`
-proves it forever and the denominator cannot drift.
-
-**Two of the four suggested-majors are also mine.** I gave the coder the band formula from
-`plotter.py:107-118` but omitted the `if mc_up[src] is not None` guard, which is the
-partial-presence rule the reviewer found diverging. And I described three fit *methods* without
-ever mentioning that `run_fit` returns `(None, None)` on five paths, so nothing told the coder
-`fit.mu` could be absent. The other two — the fabricated `static/js/chart.js` reference and the
-module docstring endorsing the already-rejected direct-helper method — are genuine coder defects.
-
-- **Plan:** `~/.claude/plans/continue-b-004-giggly-hanrahan.md`
-
-**Scope corrected 2026-08-21 (user ruling).** The entry previously read "`docs/api.md`, plus the
-run-pipeline plumbing that has to persist the per-source variation histograms". **There is no run
-pipeline** — `path_filter.py`, `path_final.py`, `analytical_loop.py`, `runs.py` and `driver.py` do
-not exist; `src/fce_web/` is `app.py`, `paths.py`, `safe_eval.py`, `routes/pages.py` and
-`engine/systematics.py`. The files that would persist `h_{src}_up` are already inside **B-007's**
-file scope. B-004 is contract-only; the persistence requirements moved to B-007.
-
-**The gap this closes.** `docs/api.md` is 71 lines, still marked `Status: **stub.**`, and its
-`### Histogram payload` documents three things: `edges`, `samples[{name, counts, weightsSquared}]`,
-`data`. `docs/design-explorations/payload.json` — 788 lines, four D-003 review cycles, consumed by
-`plot.js` and `verify.py` — carries `meta`, `lumiUnc`, `systSources`, per-sample `systUp`,
-`cutflow` and `fit`. The contract and its only concrete instance disagree, and nothing checks that.
-
-**The field enumeration — named, not counted** (41 edges / 40 bins; samples `X1`, `X2`, `X3`; two
-cutflow stages): `meta{mission, detector, energy, xLabel, processNames}`, `edges`, `lumiUnc`,
-`systSources`, `samples[]{name, counts, weightsSquared, systUp{jec, lep, btag}}`, `data`,
-`cutflow{stages, samples, counts, totalRaw, efficiencyPct}`,
-`fit{mu, muErr, significanceZ, thresholds{evidence, discovery}}`, plus the new `fit.method`.
-`cutflow.counts` is nested `{stage: {sample: int}}`, **not** a flat array. Payload is camelCase
-throughout, and the contract says so.
-
-**Why the contract is more than a field list — three traps, none written down anywhere today:**
-- The band sums variations **over samples first**, then takes the per-bin fractional delta against
-  the summed nominal (`plotter.py:107-118`). Reversing that order gives a different band.
-  Variations are **up-only**; the band is mirrored, not separately fitted.
-- `significanceZ` is capped at `_SIG_CAP = 10.0` (`fitter.py:13`), in all three code paths.
-- `mu` and `significanceZ` come from three statistically distinct paths — a pyhf HistFactory MLE
-  fit, a counting ratio `n_tot/s_tot` when there is no background sample (`fitter.py:89-98`), and
-  `s/√b` after a bare `except Exception` (`:194-203`) — with **no field saying which**. Hence the
-  new `fit.method`.
-
-**Two ghost fields, documented nullable (user ruling).** `weightsSquared` has no producer: the
-reference builds `bh.Histogram(ax)` with default `Double()` storage, so no sumw2 is tracked or
-written anywhere, and `verify.py:993-1001` already records the field as unconsumed by the rendered
-error bars. `fit.muErr` has no producer either — `run_fit` returns a bare `(mu, sig)` tuple and
-`fitter.py` is not vendored until M5/M6. Neither triggers an engine change; both are specified
-nullable with a written note on what would produce them.
-
-**Cutflow efficiency is MC-only (user ruling)**, matching `payload.json`'s `efficiencyPct`. The
-reference divides by all active samples *including* pseudo-data (`cutflow_plotter.py:70-83`) while
-computing its stacked-bar composition from MC only (`:64-68`) — two sample sets, two formulas, one
-plot. Mixing pseudo-data into an efficiency denominator alongside MC is arithmetically meaningless.
-The divergence is deliberate and is written into the contract with its reason.
-
-**Deliberately out of scope: the run-request contract.** This entry used to float "a typed
-`nodes[] + edges[]` list with coordinates in a separate `ui` object". That is `POST /api/run`, not
-the histogram response, and it is **blocked on the user's D-007 choice** — Beamline, Bench and
-Board persist structurally different things (an ordered edge list vs `{x, y}` vs
-`{column, slotIndex}`). Specifying it now would guess at the decision the checkpoint exists to make.
+_none_
 
 ## Ready
+
+### B-014 — Close B-004's two open findings: falsify the presence/nullability halves, guard the doc columns
+- **Scope:** `tests/test_api_contract.py`, `docs/api.md`
+- **Accept:** (1) `test_corrupting_field_makes_schema_check_fail` gains presence and nullability
+  mutations, not only type — for every path with `may_be_missing == False`, delete the first
+  occurrence and require a raise **naming that path**; for every path with `may_be_null == False`,
+  set it to `None` and require the same. Both are no-ops for `fit.method` (`OPTIONAL_NULLABLE`).
+  (2) The `Type` and `Nullable` columns of `docs/api.md` are compared against the schema tuples by a
+  parametrised row-parity test, with its own falsifiability meta-test. (3) `systUp`'s key set is
+  asserted against `systSources`. (4) The two `nxt.extend(...) if ... else nxt.append(...)`
+  conditional expressions become `if`/`else` statements.
+- **The mutation IS the criterion, and it is the one that decides (1).** Rebind
+  `_check_path_conformant` to a version that keeps the `isinstance` assert and drops both
+  `assert may_be_missing` and `assert may_be_null`. Today that yields **`134 passed`**. After this
+  task it must yield a large number of failures. Paste both transcripts. Monkeypatch only — no
+  tracked file is edited to prove an assertion can fail.
+- **Why it exists — the user's ruling 2026-08-22.** B-004 hit the §5.7 limit with these open and
+  was merged rather than cycled a fourth time, on the B-006 → B-013 precedent. **The contract
+  itself is correct**; what is missing is proof that two of its three enforcement halves will keep
+  working.
+- **The required finding, stated so it is not re-litigated.** The schema meta-test corrupts only
+  the **type** (`_wrong_type_value`), so the presence and nullability halves of
+  `_check_path_conformant` have no falsifiability test in the suite. The enforcement that a
+  `REQUIRED` field must exist and must not be `null` can be deleted wholesale with nothing going
+  red — which silently re-opens B-004's own cycle-2 Required, where a payload missing
+  `cutflow.totalRaw` passed the checker. Gutting the *type* half turns 30 red and gutting the doc
+  checker turns 30 red, so the pattern is already established in the file; only this sub-part is
+  unguarded. All four mutations pass through the existing `_set_first_occurrence` seam.
+- **The suggested-major is latent, not live.** The doc↔schema check is name-level only:
+  `_documented_paths` takes the first backticked cell of each row and compares path sets, so the
+  `Type` and `Nullable` columns are never checked. The reviewer verified **all 30 rows agree
+  today** — `no (when the key is present)` ↔ `OPTIONAL`, `**yes**` ↔ `NULLABLE`, and the type words
+  match — so nothing shipped wrong. It is a drift surface, and it is the last unguarded half of
+  the thing B-004 existed to close. Give the two columns a canonical vocabulary mapped to the four
+  presence states. **If you judge the canonicalisation not worth it, overrule it in writing** with
+  the argument, rather than leaving it implicit.
+- **Both suggested-minor, named individually per §5.6** — neither is lost:
+  (a) `docs/api.md:111` documents `samples[].systUp` as "one key per source in `systSources`" and
+  nothing enforces the key set; adding `systUp["totallyMadeUp"]` leaves `134 passed`. Harmless for
+  the band, since `_compute_band` iterates `systSources` exactly as the reference iterates its
+  fixed `SYST_SOURCES`, so a stray key is ignored rather than mis-drawn — but a producer bug of
+  that shape ships undetected. One assertion in `_check_sample_array_lengths_coherent` covers it.
+  (b) `tests/test_api_contract.py:207,220` use a conditional *expression* purely for side effects,
+  twice. Style only; behaviour is correct.
+- **Floors — a fall in any is a `Required`:** 18 test functions / **134** collected cases;
+  `docs/api.md` at **13** `^##` headings; full suite at **329 passed**.
+- **Depends on:** nothing — B-004 is merged. Can run in parallel with B-013; both touch only their
+  own test file. **Not** in parallel with anything editing `docs/api.md`.
+- **Branch / PR:** not yet opened
 
 ### B-013 — Close B-006's two open findings: isolate the length cap, end the docstring contradiction
 - **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
@@ -515,6 +310,13 @@ Full entries — scope, criteria, and the cycle-by-cycle review record — are i
 [`archive/backend.md`](archive/backend.md). Read it only when a task's history is actually in
 question.
 
+- **B-004** — Histogram, cutflow and fit payload contracts — `task/b-004-api-contract` #10,
+  merged `d4ddec8` (**3 cycles + 2 re-specifications, §5.7 limit; 1 required + 1 suggested-major
+  still open → became B-014 on the user's ruling**; 2 suggested-minor folded into B-014). Grew
+  `docs/api.md` from a 71-line stub to 13 sections, and shipped `tests/test_api_contract.py` — 18
+  functions / 134 cases, four parametrised families where each guard is paired 1:1 with a
+  meta-test that mutates and asserts red. Suite 236 → 329. **All three specification defects were
+  the orchestrator's**, same shape each time; the table is in the archive.
 - **B-006** — `safe_eval.py`, the AST-whitelist expression evaluator — `task/b-006-safe-eval` #9,
   merged `ce4dcd6` (**3 cycles + 1 re-specification, §5.7 limit; 1 required + 1 suggested-major
   still open → became B-013 on the user's ruling**; 2 suggested-minor folded into B-013). The

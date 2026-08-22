@@ -119,6 +119,36 @@ observe the property it certifies is the same failure one level up**, and it is 
 produces evidence. Use `pytest --collect-only -q` on both revisions. Before you put a command in
 a criterion, ask what it would print if the property were false.
 
+### A criterion that says "X is checked" must be gated by a mutation, not by a run
+
+**B-004, 2026-08-22 — three cycles, three Requireds, one shape.** Every time, I named a real
+property and paired it with a command that runs the check against **known-good inputs**:
+
+| Criterion | `Check:` I wrote | What it printed when the property was false |
+|---|---|---|
+| "deleting any field name makes it fail" | `pytest -k documented` | `28 passed` — same as when true |
+| "one transcript pair per assertion" | prose, no command | ambiguous denominator; I resolved it for the coder at the gate |
+| "falsifiability proven by a test in the suite" | `--collect-only` counts | the count; blind to a family mutating 1 of 3 halves |
+
+A check that passes on good input passes whether or not it can fail on bad input. **So the
+`Check:` for any "X is checked" criterion is the mutation: break the guarded thing, and require
+the named test to go red.**
+
+The form that works — and it closed two of B-004's three Requireds — is a **parametrised meta-test
+paired 1:1 with the family it guards**: one case per guarded item, each mutating that item and
+asserting the check fails naming it. `test_removing_field_row_makes_documented_check_fail`, 30
+cases against 30. Falsifiability stops being a transcript pasted once and becomes a property of the
+suite, and the denominator becomes a number from `--collect-only` rather than a word.
+
+**Ask, before every `Check:` you write: what does this print if the property is false?** If the
+answer is "the same thing", it is not a criterion yet. This is §2's "an instrument that
+structurally cannot observe the property it certifies", stated as something you can act on while
+drafting rather than diagnose afterwards.
+
+**And the mutation must reach every half of what it certifies.** B-004's cycle-3 Required was a
+meta-test that mutated only the *type* half of a three-part check; the presence and nullability
+halves could be deleted wholesale with the suite still green.
+
 ### Two more ways a criterion goes wrong
 
 **Never hand a coder a proxy metric and a guarantee about it in the same breath.** I prescribed
