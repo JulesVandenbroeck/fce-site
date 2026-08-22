@@ -1,0 +1,55 @@
+{
+  "energy": "91 GeV",
+  "detector": "IDEA",
+  "observable": "(l1.p4 + l2.p4).mass",
+  "bins": "50",
+  "min": "60.0",
+  "max": "120.0",
+  "target": "None",
+  "h5": "fbb913c18c34530d355fdd949974ac58",
+  "h5_sel": "c9873a70ca371612fc24cf976ff7fd5c",
+  "mult_cuts": [
+    [2, ">=", 0, ">=", "Any", 0, ">="]
+  ],
+  "sel_exprs": ["l1.pt > 20", "l2.pt > 10"],
+  "histograms": [
+    {
+      "observable": "(l1.p4 + l2.p4).mass",
+      "x_label": "m(l1, l2) [GeV]",
+      "bins": "50",
+      "min": "60.0",
+      "max": "120.0",
+      "target": "None",
+      "node_name": "Di-lepton mass",
+      "obs_nid": null,
+      "hist_nid": null,
+      "h5": "fbb913c18c34530d355fdd949974ac58",
+      "plot_idx": 0
+    }
+  ],
+  "selections": [
+    {
+      "nid": null,
+      "prefix_nids": [],
+      "node_name": "di-lepton",
+      "sel_custom_name": "di-lepton",
+      "sel_exprs": ["l1.pt > 20", "l2.pt > 10"],
+      "h5_sel": "c9873a70ca371612fc24cf976ff7fd5c",
+      "histograms": [
+        {
+          "observable": "(l1.p4 + l2.p4).mass",
+          "x_label": "m(l1, l2) [GeV]",
+          "bins": "50",
+          "min": "60.0",
+          "max": "120.0",
+          "target": "None",
+          "node_name": "Di-lepton mass",
+          "obs_nid": null,
+          "hist_nid": null,
+          "h5": "fbb913c18c34530d355fdd949974ac58",
+          "plot_idx": 0
+        }
+      ]
+    }
+  ]
+}
