@@ -51,7 +51,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Callable, FrozenSet, Iterable
+from typing import Callable, FrozenSet, Iterable, Optional
 
 
 def _noop_progress(fraction: float) -> None:
@@ -89,6 +89,14 @@ class RunContext:
     SSE stream.
     """
 
+    # Default matches the reference's ``ui.state.RUN_STATE["n_workers"]`` seed
+    # value (``ui/state.py:18``, "number of parallel sample workers
+    # (user-configurable)"), which the reference exposes through a slider
+    # capped at ``[1, 8]`` (``fce.py:598``). 4 is that slider's starting
+    # position, not a number invented for this webapp -- a caller that wants
+    # something else (task B-011's driver, eventually a per-mission or
+    # per-server setting) passes it explicitly; nothing here reads it from
+    # config on its own.
     n_workers: int = 4
     cancel: threading.Event = field(default_factory=threading.Event)
     on_progress: Callable[[float], None] = _noop_progress
@@ -108,11 +116,26 @@ class RunContext:
 
 @dataclass(frozen=True)
 class RunResult:
-    """What one call to ``run_physics_loop`` produced.
+    """What one call to ``run_physics_loop`` -- or, above it, one call to
+    ``fce_web.engine.driver.run_analysis`` -- produced.
 
     Replaces the reference's ``RUN_STATE["cutflow_ready"]`` side effect
     (``:348-350``) with an explicit return value.
+
+    ``cancelled`` and ``reason`` are B-011 additions, both defaulted so
+    every existing ``RunResult(processed_any=..., cutflow_ready=...)`` call
+    site in ``engine/analytical_loop.py`` (task B-009) keeps working
+    unchanged. A cancelled run is not the same as a clean finish: it must
+    report ``cancelled=True`` distinguishably, while still carrying
+    ``processed_any``/``cutflow_ready`` for whatever partial output existed
+    before the stop. ``reason`` is set on the two paths that end a run
+    without producing a normal result -- cancellation, and a driver-level
+    skip such as a missing dataset directory -- and is always a plain
+    sentence a caller can show a student, never a bare ``False``/``None``
+    or an internal label.
     """
 
     processed_any: bool
     cutflow_ready: bool
+    cancelled: bool = False
+    reason: Optional[str] = None
