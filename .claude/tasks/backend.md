@@ -69,7 +69,9 @@ IDs are `B-nnn`, allocated in order and never reused.
   so the reviewer does not raise its absence as a finding.
 - **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
 - **Branch / PR:** `task/b-007-vendor-path-filter` — #12 @ `0578c89`
-- **Status:** in rework (cycle 2) — dispatched 2026-08-22
+- **Status:** in review (cycle 2) — gate passed, reviewer re-dispatched 2026-08-22
+- **§5.1 gate, cycle 2: PASSED** at `6457e45`. grep empty, flake8 silent, **351 passed**,
+  `test_path_filter.py` + `test_systematics.py` 41 together, both new docstring tests pass.
 - **Review (cycle 1):** 0 required, **1 suggested-major**, 5 suggested-minor. Posted verbatim to
   PR #12. The reviewer's verdict line read `verdict=approve` while reporting `major=1` — that is
   self-contradictory and I did **not** merge on it; §5.6 requires suggested-major = 0. Recording
@@ -322,6 +324,16 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   this task must route expressions through `compile_expr` and never accept a pre-built
   `CompiledExpr` from a caller as evidence of validation. B-013 ends the contradictory
   `_ValidationProof` docstring but does **not** close the forging routes.
+- **THE LINE NUMBERS THIS TASK NAVIGATES BY, authoritative as of B-007 cycle 2 (`6457e45`).**
+  In **our** `src/fce_web/engine/path_filter.py` — *not* the reference's — the seven `eval`
+  sites are at **335, 377, 456, 515, 718, 730, 748** and the one `compile` is at **481**.
+  Enumerated by the orchestrator with an independent `ast.walk` over the file, and matching the
+  coder's own re-derivation. **They will shift again** the moment B-008 edits the file, which is
+  why B-007 cycle 2 added `test_docstring_eval_compile_line_numbers_match_this_file` — an `ast`
+  test that re-derives them and fails if the module docstring's claim drifts. **B-008 must keep
+  that test green**, and a fall in it is a Required. Do not navigate by the reference's numbers
+  (255, 296, 368, 426, 606, 615, 630 / 393); the cycle-1 review caught exactly that confusion
+  baked into our docstring.
 - **Depends on:** ~~B-006~~ (merged `ce4dcd6`), B-007
 - **Branch / PR:** not yet opened
 
