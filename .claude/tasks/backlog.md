@@ -444,3 +444,13 @@ and are historical now that #6 is merged.
   physics already completed because a *plot* failed. Unreachable today, zero current cost. **This
   belongs to the M5/M6 task that vendors `cutflow_plotter`** — attach it there when that task is
   written.
+
+- **B-011 c2 — `run_physics_loop` resolves `get_fce_home()` with no `env`, so the engine's cache and
+  output are NOT env-isolable.** `analytical_loop.py:241` calls `get_fce_home()` bare, so cache and
+  output always resolve against the real process environment no matter what `env` a caller passes to
+  `driver.run_analysis`. The driver's own `_dataset_dir` **is** correctly `env`-aware, so the two
+  halves disagree. Consequence: a test can isolate dataset *discovery* from the real `~/.fce`, but
+  cannot isolate the *pipeline*. Found and disclosed by the B-011 cycle-2 coder, out of its file
+  scope, not fixed. Owner is `engine/analytical_loop.py` (B-009's file). **Check this before B-012
+  is dispatched** — the parity proof drives both the reference and ours, and shared cache state
+  between them is exactly the kind of thing that makes a parity run lie.

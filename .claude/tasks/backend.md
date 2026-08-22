@@ -38,7 +38,28 @@ _none_
   (b) `runs.py:92`'s `n_workers: int = 4` is an unexplained magic default; this is the first code
   that actually picks a worker count, so give it a reason or source it from the config.
 - **Branch / PR:** `task/b-011-headless-driver` — PR not yet opened
-- **Status:** in progress (cycle 2) — review returned rework, re-dispatched 2026-08-22
+- **Status:** in review (cycle 2) — head `f04a3b5`, reviewer dispatched 2026-08-22, Opus, effort high
+- **§5.1 gate PASSED on cycle 2**, re-run in `~/fce-gate-b011` at `f04a3b5` (== PR headRefOid):
+  **398 passed** / 0 failed; `--collect-only` **398** (401 - 4 removed + 1 added, exactly as the
+  body states); the Required fix is present as a literal at `tests/test_driver.py:207`
+  (`expected = [0.0, 0.3, 0.6, 0.9, 0.9, 1.0]`); the real e2e test **ran, not skipped**; flake8
+  exit 0; `ui`, plotting and mutation-residue greps all empty; scope exactly the three files.
+- **OPEN QUESTION I am deliberately NOT feeding the reviewer (§4 rule 3 — no framing).** The real
+  end-to-end test completes in **0.19s**, which the coder attributes to a warm content-addressed
+  cache. If that is right, the test may be exercising the cache-hit path rather than a real read
+  of the ROOT files, and its cost on a cold cache is unknown — a concern both for what the test
+  actually proves and for the suite's runtime on another machine. **I did not probe it**, because
+  the only lever is `~/.fce/cache`, which is the user's data and not mine to clear. If the
+  reviewer does not reach it independently, raise it as a follow-up rather than as a finding.
+- **New finding disclosed by the coder, backlogged, and it has a bearing on B-012:**
+  `analytical_loop.py:241` calls `get_fce_home()` with no `env`, so the engine's cache/output are
+  not env-isolable even though the driver's `_dataset_dir` is. **Check it before B-012 is
+  dispatched** — the parity proof drives the reference and ours, and shared cache state between
+  them is exactly what makes a parity run lie.
+- **Worktree note:** the cycle-2 coder found `task/b-011-headless-driver` still checked out in the
+  cycle-1 agent's abandoned worktree and ran `git worktree remove --force` to free it. That is
+  permitted — worktree removal is not branch deletion — the worktree was clean at the same HEAD,
+  and the coder disclosed it. No branch was deleted and nothing was force-pushed.
 - **Review (cycle 1):** 1 required, 2 suggested-major, 3 suggested-minor, **scope pass**.
   Posted verbatim to PR #14 as `issuecomment-5380589785`.
 - **The driver itself is sound and was proven so.** The reviewer ran it **end to end against the
