@@ -95,12 +95,41 @@ _none_
 ### B-007 — Vendor `path_filter.py` and `path_final.py`, decoupled from `ui.state`
 - **Scope:** `src/fce_web/engine/path_filter.py`, `src/fce_web/engine/path_final.py`,
   `tests/test_path_filter.py`
-- **Accept:** `grep -rn "ui\." src/fce_web/engine/path_filter.py` empty; the 11 ported
-  reference tests pass; a new test drives a real cancellation mid-loop and asserts the loop
-  stops — the reference has no such test; `flake8` clean
-- **The whole coupling is two lines.** `get_run_state("stop")` at `path_filter.py:406` and
-  `:453`, both cooperative cancellation checks inside hot loops. They become an explicit
-  `cancel: threading.Event | None` threaded through the public functions.
+- **Accept:** the decoupling is proven by BOTH checks in the correction below (not by the old
+  `ui\.` grep); the 11 ported reference tests pass; a new test drives a real cancellation
+  mid-loop and asserts the loop stops — the reference has no such test; `flake8` clean
+- **CORRECTION 2026-08-22 — the old criterion could not see the property it certified.** It was
+  `grep -rn "ui\." src/fce_web/engine/path_filter.py` returns empty. Scout enumerated the
+  reference: `path_filter.py` contains **exactly one** literal `ui.` occurrence, the import at
+  `:5` (`from ui.state import get_run_state`). Every real coupling is a **bare**
+  `get_run_state(...)` call the grep is structurally blind to, so deleting one import line
+  satisfies it. This is orchestrator §2's "instrument that structurally cannot observe the
+  property it certifies". Replaced by two checks, both required:
+  (a) `grep -rnE "\bui\.|get_run_state|update_run_state|RUN_STATE" src/fce_web/engine/` → empty;
+  (b) a **subprocess** import test that sets `sys.modules["ui"] = None` before importing
+  `fce_web.engine.path_filter`, and requires the import and a real filter call to still succeed.
+  (b) is the one that goes red when the property is false; (a) alone does not.
+- **The whole coupling is two lines — line numbers VERIFIED 2026-08-22, but the description of
+  them was wrong.** `get_run_state("stop")` at `path_filter.py:406` and `:453` are the only two
+  call sites in the file (`grep -n get_run_state`, 2 hits). They are **not** both "inside hot
+  loops":
+  - `:406` is inside `fill_histogram_from_cache` (def at `:336`), inside `for i in range(n)` at
+    `:404`, polled every `_step = max(1, n // 100)` iterations. Truthy branch → bare `return`.
+  - `:453` is the **first statement of** `filter_raw_event_data` (def at `:451`) — a single
+    entry guard, no loop. Truthy branch → `return [], [], True`.
+  Both become an explicit `cancel: threading.Event | None` threaded through the public functions.
+  **The mid-loop cancellation test must target `:406`'s site specifically** — a test that only
+  exercises the `:453` entry guard proves nothing about stopping a run already in progress, and
+  that is the criterion's actual point.
+- **`SYST_SOURCES` is already imported, never literal — so criterion (2) is nearly free and must
+  be gated by a mutation, not by a run.** The reference imports it at `path_filter.py:6`
+  (`from engine.systematics import BTAG_WP, SYST_SOURCES, event_syst_factor`) and loops it at
+  `:382,400,439`; scout found **no hard-coded `["jec","lep","btag"]` anywhere** in the file. A
+  faithful port satisfies "keyed from SYST_SOURCES" by doing nothing, so the check is: monkeypatch
+  `systematics.SYST_SOURCES` to add a fourth source and require the written ROOT file to gain the
+  matching `h_{src}_up` key. `BTAG_WP` is used at `:511`.
+- **File sizes, for the file scope:** reference `path_filter.py` is **643** lines,
+  `path_final.py` is **20**.
 - **The `eval` sites stay untouched in this task** — B-008 swaps them. This must be said in
   the PR body so the reviewer does not raise it as a finding.
 - **Two carry-forwards owed from B-005's cycle-1 review, both to be discharged here.**
@@ -138,6 +167,26 @@ _none_
   no proof. **This is not a reimplementation of that function** — that is M4's job. We take
   only the six lines that compute the two md5 keys (`ui/graph.py:1866-1884`), and a
   hand-authored fixture reproducing one of the reference's saved pipelines.
+- **CORRECTION 2026-08-22 — the fixture cannot be lifted from a saved config, and the digest
+  has a trap.** Scout enumerated the reference. (1) The saved pipelines
+  (`test_selection_cutflow.json`, `test_selection_obs_bounds.json`, `test_systs.json`) are
+  **node-graph serialisations** — top-level keys `{version, next_id, nodes[], links[]}` — **not**
+  `cfg`-shaped. So `content/analyses/zpeak-dilepton.json` is **hand-authored** to the `cfg` shape,
+  which is the 13-key return at `ui/graph.py:1914-1923`: `energy, detector, observable, bins, min,
+  max, target, h5, h5_sel, mult_cuts, sel_exprs, histograms, selections`. (2) The md5 inputs are
+  **raw string concatenation with no separators**, and `bins`/`min`/`max`/`target` are **strings**
+  (they come from dpg text widgets), never numbers:
+  ```python
+  mult_h5_base = energy + detector + str(mult_cuts)                          # ui/graph.py:1866
+  h5_sel = hashlib.md5((mult_h5_base + str(sel_exprs)).encode()).hexdigest() # :1877
+  h5_full = hashlib.md5(
+      (h5_sel + hcfg_raw["observable"] + hcfg_raw["bins"]
+       + hcfg_raw["min"] + hcfg_raw["max"] + hcfg_raw["target"]).encode()
+  ).hexdigest()                                                              # :1881-1884
+  ```
+  If `RunConfig` normalises `bins` to `int`, the digest changes and the content-addressed cache
+  silently misses every entry the desktop app wrote. The criterion asserts our digest **equals**
+  one computed independently from the formula above, both shown side by side.
 - **What the keys cover, and it must not drift:** `h5_sel` = energy + detector +
   `str(mult_cuts)` + `str(sel_exprs)`; `h5` extends it with observable, bins, min, max, target.
   Shared §2 says do not break this — on a shared server it is why the second student to try the
@@ -155,7 +204,11 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
 - **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
 - **Accept:** `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` returns nothing —
   that is **seven** `eval` sites plus one `compile`, not eight; the count in this entry was
-  wrong until B-006 checked the reference and reported it;
+  wrong until B-006 checked the reference and reported it. **Re-enumerated and CONFIRMED
+  2026-08-22:** `eval` at `path_filter.py:255,296,368,426,606,615,630` (seven), `compile` at
+  `:393` (one); `path_final.py` has neither. A scout summed the same enumeration to "8 eval" by
+  bucketing the `compile` line wrongly — the enumeration is authoritative, its total was not.
+  Do not "correct" seven to eight;
   golden value tests prove the vectorised path and the per-event fallback produce **identical
   numbers** on the same events; an `UnsafeExpression` propagates to the caller and is **not**
   swallowed by the bare `except Exception: pass` at `:262`; the escape expression fed in as a
@@ -213,8 +266,13 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   separate cancellation, proven by a real two-thread test; no module-level mutable state
   (reuse the guard already in `tests/test_app.py`); the dead `samples` and `en` parameters
   removed or their retention justified in writing; `flake8` clean
-- **The ~22 `RUN_STATE` sites grouped by what they are for** — this grouping *is* the
-  `RunContext` design, and it came from reading the code, not from the milestone map:
+- **The 24 `RUN_STATE` sites grouped by what they are for** — this grouping *is* the
+  `RunContext` design, and it came from reading the code, not from the milestone map.
+  **Count corrected 2026-08-22: 24, not "~22".** Scout enumerated `engine/analytical_loop.py`:
+  7 `get_run_state` at `:76,118,126,139,182,225,319` and 17 `update_run_state` at
+  `:92,115,119,127,145,151,172,183,192,270,274,304,322,328,341,348,350`. The grouping below was
+  sound; only the total was invented. `run_physics_loop` is at `:205`, signature
+  `def run_physics_loop(cfg, samples, active_samples, en):`.
   cancellation (`:76,118,126,139,182,319`) -> a `threading.Event`; cancellation
   *acknowledgement* (`:119,127,145,183,322`) -> **deleted**, driver-owned and already
   redundant; progress (`:172-175,270,274,341`) -> `on_progress` / `on_worker`; status and
@@ -266,20 +324,58 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
   `~/.fce/datasets/`, and the reference checkout is at
   `~/Documents/Phd/teaching/fce-project/fce/`. Neither is in git and neither ever will be
   (shared §3), which is why the skip path is an acceptance criterion rather than a nicety.
+- **FEASIBILITY ESTABLISHED 2026-08-22 — the reference can be driven headlessly.** This was the
+  open risk on the whole milestone and it is closed. Scout built the transitive import closure of
+  the reference's `engine/analytical_loop.py`: it is `ui.state`, `engine.path_filter`,
+  `engine.path_final`, `engine.systematics`, `paths` — and **not one of them imports `dearpygui`**
+  (`ui/state.py` imports only `queue` and `threading`; dearpygui appears only in `ui/tutorial.py`,
+  `ui/components.py`, `ui/graph.py`, `fce.py`, none of which are reachable). Their third-party
+  needs are `uproot`, `boost_histogram`, `numpy`, `vector`, **all four present in our venv**
+  (verified 2026-08-22: uproot 5.7.5, boost_histogram 1.8.0, vector 1.8.1, numpy 2.5.2).
+  `dearpygui` is absent from our venv and does not need to be. Datasets confirmed at
+  `~/.fce/datasets/IDEA/91GeV/` — `X1..X6.root` and `data.root`, 4.8M–159M.
+- **Two hazards that become acceptance criteria, not footnotes.**
+  (1) `render_reference.py` **runs as a subprocess**, never in-process with pytest. Importing the
+  reference puts `ui.state`, `engine.*` and `paths` into `sys.modules` under **bare top-level
+  names**; B-006's cycle-2 review already caught exactly this leak leaving `ui.state` resolvable
+  for the rest of a session, and `ui.state` is the global-state module this project exists to
+  eliminate. The test asserts `"ui" not in sys.modules` after the golden file is produced.
+  (2) The reference's `analytical_loop.py:17` runs `hdir = get_fce_home()` **at import time**,
+  which `os.makedirs` its candidate and writes a `.write_test` probe (`paths.py:32-36`). Harmless
+  here — `~/.fce` exists and is writable — but importing the reference has side effects on disk,
+  so the script sets `FCE_HOME` explicitly rather than inheriting it by accident.
+- **The reference checkout has no venv and no installed deps** (no `.venv`, no `pyvenv.cfg`,
+  `import uproot` fails under system python). So the script runs under **our** interpreter,
+  `./.venv/bin/python`, with the reference checkout prepended to `sys.path`. There is no
+  `conftest.py` in the reference `tests/` either — nothing there to copy.
 - **Depends on:** B-011
 - **Branch / PR:** not yet opened
 
-#### M2 sequencing, and the one rule that is not negotiable
+#### M2 sequencing — RE-ORDERED 2026-08-22 on the user's ruling
 ```
-wave 1   B-005  vendor paths + systematics      -+ parallel
-         B-006  safe_eval                       -+
-wave 2   B-007  vendor path_filter (decoupled)  -+ parallel
+wave 1   B-005  vendor paths + systematics      -+ parallel     DONE, merged dca1a09
+         B-006  safe_eval                       -+              DONE, merged ce4dcd6
+wave 2   B-007  vendor path_filter (decoupled)  -+ parallel  <- NEXT
          B-010  RunConfig + cache keys          -+
-wave 3   B-008  path_filter -> safe_eval        -+ parallel
-         B-009  RunContext + analytical_loop    -+
+wave 3   B-009  RunContext + analytical_loop
 wave 4   B-011  headless driver
-wave 5   B-012  parity proof            <- CHECKPOINT
+wave 5   B-012  parity proof            <- M2 CHECKPOINT
+wave 6   B-008  path_filter -> safe_eval        -+ after the checkpoint
+         B-013  close B-006's open findings     -+
+         B-014  close B-004's open findings     -+
 ```
+**B-008 moved out of wave 3 and behind the checkpoint.** Nothing depends on B-008 — B-011 depends
+on B-009 and B-010, B-009 depends on B-007 — so it was never on the critical path, and the
+sequencing above had it there by habit. Running it *after* B-012 means the golden file is already
+committed and becomes the regression net that proves the `safe_eval` swap changes no number a
+student sees. That is what a parity proof is for, and B-008 is the one M2 task with no
+verification of its own that a physics number survived.
+
+**B-013 and B-014 deferred behind the checkpoint** for the same reason: neither blocks B-012, and
+nothing on the chain touches `safe_eval.py` or `tests/test_api_contract.py`, so the open findings
+cannot rot further while they wait.
+
+Both rulings are the user's, 2026-08-22. Do not re-order back without asking.
 **Every agent gets `isolation: "worktree"`, including single dispatches.** The 2026-08-18
 D-004 incident was a *single* coder checking a task branch out in the main working directory,
 and it put the orchestrator's own bookkeeping commits onto a task branch and into the diff the
