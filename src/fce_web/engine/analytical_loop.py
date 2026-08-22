@@ -208,7 +208,7 @@ def _process_sample(sel_cfg, s, idx, active_samples, cfg,
         outHist = hist()
         outHist.create(int(hcfg["bins"]), float(hcfg["min"]), float(hcfg["max"]))
         fill_histogram_from_cache(sel_cache, outHist, hcfg["observable"],
-                                  with_syst=(s != "data"))
+                                  with_syst=(s != "data"), cancel=ctx.cancel)
         write_final_histograms(hdir, s, hcfg["h5"], outHist, out_path)
 
     return True
@@ -341,15 +341,30 @@ def run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> R
             ctx.node("completed", nids_to_complete)
 
     # ── Cut-flow chart ────────────────────────────────────────────────────────
+    # ``cutflow_plotter`` is deferred to M5/M6 by an explicit user ruling on
+    # vendor scope (task B-009, cycle-2 review) -- it does not exist anywhere
+    # in this vendor tree yet, so the import below fails by design, not by
+    # accident. The ``except`` is narrowed to ``ImportError`` alone, so a
+    # genuine failure inside ``generate_cutflow_plot`` itself -- once the
+    # module lands -- is no longer swallowed the same way this deferral is.
     cutflow_ready = False
     try:
         from fce_web.engine.cutflow_plotter import generate_cutflow_plot
+    except ImportError:
+        ctx.on_log(
+            "Cutflow plot skipped: fce_web.engine.cutflow_plotter is "
+            "deferred to M5/M6 and is not vendored yet."
+        )
+    else:
         png_path = generate_cutflow_plot(
             cfg, active_samples, header_cache, selections)
         cutflow_ready = bool(png_path)
-    except Exception:
-        cutflow_ready = False
 
-    _report_progress(ctx, 1.0)
+    # A run where every sample was missing reported 100% here unconditionally
+    # before task B-009 cycle 2 -- which reads as success in the SSE stream
+    # B-011 builds on this. Only report completion when something actually
+    # happened.
+    if processed_any:
+        _report_progress(ctx, 1.0)
 
     return RunResult(processed_any=processed_any, cutflow_ready=cutflow_ready)

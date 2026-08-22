@@ -230,25 +230,81 @@ def test_no_module_level_mutable_state_in_runs_and_analytical_loop():
 
 
 # ---------------------------------------------------------------------------
-# Criterion 4: no UI layout constants; progress is 0..1, non-decreasing, ends at 1.0
+# Criterion 4: no UI layout constants; progress observes the whole path, not
+# just its endpoints -- a real 3-task run must report 1/3, 2/3, 1.0, not
+# merely "somewhere in range, non-decreasing, ends at 1.0".
 # ---------------------------------------------------------------------------
 
+class _FakeTree:
+    """Stand-in for the ``uproot`` tree object: enough surface for
+    ``_process_sample`` to build an empty cache from it (``nev=0``, so the
+    real ``filter_raw_event_data`` per-event loop never executes and no
+    other branch keys are needed) -- while running the REAL
+    ``_process_sample``, not a stub, so the real call site at
+    ``analytical_loop.py:188-189`` executes for real.
+    """
+
+    def keys(self):
+        return ["weight", "MET_pt"]
+
+    def iterate(self, v_keys, step_size, library):
+        import numpy as np
+        yield {
+            "weight": np.array([], dtype=np.float32),
+            "MET_pt": np.array([], dtype=np.float32),
+        }
+
+
+class _FakeRootFile:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+    def __getitem__(self, key):
+        return _FakeTree()
+
+
+def _install_fake_uproot_source(monkeypatch):
+    """Make every sample look like a real, but empty, ROOT file -- so
+    ``_process_sample`` runs its real cache-building path (creating a real
+    ``sel_cache`` file via the real ``save_cache``) without touching a real
+    dataset on disk.
+    """
+    monkeypatch.setattr(analytical_loop, "_find_data_file",
+                        lambda cfg, s, hdir: "fake.root")
+    monkeypatch.setattr(analytical_loop.uproot, "open",
+                        lambda path: _FakeRootFile())
+
+
 def test_progress_values_are_bounded_monotonic_and_reach_one(tmp_path, monkeypatch):
+    """Drives the real ``_process_sample`` (via ``_install_fake_uproot_source``,
+    not a stub of ``_process_sample`` itself) over 3 samples in 1 selection,
+    so all three progress seams -- the initial report, the real per-task
+    ``tracker.increment()``/``_report_progress`` call at
+    ``analytical_loop.py:188-189``, and the final report -- fire for real.
+    """
     monkeypatch.setenv("FCE_HOME", str(tmp_path))
+    _install_fake_uproot_source(monkeypatch)
     recorded = []
-    ctx = RunContext(n_workers=2, on_progress=lambda f: recorded.append(f))
+    ctx = RunContext(n_workers=1, on_progress=lambda f: recorded.append(f))
     cfg = _cfg()
     result = analytical_loop.run_physics_loop(cfg, ["X1", "X2", "X3"], ctx)
 
+    assert result.processed_any is True, "the fake data source was not exercised"
     assert recorded, "no progress values were ever reported"
     assert all(0.0 <= f <= 1.0 for f in recorded), recorded
     assert recorded == sorted(recorded), f"progress went backwards: {recorded}"
-    assert recorded[-1] == 1.0, (
-        f"final progress value was {recorded[-1]!r}, not 1.0 -- "
-        f"a uniform down-scale would still look monotonic and in-range, "
-        f"so this exact final-value check is what has to catch it: {recorded}"
-    )
-    assert result.processed_any is False  # no real data files exist for X1/X2/X3
+
+    # The exact intermediate values, not just "in range and monotonic and
+    # ends at 1.0" -- 1/3 after the first sample, 2/3 after the second, then
+    # 1.0 twice (the third sample's own completion, and the run's final
+    # unconditional report). A uniform down-scale anywhere on the path
+    # (``_TaskTracker.increment``, the mid-run call site, or
+    # ``_report_progress`` itself) changes these exact numbers even though
+    # it would still look "in range, monotonic, ends at 1.0".
+    assert recorded == [0.0, 1 / 3, 2 / 3, 1.0, 1.0], recorded
 
 
 def test_no_ui_layout_scale_constants_in_source():
@@ -283,6 +339,94 @@ def test_analytical_loop_source_has_no_ui_import():
     pattern = re.compile(r"(^|[^A-Za-z_.])ui\.|from ui|import ui")
     matches = [line for line in source.splitlines() if pattern.search(line)]
     assert not matches, matches
+
+
+# ---------------------------------------------------------------------------
+# Criterion 6: cutflow_ready is False because cutflow_plotter is deferred,
+# not because plotting genuinely failed -- and a log line says which.
+# ---------------------------------------------------------------------------
+
+def test_cutflow_ready_is_false_because_plotter_is_deferred_not_because_it_failed(
+    tmp_path, monkeypatch,
+):
+    """``fce_web.engine.cutflow_plotter`` does not exist in this vendor tree --
+    deferred to M5/M6 by an explicit user ruling on vendor scope, not an
+    accidental gap. ``cutflow_ready`` is unconditionally False today because
+    of that deferral, and a log line names the reason, so a student's
+    genuinely failed cutflow plot is not indistinguishable from a feature
+    that has not been built yet.
+    """
+    monkeypatch.setenv("FCE_HOME", str(tmp_path))
+    logs = []
+    ctx = RunContext(on_log=lambda m: logs.append(m))
+    cfg = _cfg()
+
+    result = analytical_loop.run_physics_loop(cfg, [], ctx)
+
+    assert result.cutflow_ready is False
+    assert any("cutflow_plotter" in m and "deferred" in m for m in logs), logs
+
+
+# ---------------------------------------------------------------------------
+# Criterion 7(a): ctx.cancel reaches fill_histogram_from_cache -- B-007 added
+# the parameter, and this is its only engine caller.
+# ---------------------------------------------------------------------------
+
+def test_fill_histogram_from_cache_receives_run_context_cancel(tmp_path, monkeypatch):
+    monkeypatch.setenv("FCE_HOME", str(tmp_path))
+    h5_sel = "deadbeef"
+    sample = "X1"
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    # Pre-existing selection cache: _process_sample skips straight to the
+    # histogram-fill branch, so no ROOT data or fake source is needed.
+    (cache_dir / f"sel_{h5_sel}_{sample}.npz").touch()
+
+    calls = []
+
+    def fake_fill(cache_file, out_hist, observable, with_syst=True, cancel=None):
+        calls.append(cancel)
+
+    monkeypatch.setattr(analytical_loop, "fill_histogram_from_cache", fake_fill)
+
+    ctx = RunContext(n_workers=1)
+    cfg = {
+        "detector": "IDEA", "energy": "91 GeV",
+        "selections": [{
+            "h5_sel": h5_sel, "sel_exprs": [], "node_name": "n", "nid": 1,
+            "histograms": [{
+                "observable": "l1.pt", "bins": 10, "min": 0, "max": 100,
+                "target": "target", "h5": "aaaa", "plot_idx": 0,
+            }],
+        }],
+    }
+
+    analytical_loop.run_physics_loop(cfg, [sample], ctx)
+
+    assert calls == [ctx.cancel], (
+        f"fill_histogram_from_cache was called with cancel={calls!r}, "
+        f"expected exactly [ctx.cancel] -- the run's own context.cancel must "
+        f"reach its only engine caller"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Criterion 7(b): a run that processed nothing must not report 100% --
+# "100%" for a dead run reads as success in B-011's SSE stream.
+# ---------------------------------------------------------------------------
+
+def test_final_progress_report_is_not_sent_when_nothing_was_processed(tmp_path, monkeypatch):
+    monkeypatch.setenv("FCE_HOME", str(tmp_path))
+    recorded = []
+    ctx = RunContext(on_progress=lambda f: recorded.append(f))
+    cfg = _cfg()
+
+    result = analytical_loop.run_physics_loop(cfg, ["X1"], ctx)
+
+    assert result.processed_any is False  # no real data files exist for X1
+    assert 1.0 not in recorded, (
+        f"a run that processed nothing reported 100% progress: {recorded}"
+    )
 
 
 if __name__ == "__main__":
