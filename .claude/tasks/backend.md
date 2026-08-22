@@ -9,89 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
-
-## Ready
-
-### B-014 — Close B-004's two open findings: falsify the presence/nullability halves, guard the doc columns
-- **Scope:** `tests/test_api_contract.py`, `docs/api.md`
-- **Accept:** (1) `test_corrupting_field_makes_schema_check_fail` gains presence and nullability
-  mutations, not only type — for every path with `may_be_missing == False`, delete the first
-  occurrence and require a raise **naming that path**; for every path with `may_be_null == False`,
-  set it to `None` and require the same. Both are no-ops for `fit.method` (`OPTIONAL_NULLABLE`).
-  (2) The `Type` and `Nullable` columns of `docs/api.md` are compared against the schema tuples by a
-  parametrised row-parity test, with its own falsifiability meta-test. (3) `systUp`'s key set is
-  asserted against `systSources`. (4) The two `nxt.extend(...) if ... else nxt.append(...)`
-  conditional expressions become `if`/`else` statements.
-- **The mutation IS the criterion, and it is the one that decides (1).** Rebind
-  `_check_path_conformant` to a version that keeps the `isinstance` assert and drops both
-  `assert may_be_missing` and `assert may_be_null`. Today that yields **`134 passed`**. After this
-  task it must yield a large number of failures. Paste both transcripts. Monkeypatch only — no
-  tracked file is edited to prove an assertion can fail.
-- **Why it exists — the user's ruling 2026-08-22.** B-004 hit the §5.7 limit with these open and
-  was merged rather than cycled a fourth time, on the B-006 → B-013 precedent. **The contract
-  itself is correct**; what is missing is proof that two of its three enforcement halves will keep
-  working.
-- **The required finding, stated so it is not re-litigated.** The schema meta-test corrupts only
-  the **type** (`_wrong_type_value`), so the presence and nullability halves of
-  `_check_path_conformant` have no falsifiability test in the suite. The enforcement that a
-  `REQUIRED` field must exist and must not be `null` can be deleted wholesale with nothing going
-  red — which silently re-opens B-004's own cycle-2 Required, where a payload missing
-  `cutflow.totalRaw` passed the checker. Gutting the *type* half turns 30 red and gutting the doc
-  checker turns 30 red, so the pattern is already established in the file; only this sub-part is
-  unguarded. All four mutations pass through the existing `_set_first_occurrence` seam.
-- **The suggested-major is latent, not live.** The doc↔schema check is name-level only:
-  `_documented_paths` takes the first backticked cell of each row and compares path sets, so the
-  `Type` and `Nullable` columns are never checked. The reviewer verified **all 30 rows agree
-  today** — `no (when the key is present)` ↔ `OPTIONAL`, `**yes**` ↔ `NULLABLE`, and the type words
-  match — so nothing shipped wrong. It is a drift surface, and it is the last unguarded half of
-  the thing B-004 existed to close. Give the two columns a canonical vocabulary mapped to the four
-  presence states. **If you judge the canonicalisation not worth it, overrule it in writing** with
-  the argument, rather than leaving it implicit.
-- **Both suggested-minor, named individually per §5.6** — neither is lost:
-  (a) `docs/api.md:111` documents `samples[].systUp` as "one key per source in `systSources`" and
-  nothing enforces the key set; adding `systUp["totallyMadeUp"]` leaves `134 passed`. Harmless for
-  the band, since `_compute_band` iterates `systSources` exactly as the reference iterates its
-  fixed `SYST_SOURCES`, so a stray key is ignored rather than mis-drawn — but a producer bug of
-  that shape ships undetected. One assertion in `_check_sample_array_lengths_coherent` covers it.
-  (b) `tests/test_api_contract.py:207,220` use a conditional *expression* purely for side effects,
-  twice. Style only; behaviour is correct.
-- **Floors — a fall in any is a `Required`:** 18 test functions / **134** collected cases;
-  `docs/api.md` at **13** `^##` headings; full suite at **329 passed**.
-- **Depends on:** nothing — B-004 is merged. Can run in parallel with B-013; both touch only their
-  own test file. **Not** in parallel with anything editing `docs/api.md`.
-- **Branch / PR:** not yet opened
-
-### B-013 — Close B-006's two open findings: isolate the length cap, end the docstring contradiction
-- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
-- **Accept:** (1) `test_expression_over_length_cap_is_rejected` fails when `MAX_EXPR_LENGTH` is
-  raised — payload over the length cap but **under** `MAX_AST_NODES`, plus the isolation assertion
-  the sibling node-cap test already carries at `:316`; (2) `_ValidationProof`'s docstring no longer
-  says "An unforgeable token"; (3) the two bypass tests stop pinning the weakness; (4) the
-  `_ASSERT_STRIPPING_ENV_VARS` note recorded so a later cleanup does not read it as dead code.
-- **Every criterion is mutation-tested, and the mutation is the criterion.** Each of the four is
-  "an assertion that cannot fail" — so the check is always: break the thing, show the named test
-  goes red, restore, show green. Paste all four transcript pairs.
-- **Why it exists — the user's ruling 2026-08-21.** B-006 hit the §5.7 limit with these open and
-  was merged rather than cycled a fourth time. **The caps themselves work**; what is missing is
-  proof they will keep working.
-- **The required finding, stated so it is not re-litigated.**
-  `test_expression_over_length_cap_is_rejected`'s payload is 2809 chars **and** 1410 AST nodes, so
-  `MAX_AST_NODES` (limit 200) rejects it unaided: with `MAX_EXPR_LENGTH = 10**9` the suite still
-  reports `118 passed`. The length cap guards a surface the node cap **structurally cannot**,
-  because `ast.parse` runs before any node counting — the reviewer measured a 5.6 MB expression
-  parsing in **1.68 s into a 2.8 M-node tree** before `_validate` is reached, once per submission
-  on a shared classroom host. A single 501-digit numeric literal is over the length cap and only
-  **3 nodes**; that is the payload.
-- **The docstring contradiction matters to B-008 specifically.** `_ValidationProof` says "An
-  unforgeable token … no way to construct a `CompiledExpr` that skipped validation"; thirty lines
-  below, `CompiledExpr`'s own docstring retracts exactly that. `object.__new__` needs no sentinel
-  at all, and `dataclasses.replace` forges one too — both confirmed by the reviewer, both
-  producing a `CompiledExpr` that `evaluate` will run. **B-008 must not treat this type as a
-  safety certificate**; see the correction in B-008's entry.
-- **Depends on:** nothing — B-006 is merged. Can run in parallel with B-007 and B-010.
-- **Branch / PR:** not yet opened
-
 ### B-007 — Vendor `path_filter.py` and `path_final.py`, decoupled from `ui.state`
 - **Scope:** `src/fce_web/engine/path_filter.py`, `src/fce_web/engine/path_final.py`,
   `tests/test_path_filter.py`
@@ -151,7 +68,8 @@ _none_
   user's ruling, and `weightsSquared` is contract-nullable in `docs/api.md`. Say so in the PR body
   so the reviewer does not raise its absence as a finding.
 - **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
-- **Branch / PR:** not yet opened
+- **Branch / PR:** `task/b-007-vendor-path-filter` — PR not yet opened
+- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree isolation
 
 ### B-010 — `RunConfig` loader and the content-addressed cache keys
 - **Scope:** `src/fce_web/engine/runconfig.py`, `content/analyses/zpeak-dilepton.json`,
@@ -194,6 +112,96 @@ _none_
 - **The dpg node IDs** currently threaded through `cfg` purely so the engine can colour nodes
   green (`nid`, `prefix_nids`, `obs_nid`, `hist_nid`) become optional.
 - **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
+- **Branch / PR:** `task/b-010-runconfig` — PR not yet opened
+- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree isolation
+
+
+## Ready
+
+**Both entries below are DEFERRED behind the M2 checkpoint by the user's ruling 2026-08-22.**
+Neither blocks B-012, and nothing on the B-007 → B-009 → B-011 → B-012 chain touches
+`safe_eval.py` or `tests/test_api_contract.py`, so the open findings cannot rot further while
+they wait. Do not dispatch either until B-012 has merged. See the sequencing block below.
+
+### B-014 — Close B-004's two open findings: falsify the presence/nullability halves, guard the doc columns
+- **Scope:** `tests/test_api_contract.py`, `docs/api.md`
+- **Accept:** (1) `test_corrupting_field_makes_schema_check_fail` gains presence and nullability
+  mutations, not only type — for every path with `may_be_missing == False`, delete the first
+  occurrence and require a raise **naming that path**; for every path with `may_be_null == False`,
+  set it to `None` and require the same. Both are no-ops for `fit.method` (`OPTIONAL_NULLABLE`).
+  (2) The `Type` and `Nullable` columns of `docs/api.md` are compared against the schema tuples by a
+  parametrised row-parity test, with its own falsifiability meta-test. (3) `systUp`'s key set is
+  asserted against `systSources`. (4) The two `nxt.extend(...) if ... else nxt.append(...)`
+  conditional expressions become `if`/`else` statements.
+- **The mutation IS the criterion, and it is the one that decides (1).** Rebind
+  `_check_path_conformant` to a version that keeps the `isinstance` assert and drops both
+  `assert may_be_missing` and `assert may_be_null`. Today that yields **`134 passed`**. After this
+  task it must yield a large number of failures. Paste both transcripts. Monkeypatch only — no
+  tracked file is edited to prove an assertion can fail.
+- **Why it exists — the user's ruling 2026-08-22.** B-004 hit the §5.7 limit with these open and
+  was merged rather than cycled a fourth time, on the B-006 → B-013 precedent. **The contract
+  itself is correct**; what is missing is proof that two of its three enforcement halves will keep
+  working.
+- **The required finding, stated so it is not re-litigated.** The schema meta-test corrupts only
+  the **type** (`_wrong_type_value`), so the presence and nullability halves of
+  `_check_path_conformant` have no falsifiability test in the suite. The enforcement that a
+  `REQUIRED` field must exist and must not be `null` can be deleted wholesale with nothing going
+  red — which silently re-opens B-004's own cycle-2 Required, where a payload missing
+  `cutflow.totalRaw` passed the checker. Gutting the *type* half turns 30 red and gutting the doc
+  checker turns 30 red, so the pattern is already established in the file; only this sub-part is
+  unguarded. All four mutations pass through the existing `_set_first_occurrence` seam.
+- **The suggested-major is latent, not live.** The doc↔schema check is name-level only:
+  `_documented_paths` takes the first backticked cell of each row and compares path sets, so the
+  `Type` and `Nullable` columns are never checked. The reviewer verified **all 30 rows agree
+  today** — `no (when the key is present)` ↔ `OPTIONAL`, `**yes**` ↔ `NULLABLE`, and the type words
+  match — so nothing shipped wrong. It is a drift surface, and it is the last unguarded half of
+  the thing B-004 existed to close. Give the two columns a canonical vocabulary mapped to the four
+  presence states. **If you judge the canonicalisation not worth it, overrule it in writing** with
+  the argument, rather than leaving it implicit.
+- **Both suggested-minor, named individually per §5.6** — neither is lost:
+  (a) `docs/api.md:111` documents `samples[].systUp` as "one key per source in `systSources`" and
+  nothing enforces the key set; adding `systUp["totallyMadeUp"]` leaves `134 passed`. Harmless for
+  the band, since `_compute_band` iterates `systSources` exactly as the reference iterates its
+  fixed `SYST_SOURCES`, so a stray key is ignored rather than mis-drawn — but a producer bug of
+  that shape ships undetected. One assertion in `_check_sample_array_lengths_coherent` covers it.
+  (b) `tests/test_api_contract.py:207,220` use a conditional *expression* purely for side effects,
+  twice. Style only; behaviour is correct.
+- **Floors — a fall in any is a `Required`:** 18 test functions / **134** collected cases;
+  `docs/api.md` at **13** `^##` headings; full suite at **329 passed**.
+- **Depends on:** nothing — B-004 is merged. **Deferred behind B-012** (user's ruling
+  2026-08-22). Can run in parallel with B-013; both touch only their
+  own test file. **Not** in parallel with anything editing `docs/api.md`.
+- **Branch / PR:** not yet opened
+
+### B-013 — Close B-006's two open findings: isolate the length cap, end the docstring contradiction
+- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
+- **Accept:** (1) `test_expression_over_length_cap_is_rejected` fails when `MAX_EXPR_LENGTH` is
+  raised — payload over the length cap but **under** `MAX_AST_NODES`, plus the isolation assertion
+  the sibling node-cap test already carries at `:316`; (2) `_ValidationProof`'s docstring no longer
+  says "An unforgeable token"; (3) the two bypass tests stop pinning the weakness; (4) the
+  `_ASSERT_STRIPPING_ENV_VARS` note recorded so a later cleanup does not read it as dead code.
+- **Every criterion is mutation-tested, and the mutation is the criterion.** Each of the four is
+  "an assertion that cannot fail" — so the check is always: break the thing, show the named test
+  goes red, restore, show green. Paste all four transcript pairs.
+- **Why it exists — the user's ruling 2026-08-21.** B-006 hit the §5.7 limit with these open and
+  was merged rather than cycled a fourth time. **The caps themselves work**; what is missing is
+  proof they will keep working.
+- **The required finding, stated so it is not re-litigated.**
+  `test_expression_over_length_cap_is_rejected`'s payload is 2809 chars **and** 1410 AST nodes, so
+  `MAX_AST_NODES` (limit 200) rejects it unaided: with `MAX_EXPR_LENGTH = 10**9` the suite still
+  reports `118 passed`. The length cap guards a surface the node cap **structurally cannot**,
+  because `ast.parse` runs before any node counting — the reviewer measured a 5.6 MB expression
+  parsing in **1.68 s into a 2.8 M-node tree** before `_validate` is reached, once per submission
+  on a shared classroom host. A single 501-digit numeric literal is over the length cap and only
+  **3 nodes**; that is the payload.
+- **The docstring contradiction matters to B-008 specifically.** `_ValidationProof` says "An
+  unforgeable token … no way to construct a `CompiledExpr` that skipped validation"; thirty lines
+  below, `CompiledExpr`'s own docstring retracts exactly that. `object.__new__` needs no sentinel
+  at all, and `dataclasses.replace` forges one too — both confirmed by the reviewer, both
+  producing a `CompiledExpr` that `evaluate` will run. **B-008 must not treat this type as a
+  safety certificate**; see the correction in B-008's entry.
+- **Depends on:** nothing — B-006 is merged. **Deferred behind B-012** (user's ruling
+  2026-08-22). Can then run in parallel with B-007 and B-010.
 - **Branch / PR:** not yet opened
 
 ## Blocked
