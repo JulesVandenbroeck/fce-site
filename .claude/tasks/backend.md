@@ -56,8 +56,21 @@ IDs are `B-nnn`, allocated in order and never reused.
   overwrite — under N workers, messages are silently dropped. A real sink has no such behaviour.
 - **The entry point:** `run_physics_loop(cfg, samples, active_samples, en)` at `:205`.
 - **Depends on:** ~~B-007~~ (merged `d906b59`)
-- **Branch / PR:** `task/b-009-run-context` — PR not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree, effort medium
+- **Branch / PR:** `task/b-009-run-context` — #13, head `619dc3c`
+- **Status:** in review (cycle 1) — reviewer dispatched 2026-08-22, Opus, **effort high**
+  (§3: raise effort on concurrency; this task is two threads and a cancellation `Event`)
+- **§5.1 gate PASSED**, re-run by the orchestrator in a detached worktree `~/fce-gate-b009`:
+  suite **383 passed** / 0 failed (floor 376, +7); flake8 exit 0; criterion-4 grep empty.
+  Import verified to resolve to the worktree copy, not the primary checkout — a `PYTHONPATH`
+  shadow would otherwise have certified `main`'s code as the branch's.
+- **Criterion 1's grep is MY specification defect, and it is not a finding against the code.**
+  The pattern's `from ui` alternative matches prose, so it hits `engine/runconfig.py:134`, a
+  comment reading `from ui/graph.py:1709-1719`. **Present verbatim on `origin/main`** — it
+  predates the branch and is outside B-009's file scope. The coder reported it rather than
+  reaching outside scope to silence it. If this recurs, anchor the pattern to import syntax
+  (`^\s*(from|import)\s+ui\b`) rather than the bare words.
+- **New signature, which B-011 consumes:** `run_physics_loop(cfg: dict, active_samples: List[str],
+  ctx: RunContext) -> RunResult` at `analytical_loop.py:217`. `samples` and `en` removed.
 - **Floors — a fall in any is a `Required`:** full suite at **376 passed** (measured by the
   orchestrator in the primary checkout at `57a2d6b`); flake8 exits 0.
 - **Feasibility settled before dispatch.** All seven non-`ui` names `analytical_loop.py`
