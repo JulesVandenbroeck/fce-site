@@ -112,8 +112,23 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **The dpg node IDs** currently threaded through `cfg` purely so the engine can colour nodes
   green (`nid`, `prefix_nids`, `obs_nid`, `hist_nid`) become optional.
 - **Depends on:** ~~B-005~~ — **unblocked 2026-08-21**, B-005 merged `dca1a09`.
-- **Branch / PR:** `task/b-010-runconfig` — PR not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-08-22, `backend-coder`, worktree isolation
+- **Branch / PR:** `task/b-010-runconfig` — #11 @ `ae239f5`
+- **Status:** in review (cycle 1) — reviewer dispatched 2026-08-22 at raised effort (contract task)
+- **§5.1 gate: PASSED**, and it went beyond re-running the coder's numbers. All reproduced in a
+  detached worktree at the PR head under the *primary* venv (`PYTHONPATH` confirmed resolving
+  `fce_web` to the worktree, not the primary checkout): flake8 silent, **350 passed**, both
+  digests identical, 15 parametrised covered/uncovered cases collected. The coder also
+  re-verified the 329 baseline itself and matched — no baseline mismatch, unlike PR #8 and #9.
+- **Digests independently confirmed by the orchestrator**, computed straight from the reference
+  formula without touching the coder's test file — the fix and its verification do not share a
+  hand here. `h5_sel=c9873a70ca371612fc24cf976ff7fd5c`, `h5=fbb913c18c34530d355fdd949974ac58`,
+  both matching the committed fixture. All six digest inputs confirmed `str` at hash time, so
+  the normalisation trap this entry warns about was avoided.
+- **One design addition the coder flagged, needing a ruling if the reviewer disputes it:**
+  `from_dict` *verifies* the stored `h5`/`h5_sel` against the recomputed digest and raises on
+  mismatch, rather than trusting the file. Stricter than the criteria asked. It catches a
+  mis-authored fixture at load time instead of silently missing the cache forever, which is the
+  failure shared §2 warns about — I am inclined to keep it. B-011/B-012 must know it raises.
 
 
 ## Ready
