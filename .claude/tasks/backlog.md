@@ -454,3 +454,12 @@ and are historical now that #6 is merged.
   scope, not fixed. Owner is `engine/analytical_loop.py` (B-009's file). **Check this before B-012
   is dispatched** — the parity proof drives both the reference and ours, and shared cache state
   between them is exactly the kind of thing that makes a parity run lie.
+
+- **B-011 c2 suggested-minor — the integration seam silently disappears on a machine without the
+  datasets.** `tests/test_driver.py:333`'s `skipif` means
+  `test_real_end_to_end_run_exercises_the_real_run_physics_loop` — the **only** test in the suite
+  that catches `RunConfig.to_dict()` → `run_physics_loop` dict-shape drift, proven by the cycle-2
+  reviewer's `detector`→`detector_name` mutation — does not run where `~/.fce/datasets/IDEA/91GeV`
+  is absent. Correct and consistent with the existing pattern, so not blocking. **Whoever sets up
+  CI must know this check vanishes there**, or CI will be green on a class of drift that this
+  machine catches.

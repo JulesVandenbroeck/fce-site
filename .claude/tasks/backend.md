@@ -13,127 +13,79 @@ _none_
 
 ## Ready
 
-### B-011 — Headless driver
-- **Scope:** `src/fce_web/engine/driver.py`, `tests/test_driver.py`
-- **Accept:** a run driven entirely from Python with no `ui` import anywhere in the process;
-  progress callbacks fire monotonically from 0 to 1; cancelling mid-run returns a `RunResult`
-  marked cancelled with partial output; skips cleanly with a **named reason** when
-  `~/.fce/datasets/` is absent
-- `run_analysis(config: RunConfig, ctx: RunContext) -> RunResult`, replacing
-  `run_engine.execute_analysis` — which is already dearpygui-free and already headless, and
-  whose only real defect is that it returns `None` and puts its answers in globals. Per the
-  vendor-scope ruling it stops once the histogram ROOT files are written: no plotting, no fit.
-- **Depends on:** ~~B-009~~ (merged `1689b27`), ~~B-010~~ (merged `d017ead`) — **UNBLOCKED 2026-08-22**
-- **The seam it consumes, authoritative:** `run_physics_loop(cfg: dict, active_samples: List[str],
-  ctx: RunContext) -> RunResult` in `src/fce_web/engine/analytical_loop.py`. `RunContext` lives in
-  `src/fce_web/runs.py` and carries a cancellation `threading.Event`, `on_progress` / `on_log` /
-  `on_phase` / `on_node` callbacks, and `n_workers`.
-- **The engine now reports 0..1 of its OWN work.** The `0.78`/`0.80` scale factors were UI layout
-  constants and B-009 deleted them — **scaling for a progress bar is this task's job.**
-- **Two carry-forwards from B-009's cycle-2 review, both suggested-minor, both landing here:**
-  (a) `analytical_loop.py:349-352` logs `"Cutflow plot skipped: fce_web.engine.cutflow_plotter is
-  deferred to M5/M6..."` on **every** run. `ctx.on_log` becomes this task's student-facing SSE
-  log, and a dotted module path plus an internal milestone label is not copy a 15-year-old
-  second-language reader can act on (shared §1). Fix the copy when wiring the stream.
-  (b) `runs.py:92`'s `n_workers: int = 4` is an unexplained magic default; this is the first code
-  that actually picks a worker count, so give it a reason or source it from the config.
-- **Branch / PR:** `task/b-011-headless-driver` — PR not yet opened
-- **Status:** in review (cycle 2) — head `f04a3b5`, reviewer dispatched 2026-08-22, Opus, effort high
-- **§5.1 gate PASSED on cycle 2**, re-run in `~/fce-gate-b011` at `f04a3b5` (== PR headRefOid):
-  **398 passed** / 0 failed; `--collect-only` **398** (401 - 4 removed + 1 added, exactly as the
-  body states); the Required fix is present as a literal at `tests/test_driver.py:207`
-  (`expected = [0.0, 0.3, 0.6, 0.9, 0.9, 1.0]`); the real e2e test **ran, not skipped**; flake8
-  exit 0; `ui`, plotting and mutation-residue greps all empty; scope exactly the three files.
-- **OPEN QUESTION I am deliberately NOT feeding the reviewer (§4 rule 3 — no framing).** The real
-  end-to-end test completes in **0.19s**, which the coder attributes to a warm content-addressed
-  cache. If that is right, the test may be exercising the cache-hit path rather than a real read
-  of the ROOT files, and its cost on a cold cache is unknown — a concern both for what the test
-  actually proves and for the suite's runtime on another machine. **I did not probe it**, because
-  the only lever is `~/.fce/cache`, which is the user's data and not mine to clear. If the
-  reviewer does not reach it independently, raise it as a follow-up rather than as a finding.
-- **New finding disclosed by the coder, backlogged, and it has a bearing on B-012:**
-  `analytical_loop.py:241` calls `get_fce_home()` with no `env`, so the engine's cache/output are
-  not env-isolable even though the driver's `_dataset_dir` is. **Check it before B-012 is
-  dispatched** — the parity proof drives the reference and ours, and shared cache state between
-  them is exactly what makes a parity run lie.
-- **Worktree note:** the cycle-2 coder found `task/b-011-headless-driver` still checked out in the
-  cycle-1 agent's abandoned worktree and ran `git worktree remove --force` to free it. That is
-  permitted — worktree removal is not branch deletion — the worktree was clean at the same HEAD,
-  and the coder disclosed it. No branch was deleted and nothing was force-pushed.
-- **Review (cycle 1):** 1 required, 2 suggested-major, 3 suggested-minor, **scope pass**.
-  Posted verbatim to PR #14 as `issuecomment-5380589785`.
-- **The driver itself is sound and was proven so.** The reviewer ran it **end to end against the
-  real 91 GeV datasets** — `RunResult(processed_any=True, ...)`, progress
-  `[0.0, 0.129, ..., 0.9, 0.9, 1.0]`, monotonic, ending at exactly 1.0. **Every cycle-1 finding is
-  against the test net, not the code it guards.**
-- **§5.4 diagnosis — a CYCLE.** Criterion 2 shipped with a command and a mutation instruction, so
-  neither carve-out applies; the property was gated from cycle 1, so clause 1 does not either.
-- **The Required is the THIRD variant of one theme in this milestone, and naming the family is the
-  point:** a check that passes over a false property.
-  | | the defect | how it stayed green |
-  |---|---|---|
-  | B-009 c1 | the run never reached the code under test | only two literal endpoints recorded |
-  | B-011 c1 | the expectation is computed from the implementation | `expected` derived from `_ENGINE_PROGRESS_SHARE`, so it self-adjusts |
-  Setting that constant to `1.0` removes the driver-owned scaling entirely — the exact property
-  criterion 2 exists to protect — and all 15 tests stayed green. **Rule: a check must not be
-  computed from the thing it checks.**
-- **RULING on the process finding, and it is now durable.** The coder mutated the tracked
-  `driver.py` for four mutations, against `.claude/backend/CLAUDE.md` §2, and disclosed it; the
-  gate confirmed no residue. The tension it raised is real — inline seams have no symbol to
-  rebind — so **the backend manual's "Do" list now carries the in-memory module copy technique**
-  (read the source, substitute in the string, `exec` into a fresh module object). That is how
-  B-009's reviewer mutated an inline call site. "Nothing to patch" is never a reason to edit a
-  tracked file.
-- **An explicit, recorded exception to the §5.3 never-shrink floor, and the only one.** Three of
-  the 15 new tests assert against locally re-implemented copies of `run_analysis`, or against a
-  hand-built `RunResult` that never reaches `driver.py`; one is
-  `with pytest.raises(AssertionError): assert '<path>' in 'Run failed.'`, true by construction.
-  **None can fail as a result of any change to the driver**, demonstrated per-test by the
-  reviewer. The floor rule guards properties that stop being guarded; it does not apply to checks
-  that never guarded anything. Cycle 2 must state which were removed, the new total, and why.
-  **A silent drop of any other test remains a `Required`.**
-- **Criterion 7 is the one that protects the milestone.** `run_physics_loop` is stubbed in every
-  test that calls `run_analysis`, so `config.to_dict()` -> `run_physics_loop(cfg, active_samples,
-  ctx)` is never executed by the suite — and **B-012 is built directly on that seam**. Cycle 2
-  adds one real end-to-end run, skipping with a named reason when the datasets are absent.
-- **§5.1 gate PASSED**, re-run in `~/fce-gate-b011` at `4b2b97f` (== PR headRefOid): **401 passed**
-  / 0 failed (floor 386, +15); flake8 exit 0; `ui` grep and plotting grep both empty; scope exactly
-  the three permitted files; import verified to resolve to the worktree copy.
-- **One extra gate check this time, and it was warranted.** The coder applied its four mutations
-  **directly to the tracked `driver.py`** rather than to a monkeypatch or scratch copy, against the
-  dispatch's instruction — and disclosed it. The risk that rule exists to prevent is a mutation
-  surviving into the commit, so the gate greps the committed tree for `0\.78|0\.80` residue in
-  `driver.py` and `runs.py`: **none**. Disclosed and clean, so it is a deviation for the reviewer
-  to weigh, not a gate failure.
-- **Signature deviation, and it follows from my own dispatch:** `run_analysis(config, ctx,
-  env=None)` gained a third parameter. I named `get_fce_home(env=...)` as the seam for testing the
-  datasets-absent path, so this is downstream of my instruction. Whether it belongs in the public
-  signature is the reviewer's call.
-- **Open question the coder raised, for the reviewer and then for me:** active-sample discovery
-  lists `<fce home>/datasets/<detector>/<energy>/*.root` directly, because `samples.json` is not
-  vendored anywhere. It matches `analytical_loop._find_data_file`'s own lookup. If a vendored
-  `samples.json` is preferred, that is a small follow-up — do not let it block B-012.
-- **Floors — a fall in any is a `Required`:** full suite at **386 passed** (measured by the
-  orchestrator in the primary checkout at `1689b27`); flake8 exits 0.
-- **SCOPE WIDENED BY THE ORCHESTRATOR AT DISPATCH, and this entry was wrong before.** The entry's
-  scope was `driver.py` + `tests/test_driver.py`, but the acceptance clause "cancelling mid-run
-  returns a `RunResult` marked cancelled with partial output" **cannot be satisfied inside it**:
-  `RunResult` is a frozen dataclass at `runs.py:110` carrying only `processed_any` and
-  `cutflow_ready`. `src/fce_web/runs.py` is therefore in scope. Caught by scout before dispatch
-  rather than by the coder hitting it and stopping — which would have been a §7 checkpoint.
-  This is §2 question 3 ("does the file scope let the coder satisfy every criterion?") paying
-  for itself; B-005 cycle 1 is the precedent where it did not.
-- **The seams, enumerated before dispatch so the coder does not re-derive them:**
-  `RunConfig.to_dict()` at `runconfig.py:435` is the dict bridge — `RunConfig`'s 13 fields are
-  exactly the 13 top-level keys `run_physics_loop` reads, so the dict is never hand-built.
-  `from_file:430`, `from_dict:377` (**raises `RunConfigError` on digest mismatch**),
-  `compute_h5:368`, `compute_h5_sel:362`. `get_fce_home(env=...)` at `paths.py:27` is the seam
-  for testing the datasets-absent path without touching the real directory.
-- **The vendor-scope ruling is a criterion, not a footnote.** The reference's
-  `execute_analysis` calls `render_plots` at `run_engine.py:55`; that call is **not** ported, and
-  criterion 5 greps `driver.py` for `render_plots|plotter|fitter|pyhf|matplotlib|mplhep`.
+### B-012 — The parity proof — **M2 checkpoint**
+- **Scope:** `scripts/render_reference.py`, `tests/fixtures/golden/zpeak-dilepton.json`,
+  `tests/test_engine_parity.py`
+- **Accept:** every bin matches within a **stated** numeric tolerance, justified rather than
+  tuned; the per-source `h_{src}_up` variation histograms match too, not only the nominal;
+  perturbing one bin in the golden file makes the test fail **naming that bin**
+  (mutation-tested); the test skips with a named reason when either the datasets or the
+  reference checkout is absent; `pytest tests/` green on this machine with both present
+- **Method ruled by the user 2026-08-20: render the reference and diff.**
+  `render_reference.py` drives the **reference checkout's own** `run_physics_loop` from the
+  same `content/analyses/zpeak-dilepton.json` and dumps bin edges, bin contents and the
+  per-source variations to JSON, which is committed as the golden file. **The point of the
+  separate script is that the fix and its verification must not share a hand** — the rule
+  D-003 cycle 4 was made to follow, and the technique the D-003 cycle-3 review invented.
+  Rejected alternatives: reusing the unexplained `h5_*.root` files already in `~/.fce/output`
+  (nobody knows which config produced which hash), and driving the real dearpygui app by hand
+  (not repeatable in review).
+- **Runnable here, and only here:** 1.3 GB of IDEA datasets including 91 GeV are at
+  `~/.fce/datasets/`, and the reference checkout is at
+  `~/Documents/Phd/teaching/fce-project/fce/`. Neither is in git and neither ever will be
+  (shared §3), which is why the skip path is an acceptance criterion rather than a nicety.
+- **FEASIBILITY ESTABLISHED 2026-08-22 — the reference can be driven headlessly.** This was the
+  open risk on the whole milestone and it is closed. Scout built the transitive import closure of
+  the reference's `engine/analytical_loop.py`: it is `ui.state`, `engine.path_filter`,
+  `engine.path_final`, `engine.systematics`, `paths` — and **not one of them imports `dearpygui`**
+  (`ui/state.py` imports only `queue` and `threading`; dearpygui appears only in `ui/tutorial.py`,
+  `ui/components.py`, `ui/graph.py`, `fce.py`, none of which are reachable). Their third-party
+  needs are `uproot`, `boost_histogram`, `numpy`, `vector`, **all four present in our venv**
+  (verified 2026-08-22: uproot 5.7.5, boost_histogram 1.8.0, vector 1.8.1, numpy 2.5.2).
+  `dearpygui` is absent from our venv and does not need to be. Datasets confirmed at
+  `~/.fce/datasets/IDEA/91GeV/` — `X1..X6.root` and `data.root`, 4.8M–159M.
+- **Two hazards that become acceptance criteria, not footnotes.**
+  (1) `render_reference.py` **runs as a subprocess**, never in-process with pytest. Importing the
+  reference puts `ui.state`, `engine.*` and `paths` into `sys.modules` under **bare top-level
+  names**; B-006's cycle-2 review already caught exactly this leak leaving `ui.state` resolvable
+  for the rest of a session, and `ui.state` is the global-state module this project exists to
+  eliminate. The test asserts `"ui" not in sys.modules` after the golden file is produced.
+  (2) The reference's `analytical_loop.py:17` runs `hdir = get_fce_home()` **at import time**,
+  which `os.makedirs` its candidate and writes a `.write_test` probe (`paths.py:32-36`). Harmless
+  here — `~/.fce` exists and is writable — but importing the reference has side effects on disk,
+  so the script sets `FCE_HOME` explicitly rather than inheriting it by accident.
+- **PROVEN BY EXECUTION 2026-08-22, not merely by static analysis.** The orchestrator ran, in
+  the primary checkout under `./.venv/bin/python`, a script that prepends the reference checkout
+  to `sys.path` and imports the reference's own entry point. Real output:
+  ```
+  IMPORT OK
+  signature: (cfg, samples, active_samples, en)
+  hdir at import time: /home/julvdnbr/.fce
+  dearpygui loaded? False
+  ui.state loaded? True
+  ```
+  So `render_reference.py` is viable exactly as B-012 specifies it. Two things that transcript
+  settles: `dearpygui` is genuinely never imported, and **`ui.state` IS pulled into `sys.modules`**
+  — which is the contamination hazard stated above, now observed rather than predicted. That is
+  the evidence for the subprocess criterion; do not relax it.
+- **The reference checkout has no venv and no installed deps** (no `.venv`, no `pyvenv.cfg`,
+  `import uproot` fails under system python). So the script runs under **our** interpreter,
+  `./.venv/bin/python`, with the reference checkout prepended to `sys.path`. There is no
+  `conftest.py` in the reference `tests/` either — nothing there to copy.
+- **Depends on:** ~~B-011~~ (merged `82ef336`) — **UNBLOCKED 2026-08-22.** Every dependency in
+  M2 is now merged; this is the last task before the checkpoint.
+- **THE CACHE HAZARD, promoted from a footnote to a criterion by B-011's cycle-2 review.**
+  `analytical_loop.py:241` calls `get_fce_home()` **with no `env`**, so the engine's cache and
+  output always resolve against the real process environment even when a caller passes an
+  isolated one. The reviewer measured the consequence: a cold end-to-end run writes a
+  multi-hundred-MB cache into the real `~/.fce`. **For a parity proof this is not tidiness —
+  the cache is content-addressed by a hash of the analysis config, so if the reference run and
+  ours hash alike, one can serve the other a cached result and the proof becomes circular:
+  it would compare a number against itself and pass.** Subprocess isolation with an explicit
+  `FCE_HOME` in the child environment is what defeats it. **This must be an acceptance
+  criterion with its own mutation, not a note** — point both runs at the same `FCE_HOME` and
+  show the proof still distinguishes them, or show it does not and fix the isolation.
 - **Branch / PR:** not yet opened
-
 
 **Both entries below are DEFERRED behind the M2 checkpoint by the user's ruling 2026-08-22.**
 Neither blocks B-012, and nothing on the B-007 → B-009 → B-011 → B-012 chain touches
@@ -293,68 +245,6 @@ _The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
 - **Depends on:** ~~B-006~~ (merged `ce4dcd6`), B-007
 - **Branch / PR:** not yet opened
 
-### B-012 — The parity proof — **M2 checkpoint**
-- **Scope:** `scripts/render_reference.py`, `tests/fixtures/golden/zpeak-dilepton.json`,
-  `tests/test_engine_parity.py`
-- **Accept:** every bin matches within a **stated** numeric tolerance, justified rather than
-  tuned; the per-source `h_{src}_up` variation histograms match too, not only the nominal;
-  perturbing one bin in the golden file makes the test fail **naming that bin**
-  (mutation-tested); the test skips with a named reason when either the datasets or the
-  reference checkout is absent; `pytest tests/` green on this machine with both present
-- **Method ruled by the user 2026-08-20: render the reference and diff.**
-  `render_reference.py` drives the **reference checkout's own** `run_physics_loop` from the
-  same `content/analyses/zpeak-dilepton.json` and dumps bin edges, bin contents and the
-  per-source variations to JSON, which is committed as the golden file. **The point of the
-  separate script is that the fix and its verification must not share a hand** — the rule
-  D-003 cycle 4 was made to follow, and the technique the D-003 cycle-3 review invented.
-  Rejected alternatives: reusing the unexplained `h5_*.root` files already in `~/.fce/output`
-  (nobody knows which config produced which hash), and driving the real dearpygui app by hand
-  (not repeatable in review).
-- **Runnable here, and only here:** 1.3 GB of IDEA datasets including 91 GeV are at
-  `~/.fce/datasets/`, and the reference checkout is at
-  `~/Documents/Phd/teaching/fce-project/fce/`. Neither is in git and neither ever will be
-  (shared §3), which is why the skip path is an acceptance criterion rather than a nicety.
-- **FEASIBILITY ESTABLISHED 2026-08-22 — the reference can be driven headlessly.** This was the
-  open risk on the whole milestone and it is closed. Scout built the transitive import closure of
-  the reference's `engine/analytical_loop.py`: it is `ui.state`, `engine.path_filter`,
-  `engine.path_final`, `engine.systematics`, `paths` — and **not one of them imports `dearpygui`**
-  (`ui/state.py` imports only `queue` and `threading`; dearpygui appears only in `ui/tutorial.py`,
-  `ui/components.py`, `ui/graph.py`, `fce.py`, none of which are reachable). Their third-party
-  needs are `uproot`, `boost_histogram`, `numpy`, `vector`, **all four present in our venv**
-  (verified 2026-08-22: uproot 5.7.5, boost_histogram 1.8.0, vector 1.8.1, numpy 2.5.2).
-  `dearpygui` is absent from our venv and does not need to be. Datasets confirmed at
-  `~/.fce/datasets/IDEA/91GeV/` — `X1..X6.root` and `data.root`, 4.8M–159M.
-- **Two hazards that become acceptance criteria, not footnotes.**
-  (1) `render_reference.py` **runs as a subprocess**, never in-process with pytest. Importing the
-  reference puts `ui.state`, `engine.*` and `paths` into `sys.modules` under **bare top-level
-  names**; B-006's cycle-2 review already caught exactly this leak leaving `ui.state` resolvable
-  for the rest of a session, and `ui.state` is the global-state module this project exists to
-  eliminate. The test asserts `"ui" not in sys.modules` after the golden file is produced.
-  (2) The reference's `analytical_loop.py:17` runs `hdir = get_fce_home()` **at import time**,
-  which `os.makedirs` its candidate and writes a `.write_test` probe (`paths.py:32-36`). Harmless
-  here — `~/.fce` exists and is writable — but importing the reference has side effects on disk,
-  so the script sets `FCE_HOME` explicitly rather than inheriting it by accident.
-- **PROVEN BY EXECUTION 2026-08-22, not merely by static analysis.** The orchestrator ran, in
-  the primary checkout under `./.venv/bin/python`, a script that prepends the reference checkout
-  to `sys.path` and imports the reference's own entry point. Real output:
-  ```
-  IMPORT OK
-  signature: (cfg, samples, active_samples, en)
-  hdir at import time: /home/julvdnbr/.fce
-  dearpygui loaded? False
-  ui.state loaded? True
-  ```
-  So `render_reference.py` is viable exactly as B-012 specifies it. Two things that transcript
-  settles: `dearpygui` is genuinely never imported, and **`ui.state` IS pulled into `sys.modules`**
-  — which is the contamination hazard stated above, now observed rather than predicted. That is
-  the evidence for the subprocess criterion; do not relax it.
-- **The reference checkout has no venv and no installed deps** (no `.venv`, no `pyvenv.cfg`,
-  `import uproot` fails under system python). So the script runs under **our** interpreter,
-  `./.venv/bin/python`, with the reference checkout prepended to `sys.path`. There is no
-  `conftest.py` in the reference `tests/` either — nothing there to copy.
-- **Depends on:** B-011
-- **Branch / PR:** not yet opened
-
 #### M2 sequencing — RE-ORDERED 2026-08-22 on the user's ruling
 ```
 wave 1   B-005  vendor paths + systematics      -+ parallel     DONE, merged dca1a09
@@ -410,6 +300,16 @@ Full entries — scope, criteria, and the cycle-by-cycle review record — are i
 [`archive/backend.md`](archive/backend.md). Read it only when a task's history is actually in
 question.
 
+- **B-011** — The headless driver — `task/b-011-headless-driver` #14, merged `82ef336`
+  (2 cycles, **clean gate — 0 required, 0 suggested-major**; 4 suggested-minor backlogged).
+  Ships `run_analysis(config, ctx, env=None) -> RunResult`; stops before plotting/fitting per the
+  vendor-scope ruling, enforced by a grep. Suite 386 → 401 → **398**, the fall being an
+  **authorised** removal of three tests the reviewer proved could not fail — the only exception to
+  the §5.3 floor granted so far, and the cycle-2 reviewer verified the removal set independently.
+  Cycle 1's Required was the second instance of "a check computed from the thing it checks".
+  **The reviewer ran the driver end to end against the real 91 GeV data, cold, 33.3s.**
+  **Read the archive entry before dispatching B-012** — the engine's `get_fce_home()` ignores a
+  caller's `env`, and a shared content-addressed cache could make the parity proof circular.
 - **B-009** — `RunContext`, replacing `RUN_STATE` in `analytical_loop.py` —
   `task/b-009-run-context` #13, merged `1689b27` (2 cycles, **clean gate — 0 required,
   0 suggested-major**; 3 suggested-minor backlogged). Suite 376 → **386**. Eliminated the

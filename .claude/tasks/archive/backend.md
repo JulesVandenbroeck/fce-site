@@ -12,6 +12,87 @@ it. Never at startup.
 ## Done — most recent first
 
 
+### B-011 — The headless driver
+- **Scope:** `src/fce_web/engine/driver.py`, `src/fce_web/runs.py`, `tests/test_driver.py`
+- **Branch / PR:** `task/b-011-headless-driver` — #14, merged `82ef336`
+- **Result:** 2 cycles, **clean gate — 0 required, 0 suggested-major**; 4 suggested-minor
+  backlogged. Suite 386 -> 401 -> **398** (see the authorised removal below).
+
+#### What it ships
+`run_analysis(config: RunConfig, ctx: RunContext, env=None) -> RunResult`, replacing the
+reference's `run_engine.execute_analysis` (`run_engine.py:18`), whose only real defect was that it
+returned `None` and put its answers in globals through `safe_set_state` at 21 lines. Per the user's
+vendor-scope ruling the driver **stops once the histogram ROOT files are written** — the
+reference's `render_plots` call at `run_engine.py:55` is not ported, and criterion 5 greps
+`driver.py` for `render_plots|plotter|fitter|pyhf|matplotlib|mplhep` to keep it that way.
+`RunResult` gained `cancelled` and `reason`, both defaulted so B-009's call sites were untouched.
+The engine's own 0..1 is scaled through one named constant `_ENGINE_PROGRESS_SHARE = 0.9`.
+
+**The reviewer ran it end to end against the real 91 GeV datasets on both cycles** — cold, 33.3s,
+genuinely reading the ROOT files. The driver was never the problem; both cycles' findings were
+about the test net around it.
+
+#### The orchestrator caught a scope defect before dispatch, which is the cheap way
+The task entry scoped B-011 to `driver.py` + `tests/test_driver.py`, but its own acceptance clause
+"cancelling mid-run returns a `RunResult` marked cancelled with partial output" **could not be
+satisfied inside that scope** — `RunResult` is frozen and carried only `processed_any` and
+`cutflow_ready`. Scout found it; `runs.py` went into scope at dispatch. §2's question 3 paying for
+itself, where B-005 cycle 1 is the precedent for what it costs when it does not.
+
+#### The Required — third variant of one family, and the family is now named
+Criterion 2's test computed `expected` **from `driver._ENGINE_PROGRESS_SHARE`**, so the assertion
+self-adjusted to whatever the constant was. Setting it to `1.0` — removing the driver-owned scaling
+entirely, the exact property the criterion protects — left all 15 tests green.
+
+| | the defect | how it stayed green |
+|---|---|---|
+| B-009 c1 | the run never reached the code under test | only two literal endpoints recorded |
+| B-011 c1 | the expectation is computed from the implementation | `expected` derived from the constant |
+
+> **A check must not be computed from the thing it checks.** Together with B-009's lesson — ask
+> whether the run a check drives even reaches the code the property is about — this is the shape to
+> look for when a mutation criterion is satisfied and the property is still false.
+
+Cycle 2 hard-coded `expected = [0.0, 0.3, 0.6, 0.9, 0.9, 1.0]`, and the reviewer re-ran the exact
+mutation that had slipped through: red at `1.0`, restored green.
+
+#### An authorised exception to the never-shrink floor — the only one so far
+Three of the 15 new tests asserted against locally re-implemented copies of `run_analysis`, or a
+hand-built `RunResult` that never reached `driver.py`; one was
+`with pytest.raises(AssertionError): assert '<path>' in 'Run failed.'`, true by construction.
+**None could fail from any change to the driver**, demonstrated per-test by the reviewer. The §5.3
+floor guards properties that stop being guarded; it does not cover checks that never guarded
+anything. Removal was authorised in writing, the count moved 401 -> 398 with the accounting stated
+in the PR body, and the cycle-2 reviewer **independently verified the removal set by diffing test
+function names between the two heads** — exactly the three, nothing else, no surviving assertion
+softened. That verification is what makes the exception safe to grant again.
+
+#### The finding that mattered most was the missing net, not a bug
+`run_physics_loop` was stubbed in every test that called `run_analysis`, so
+`config.to_dict()` -> `run_physics_loop(cfg, active_samples, ctx)` was never executed by the suite —
+and **B-012 is built directly on that seam.** Cycle 2 added one real end-to-end test; the reviewer
+then mutated `RunConfig.to_dict` to rename `detector` -> `detector_name` and confirmed **that test
+is the only one in the suite that catches it.**
+
+#### Process ruling recorded here because it changed a role manual
+The cycle-1 coder mutated the tracked `driver.py` for four mutations, against
+`.claude/backend/CLAUDE.md` §2, and disclosed it; the gate confirmed no residue. The tension was
+real — inline seams have no symbol to rebind — so the manual's "Do" list gained the **in-memory
+module copy** technique (read the source, substitute in the string, `exec` into a fresh module
+object), which is how B-009's cycle-2 reviewer mutated an inline call site. "Nothing to patch" is
+never a reason to edit a tracked file.
+
+#### Carried into B-012 — read this before dispatching the parity proof
+`analytical_loop.py:241` calls `get_fce_home()` **with no `env`**, so the engine's cache and output
+always resolve against the real process environment even when a caller passes an isolated one,
+while the driver's own `_dataset_dir` **is** env-aware. Consequence measured by the reviewer: a
+cold e2e run writes a multi-hundred-MB cache into the developer's real `~/.fce`. For B-012 this is
+not a tidiness issue — **the cache is content-addressed by a hash of the analysis config, so if the
+reference run and ours hash alike, one can serve the other a cached result and the parity proof
+becomes circular.** Subprocess isolation with an explicit `FCE_HOME` in the child environment is
+what defeats this, which is why B-012's entry mandates a subprocess.
+
+
 ### B-009 — `RunContext`, replacing `RUN_STATE` in `analytical_loop.py`
 - **Scope:** `src/fce_web/runs.py`, `src/fce_web/engine/analytical_loop.py`,
   `tests/test_run_context.py`
