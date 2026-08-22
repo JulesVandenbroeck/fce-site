@@ -60,10 +60,12 @@ from fce_web.runs import RunContext, RunResult
 # engine's own [0, 1]. The remaining headroom is spent on the driver's own
 # unconditional final completion report (see ``run_analysis``), which must
 # land at exactly 1.0 regardless of what fraction of that headroom the
-# engine's own last reported value used. Named and used in exactly one
-# place -- the callback built in ``run_analysis`` -- so a reviewer or a
-# later change can find every seam that touches a progress value by reading
-# this module alone.
+# engine's own last reported value used. Named here, and read from exactly
+# one place -- the ``on_progress`` callback built in ``run_analysis`` -- so
+# that seam is the only spot a scale factor is ever applied. The *other*
+# progress seam in ``run_analysis``, the driver's own final completion
+# report, deliberately does not use this constant at all: it is an
+# unconditional bare ``1.0``, not a second scaled value.
 _ENGINE_PROGRESS_SHARE = 0.9
 
 

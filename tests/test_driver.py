@@ -199,13 +199,13 @@ def test_progress_sequence_is_exact_for_a_stubbed_multi_step_run(tmp_path, monke
 
     assert result.processed_any is True
     assert result.cancelled is False
-    # Every engine-space value forwarded through the driver's own scale
-    # factor, then one final driver-owned 1.0 completion report appended.
-    expected = [
-        f * driver._ENGINE_PROGRESS_SHARE
-        for f in (0.0, 1 / 3, 2 / 3, 1.0, 1.0)
-    ] + [1.0]
-    assert recorded == expected, recorded
+    # Hard-coded, not derived from ``driver._ENGINE_PROGRESS_SHARE`` -- a
+    # check computed from the value it is meant to pin cannot catch that
+    # value changing (cycle 1 review, Required). Every engine-space value
+    # scaled by the *current* 0.9 share, then one final driver-owned 1.0
+    # completion report appended.
+    expected = [0.0, 0.3, 0.6, 0.9, 0.9, 1.0]
+    assert recorded == pytest.approx(expected), recorded
 
 
 def test_progress_ends_at_exactly_one(tmp_path, monkeypatch):
@@ -219,75 +219,6 @@ def test_progress_ends_at_exactly_one(tmp_path, monkeypatch):
     result = driver.run_analysis(_load_fixture_config(), ctx, env=_env_for(tmp_path))
     assert result.processed_any is True
     assert recorded[-1] == 1.0, recorded
-
-
-@pytest.mark.parametrize("seam", ["forward_scale", "final_completion"])
-def test_progress_scale_mutation_transcripts(tmp_path, monkeypatch, seam):
-    """Mutation transcript for criterion 2, one seam per parametrize case.
-
-    The driver touches a progress value at exactly two seams, enumerated in
-    ``fce_web.engine.driver.run_analysis``:
-
-    1. ``forward_scale`` -- the callback handed to the engine as its
-       ``on_progress``, which multiplies every engine-space fraction by
-       ``_ENGINE_PROGRESS_SHARE`` before forwarding it to the caller's
-       ``ctx.on_progress``.
-    2. ``final_completion`` -- the driver's own unconditional ``1.0`` report
-       once a successful (non-cancelled, ``processed_any``) run returns.
-
-    Both are mutated here by monkeypatching a scratch stand-in for
-    ``driver.run_analysis`` that reproduces the seam under a ``* 0.78``
-    scale, never by editing the tracked ``driver.py``. Each half of the
-    transcript (green at HEAD, red under the mutation) is asserted in the
-    same test so both are visible together.
-    """
-    _make_dataset_dir(tmp_path)
-    monkeypatch.setattr(
-        driver, "run_physics_loop",
-        _stub_engine_progress_trace([0.0, 1 / 3, 2 / 3, 1.0, 1.0]),
-    )
-
-    # -- green half: HEAD's real run_analysis --
-    recorded_green = []
-    ctx_green = RunContext(n_workers=1, on_progress=lambda f: recorded_green.append(f))
-    driver.run_analysis(_load_fixture_config(), ctx_green, env=_env_for(tmp_path))
-    expected = [f * driver._ENGINE_PROGRESS_SHARE for f in (0.0, 1 / 3, 2 / 3, 1.0, 1.0)] + [1.0]
-    assert recorded_green == expected, recorded_green
-
-    # -- red half: the same seam under a 0.78 mutation, reproduced in a
-    # scratch function so driver.py itself is never touched --
-    recorded_red = []
-
-    def mutated_run_analysis(config, ctx, env=None):
-        dataset_dir = driver._dataset_dir(config, env)
-        active_samples = driver._discover_active_samples(dataset_dir)
-        assert active_samples, "fixture dataset dir must be non-empty"
-        inner_progress_scale = (
-            (lambda f: f * driver._ENGINE_PROGRESS_SHARE * 0.78)
-            if seam == "forward_scale"
-            else (lambda f: f * driver._ENGINE_PROGRESS_SHARE)
-        )
-        inner_ctx = RunContext(
-            n_workers=ctx.n_workers,
-            cancel=ctx.cancel,
-            on_progress=lambda f: ctx.on_progress(inner_progress_scale(f)),
-            on_log=ctx.on_log,
-            on_phase=ctx.on_phase,
-            on_node=ctx.on_node,
-        )
-        result = driver.run_physics_loop(config.to_dict(), active_samples, inner_ctx)
-        if result.processed_any and not ctx.cancel.is_set():
-            final = 0.78 if seam == "final_completion" else 1.0
-            ctx.on_progress(final)
-        return result
-
-    ctx_red = RunContext(n_workers=1, on_progress=lambda f: recorded_red.append(f))
-    mutated_run_analysis(_load_fixture_config(), ctx_red, env=_env_for(tmp_path))
-
-    assert recorded_red != expected, (
-        f"mutation at seam {seam!r} did not change the recorded sequence "
-        f"-- the seam is not load-bearing: {recorded_red}"
-    )
 
 
 def test_no_ui_layout_scale_constants_reused_in_driver():
@@ -357,54 +288,6 @@ def test_cancelling_mid_run_returns_a_cancelled_result_with_partial_output(tmp_p
     assert result != RunResult(processed_any=True, cutflow_ready=False), result
 
 
-def test_ignoring_cancel_mutation_is_caught(tmp_path, monkeypatch):
-    """Mutation transcript for criterion 3: a driver that ignores
-    ``ctx.cancel`` entirely reports the run as completed instead of
-    cancelled. Reproduced with a scratch stand-in for ``run_analysis`` that
-    skips the cancellation check -- never by editing the tracked
-    ``driver.py``.
-    """
-    _make_dataset_dir(tmp_path)
-    monkeypatch.setattr(driver, "run_physics_loop", _slow_stub_run_physics_loop())
-
-    def mutated_run_analysis_ignoring_cancel(config, ctx, env=None):
-        dataset_dir = driver._dataset_dir(config, env)
-        active_samples = driver._discover_active_samples(dataset_dir)
-        inner_ctx = RunContext(
-            n_workers=ctx.n_workers, cancel=ctx.cancel,
-            on_progress=ctx.on_progress, on_log=ctx.on_log,
-            on_phase=ctx.on_phase, on_node=ctx.on_node,
-        )
-        result = driver.run_physics_loop(config.to_dict(), active_samples, inner_ctx)
-        # BUG (mutation): never checks ctx.cancel.is_set() -- always reports
-        # a plain completed result, even if the run was stopped early.
-        return RunResult(processed_any=result.processed_any, cutflow_ready=result.cutflow_ready)
-
-    ctx = RunContext(n_workers=1)
-    holder = {}
-
-    def run():
-        holder["result"] = mutated_run_analysis_ignoring_cancel(
-            _load_fixture_config(), ctx, env=_env_for(tmp_path),
-        )
-
-    thread = threading.Thread(target=run)
-    thread.start()
-    time.sleep(0.12)
-    ctx.cancel.set()
-    thread.join(timeout=5)
-
-    result = holder["result"]
-    assert result.cancelled is False, (
-        "mutation did not reproduce the defect -- result already reports cancelled"
-    )
-    # This is the failure the real test above would raise under this mutation:
-    with pytest.raises(AssertionError, match="cancelled"):
-        assert result.cancelled is True, (
-            f"run completed when it should have been cancelled: {result}"
-        )
-
-
 # ---------------------------------------------------------------------------
 # Criterion 4: a missing dataset directory is a clean skip with a named
 # reason, not a crash and not a silent success.
@@ -434,22 +317,6 @@ def test_missing_dataset_directory_is_a_named_clean_skip(tmp_path):
     )
 
 
-def test_generic_reason_mutation_is_caught(tmp_path):
-    """Mutation transcript for criterion 4: replacing the named reason with
-    a generic one must make the real test above fail. Reproduced with a
-    scratch stand-in for the reason-building call, never by editing the
-    tracked ``driver.py``.
-    """
-    generic_reason = "Run failed."
-    result = RunResult(processed_any=False, cutflow_ready=False, reason=generic_reason)
-    expected_dir = str(tmp_path / "datasets" / "IDEA" / "91GeV")
-    with pytest.raises(AssertionError):
-        assert result.reason is not None and expected_dir in result.reason, (
-            f"reason does not name the missing dataset path {expected_dir!r}: "
-            f"{result.reason!r}"
-        )
-
-
 @pytest.mark.skipif(
     not os.path.isdir(os.path.expanduser("~/.fce/datasets/IDEA/91GeV")),
     reason="real datasets not present at ~/.fce/datasets/IDEA/91GeV on this machine",
@@ -464,6 +331,49 @@ def test_real_datasets_are_discovered_when_present():
     active_samples = driver._discover_active_samples(dataset_dir)
     assert active_samples, "expected at least one sample under ~/.fce/datasets/IDEA/91GeV"
     assert "data" in active_samples or any(s.startswith("X") for s in active_samples)
+
+
+@pytest.mark.skipif(
+    not os.path.isdir(os.path.expanduser("~/.fce/datasets/IDEA/91GeV")),
+    reason="real datasets not present at ~/.fce/datasets/IDEA/91GeV on this machine",
+)
+def test_real_end_to_end_run_exercises_the_real_run_physics_loop():
+    """Criterion 7: the one test in this file that never stubs
+    ``run_physics_loop``. Every other test above monkeypatches it, so the
+    genuine integration seam -- ``config.to_dict()`` ->
+    ``run_physics_loop(cfg, active_samples, ctx)``, real ``RunConfig``
+    handed to the real ``analytical_loop`` -- is never actually executed by
+    the rest of this suite. A signature or dict-shape drift between the two
+    would land as a green suite and a broken driver, which is the exact net
+    B-012's parity proof is built on top of.
+
+    Runs the real fixture (``content/analyses/zpeak-dilepton.json``) against
+    the real ``~/.fce/datasets/IDEA/91GeV`` dataset with no stub anywhere in
+    the call chain. Not narrowed to one sample: the content-addressed disk
+    cache (``.claude/shared/CLAUDE.md`` §2, "do not break this") means a
+    warm cache makes a full run of every sample fast in practice -- see the
+    wall-clock time in the PR body -- and narrowing would only remove
+    coverage of the multi-sample path.
+    """
+    events = []
+    phases = []
+    ctx = RunContext(
+        n_workers=4,
+        on_progress=lambda f: events.append(f),
+        on_phase=lambda p: phases.append(p),
+    )
+    config = _load_fixture_config()
+
+    result = driver.run_analysis(config, ctx, env=None)
+
+    assert result.processed_any is True, result
+    assert result.cancelled is False, result
+    assert result.reason is None, result
+    assert "Reading events..." in phases, phases
+    assert "Done" in phases, phases
+    assert events, "no progress reported"
+    assert events[-1] == 1.0, events
+    assert all(0.0 <= f <= 1.0 for f in events), events
 
 
 # ---------------------------------------------------------------------------
