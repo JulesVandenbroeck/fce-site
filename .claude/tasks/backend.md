@@ -57,8 +57,34 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **The entry point:** `run_physics_loop(cfg, samples, active_samples, en)` at `:205`.
 - **Depends on:** ~~B-007~~ (merged `d906b59`)
 - **Branch / PR:** `task/b-009-run-context` — #13, head `619dc3c`
-- **Status:** in review (cycle 1) — reviewer dispatched 2026-08-22, Opus, **effort high**
-  (§3: raise effort on concurrency; this task is two threads and a cancellation `Event`)
+- **Status:** in progress (cycle 2) — review returned rework, re-dispatched 2026-08-22
+- **Review (cycle 1):** 1 required, 1 suggested-major, 3 suggested-minor, **scope pass**.
+  Posted verbatim to PR #13 as `issuecomment-5379780960`.
+- **§5.4 diagnosis — this IS a cycle, not a re-specification, and the mechanical test says so.**
+  Criterion 4 shipped with a command *and* a named mutation, so clause 2 does not apply; the
+  property was gated from cycle 1, so clause 1 does not apply either. **But the specification
+  defect underneath it is still mine**, and it is §2's own failure shape: I named the mutation
+  (`* 0.78` on the progress value) without naming the *seam*, so the coder applied it at
+  `_report_progress` — the one place the test does observe — and it went red exactly as I asked
+  while the property stayed false everywhere else. The check could not fail at
+  `_TaskTracker.increment` or at the mid-run call site, because the test drives a run with no
+  data files and therefore records only the two literal endpoints `[0.0, 1.0]`.
+  **The lesson, and it generalises: a mutation criterion must name the seam, or the coder will
+  pick the one seam already under observation.** Cycle 2 names all three.
+- **The suggested-major resolves against a recorded user ruling.** `cutflow_plotter` is deferred
+  to M5/M6 by the vendor-scope ruling (see "What M2 does not do" below), so the import is dead
+  *by design* rather than by accident. The reviewer's second option — document the deferral and
+  pin `cutflow_ready is False` with a test — is the correct one, and cycle 2 takes it.
+- **All three suggested-minor named individually (§5.6), none lost:**
+  (a) `analytical_loop.py:210` does not pass `ctx.cancel` to `fill_histogram_from_cache`, so
+  B-007's cancellation seam has no caller and latency is one full histogram fill — **folded
+  into cycle 2**, because B-011 is built on this cancellation and shipping it uncalled would
+  hand B-011 a capability nothing exercises.
+  (b) `analytical_loop.py:353` reports `1.0` even when `processed_any` is `False`, so a run that
+  did nothing reads as 100% success in B-011's SSE stream — **folded into cycle 2**, adjacent to
+  the Required's own rework.
+  (c) `runs.py:92`'s magic `n_workers = 4` — **backlogged**, because the right value probably
+  comes from B-011, the first code that actually picks a worker count.
 - **§5.1 gate PASSED**, re-run by the orchestrator in a detached worktree `~/fce-gate-b009`:
   suite **383 passed** / 0 failed (floor 376, +7); flake8 exit 0; criterion-4 grep empty.
   Import verified to resolve to the worktree copy, not the primary checkout — a `PYTHONPATH`

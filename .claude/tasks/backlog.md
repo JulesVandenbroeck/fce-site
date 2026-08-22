@@ -423,3 +423,9 @@ and are historical now that #6 is merged.
 ### From B-010 cycle-2 review (PR #11), 2026-08-22 — both suggested-minor, named individually per §5.6
 - **`src/fce_web/engine/runconfig.py:311-325`** — the md5 formula now lives in three places: `compute_h5_sel`/`compute_h5` (362-375) and again inline in `_validate_nested_digests`. A change to the reference formula must be made in all three or the nested check validates against a stale rule. Divergence *would* be caught by `test_roundtrip_fixture`, so it is not major — factoring one module-level `_digest(base, ...)` helper removes the trap.
 - **`src/fce_web/engine/runconfig.py:378-425`** — nothing checks the top-level flattened view *agrees with* `selections[0]`; each level is only self-consistent. Demonstrated: a top-level `sel_exprs = ["l1.pt > 999"]` with matching recomputed top-level digests loads with no error, giving top `6744140f9f50c59d5752d52036b76085` against nested `c9873a70ca371612fc24cf976ff7fd5c`. Low consequence — the engine ignores the top level when `selections` is non-empty — **but PR #11's body promises B-011/B-012 that "every digest in it has been checked", and cross-level disagreement is the one shape that promise does not cover.** Either assert `selections[0].h5_sel == h5_sel`, or qualify the docstring.
+
+- **B-009 c1 suggested-minor — `runs.py:92`, `n_workers: int = 4` is an unexplained magic default.**
+  A one-line comment on why 4, or sourcing it from the run config, saves the next reader a guess.
+  Not folded into B-009 cycle 2: it is a documentation choice, and the right answer probably comes
+  from B-011, which is the first code to actually pick a worker count. Raised by the PR #13 cycle-1
+  review, 2026-08-22.
