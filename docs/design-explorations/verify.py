@@ -363,23 +363,18 @@ def load_bench_page(
     reduced_motion: Optional[str] = None,
     html_path: Optional[Path] = None,
 ) -> tuple[Browser, BrowserContext, Page, list[str], list[str], list[str]]:
-    """Same contract as `load_beamline_page`, but for `bench.html` (D-005),
-    with one addition: `--allow-file-access-from-files` on the launched
-    browser. `bench.js` loads as `<script type="module">` (the task's own
-    "not a classic script" requirement), and Chromium enforces CORS on
-    `file://` module fetches the same way it would an `http://` cross-origin
-    one — a plain `pw.chromium.launch()` here reproduces exactly the console
-    error this project's own zero-console-errors floor exists to catch:
-    "Access to script at 'file:///.../bench.js' from origin 'null' has been
-    blocked by CORS policy". That is not a bug in bench.js; it is Chromium's
-    module loader refusing any `file://` import, module or not, present or
-    committed. This one launch flag is the documented fix and is scoped to
-    Bench's own page loads only — Beamline and D-003's plot.html use classic
-    scripts and never hit this path. Verified by hand before relying on it:
-    with the flag omitted, `check_bench_network_and_errors` below fails on
-    exactly this console error at every width; restoring it, the same
-    section passes (see the PR body for the transcript)."""
-    browser = pw.chromium.launch(args=["--allow-file-access-from-files"])
+    """Same contract as `load_beamline_page`, but for `bench.html` (D-005).
+    Cycle 1 launched Chromium with a browser command-line flag here to work
+    around a `file://` module-script CORS error, but that flag is not
+    available to a student who opens this page directly — no launcher, no
+    command line, just a double-click. Cycle 2 removed every such flag from
+    this file and instead inlines bench.js's own source directly into
+    bench.html's `<script type="module">` tag, so the browser never performs
+    a same-origin check on a second file to begin with. `load_bench_page`
+    launches Chromium with no launch arguments at all, the same as
+    `check_bench_unflagged_file_url` below, so every section here measures
+    the same page state a real, unflagged browser reaches."""
+    browser = pw.chromium.launch()
     context_kwargs = {"viewport": {"width": width, "height": height}}
     if reduced_motion:
         context_kwargs["reduced_motion"] = reduced_motion
@@ -4044,7 +4039,7 @@ def check_bench_pairs(pw: Playwright) -> bool:
         f"{len(reference_legal)} legal pairs derived among the 8 addable kinds",
     )
 
-    browser = pw.chromium.launch(args=["--allow-file-access-from-files"])
+    browser = pw.chromium.launch()
     results: dict[tuple[str, str], bool] = {}
     for src_kind in BEAMLINE_ADDABLE_KINDS:
         for dst_kind in BEAMLINE_ADDABLE_KINDS:
@@ -4097,9 +4092,38 @@ def check_bench_inventory(pw: Playwright) -> bool:
     now reads too) is present via a `data-wf` attribute, reported as n of
     N; plus the one locked node kind is present, visibly gated, not
     connectable, and not reachable by keyboard as an active control --
-    checked by a real Tab walk, not by reading its tabindex value alone."""
+    checked by a real Tab walk, not by reading its tabindex value alone.
+    D-005 cycle-2 rework, C7: `.palette` is asserted to be a real `<ul>`
+    with every one of its element children an `<li>` -- the semantic list
+    markup this project's own "do not copy" note called for in place of a
+    `<div>` holding nine sibling controls."""
     section("Bench domain inventory -- every data-wf item present, plus the locked node kind's own checks")
     browser, context, page, *_ = load_bench_page(pw, 1024)
+
+    palette_shape = page.evaluate(
+        """() => {
+            const el = document.querySelector('.palette');
+            if (!el) return null;
+            const children = Array.from(el.children);
+            return {
+                tag: el.tagName,
+                childCount: children.length,
+                nonLiChildren: children.filter(c => c.tagName !== 'LI').map(c => c.tagName),
+            };
+        }"""
+    )
+    palette_ok = (
+        palette_shape is not None
+        and palette_shape["tag"] == "UL"
+        and palette_shape["childCount"] > 0
+        and not palette_shape["nonLiChildren"]
+    )
+    palette_label = (
+        f".palette is a UL with {palette_shape['childCount']} element children, all LI"
+        if palette_shape
+        else ".palette not found"
+    )
+    line(palette_label, palette_ok, "" if palette_ok else f"raw: {palette_shape}")
 
     names = [name for name, _ in MISSION_SCREEN_DOMAIN_INVENTORY]
     counts = page.evaluate(
@@ -4181,7 +4205,7 @@ def check_bench_inventory(pw: Playwright) -> bool:
     )
 
     browser.close()
-    return ok_inventory and locked_ok
+    return ok_inventory and locked_ok and palette_ok
 
 
 def check_bench_paint_sweep(pw: Playwright) -> bool:
@@ -4679,10 +4703,12 @@ def check_bench_reduced_motion(pw: Playwright) -> bool:
 def check_bench_network_and_errors(pw: Playwright) -> bool:
     """Zero non-local requests, zero console/page errors, at each width --
     driven through the add-node/connect/run interactions, not just a bare
-    load. This is also where a regression on the `--allow-file-access-
-    from-files` launch flag (`load_bench_page`'s own docstring) would show
-    up first: without it, every width fails here on the file:// module CORS
-    console error, not on anything this task's own code emits."""
+    load. `load_bench_page` (see its own docstring) launches Chromium with
+    no launch arguments, so this is also where a regression back to a
+    `file://` module-script CORS error would show up first: if bench.js's
+    source were ever moved back out to an external `src=` fetch, every
+    width would fail here on that console error, not on anything this
+    task's own code emits."""
     section("Bench -- non-local requests + console/page errors")
     all_ok = True
     for width in WIDTHS:
@@ -4725,6 +4751,89 @@ def check_bench_no_exhaustive_prose() -> bool:
     line(f"{len(files)} files scanned for exhaustive-claim phrasing", ok, f"{len(hits)} matches")
     for fname, ctx in hits:
         print(f"       {fname}: ...{ctx}...")
+    return ok
+
+
+def check_bench_unflagged_file_url(pw: Playwright) -> bool:
+    """D-005 cycle-2 rework, C6: the page a student actually reaches --
+    Chromium launched with no command-line arguments whatsoever, opened
+    directly at `bench.html`'s own `file://` URL, nothing else in front of
+    it. Every other Bench section in this file already runs against exactly
+    this same unflagged launch (see `load_bench_page`'s own docstring), so
+    this section exists to name the floor explicitly and prove it with a
+    real interaction, not only a static read: the graph is populated, and a
+    live mouse drag between two legal ports still creates an edge, on the
+    page as a browser with no arguments actually renders it."""
+    section("Bench unflagged file:// -- no launch args, real drag, zero console/page errors")
+    browser = pw.chromium.launch()
+    console_errors: list[str] = []
+    page_errors: list[str] = []
+    context = browser.new_context(viewport={"width": 1200, "height": 1400})
+    page = context.new_page()
+    page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+    page.goto(BENCH_HTML.as_uri())
+    page.wait_for_timeout(400)  # let the node-entrance stagger animation finish
+
+    ui_before = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
+    nodes_before = len(ui_before.get("nodes", []))
+    edges_before = len(ui_before.get("edges", []))
+    node_els_before = page.locator(".node").count()
+
+    # A blocked module load (e.g. an external `<script type="module"
+    # src=...>` reintroduced on a `file://` page with no launch flags)
+    # leaves the graph empty and bench.js's own listeners never attach, so
+    # a bare `.bounding_box()` on a port that will never exist hangs for a
+    # full Playwright timeout rather than failing fast. Short-circuit on
+    # the diagnosis this section exists to make instead of letting that
+    # timeout crash the whole run.
+    nodes_after = nodes_before
+    edges_after = edges_before
+    edge_made = False
+    drag_error = ""
+    if console_errors or page_errors or nodes_before == 0 or node_els_before == 0:
+        drag_error = "skipped -- graph already empty or console/page errors present at load"
+    else:
+        try:
+            page.click('[data-add-kind="DataSource"]', timeout=3000)
+            page.click('[data-add-kind="Selection"]', timeout=3000)
+            src = page.locator('.node[data-node-id="n6"] .port--out').bounding_box(timeout=3000)
+            dst = page.locator('.node[data-node-id="n7"] .port--in').bounding_box(timeout=3000)
+            page.mouse.move(src["x"] + src["width"] / 2, src["y"] + src["height"] / 2)
+            page.mouse.down()
+            page.mouse.move(dst["x"] + dst["width"] / 2, dst["y"] + dst["height"] / 2, steps=12)
+            page.mouse.up()
+            ui_after = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
+            nodes_after = len(ui_after.get("nodes", []))
+            edges_after = len(ui_after.get("edges", []))
+            edge_made = ["n6", "n7"] in ui_after["edges"]
+        except Exception as exc:  # noqa: BLE001 -- deliberately broad: any
+            # failure here (timeout, missing element, detached frame) means
+            # the drag could not be performed, which is itself the failure
+            # this section reports, not a reason to crash the whole suite.
+            drag_error = f"drag failed: {exc}"
+
+    browser.close()
+
+    ok = (
+        len(console_errors) == 0
+        and len(page_errors) == 0
+        and nodes_before > 0
+        and node_els_before > 0
+        and node_els_before == nodes_before
+        and not drag_error
+        and nodes_after == nodes_before + 2
+        and edges_after == edges_before + 1
+        and edge_made
+    )
+    line(
+        f"nodes: {nodes_before} at load ({node_els_before} .node elements) -> {nodes_after} after "
+        f"adding 2; edges: {edges_before} at load -> {edges_after} after one real drag "
+        "(n6 -> n7); 0 console errors, 0 page errors, Chromium launched with no args",
+        ok,
+        f"console_errors={console_errors}, page_errors={page_errors}, edge n6->n7 made={edge_made}"
+        + (f", {drag_error}" if drag_error else ""),
+    )
     return ok
 
 
@@ -4808,6 +4917,7 @@ def main() -> None:
             all_results.append(("bench-network-and-errors", check_bench_network_and_errors(pw)))
             all_results.append(("bench-git-diff-clean", check_git_diff()))
             all_results.append(("bench-no-exhaustive-prose", check_bench_no_exhaustive_prose()))
+            all_results.append(("bench-unflagged-file-url", check_bench_unflagged_file_url(pw)))
 
     section("Summary")
     for name, ok in all_results:

@@ -327,20 +327,38 @@ button:focus-visible {
   100% { box-shadow: 0 1px 0 var(--node-shadow); }
 }
 
-/* ---- palette ------------------------------------------------------------------ */
+/* ---- palette ------------------------------------------------------------------
+ * `.palette` is the `<ul>` itself (D-005 cycle-2 rework, C7 -- a list of
+ * controls is a list, not a <div> of siblings); `.node-palette` is the
+ * purely presentational row wrapper holding the label ahead of it. Every
+ * `.palette` child is an `<li>`; a plain button `<li>` is unboxed with
+ * `display: contents` so the button is the real flex item and the list
+ * keeps its original row-of-chips look, while `.palette__locked`'s own
+ * `<li>` keeps its box so its border/background still paint. */
+.node-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
 .palette {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
-  margin-bottom: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.palette > li:not(.palette__locked) {
+  display: contents;
 }
 .palette__label {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-70);
-  margin-right: var(--space-1);
 }
 .palette__add {
   border: 1px solid var(--paper-line);
@@ -372,6 +390,9 @@ button:focus-visible {
 .palette__add:hover { border-color: var(--graphite-blue); }
 
 .palette__locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px dashed var(--locked-border);
   background: var(--locked-fill);
   color: var(--ink);
