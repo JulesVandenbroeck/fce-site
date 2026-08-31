@@ -20,15 +20,14 @@ IDs are `D-nnn`, allocated in order and never reused.
   read-only here; build against them. Note `--node-data` is `#966746`, **not** D-004's `#8d5548`
   — anything harvested from the D-004 era is stale.
 - **Branch / PR:** `task/d-005-bench` — **#16**, dispatched 2026-08-31, worktree isolation.
-- **Status:** **cycle 2 in review.** §5.1 gate re-run in `~/fce-gate-d005` at `bbd3eee`:
-  flag grep `grep-exit=1`, flake8 0, `verify.py --all` → **46 sections / 149 assertion lines /
-  0 FAIL** — the coder's numbers reproduce exactly, and the cycle-1 body's wrong 46/192 is
-  corrected. PR body carries C1–C7 verbatim, `Total checks: 7`. Cycle 1: **1R / 0M / 3m**, `scope=pass`,
-  `verdict=rework` — https://github.com/JulesVandenbroeck/fce-site/pull/16#issuecomment-5480025840.
-  C1–C5 all met. R1: `bench.html` is empty in an unflagged `file://` browser and
-  `--allow-file-access-from-files` hid it, so all 16 bench sections measured an unreachable page
-  state. Diagnosed a **cycle**, §5.4 clause 3. → **C6** (flag-free launch) + **C7** (m3, palette
-  list semantics). **checks=7.** m2 = PR-body number correction. m1 backlogged, not fixed.
+- **Status:** **cycle 3 dispatched — the §5.7 limit. If it does not converge, stop and escalate.**
+  c1 **1R/0M/3m**; c2 **0R/1M/5m** —
+  https://github.com/JulesVandenbroeck/fce-site/pull/16#issuecomment-5483184132. R1 **fixed**,
+  confirmed two ways. §5.1 gate at `bbd3eee`: **46 sections / 149 assertions / 0 FAIL**, flake8 0,
+  `pytest tests/` 413 — reproduced. **M1 is fix-induced by c2's own fix** (§5.5): the inline
+  module left `bench.js` an unasserted second copy. → **C8** single source, **C9** (m5) the C1
+  shape assertion passes on an empty graph, **C10** (m6) a broken page aborts as an uncaught
+  `TimeoutError`. **checks=10.** A **cycle**, §5.4 clause 3. m7/m8 body corrections; m4 → D-006.
 - **History:** [`archive/design.md`](archive/design.md)
 
 ## Ready

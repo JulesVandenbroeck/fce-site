@@ -496,3 +496,12 @@ and are historical now that #6 is merged.
 - **D-006 (Board) inherits the unflagged-`file://` constraint** — it must render with the page
   opened directly in a browser launched with no arguments. Not a backlog item so much as a
   criterion D-006's dispatch must carry; recorded here so it is not lost if D-006 is re-planned.
+- **No harness-level guard on the launch-flag ban** — `verify.py` now launches every browser with
+  no `args`, but nothing asserts it stays that way; a future edit re-adding
+  `--allow-file-access-from-files` would restore D-005's R1 silently. A source-scan assertion over
+  `verify.py`'s own text would make the ban self-enforcing. **D-006's dispatch must carry this as
+  a criterion.** (D-005 c2 m4 — backlogged, not fixed.)
+- **PR #16 body claims that do not reproduce** — "renders identically" across widths (the palette
+  goes 2 rows → 1 between 768 and 1024/1440) and a `data-node-id=` count of 7 against a measured
+  16. Corrected in cycle 3's body; noted here because both are the same decoration-instead-of-
+  measurement habit that produced c1's 46/192. (D-005 c2 m7, m8.)
