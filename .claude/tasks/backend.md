@@ -9,8 +9,33 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_ — M2 is complete. Wave 6 (B-008, B-013, B-014) is released by the
-B-012 merge; see the sequencing block below.
+All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
+`scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
+
+### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
+- **Branch / PR:** `task/b-008-path-filter-safe-eval` — PR not yet opened
+- **Status:** cycle 1 in flight. **checks=5.** C1 no `eval`/`compile` in `engine/`; C2 vectorised
+  vs per-event golden values; C3 `UnsafeExpression` not swallowed; C4 escape refused before any
+  event is read; C5 the docstring line-number test stays green.
+- **Enumerated:** 7 `eval(` at 335/377/456/515/718/730/748, 1 `compile(` at 481, file is 761
+  lines. Self-guarded by `tests/test_path_filter.py:230`, which is why they had not drifted.
+- **Regression net:** B-012's golden file. A routing change that moves any bin fails parity.
+
+### B-013 — Close B-006's two open findings
+- **Branch / PR:** `task/b-013-safe-eval-findings` — PR not yet opened
+- **Status:** cycle 1 in flight. **checks=4.** C1 length cap isolated from the node cap in both
+  directions; C2 the "unforgeable token" claim dropped; C3 the bypass tests stop blessing the
+  weakness; C4 `_ASSERT_STRIPPING_ENV_VARS` says what breaks without it.
+- **Enumerated:** `MAX_EXPR_LENGTH=500`, `MAX_AST_NODES=200`, 118 cases. Today's C1 payload trips
+  both caps, so raising `MAX_EXPR_LENGTH` alone leaves it green — that is the finding.
+
+### B-014 — Close B-004's two open findings
+- **Branch / PR:** `task/b-014-api-contract-findings` — PR not yet opened
+- **Status:** cycle 1 in flight. **checks=4.** C1 presence + nullability mutations, parametrised
+  1:1 with the schema tuples; C2 `docs/api.md` Type/Nullable row parity (**overrulable in
+  writing**); C3 `systUp` keys ⊆ `systSources`, per sample; C4 the two ternary statements.
+- **Enumerated:** 18 test functions / 134 cases / 13 `^##` headings. The entry's old "329 passed"
+  suite floor was **stale** — it is **413**.
 
 ## Ready
 
