@@ -174,7 +174,7 @@
         freely-dragged position needs some way to place an element outside a fixed set of CSS
         classes; Bench answers that with SVG geometry rather than CSS — each node is a
         <code>&lt;foreignObject&gt;</code> whose <code>x</code>/<code>y</code> are plain
-        attributes bench.js sets directly, never a <code>style</code> property. The HTML content
+        attributes this page's own script sets directly, never a <code>style</code> property. The HTML content
         painted inside that foreignObject (the node card, its ports) is styled by class exactly
         like anything else on the page.</li>
       <li><strong>The trade this style makes, on purpose.</strong> Bench gives up the guarantee
@@ -196,9 +196,9 @@
   </section>
 
 </main>
-<!-- Inlined, not fetched by src=: a plain, unflagged Chromium refuses to load a file:// <script type="module" src=...> as a cross-origin fetch (CORS on the module loader specifically), so this page would be empty for any student who opens it without a server. The script stays type="module" (module scope, no leaked globals) -- its source is otherwise unchanged and lives, for reading and editing, in bench.js. -->
+<!-- Inlined, not fetched by src=: a plain, unflagged Chromium refuses to load a file:// <script type="module" src=...> as a cross-origin fetch (CORS on the module loader specifically), so this page would be empty for any student who opens it without a server. The script stays type="module" (module scope, no leaked globals). This inline block is the only copy of this script -- there is no separate JS file; edit it here. -->
 <script type="module">
-/* bench.js — D-005 exploration: style B, "Bench".
+/* D-005 exploration: style B, "Bench".
  *
  * Not part of the shipping app. Demonstrates the second of the three
  * persistence/interaction models the user asked to compare (Beamline,

@@ -6,7 +6,7 @@
  * Positioning is the one thing this file does differently from beamline.css:
  * a node's location on the canvas is never expressed in CSS at all. Each
  * node is an SVG <foreignObject> whose x/y/width/height are set as plain
- * geometry attributes by bench.js — not CSS, not `style=`. What this file
+ * geometry attributes set by bench.html's own inline script — not CSS, not `style=`. What this file
  * styles is the HTML content painted *inside* that foreignObject (the node
  * card, its ports, its handle) by class, exactly the way it would style any
  * other element on the page.

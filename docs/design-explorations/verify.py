@@ -368,9 +368,10 @@ def load_bench_page(
     around a `file://` module-script CORS error, but that flag is not
     available to a student who opens this page directly — no launcher, no
     command line, just a double-click. Cycle 2 removed every such flag from
-    this file and instead inlines bench.js's own source directly into
-    bench.html's `<script type="module">` tag, so the browser never performs
-    a same-origin check on a second file to begin with. `load_bench_page`
+    this file and put the page's script directly inside `bench.html`'s own
+    `<script type="module">` tag -- the only copy of it, cycle 3's C8 --
+    so the browser never performs a same-origin check on a second file to
+    begin with. `load_bench_page`
     launches Chromium with no launch arguments at all, the same as
     `check_bench_unflagged_file_url` below, so every section here measures
     the same page state a real, unflagged browser reaches."""
@@ -3871,6 +3872,7 @@ def check_bench_persistence(pw: Playwright) -> bool:
         shape_ok = (
             isinstance(nodes, list)
             and isinstance(edges, list)
+            and len(nodes) > 0
             and all(
                 isinstance(n, dict) and set(n.keys()) == {"id", "x", "y"}
                 and isinstance(n["id"], str)
@@ -3884,11 +3886,18 @@ def check_bench_persistence(pw: Playwright) -> bool:
         )
     except (json.JSONDecodeError, TypeError, AttributeError):
         nodes, edges, shape_ok = None, None, False
+    # A container can have the right shape and still be empty -- {"nodes":
+    # [], "edges": []} satisfies every clause above except this one, and an
+    # empty graph is exactly the page state cycle 1's R1 shipped, so the
+    # count itself is asserted, not only the shape of what it contains.
+    node_count = len(nodes) if isinstance(nodes, list) else 0
+    edge_count = len(edges) if isinstance(edges, list) else 0
+    empty_note = " -- empty node list" if isinstance(nodes, list) and node_count == 0 else ""
     line(
         "data-ui attribute on #graph parses as {nodes: [{id, x, y}], edges: [[from, to]]}, "
-        "with no other key on a node (nothing the engine needs, per design-brief.md §4)",
+        "non-empty, with no other key on a node (nothing the engine needs, per design-brief.md §4)",
         shape_ok,
-        f"raw attribute: {raw!r}",
+        f"{node_count} node(s) / {edge_count} edge(s){empty_note} -- raw attribute: {raw!r}",
     )
     if shape_ok:
         print(f"       {len(nodes)} node(s): {nodes}")
@@ -4705,9 +4714,10 @@ def check_bench_network_and_errors(pw: Playwright) -> bool:
     driven through the add-node/connect/run interactions, not just a bare
     load. `load_bench_page` (see its own docstring) launches Chromium with
     no launch arguments, so this is also where a regression back to a
-    `file://` module-script CORS error would show up first: if bench.js's
-    source were ever moved back out to an external `src=` fetch, every
-    width would fail here on that console error, not on anything this
+    `file://` module-script CORS error would show up first: if this page's
+    script were ever moved back out to an external `src=` fetch (as its own
+    file, rather than staying the one inline copy this task's C8 requires),
+    every width would fail here on that console error, not on anything this
     task's own code emits."""
     section("Bench -- non-local requests + console/page errors")
     all_ok = True
@@ -4737,9 +4747,14 @@ def check_bench_network_and_errors(pw: Playwright) -> bool:
 
 def check_bench_no_exhaustive_prose() -> bool:
     """Same lint as `check_no_exhaustive_prose` (reusing the shared
-    `EXHAUSTIVE_CLAIM_PATTERNS` denylist), run over this task's own files."""
+    `EXHAUSTIVE_CLAIM_PATTERNS` denylist), run over this task's own files.
+    Cycle 3's C8 deleted the second, unloaded copy of this page's script --
+    its inline `<script type="module">` in `bench.html` was, and remains,
+    the only copy actually running -- so this scans 2 files, not the 3
+    cycle 1/2 scanned; the denominator below is meant to shrink here, on
+    purpose, and says so rather than shrinking silently."""
     section("Bench prose/comment lint -- no exhaustive claims about this directory's own rendering")
-    files = [HERE / "bench.html", HERE / "bench.css", HERE / "bench.js"]
+    files = [HERE / "bench.html", HERE / "bench.css"]
     hits: list[tuple[str, str]] = []
     for f in files:
         text = f.read_text()
@@ -4748,7 +4763,12 @@ def check_bench_no_exhaustive_prose() -> bool:
                 start = max(0, m.start() - 40)
                 hits.append((f.name, text[start:m.end() + 10].replace("\n", " ")))
     ok = len(hits) == 0
-    line(f"{len(files)} files scanned for exhaustive-claim phrasing", ok, f"{len(hits)} matches")
+    line(
+        f"{len(files)} files scanned for exhaustive-claim phrasing "
+        "(2, not 3: the second, unloaded script copy was deleted in cycle 3's C8)",
+        ok,
+        f"{len(hits)} matches",
+    )
     for fname, ctx in hits:
         print(f"       {fname}: ...{ctx}...")
     return ok
@@ -4782,7 +4802,7 @@ def check_bench_unflagged_file_url(pw: Playwright) -> bool:
 
     # A blocked module load (e.g. an external `<script type="module"
     # src=...>` reintroduced on a `file://` page with no launch flags)
-    # leaves the graph empty and bench.js's own listeners never attach, so
+    # leaves the graph empty and the page's own listeners never attach, so
     # a bare `.bounding_box()` on a port that will never exist hangs for a
     # full Playwright timeout rather than failing fast. Short-circuit on
     # the diagnosis this section exists to make instead of letting that
@@ -4838,6 +4858,24 @@ def check_bench_unflagged_file_url(pw: Playwright) -> bool:
 
 
 # ---------------------------------------------------------------------
+def run_section(name: str, fn, *args) -> bool:
+    """Call one registered check function and catch any exception it raises
+    at this section boundary, rather than letting it abort the whole suite.
+    On a badly broken page (e.g. the module script never loading), a check
+    that assumes a populated graph can hang out a Playwright `TimeoutError`
+    on a selector that never appears, or throw `StopIteration` walking an
+    empty node list -- and an uncaught exception here kills `main()` before
+    later sections, including `bench-unflagged-file-url` (the section built
+    to diagnose exactly that state), ever run. Reported as a normal
+    `[FAIL]` line naming the section and the exception, the same shape every
+    other failure in this file already takes."""
+    try:
+        return bool(fn(*args))
+    except Exception as exc:
+        line(f"{name} (raised during the section, did not return)", False, f"{type(exc).__name__}: {exc}")
+        return False
+
+
 def main() -> None:
     """Run the anatomy checks (always) plus the full sweep (`--all`, the
     default) or just anatomy (`--plot`), print a summary table, and exit
@@ -4894,30 +4932,86 @@ def main() -> None:
             all_results.append(("beamline-no-exhaustive-prose", check_beamline_no_exhaustive_prose()))
 
         if args.all or args.bench:
-            all_results.append(("bench-persistence", check_bench_persistence(pw)))
-            all_results.append(("bench-connection-gestures", check_bench_connection_gestures(pw)))
-            all_results.append(("bench-pairs", check_bench_pairs(pw)))
-            all_results.append(("bench-inventory", check_bench_inventory(pw)))
-            all_results.append(("bench-paint-sweep", check_bench_paint_sweep(pw)))
-            all_results.append(("bench-contrast", check_bench_contrast(pw)))
+            # Every call below goes through run_section (see its own
+            # docstring): on a badly broken page several of these raise
+            # (TimeoutError, StopIteration) rather than returning False, and
+            # an uncaught exception here would abort the run before
+            # bench-unflagged-file-url -- registered last, and the section
+            # built to name exactly that diagnosis -- ever executes.
+            all_results.append(("bench-persistence", run_section("bench-persistence", check_bench_persistence, pw)))
+            all_results.append(
+                (
+                    "bench-connection-gestures",
+                    run_section("bench-connection-gestures", check_bench_connection_gestures, pw),
+                )
+            )
+            all_results.append(("bench-pairs", run_section("bench-pairs", check_bench_pairs, pw)))
+            all_results.append(("bench-inventory", run_section("bench-inventory", check_bench_inventory, pw)))
+            all_results.append(("bench-paint-sweep", run_section("bench-paint-sweep", check_bench_paint_sweep, pw)))
+            all_results.append(("bench-contrast", run_section("bench-contrast", check_bench_contrast, pw)))
             # D-008's six palette floors are tokens.css-only facts (read-only
             # to this task) -- re-run, not re-implemented, so "assert that
             # they still do" (this task's own dispatch) means what it says
             # rather than adding a second copy of the CVD/CAM02-UCS
             # arithmetic these three functions already carry.
-            all_results.append(("bench-palette-floors-pairwise-luminance", check_beamline_pairwise_luminance(pw)))
-            all_results.append(("bench-palette-floors-clamping-bound", check_cam02ucs_clamping_bound()))
             all_results.append(
-                ("bench-palette-floors-node-fill-normal-vision", check_beamline_node_fill_normal_vision(pw))
+                (
+                    "bench-palette-floors-pairwise-luminance",
+                    run_section(
+                        "bench-palette-floors-pairwise-luminance", check_beamline_pairwise_luminance, pw
+                    ),
+                )
             )
-            all_results.append(("bench-picker-matches-tokens", check_bench_picker_matches_tokens(pw)))
-            all_results.append(("bench-focus-walk", check_bench_focus_walk(pw)))
-            all_results.append(("bench-keyboard-graph-construction", check_bench_keyboard_graph_construction(pw)))
-            all_results.append(("bench-reduced-motion", check_bench_reduced_motion(pw)))
-            all_results.append(("bench-network-and-errors", check_bench_network_and_errors(pw)))
-            all_results.append(("bench-git-diff-clean", check_git_diff()))
-            all_results.append(("bench-no-exhaustive-prose", check_bench_no_exhaustive_prose()))
-            all_results.append(("bench-unflagged-file-url", check_bench_unflagged_file_url(pw)))
+            all_results.append(
+                (
+                    "bench-palette-floors-clamping-bound",
+                    run_section("bench-palette-floors-clamping-bound", check_cam02ucs_clamping_bound),
+                )
+            )
+            all_results.append(
+                (
+                    "bench-palette-floors-node-fill-normal-vision",
+                    run_section(
+                        "bench-palette-floors-node-fill-normal-vision",
+                        check_beamline_node_fill_normal_vision,
+                        pw,
+                    ),
+                )
+            )
+            all_results.append(
+                (
+                    "bench-picker-matches-tokens",
+                    run_section("bench-picker-matches-tokens", check_bench_picker_matches_tokens, pw),
+                )
+            )
+            all_results.append(("bench-focus-walk", run_section("bench-focus-walk", check_bench_focus_walk, pw)))
+            all_results.append(
+                (
+                    "bench-keyboard-graph-construction",
+                    run_section(
+                        "bench-keyboard-graph-construction", check_bench_keyboard_graph_construction, pw
+                    ),
+                )
+            )
+            all_results.append(
+                ("bench-reduced-motion", run_section("bench-reduced-motion", check_bench_reduced_motion, pw))
+            )
+            all_results.append(
+                (
+                    "bench-network-and-errors",
+                    run_section("bench-network-and-errors", check_bench_network_and_errors, pw),
+                )
+            )
+            all_results.append(("bench-git-diff-clean", run_section("bench-git-diff-clean", check_git_diff)))
+            all_results.append(
+                ("bench-no-exhaustive-prose", run_section("bench-no-exhaustive-prose", check_bench_no_exhaustive_prose))
+            )
+            all_results.append(
+                (
+                    "bench-unflagged-file-url",
+                    run_section("bench-unflagged-file-url", check_bench_unflagged_file_url, pw),
+                )
+            )
 
     section("Summary")
     for name, ok in all_results:
