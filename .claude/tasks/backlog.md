@@ -477,3 +477,22 @@ and are historical now that #6 is merged.
   double-counts each subdirectory inode (4096 B): the entry's `lstat` size is added, then again as
   the recursed path's own size. Errs upward, so C10's assertion stays sound; the printed 24.6 MB
   is a slight overstatement.
+
+## Design explorations — D-005 (Bench)
+
+- **`check_git_diff` diffs the local `main` ref, not `origin/main`** — `docs/design-explorations/verify.py:1868`,
+  re-registered by D-005 at `:4809`. Fails in any checkout where `main` is behind `origin/main`,
+  which is every fresh review worktree. Cost a full re-verification on D-005 cycle 1 and made the
+  PR's headline verification non-reproducible. Fix: resolve the base as `origin/main...HEAD`.
+  Inherited from D-003; two registered copies now. (D-005 c1 m1 — backlogged, not fixed.)
+- **Reconcile the recorded `verify.py` floor with measurement** — `design.md` carried "31 sections /
+  48 assertions" from D-008; the D-005 reviewer measured **29** registered sections on `origin/main`.
+  One of the two is wrong and the floor is a `Required` gate, so it has to be settled by a command
+  rather than by inheritance. (D-005 c1 m2, the half not fixed in cycle 2.)
+- **Decide the canvas model at the D-007 checkpoint** — Bench clamps node position to a fixed
+  980×460 viewBox; a resizable/zoomable canvas was judged out of scope for a non-shipping
+  exploration. Worth an explicit decision rather than an inherited default. (D-005 coder's own
+  backlog candidate.)
+- **D-006 (Board) inherits the unflagged-`file://` constraint** — it must render with the page
+  opened directly in a browser launched with no arguments. Not a backlog item so much as a
+  criterion D-006's dispatch must carry; recorded here so it is not lost if D-006 is re-planned.

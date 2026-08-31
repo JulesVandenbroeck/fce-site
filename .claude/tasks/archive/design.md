@@ -1320,3 +1320,54 @@ these when you are writing the next cycle's dispatch for one of them.
   metrics, each replacing its predecessor. This entry is the origin of the cumulative-criteria
   rule and the worked example behind §2's criterion contract.
 
+
+### D-005 cycle 1 — review post-mortem (2026-08-31)
+
+`pr=16 cycle=1 required=1 major=0 minor=3 scope=pass verdict=rework` —
+https://github.com/JulesVandenbroeck/fce-site/pull/16#issuecomment-5480025840
+
+**R1 — the exploration is invisible in the browser it claims to run in.** `bench.html:197`
+loads `bench.js` as an external `<script type="module">`. Chromium refuses that over `file://`
+(`origin 'null'`, CORS), so the page renders `nodes: 0` and an empty `data-ui`. The coder's fix
+was to launch Chromium with `--allow-file-access-from-files` in `load_bench_page`
+(`verify.py:359-396,382,4047`), which means **all 16 bench sections measured a page state no
+unflagged browser can reach**, and `bench-network-and-errors`' "0 console errors" floor was
+satisfied by the flag that suppressed the error. Reproduced independently in
+`google-chrome --headless=new` with no flags.
+
+The fix is cheap and the coder had already established why: `bench.js` has **no `import`
+statements**, so the module/`file://` conflict is not forced. Inline the module in the document,
+or ship a classic script in an IIFE. Either removes the flag from `verify.py` entirely.
+
+**Diagnosis — a cycle, §5.4 clause 3.** Clause 1 does not apply (cycle 1, nothing dropped).
+Clause 2 does not apply: C1–C5 all shipped with commands and all were **met**. R1 is against a
+property no criterion gated — but shared `CLAUDE.md` §3 ("no build step; the app must work on a
+classroom network with no internet") and the task's own no-server/no-flags gate did, and the
+coder held neither. Same shape as B-006's unbounded `ast.Pow`.
+
+**What I should have written at decomposition time.** D-004's Beamline uses a classic script and
+never hit this, so "opens as a plain local page" had never needed stating. It does now, and D-006
+inherits it: **the exploration must render with the page opened directly, in a browser launched
+with no arguments** — and the check has to be a section that launches with no `args` at all, not
+a prose note.
+
+**The three minors, named individually** (D-004 c2's lesson — the unnamed ones are lost):
+- **m1** — `check_git_diff` (`verify.py:1868`, re-registered at `:4809`) diffs against the
+  *local* `main` ref, so it fails in any checkout where `main` is behind `origin/main`. Cost a
+  full re-verification in the review worktree and made the PR headline non-reproducible.
+  Inherited from D-003. **Backlogged, not fixed** — a falsifiable check for it needs a stale-`main`
+  fixture that cannot be built without moving `main`, which is more than a minor is worth.
+- **m2** — the PR body's "46 sections / 192 assertions, up from 31/48" does not reproduce:
+  measured **45 / 147**, with **29** registered on `origin/main`. No floor breached; the
+  arithmetic counted the summary table. **Folded into cycle 2** as a body correction, not a
+  criterion. It also invalidates the recorded 31/48 floor — see `design.md` "Floors in force".
+- **m3** — `bench.html:61-74`: `.palette` is a `<div>` holding nine sibling controls where
+  `<ul>`/`<li>` fits, and `.palette__locked` is a `<div>` inside it. Bench avoided D-004's
+  `role="tablist"` and per-item-tab-stop traps but kept the `<div>`-where-a-list-exists one.
+  **Folded into cycle 2 as C7**, because it is one of the two markup patterns D-003 explicitly
+  handed forward as "do not copy".
+
+**Not in dispute, and worth keeping:** the reviewer reproduced C1–C5 independently, mutation-tested
+two of the coder's own assertions, confirmed `--node-data` renders `#966746` (not D-004's stale
+`#8d5548`), reproduced all six D-008 palette floors exactly, and confirmed the section registry
+grew 29 → 45 with **nothing removed, renamed away or softened** across the 84 deleted lines.

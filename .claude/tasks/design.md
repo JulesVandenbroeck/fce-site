@@ -19,9 +19,14 @@ IDs are `D-nnn`, allocated in order and never reused.
   merged `2d0de23` on a clean gate. `tokens.css`'s eight `--node-*` fills are now final and
   read-only here; build against them. Note `--node-data` is `#966746`, **not** D-004's `#8d5548`
   — anything harvested from the D-004 era is stale.
-- **Branch / PR:** `task/d-005-bench` — dispatched 2026-08-31, worktree isolation. PR not yet opened.
-- **Status:** cycle 1 in flight with `design-coder`.
-
+- **Branch / PR:** `task/d-005-bench` — **#16**, dispatched 2026-08-31, worktree isolation.
+- **Status:** **cycle 2 dispatched 2026-08-31.** Cycle 1: **1R / 0M / 3m**, `scope=pass`,
+  `verdict=rework` — https://github.com/JulesVandenbroeck/fce-site/pull/16#issuecomment-5480025840.
+  C1–C5 all met. R1: `bench.html` is empty in an unflagged `file://` browser and
+  `--allow-file-access-from-files` hid it, so all 16 bench sections measured an unreachable page
+  state. Diagnosed a **cycle**, §5.4 clause 3. → **C6** (flag-free launch) + **C7** (m3, palette
+  list semantics). **checks=7.** m2 = PR-body number correction. m1 backlogged, not fixed.
+- **History:** [`archive/design.md`](archive/design.md)
 
 ## Ready
 
@@ -110,4 +115,7 @@ design criterion, the archive is where that pattern is documented.
 - D-008's six simultaneous palette floors: min CVD ΔE **5.129** (≥4.0), normal-vision node-node
   **14.170** (≥14.0), node-vs-reserved **13.442** (≥4.0), white-on-fill **4.595:1** (≥4.5),
   fill-vs-reserved hue gap **14.1°** (≥12.0°), clamping excess **+0.0051** (≤0.01).
-- `verify.py`: **31** sections / **48** assertions. A fall in either count is `Required`.
+- `verify.py` on `task/d-005-bench`, measured by the reviewer 2026-08-31: **45** registered
+  sections / **147** assertion lines, of which **121** are non-bench. A fall in any is `Required`.
+  The historical "31 / 48" figure is D-008's own claim and does **not** reproduce — `origin/main`
+  registers **29** sections. Use the measured numbers; reconciling the D-008 claim is backlogged.

@@ -9,49 +9,37 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-012 — The parity proof — **M2 checkpoint**
-- **Scope:** `scripts/render_reference.py`, `tests/fixtures/golden/zpeak-dilepton.json`,
-  `tests/test_engine_parity.py`. `src/fce_web/` is out of scope deliberately — a parity proof
-  whose author adjusted the implementation until it matched proves nothing.
-- **Accept:** C1 bin-for-bin parity within a stated, justified tolerance, nominal **and** every
-  per-source `h_{src}_up`; C2 perturbing one bin fails *naming that bin*, sub-tolerance still
-  passes; C3 skips with a named reason when datasets or the reference checkout are absent;
-  C4 the content-addressed cache cannot cross the two runs, mutation-gated; C5 `"ui" not in
-  sys.modules`; C6 `pytest tests/` green, floor **413**, flake8 0 across `src/ tests/ scripts/`;
-  C7 `reference_render`'s own fresh output diffed against the committed golden; C8 the
-  cache-crossing probe does not overwrite `reference_render`'s output dir; C9 the variation-key
-  coverage guard asserts per-sample; C10 the cache-crossing probe's `copytree` does not
-  dereference the dataset symlink, footprint-bounded and mutation-gated. **checks=10.**
-- **Depends on:** B-011 (merged `82ef336`). Last task before the M2 checkpoint.
-- **Branch / PR:** `task/b-012-parity-proof` — #15
-- **Status:** **APPROVED cycle 3 — awaiting the merge command.** Cycle 1: **3R / 2M / 4m** —
-  https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381713608 — diagnosed a
-  **cycle**; four minors backlogged. Cycle 2 recovered 177 uncommitted lines from an interrupted
-  attempt (patch: `handoff/b-012-cycle2-interrupted.patch`). §5.1 gate re-run in `~/fce-gate-b012`
-  at `5a2a91a`: **411 passed, flake8 0** — reproduced. Suite floor 406 → **411**.
-  Cycle 2: **1R / 1M / 1m** — https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5381993475.
-  R1/R2/M1/M2 fixed; R3 (no `Check:`/`Expect:` in the PR body) carried — my defect, fixed in the
-  cycle-3 dispatch, which supplies all ten verbatim. **M3 is fix-induced by M1's own fix**
-  (§5.5): `copytree(symlinks=False)` dereferences the dataset symlink, 376.3 MB per suite run
-  → C10. Diagnosed a **cycle** under §5.4 clause 3 — M3 was gated by no prior criterion.
-  m5 backlogged. Cycle 3: **0R / 0M / 1m**, `scope=pass`, `verdict=approve` —
-  https://github.com/JulesVandenbroeck/fce-site/pull/15#issuecomment-5382168276. R3 and M3 fixed,
-  R1/R2/M1/M2 not regressed, m5 fixed free, m6 backlogged. §5.1 gate at `57939b5`: **413 passed,
-  flake8 0**, `src/ content/ pyproject.toml` byte-identical to `main`. Converged **on** the §5.7
-  limit, not past it. `gh pr merge 15 --merge` was blocked by the sandbox classifier — the user
-  runs it, then this entry moves to `## Done` and the M2 checkpoint is reported.
-  Checkpoint task: stop and report to the user when it merges.
-- **History:** [`archive/backend.md`](archive/backend.md) — method ruling and rejected
-  alternatives, the headless-feasibility evidence, the observed import transcript, and why C4
-  exists (circular-proof hazard). Read it before writing the next cycle's dispatch.
+_none_ — M2 is complete. Wave 6 (B-008, B-013, B-014) is released by the
+B-012 merge; see the sequencing block below.
 
 ## Ready
 
 
-**Both entries below are DEFERRED behind the M2 checkpoint by the user's ruling 2026-08-22.**
-Neither blocks B-012, and nothing on the B-007 → B-009 → B-011 → B-012 chain touches
-`safe_eval.py` or `tests/test_api_contract.py`, so the open findings cannot rot further while
-they wait. Do not dispatch either until B-012 has merged. See the sequencing block below.
+**Released 2026-08-31 by the B-012 merge (`928c1ba`).** Both are dispatchable. They share no
+files with each other and none with B-008, so all three of wave 6 may run in parallel — one
+worktree each.
+
+### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
+- **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
+- **Accept:** C1 `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` returns nothing;
+  C2 golden-value tests prove the vectorised path and the per-event fallback produce **identical
+  numbers** on the same events — new ground, the reference suite asserts nothing about what any
+  expression evaluates to; C3 an `UnsafeExpression` propagates and is **not** swallowed by the bare
+  `except Exception: pass`; C4 the escape expression fed in as a selection is refused before any
+  event is read; C5 `test_docstring_eval_compile_line_numbers_match_this_file` stays green.
+  All mutation-gated. checks=5.
+- **Navigate by OUR line numbers, never the reference's.** In `src/fce_web/engine/path_filter.py`
+  as of `6457e45`: `eval` at **335, 377, 456, 515, 718, 730, 748**, `compile` at **481**. They
+  shift the moment this task edits the file, which is what C5 exists to catch.
+- **`CompiledExpr` is not a safety certificate** — `object.__new__` and `dataclasses.replace` both
+  forge one. Route through `compile_expr`; never accept a caller's `CompiledExpr` as evidence.
+- **Depends on:** ~~B-006~~ (merged `ce4dcd6`), ~~B-007~~ (merged `d906b59`), ~~B-012~~ (merged
+  `928c1ba`). **Released 2026-08-31.** The golden file `tests/fixtures/golden/zpeak-dilepton.json`
+  and `tests/test_engine_parity.py` are now this task's regression net — a routing change that
+  alters any bin fails parity.
+- **Branch / PR:** not yet opened
+- **History:** [`archive/backend.md`](archive/backend.md) — the seven-vs-eight `eval` count settled,
+  the `ast.Pow` resolution and what is given up by it, and the superseded open question.
 
 ### B-014 — Close B-004's two open findings: falsify the presence/nullability halves, guard the doc columns
 - **Scope:** `tests/test_api_contract.py`, `docs/api.md`
@@ -86,27 +74,7 @@ they wait. Do not dispatch either until B-012 has merged. See the sequencing blo
 
 ## Blocked
 
-_The rest of M2. Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`._
-
-### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
-- **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
-- **Accept:** C1 `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` returns nothing;
-  C2 golden-value tests prove the vectorised path and the per-event fallback produce **identical
-  numbers** on the same events — new ground, the reference suite asserts nothing about what any
-  expression evaluates to; C3 an `UnsafeExpression` propagates and is **not** swallowed by the bare
-  `except Exception: pass`; C4 the escape expression fed in as a selection is refused before any
-  event is read; C5 `test_docstring_eval_compile_line_numbers_match_this_file` stays green.
-  All mutation-gated. checks=5.
-- **Navigate by OUR line numbers, never the reference's.** In `src/fce_web/engine/path_filter.py`
-  as of `6457e45`: `eval` at **335, 377, 456, 515, 718, 730, 748**, `compile` at **481**. They
-  shift the moment this task edits the file, which is what C5 exists to catch.
-- **`CompiledExpr` is not a safety certificate** — `object.__new__` and `dataclasses.replace` both
-  forge one. Route through `compile_expr`; never accept a caller's `CompiledExpr` as evidence.
-- **Depends on:** ~~B-006~~ (merged `ce4dcd6`), B-007. **Deferred behind B-012** — nothing depends
-  on B-008, and running it after the checkpoint makes the golden file its regression net.
-- **Branch / PR:** not yet opened
-- **History:** [`archive/backend.md`](archive/backend.md) — the seven-vs-eight `eval` count settled,
-  the `ast.Pow` resolution and what is given up by it, and the superseded open question.
+_none._ Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
 
 #### M2 sequencing — RE-ORDERED 2026-08-22 on the user's ruling
 ```
@@ -116,8 +84,8 @@ wave 2   B-007  vendor path_filter (decoupled)  -+ parallel     DONE, merged d90
          B-010  RunConfig + cache keys          -+              DONE, merged d017ead
 wave 3   B-009  RunContext + analytical_loop                    DONE, merged 1689b27
 wave 4   B-011  headless driver                                 DONE, merged 82ef336
-wave 5   B-012  parity proof            <- M2 CHECKPOINT     <- IN PROGRESS
-wave 6   B-008  path_filter -> safe_eval        -+ after the checkpoint
+wave 5   B-012  parity proof            <- M2 CHECKPOINT     DONE, merged 928c1ba
+wave 6   B-008  path_filter -> safe_eval        -+ RELEASED by the B-012 merge
          B-013  close B-006's open findings     -+
          B-014  close B-004's open findings     -+
 ```
@@ -133,6 +101,8 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-012** — the parity proof (**M2 checkpoint**) — #15, `928c1ba`, 3 cycles, clean gate
+  (0R/0M/1m), converged on the §5.7 limit. Suite floor → **413**. m6 backlogged.
 - **B-011** — headless driver — #14, `82ef336`, 2 cycles, clean gate. Suite → **398**.
 - **B-009** — `RunContext` replaces `RUN_STATE` — #13, `1689b27`, 2 cycles, clean gate.
 - **B-010** — `RunConfig` loader + content-addressed cache keys — #11, `d017ead`, 2 cycles, clean.
