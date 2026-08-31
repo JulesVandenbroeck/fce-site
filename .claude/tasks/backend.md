@@ -15,9 +15,13 @@ B-012 merge; see the sequencing block below.
 ## Ready
 
 
-**Released 2026-08-31 by the B-012 merge (`928c1ba`).** Both are dispatchable. They share no
-files with each other and none with B-008, so all three of wave 6 may run in parallel — one
-worktree each.
+**Released 2026-08-31 by the B-012 merge (`928c1ba`); all three dispatched in parallel
+2026-08-31, one worktree each.** They share no files. B-008 and B-013 do share a *symbol*:
+B-008 routes `path_filter.py` through `safe_eval`, and B-013 edits `safe_eval.py`. B-013's edits
+are a docstring, a test isolation assertion and a comment — no behaviour change — so the two
+cannot corrupt each other while in flight, only at the merge.
+**Merge order: B-013, then B-008, then B-014.** If B-008's branch has fallen behind by then,
+merge `main` into the branch. Never rebase.
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
 - **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
