@@ -4807,10 +4807,10 @@ def check_bench_unflagged_file_url(pw: Playwright) -> bool:
             nodes_after = len(ui_after.get("nodes", []))
             edges_after = len(ui_after.get("edges", []))
             edge_made = ["n6", "n7"] in ui_after["edges"]
-        except Exception as exc:  # noqa: BLE001 -- deliberately broad: any
-            # failure here (timeout, missing element, detached frame) means
-            # the drag could not be performed, which is itself the failure
-            # this section reports, not a reason to crash the whole suite.
+        except Exception as exc:  # deliberately broad: any failure here
+            # (timeout, missing element, detached frame) means the drag
+            # could not be performed, which is itself the failure this
+            # section reports, not a reason to crash the whole suite.
             drag_error = f"drag failed: {exc}"
 
     browser.close()
