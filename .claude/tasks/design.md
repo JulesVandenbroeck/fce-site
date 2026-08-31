@@ -20,7 +20,10 @@ IDs are `D-nnn`, allocated in order and never reused.
   read-only here; build against them. Note `--node-data` is `#966746`, **not** D-004's `#8d5548`
   — anything harvested from the D-004 era is stale.
 - **Branch / PR:** `task/d-005-bench` — **#16**, dispatched 2026-08-31, worktree isolation.
-- **Status:** **cycle 2 dispatched 2026-08-31.** Cycle 1: **1R / 0M / 3m**, `scope=pass`,
+- **Status:** **cycle 2 in review.** §5.1 gate re-run in `~/fce-gate-d005` at `bbd3eee`:
+  flag grep `grep-exit=1`, flake8 0, `verify.py --all` → **46 sections / 149 assertion lines /
+  0 FAIL** — the coder's numbers reproduce exactly, and the cycle-1 body's wrong 46/192 is
+  corrected. PR body carries C1–C7 verbatim, `Total checks: 7`. Cycle 1: **1R / 0M / 3m**, `scope=pass`,
   `verdict=rework` — https://github.com/JulesVandenbroeck/fce-site/pull/16#issuecomment-5480025840.
   C1–C5 all met. R1: `bench.html` is empty in an unflagged `file://` browser and
   `--allow-file-access-from-files` hid it, so all 16 bench sections measured an unreachable page
