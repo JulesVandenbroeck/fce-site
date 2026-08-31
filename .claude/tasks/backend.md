@@ -22,16 +22,25 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
 - **Regression net:** B-012's golden file. A routing change that moves any bin fails parity.
 
 ### B-013 — Close B-006's two open findings
-- **Branch / PR:** `task/b-013-safe-eval-findings` — PR not yet opened
-- **Status:** cycle 1 in flight. **checks=4.** C1 length cap isolated from the node cap in both
+- **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `4d5f374`
+- **Status:** cycle 1 in review. §5.1 gate in `~/fce-gate-b013`: **118** cases, **413 passed**,
+  flake8 0, `grep unforgeable` exit 1 — reproduced exactly. C3 resolved by renaming the two
+  forgery tests `..._is_a_known_limitation_not_a_guarantee`. **C4's mutation gate does not
+  distinguish** — the child script no longer uses a bare `assert`, so `PYTHONOPTIMIZE` cannot
+  make the proof vacuous. The coder reported that plainly instead of hiding it; my criterion was
+  the defective half. The reviewer decides whether the tuple is now dead code. **checks=4.** C1 length cap isolated from the node cap in both
   directions; C2 the "unforgeable token" claim dropped; C3 the bypass tests stop blessing the
   weakness; C4 `_ASSERT_STRIPPING_ENV_VARS` says what breaks without it.
 - **Enumerated:** `MAX_EXPR_LENGTH=500`, `MAX_AST_NODES=200`, 118 cases. Today's C1 payload trips
   both caps, so raising `MAX_EXPR_LENGTH` alone leaves it green — that is the finding.
 
 ### B-014 — Close B-004's two open findings
-- **Branch / PR:** `task/b-014-api-contract-findings` — PR not yet opened
-- **Status:** cycle 1 in flight. **checks=4.** C1 presence + nullability mutations, parametrised
+- **Branch / PR:** `task/b-014-api-contract-findings` — **#18**, `3e3550f`
+- **Status:** cycle 1 in review. §5.1 gate in `~/fce-gate-b014`: **286** collected (from 134),
+  **565 passed**, flake8 0, **13** `^##` headings, diff touches only `tests/test_api_contract.py`
+  — reproduced exactly. C2 **implemented, not overruled**: schema tuples extended to
+  `(type, presence, doc_type_label)`, and `docs/api.md` needed no edit because it already agreed
+  in every cell. **Suite floor becomes 565 when this merges**, not before. **checks=4.** C1 presence + nullability mutations, parametrised
   1:1 with the schema tuples; C2 `docs/api.md` Type/Nullable row parity (**overrulable in
   writing**); C3 `systUp` keys ⊆ `systSources`, per sample; C4 the two ternary statements.
 - **Enumerated:** 18 test functions / 134 cases / 13 `^##` headings. The entry's old "329 passed"
