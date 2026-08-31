@@ -102,13 +102,13 @@ fine.** A broken instrument certifies everything after it.
 - <number the PR body asserts> → reproduced / NOT reproduced (<what I got>) / could not run
 
 ### Required
-- `file:line` — <what is wrong and why it must change>
+- **R1** `file:line` — <what is wrong and why it must change>
 
 ### Suggested-major
-- `file:line` — <what and why>
+- **M1** `file:line` — <what and why>
 
 ### Suggested-minor
-- `file:line` — <what and why>
+- **m1** `file:line` — <what and why>
 
 VERDICT: pr=<n> cycle=<c> required=<n> major=<n> minor=<n> scope=pass|fail verdict=approve|rework
 ```
@@ -128,6 +128,33 @@ with its real output. `approve` and `rework` are both claims about a review you 
 Findings are **concise constructive bullets**. Each one names a location, states the
 problem, and says what would resolve it. Not paragraphs, not essays, not restating what
 the code does.
+
+**Number every finding** — `R1`, `R2`, `M1`, `m1` — allocated in order within the review and
+never reused across cycles of the same PR. The IDs are what let the next cycle say `R1 fixed,
+R2 still open` instead of describing the finding again, and what let the orchestrator's
+re-dispatch cite this review by URL rather than pasting it.
+
+**Cite, do not paste.** `file:line` and a sentence. The diff is attached to the PR you are
+reviewing and the branch is checked out in front of you; a pasted excerpt is a second copy of
+something the reader can already open, and it goes stale as soon as the coder pushes a fix. The
+one carve-out is **up to five lines**, when the finding is unintelligible without them — a
+regex, a formula, a changed signature. Five lines, not a function.
+
+### On cycle 2 and later
+
+You are given the previous review's PR-comment URL and its finding IDs. **Read it there; do not
+restate it.** Open with a resolution line per prior ID —
+
+```
+### Prior findings
+- R1 fixed — <the command that shows it>
+- R2 still open — <what is still wrong>
+- M1 overruled by the coder, accepted
+```
+
+— and then report only what is new, with new IDs. The verification run is still full: every
+criterion command, every cycle, no exceptions. It is the *re-reading* that narrows, never the
+checking.
 
 ---
 

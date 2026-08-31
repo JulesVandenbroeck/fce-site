@@ -8,7 +8,7 @@ here that a cold successor can resume from. The orchestrator collects those and 
 
 - `<task-id>-<role>-<cycle>.md` — one interrupted task. Written by the sub-agent, into the
   **primary checkout** (not a worktree, not a task branch — the orchestrator reads these from
-  `main`). Format: `.claude/shared/CLAUDE.md` §8.4.
+  `main`). Format: `.claude/shared/context-failsafe.md` §8.4.
 - `SESSION.md` — the orchestrator's index over the above, plus the first moves for the next
   session. Format and rules: `.claude/orchestrator/CLAUDE.md` §10. Deliberately under ~60
   lines; it points at state, it does not restate it.

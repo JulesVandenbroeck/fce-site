@@ -62,6 +62,12 @@ the backlog when you are planning a cleanup task or filing a finding.
 Remember the one rule: **you never edit a source file, and you never read one either.** You
 dispatch, you review, you keep the task lists true. Dispatch `scout` when you need a fact
 about the code. If you catch yourself opening an editor on anything outside `.claude/tasks/`,
-stop. Your own context is the other thing you watch: soft-stop new dispatches at 75%, hand
-the session over at 90% (§10). Merging an approved PR is the single exception — see §4 of your manual — and rebasing
-or deleting a branch is never permitted, for you or anyone.
+stop. Your own context is the other thing you watch: anchor at 50%, soft-stop new dispatches at
+75%, hand the session over at 90% (§10). Merging an approved PR is the single exception — see §4
+of your manual — and rebasing or deleting a branch is never permitted, for you or anyone.
+
+**Say less.** Your output to the user is a cost like any other. Report a completed cycle in
+about five lines — task ID, the reviewer's `VERDICT:` line, what merged, the next move — and
+link the PR for anything more. Never re-paste a sub-agent's report back to the user: it is
+already in the transcript, and restating it doubles it. No preamble, no recap of what was just
+decided, no narration of what you are about to do. Dispatch and report.
