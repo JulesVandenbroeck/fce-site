@@ -26,6 +26,7 @@ every distinct expression found in the three saved analyses
 not against whatever ``safe_eval`` itself computes.
 """
 
+import ast
 import dataclasses
 import math
 import os
@@ -37,6 +38,8 @@ import pytest
 import vector
 
 from fce_web.safe_eval import (
+    MAX_AST_NODES,
+    MAX_EXPR_LENGTH,
     SAFE_BUILTINS,
     CompiledExpr,
     UnsafeExpression,
@@ -304,8 +307,20 @@ class TestEscapesRejected:
             compile_expr("l1.pt[0:1]")
 
     def test_expression_over_length_cap_is_rejected(self):
+        # A long numeric literal: over MAX_EXPR_LENGTH in characters but only
+        # 3 AST nodes (Expression, Compare, Constant -- well, Compare's two
+        # operands add a couple more, but nowhere near MAX_AST_NODES), so
+        # this trips the length cap and only the length cap. The old payload
+        # ("l1.pt > 0" + " and l1.pt > 0" * 200) was ~2900 characters *and*
+        # several hundred AST nodes, so it would still have raised with
+        # MAX_EXPR_LENGTH disabled entirely -- it was accidentally testing
+        # the node-count cap, not the one it was named for.
+        expr = "l1.pt > " + "0" * 501
+        assert len(expr) > MAX_EXPR_LENGTH
+        node_count = len(list(ast.walk(ast.parse(expr, mode="eval"))))
+        assert node_count < MAX_AST_NODES // 2  # comfortably under, isolates the caps
         with pytest.raises(UnsafeExpression):
-            compile_expr("l1.pt > 0" + " and l1.pt > 0" * 200)
+            compile_expr(expr)
 
     def test_expression_over_node_count_cap_is_rejected(self):
         # 150 chained unary minuses: each contributes a UnaryOp node plus a
@@ -399,8 +414,25 @@ def _leaked_reference_modules() -> dict:
 _ESCAPE_PROOF_SENTINEL = "ESCAPE-PROOF-REACHED-REAL-IMPORT"
 
 #: Environment variables that change whether a bare `assert` compiles into
-#: the child's bytecode at all. Stripped explicitly rather than relying on
-#: the parent's environment not having them set -- see criterion 11.
+#: *a subprocess's* bytecode at all -- stripped from the grandchild's `env`
+#: in `_run_reference_escape_proof` (see criterion 11) so that a
+#: `PYTHONOPTIMIZE` inherited from this test process cannot silently
+#: de-assert a future version of that child script the way it de-asserted
+#: the pre-criterion-11 one, which used a bare `assert` and would then have
+#: exited 0 having checked nothing. The script that ships today does not
+#: use `assert` -- it branches explicitly on the escape result and only
+#: prints `_ESCAPE_PROOF_SENTINEL` on success -- so removing this tuple does
+#: not currently change the child's behaviour; verified by mutating the
+#: filter to a no-op and re-running `_run_reference_escape_proof` directly
+#: with `PYTHONOPTIMIZE=1` set, which still returns 0 and still prints the
+#: sentinel. This tuple is defence-in-depth against the child script
+#: regaining a bare `assert` later, not a guard this test currently
+#: exercises. It does **not** protect the assertions in *this* test module:
+#: running `pytest` itself under `PYTHONOPTIMIZE=1` strips the bare
+#: `assert`s in these test functions regardless of anything this tuple
+#: filters, because that stripping happens in this process's own bytecode
+#: compilation, before any subprocess `env` dict is ever built. Do not read
+#: a passing suite under `PYTHONOPTIMIZE=1` as evidence of anything.
 _ASSERT_STRIPPING_ENV_VARS = ("PYTHONOPTIMIZE", "PYTHONDONTWRITEBYTECODE")
 
 
@@ -637,30 +669,37 @@ class TestCompileTimeGeneral:
         with pytest.raises(UnsafeExpression):
             CompiledExpr(source="1 + 1", code=code, proof=object())
 
-    def test_dataclasses_replace_bypasses_the_guard(self):
+    def test_dataclasses_replace_is_a_known_limitation_not_a_guarantee(self):
         # B-006 re-specification, criterion 10: the class docstring used to
         # claim outright that a caller "cannot construct a CompiledExpr
         # around an unvalidated code object". dataclasses.replace() calls
         # __init__ again, but with a legitimately-earned `proof` reused
         # verbatim and only `code` substituted -- the identity check in
         # __post_init__ has nothing to catch, because `proof` really is
-        # `_PROOF`. Documents the corrected, narrower claim; not a defect
-        # to fix, per the docstring's "what this does not defend against".
+        # `_PROOF`. This test names and pins the *limitation* the corrected
+        # docstring now documents explicitly under "what this does not
+        # defend against" -- it is not a specification of desired behaviour,
+        # and a future change that started rejecting this forgery would not
+        # be a regression against this test's intent. Only a change that
+        # *silently* stopped raising here without anyone noticing would be:
+        # the test exists so that if this ever becomes fixable cheaply, the
+        # person doing it sees this comment rather than reading a green test
+        # as "this is fine, leave it".
         good = compile_expr("1 + 1")
         evil_code = compile(
             "().__class__.__bases__[0].__subclasses__()[0]", "<evil>", "eval"
         )
         forged = dataclasses.replace(good, code=evil_code)
         # The forged object exists and evaluate() runs the substituted
-        # code -- this is the narrowed claim being demonstrated, not
-        # asserted as safe.
+        # code -- this pins the limitation, it does not bless it as safe.
         assert evaluate(forged, {}) is type
 
-    def test_object_new_bypasses_the_guard(self):
+    def test_object_new_is_a_known_limitation_not_a_guarantee(self):
         # B-006 re-specification, criterion 10, second route: object.__new__
         # plus object.__setattr__ never calls __init__ at all, so
         # __post_init__ never runs. Same conclusion as the replace() case
-        # above -- documents what the docstring now says explicitly.
+        # above, and the same caveat: this pins a known limitation for
+        # visibility, it is not a specification that this must keep working.
         evil_code = compile(
             "().__class__.__bases__[0].__subclasses__()[0]", "<evil>", "eval"
         )

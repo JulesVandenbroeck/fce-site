@@ -176,15 +176,22 @@ class UnsafeExpression(Exception):
 
 
 class _ValidationProof:
-    """An unforgeable token proving an expression passed :func:`_validate`.
+    """A module-private sentinel checked by identity, not a security boundary.
+
+    It stops *accidental* construction of a :class:`CompiledExpr` by code
+    outside this module that goes through the ordinary constructor -- it is
+    not a defence against code already running in this process, which can
+    reach a working ``CompiledExpr`` anyway without ever calling ``__init__``
+    (see :class:`CompiledExpr`'s docstring for the two documented routes).
 
     A private class with no public instances: the only object of this type
     ever created is :data:`_PROOF`, held by this module alone. Passed to
     :class:`CompiledExpr` and checked by identity in its ``__post_init__``,
     so that "a ``CompiledExpr`` exists" (cycle-2 review, suggested-minor 3 /
-    cycle-3 criterion 10a) is actually true rather than merely documented --
-    a caller outside this module has no way to obtain the sentinel, so has
-    no way to construct a ``CompiledExpr`` that skipped validation.
+    cycle-3 criterion 10a) is actually true rather than merely documented for
+    the constructor path -- a caller outside this module has no way to obtain
+    the sentinel, so cannot call ``CompiledExpr(...)`` directly with an
+    unvalidated ``code`` object.
     """
 
     __slots__ = ()
