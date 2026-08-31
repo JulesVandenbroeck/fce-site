@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-005 — node graph style B: Bench (design exploration)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="bench.css" />
+</head>
+<body>
+<main class="page">
+
+  <header class="topbar">
+    <span class="topbar__brand" data-wf="brand">FCE</span>
+    <nav class="campaign-nav" data-wf="campaign-nav" aria-label="Missions">
+      <span class="chip chip--current">1 · First Light</span>
+      <span class="chip chip--locked" data-wf="mission-locked" aria-disabled="true">2 · Cleaning the Signal <span class="lock-tag">locked</span></span>
+      <span class="chip chip--locked" aria-disabled="true">3 · The Unknown <span class="lock-tag">locked</span></span>
+    </nav>
+    <span class="topbar__who" data-wf="student-id">kwark_42</span>
+  </header>
+
+  <section class="brief">
+    <h1 class="brief__title" data-wf="mission-title">M-1 · First Light</h1>
+    <p class="brief__text" data-wf="mission-brief">A Z boson lives for a moment and then falls
+      apart into two leptons. Those two leptons still carry its mass between them. Add them
+      together, take the mass, and plot it.</p>
+    <div class="objective" data-wf="objective">
+      <span class="label">Objective</span>
+      <p>Find the peak, and read its position within <strong>±2 GeV of 91.2 GeV</strong>.</p>
+    </div>
+  </section>
+
+  <section class="builder">
+    <h2 class="builder__h">Your analysis <span class="style-tag">Bench — drag to connect</span></h2>
+    <p class="builder__note">Bench is a free canvas: drag any node wherever you like — its
+      position is remembered. Drag from a filled output port to an input port on another node
+      to connect them; drop somewhere else and nothing happens. A node's own title bar is its
+      handle — grab it to move the node, or focus it and use the arrow keys.</p>
+
+    <div class="canvas-wrap" id="graph" data-wf="graph" data-ui='{"nodes":[],"edges":[]}'>
+      <svg class="canvas" id="canvas-svg" viewBox="0 0 980 460" width="980" height="460"
+           role="group" aria-label="Analysis canvas — drag nodes to arrange, drag between ports to connect">
+        <defs>
+          <pattern id="bench-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="1" class="grid-dot"></circle>
+          </pattern>
+          <marker id="bench-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead"></path>
+          </marker>
+        </defs>
+        <rect x="0" y="0" width="980" height="460" class="canvas-bg"></rect>
+        <rect x="0" y="0" width="980" height="460" fill="url(#bench-grid)"></rect>
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+      <p class="graph__status" id="graph-status" data-wf="connect-status" aria-live="polite">
+        Drag from an output port to an input port to connect two nodes.</p>
+    </div>
+
+    <div class="palette" data-wf="node-palette">
+      <span class="palette__label">Add a node</span>
+      <button class="palette__add palette__add--data" data-add-kind="DataSource" type="button">+ Data</button>
+      <button class="palette__add palette__add--multiplicity" data-add-kind="Multiplicity" type="button">+ Multiplicity</button>
+      <button class="palette__add palette__add--selection" data-add-kind="Selection" type="button">+ Selection</button>
+      <button class="palette__add palette__add--obs-global" data-add-kind="ObsGlobal" type="button">+ Obs: Global</button>
+      <button class="palette__add palette__add--obs-object" data-add-kind="ObsObject" type="button">+ Obs: Object</button>
+      <button class="palette__add palette__add--obs-vecsum" data-add-kind="ObsVectorSum" type="button">+ Obs: Vec Sum</button>
+      <button class="palette__add palette__add--obs-custom" data-add-kind="ObsCustom" type="button">+ Obs: Custom</button>
+      <button class="palette__add palette__add--histogram" data-add-kind="Histogram" type="button">+ Histogram</button>
+      <div class="palette__locked" data-wf="node-locked" aria-disabled="true">
+        <span class="lock-tag">locked</span> Node kind — opens in a later mission
+      </div>
+    </div>
+
+    <div class="run-panel" id="run-panel">
+      <button class="btn btn--go" id="run-button" data-wf="run-control" type="button">▶ Run analysis</button>
+      <div class="run-progress" data-wf="run-progress">
+        <div class="run-progress__bar"><span class="run-progress__fill"></span></div>
+        <p class="run-progress__phase">Reading events — 62% · sample 3 of 6</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="results">
+    <h2 class="results__h">Result</h2>
+    <figure class="plot-placeholder" data-wf="plot">
+      <span class="plot__ylab">events</span>
+      <div class="plot__area">
+        <div class="hist">
+          <span class="b1"></span><span class="b1"></span><span class="b1"></span>
+          <span class="b2"></span><span class="b2"></span><span class="b2"></span>
+          <span class="b3"></span><span class="b3"></span><span class="b4"></span>
+          <span class="b5"></span><span class="b6"></span><span class="b8"></span>
+          <span class="b10"></span><span class="b9"></span><span class="b5"></span>
+          <span class="b3"></span><span class="b2"></span><span class="b1"></span>
+          <span class="b1"></span><span class="b1"></span>
+        </div>
+      </div>
+      <figcaption class="plot__xlab">m(l1, l2) [GeV] &nbsp;0 · 30 · 60 · 90 · 120</figcaption>
+    </figure>
+
+    <ul class="legend" data-wf="legend">
+      <li><span class="swatch swatch--data"></span>data</li>
+      <li><span class="swatch swatch--x1"></span>Z → 2 leptons</li>
+      <li><span class="swatch swatch--x2"></span>Z → 2 quarks</li>
+      <li><span class="swatch swatch--x3"></span>Z → 2 leptons + γ</li>
+    </ul>
+
+    <div class="readout" data-wf="readout">
+      <span class="label">Peak position</span>
+      <strong class="num">90.8 GeV</strong>
+    </div>
+
+    <p class="verdict verdict--met" data-wf="verdict">Objective met — mission 2 is now open.
+      <span class="stamp" data-wf="stamp" aria-hidden="true">LOGGED</span></p>
+
+    <table class="cutflow" data-wf="cutflow">
+      <caption>Cutflow</caption>
+      <thead>
+        <tr><th scope="col">Stage</th><th scope="col">Events</th><th scope="col">Efficiency</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">All events</th><td class="num">240 000</td><td class="num">—</td></tr>
+        <tr><th scope="row">≥ 2 leptons</th><td class="num">18 420</td><td class="num">7.7%</td></tr>
+        <tr><th scope="row">pt &gt; 20 GeV</th><td class="num">12 108</td><td class="num">65.7%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="gauge" data-wf="gauge">
+      <span class="label">Significance Z</span>
+      <div class="gauge__bar">
+        <span class="gauge__tick gauge__tick--3">3σ</span>
+        <span class="gauge__tick gauge__tick--5">5σ</span>
+      </div>
+      <p class="muted">no fit in this mission</p>
+    </div>
+  </section>
+
+  <section class="log" data-wf="run-history">
+    <h2>Previous runs <span class="count">1 entry</span></h2>
+    <article class="log__entry">
+      <header>
+        <span class="log__n">run 1</span>
+        <span class="log__d">no filter — peak at 88.4 GeV, 2.8 low</span>
+      </header>
+      <p class="margin-note" data-wf="margin-note">You measured the peak a bit low. Something
+        carried energy away before you measured it — look at the left side of your plot.</p>
+    </article>
+  </section>
+
+  <section class="annotations">
+    <h2>What Bench is, and what it gives up</h2>
+    <ul>
+      <li><strong>Persists an {x, y} pair per node, plus the edge list.</strong> The canvas
+        container (<code>#graph</code>) carries one attribute, <code>data-ui</code>, holding a
+        JSON object shaped <code>{ nodes: [{id, x, y}], edges: [[from, to]] }</code> — the same
+        object design-brief.md §4 calls the run payload's own "ui object", the part the engine
+        never reads. Node kind is not in it: that stays on the node's own element
+        (<code>data-node-kind</code>), the same place Beamline puts it, because kind is analysis
+        content and position is not. <code>verify.py --bench</code> reads this attribute after a
+        real drag, not just at load, so the claim covers a moved node, not only a spawned one.</li>
+      <li><strong>Connects by dragging, not clicking.</strong> Press down on an output port,
+        move the pointer, and release over an input port on a different node. No port carries a
+        <code>click</code> listener — Bench's Enter/Space keyboard path runs through
+        <code>keydown</code> instead, specifically so a plain mouse click (which a native
+        <code>&lt;button&gt;</code> would otherwise turn into a synthetic <code>click</code>
+        event on activation) triggers no handler and therefore no connection, the mirror image
+        of how beamline.js's own comment describes a bare <code>click</code> listener making a
+        drag gesture inert there.</li>
+      <li><strong>No inline <code>style=</code> attribute, anywhere.</strong> Continuous,
+        freely-dragged position needs some way to place an element outside a fixed set of CSS
+        classes; Bench answers that with SVG geometry rather than CSS — each node is a
+        <code>&lt;foreignObject&gt;</code> whose <code>x</code>/<code>y</code> are plain
+        attributes bench.js sets directly, never a <code>style</code> property. The HTML content
+        painted inside that foreignObject (the node card, its ports) is styled by class exactly
+        like anything else on the page.</li>
+      <li><strong>The trade this style makes, on purpose.</strong> Bench gives up the guarantee
+        that a graph reads the same way twice — two students building an identical pipeline can
+        leave it looking entirely different — in exchange for spatial arrangement being a real
+        tool: grouping related nodes, spreading a wide pipeline out, matching a diagram from
+        class. Its connectors are drawn lines, not text, because a coordinate already exists to
+        anchor them — the opposite trade-off from Beamline, which drew no wire because it kept no
+        coordinate to place one against.</li>
+      <li><strong>Locked node kind.</strong> The palette's final tile is not one of the 8 addable
+        kinds — it stands for a node type a later mission unlocks, shown so a student can see it
+        is coming. It carries no port, no click handler, and no tab stop, so it cannot be reached
+        as an active control by keyboard or by mouse.</li>
+    </ul>
+    <p>Nothing on this page ships; it exists to be compared against Beamline (D-004, single
+      rail, click-to-connect) and Board (D-006, typed columns, both gestures) at the D-007
+      checkpoint. See <code>verify.py --bench</code> for what is actually measured about this
+      rendering, rather than claimed here.</p>
+  </section>
+
+</main>
+<script type="module" src="bench.js"></script>
+</body>
+</html>
