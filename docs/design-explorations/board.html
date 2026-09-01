@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-006 — node graph style C: Board (design exploration)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="board.css" />
+</head>
+<body>
+<main class="page">
+
+  <header class="topbar">
+    <span class="topbar__brand" data-wf="brand">FCE</span>
+    <nav class="campaign-nav" data-wf="campaign-nav" aria-label="Missions">
+      <span class="chip chip--current">1 · First Light</span>
+      <span class="chip chip--locked" data-wf="mission-locked" aria-disabled="true">2 · Cleaning the Signal <span class="lock-tag">locked</span></span>
+      <span class="chip chip--locked" aria-disabled="true">3 · The Unknown <span class="lock-tag">locked</span></span>
+    </nav>
+    <span class="topbar__who" data-wf="student-id">kwark_42</span>
+  </header>
+
+  <section class="brief">
+    <h1 class="brief__title" data-wf="mission-title">M-1 · First Light</h1>
+    <p class="brief__text" data-wf="mission-brief">A Z boson lives for a moment and then falls
+      apart into two leptons. Those two leptons still carry its mass between them. Add them
+      together, take the mass, and plot it.</p>
+    <div class="objective" data-wf="objective">
+      <span class="label">Objective</span>
+      <p>Find the peak, and read its position within <strong>±2 GeV of 91.2 GeV</strong>.</p>
+    </div>
+  </section>
+
+  <section class="builder">
+    <h2 class="builder__h">Your analysis <span class="style-tag">Board — typed columns, drag or click to connect</span></h2>
+    <p class="builder__note">Board lays your analysis out in five typed lanes — Data,
+      Multiplicity, Selection, Observable, Histogram — the same order a pipeline runs in. A
+      new node joins the bottom of its own lane; drag a node's title bar up or down (or focus
+      it and press the arrow keys) to reorder it within that lane. To connect two nodes, either
+      drag from an output port to an input port, or click one output port and then one input
+      port — both work here. The result figure lives inside the graph itself, as the
+      Histogram lane's own content.</p>
+
+    <div class="board-wrap" id="graph" data-wf="graph" data-ui='{"nodes":[],"edges":[]}'>
+      <div class="board" id="board">
+        <svg class="board-edges" id="edges-svg" role="presentation" aria-hidden="true">
+          <defs>
+            <marker id="board-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead"></path>
+            </marker>
+          </defs>
+          <g id="edges-layer"></g>
+        </svg>
+
+        <div class="board-column" data-column="0">
+          <h3 class="board-column__h">Data</h3>
+          <ul class="board-column__nodes" id="column-0" data-column-nodes="0"></ul>
+        </div>
+        <div class="board-column" data-column="1">
+          <h3 class="board-column__h">Multiplicity</h3>
+          <ul class="board-column__nodes" id="column-1" data-column-nodes="1"></ul>
+        </div>
+        <div class="board-column" data-column="2">
+          <h3 class="board-column__h">Selection</h3>
+          <ul class="board-column__nodes" id="column-2" data-column-nodes="2"></ul>
+        </div>
+        <div class="board-column board-column--observable" data-column="3">
+          <h3 class="board-column__h">Observable</h3>
+          <ul class="board-column__nodes" id="column-3" data-column-nodes="3"></ul>
+        </div>
+        <div class="board-column board-column--histogram" data-column="4">
+          <h3 class="board-column__h">Histogram</h3>
+          <ul class="board-column__nodes" id="column-4" data-column-nodes="4"></ul>
+        </div>
+      </div>
+      <p class="graph__status" id="graph-status" data-wf="connect-status" aria-live="polite">
+        Drag from an output port to an input port, or click one and then the other, to
+        connect two nodes.</p>
+    </div>
+
+    <div class="node-palette">
+      <span class="palette__label">Add a node</span>
+      <ul class="palette" data-wf="node-palette">
+        <li><button class="palette__add palette__add--data" data-add-kind="DataSource" type="button">+ Data</button></li>
+        <li><button class="palette__add palette__add--multiplicity" data-add-kind="Multiplicity" type="button">+ Multiplicity</button></li>
+        <li><button class="palette__add palette__add--selection" data-add-kind="Selection" type="button">+ Selection</button></li>
+        <li><button class="palette__add palette__add--obs-global" data-add-kind="ObsGlobal" type="button">+ Obs: Global</button></li>
+        <li><button class="palette__add palette__add--obs-object" data-add-kind="ObsObject" type="button">+ Obs: Object</button></li>
+        <li><button class="palette__add palette__add--obs-vecsum" data-add-kind="ObsVectorSum" type="button">+ Obs: Vec Sum</button></li>
+        <li><button class="palette__add palette__add--obs-custom" data-add-kind="ObsCustom" type="button">+ Obs: Custom</button></li>
+        <li><button class="palette__add palette__add--histogram" data-add-kind="Histogram" type="button">+ Histogram</button></li>
+        <li class="palette__locked" data-wf="node-locked" aria-disabled="true">
+          <span class="lock-tag">locked</span> Node kind — opens in a later mission
+        </li>
+      </ul>
+    </div>
+
+    <div class="run-panel" id="run-panel">
+      <button class="btn btn--go" id="run-button" data-wf="run-control" type="button">▶ Run analysis</button>
+      <div class="run-progress" data-wf="run-progress">
+        <div class="run-progress__bar"><span class="run-progress__fill"></span></div>
+        <p class="run-progress__phase">Reading events — 62% · sample 3 of 6</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="results">
+    <h2 class="results__h">Result</h2>
+    <p class="results__note">The figure itself is drawn inside the Histogram lane above, as
+      that node's own content — see <code>.plot-embed</code> there. What follows is the
+      numeric readout the figure feeds.</p>
+
+    <ul class="legend" data-wf="legend">
+      <li><span class="swatch swatch--data"></span>data</li>
+      <li><span class="swatch swatch--x1"></span>Z → 2 leptons</li>
+      <li><span class="swatch swatch--x2"></span>Z → 2 quarks</li>
+      <li><span class="swatch swatch--x3"></span>Z → 2 leptons + γ</li>
+    </ul>
+
+    <div class="readout" data-wf="readout">
+      <span class="label">Peak position</span>
+      <strong class="num">90.8 GeV</strong>
+    </div>
+
+    <p class="verdict verdict--met" data-wf="verdict">Objective met — mission 2 is now open.
+      <span class="stamp" data-wf="stamp" aria-hidden="true">LOGGED</span></p>
+
+    <table class="cutflow" data-wf="cutflow">
+      <caption>Cutflow</caption>
+      <thead>
+        <tr><th scope="col">Stage</th><th scope="col">Events</th><th scope="col">Efficiency</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">All events</th><td class="num">240 000</td><td class="num">—</td></tr>
+        <tr><th scope="row">≥ 2 leptons</th><td class="num">18 420</td><td class="num">7.7%</td></tr>
+        <tr><th scope="row">pt &gt; 20 GeV</th><td class="num">12 108</td><td class="num">65.7%</td></tr>
+      </tbody>
+    </table>
+
+    <div class="gauge" data-wf="gauge">
+      <span class="label">Significance Z</span>
+      <div class="gauge__bar">
+        <span class="gauge__tick gauge__tick--3">3σ</span>
+        <span class="gauge__tick gauge__tick--5">5σ</span>
+      </div>
+      <p class="muted">no fit in this mission</p>
+    </div>
+  </section>
+
+  <section class="log" data-wf="run-history">
+    <h2>Previous runs <span class="count">1 entry</span></h2>
+    <article class="log__entry">
+      <header>
+        <span class="log__n">run 1</span>
+        <span class="log__d">no filter — peak at 88.4 GeV, 2.8 low</span>
+      </header>
+      <p class="margin-note" data-wf="margin-note">You measured the peak a bit low. Something
+        carried energy away before you measured it — look at the left side of your plot.</p>
+    </article>
+  </section>
+
+  <section class="annotations">
+    <h2>What Board is, and what it gives up</h2>
+    <ul>
+      <li><strong>Persists {column, slotIndex} per node, plus the edge list.</strong> The
+        board container (<code>#graph</code>) carries one attribute, <code>data-ui</code>,
+        holding a JSON object shaped <code>{ nodes: [{id, column, slotIndex}], edges: [[from,
+        to]] }</code>. A node's <code>column</code> is fixed by its kind — DataSource always
+        lands in lane 0, Histogram always in lane 4 — and is read back from wherever that
+        node's element actually sits in the live DOM at persist time, not carried as separate
+        mutable state that could drift from the render. <code>slotIndex</code> is that node's
+        position within its own lane's list, likewise read from DOM order. Node kind itself
+        stays on the node's own element (<code>data-node-kind</code>), the same place Beamline
+        and Bench put it, because kind is analysis content the run payload carries, not a
+        layout fact. <code>verify.py --board</code> reads this attribute after a real slot
+        move, not just at load, so the claim covers a moved node, not only a spawned one.</li>
+      <li><strong>Both connection gestures work, plus a keyboard path.</strong> An output port
+        carries a <code>pointerdown</code> listener for drag-to-connect (drop on an input port
+        to finish, the same mechanics as Bench) and a plain <code>click</code> listener for
+        click-to-connect (click an output port to arm it, then an input port to finish, the
+        same mechanics as Beamline). A native <code>&lt;button&gt;</code> already turns an
+        Enter or Space keypress into a synthesized <code>click</code>, so the same click
+        handler that answers a mouse click also answers the keyboard, with no separate keydown
+        listener needed for it. Bench refused click on purpose, and Beamline refused drag on
+        purpose — Board is the one style asked to accept both, so both are wired deliberately
+        here rather than one falling out as an accident of a shared handler.</li>
+      <li><strong>The plot lives inside the graph, as the Histogram lane's own content.</strong>
+        Every Histogram node's card carries a <code>.plot-embed</code> figure
+        (<code>data-wf="plot"</code>) sized at the reference figure's own fixed 650×460 CSS
+        px, the intrinsic size D-003's <code>plot.html</code> renders at and does not reflow
+        below. That size does not fit a 768px-wide viewport once the other four lanes sit
+        beside it, so the whole board scrolls horizontally inside its own wrapper
+        (<code>.board-wrap</code>, <code>overflow-x: auto</code>) — the same device Bench's
+        canvas and D-003's own figure already use — rather than the page body ever gaining
+        horizontal scroll.</li>
+      <li><strong>No inline <code>style=</code> attribute, anywhere.</strong> A node's lane and
+        slot are both facts about where its element sits in ordinary DOM flow — which
+        <code>&lt;ul&gt;</code> it is a child of, and at what index — so placing a node needs
+        no coordinate and no <code>style=</code> at all; reordering within a lane is plain
+        <code>insertBefore</code>/<code>appendChild</code>. The one thing this style still
+        draws as geometry rather than flow is the connector between two ports, since a
+        drawn line needs endpoints to draw between: those live in the edges layer's own SVG
+        <code>&lt;path d&gt;</code> and the overlay <code>&lt;svg&gt;</code>'s own
+        <code>width</code>/<code>height</code> attributes, computed from each port's live
+        position and written as plain SVG geometry attributes, never a <code>style</code>
+        property — the same category of exception Bench's <code>&lt;foreignObject x y&gt;</code>
+        already makes for the same reason.</li>
+      <li><strong>The trade this style makes, on purpose.</strong> Board gives up Bench's free
+        spatial arrangement — a node cannot be dragged next to an unrelated node just because
+        the student wants them near each other — and gives up Beamline's single-glance
+        simplicity, since five lanes read as more machinery than one rail. What it buys instead
+        is a structure that answers a question neither of the other two can: which pipeline
+        stage is this node in, at a glance, from its column alone, independent of the order it
+        happened to be added — the same {column, slotIndex} shape the real run payload's own
+        "ui" object would need to carry, whichever style ships.</li>
+      <li><strong>Locked node kind.</strong> The palette's final tile is not one of the 8
+        addable kinds — it stands for a node type a later mission unlocks, shown so a student
+        can see it is coming. It carries no port, no click handler, and no tab stop, so it
+        cannot be reached as an active control by keyboard or by mouse.</li>
+    </ul>
+    <p>Nothing on this page ships; it exists to be compared against Beamline (D-004, single
+      rail, click-to-connect) and Bench (D-005, free canvas, drag-to-connect) at the D-007
+      checkpoint. See <code>verify.py --board</code> for what is actually measured about this
+      rendering, rather than claimed here.</p>
+  </section>
+
+</main>
+<!-- Inlined, not fetched by src=: a plain, unflagged Chromium refuses to load a file:// <script type="module" src=...> as a cross-origin fetch (CORS on the module loader specifically), so this page would be empty for any student who opens it without a server -- the exact defect D-005 cycle 1 shipped and cycle 2 fixed by inlining. The script stays type="module" (module scope, no leaked globals). This inline block is the only copy of this script -- there is no separate board.js file. -->
+<script type="module">
+/* D-006 exploration: style C, "Board".
+ *
+ * Not part of the shipping app. Demonstrates the third of the three
+ * persistence/interaction models the user asked to compare (Beamline,
+ * D-004, ordered edge list, click-to-connect; Bench, D-005, {x, y} free
+ * canvas, drag-to-connect): five TYPED COLUMNS, one per pipeline stage, each
+ * an ordinary DOM list a node lives inside. A node's position is entirely a
+ * fact about DOM structure -- which list, and at what index -- never a
+ * coordinate.
+ *
+ * Persistence lives in one attribute, `data-ui`, on `#graph`:
+ *   { "nodes": [ { "id": "n1", "column": 0, "slotIndex": 0 }, ... ],
+ *     "edges": [ ["n1", "n2"], ... ] }
+ * Both `column` and `slotIndex` are read back from the live DOM at persist
+ * time (which <ul> a node's card sits in, and at what index in that list),
+ * not tracked as separate mutable state that could drift from what is
+ * actually rendered. Node *kind* is not in it; that lives on each node's
+ * own element (`data-node-kind`), the same place Beamline and Bench put it.
+ *
+ * Connections: an output port answers both a real pointer drag (drop on an
+ * input port) and a real click (click the output port to arm it, then an
+ * input port to finish) -- the union of what Bench and Beamline each
+ * deliberately refuse one half of. A drag that moves the pointer past a
+ * small threshold is handled entirely inside the drag's own pointerup
+ * handler and marks the port so the click handler ignores the click that
+ * would otherwise still follow a down/up pair on the same element; a
+ * plain click (no meaningful movement) falls through to the click handler
+ * unchanged. A native <button> turns Enter/Space into a synthesized click,
+ * so the same click handler is the keyboard path too -- no separate keydown
+ * listener answers Enter/Space here.
+ *
+ * No inline `style=` attribute is used anywhere for node placement -- a
+ * node's lane and slot are exactly which list it is a child of and at what
+ * index, both ordinary DOM facts. The one place this file does write SVG
+ * geometry (not CSS, not `style=`) is the edges overlay: each connector's
+ * own `<path d>`, and the overlay `<svg>`'s own `width`/`height`
+ * attributes, both computed from live port positions -- the same kind of
+ * exception Bench's `<foreignObject x y>` makes, for the same reason: a
+ * drawn line needs endpoints to draw between.
+ *
+ * The 8 addable node kinds and the legal source -> destination pairs are
+ * the same facts Beamline and Bench source from the vendored reference's
+ * own allowlist (`ui/graph.py:_VALID_CONNECTIONS`) -- see beamline.js's own
+ * comment for how that was checked. Bare "Observable" stays excluded for
+ * the same reason.
+ */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const NODE_KINDS = [
+  { kind: "DataSource", label: "Data", cls: "data", column: 0, hasIn: false, hasOut: true },
+  { kind: "Multiplicity", label: "Multiplicity", cls: "multiplicity", column: 1, hasIn: true, hasOut: true },
+  { kind: "Selection", label: "Selection", cls: "selection", column: 2, hasIn: true, hasOut: true },
+  { kind: "ObsGlobal", label: "Obs: Global", cls: "obs-global", column: 3, hasIn: true, hasOut: true },
+  { kind: "ObsObject", label: "Obs: Object", cls: "obs-object", column: 3, hasIn: true, hasOut: true },
+  { kind: "ObsVectorSum", label: "Obs: Vec Sum", cls: "obs-vecsum", column: 3, hasIn: true, hasOut: true },
+  { kind: "ObsCustom", label: "Obs: Custom", cls: "obs-custom", column: 3, hasIn: true, hasOut: true },
+  { kind: "Histogram", label: "Histogram", cls: "histogram", column: 4, hasIn: true, hasOut: false },
+];
+
+const KIND_BY_NAME = Object.fromEntries(NODE_KINDS.map((k) => [k.kind, k]));
+
+const VALID_CONNECTIONS = {
+  DataSource: ["Multiplicity", "Selection"],
+  Multiplicity: ["Multiplicity", "Selection"],
+  Selection: ["Selection", "ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom"],
+  ObsGlobal: ["Histogram"],
+  ObsObject: ["Histogram"],
+  ObsVectorSum: ["Histogram"],
+  ObsCustom: ["Histogram"],
+  Histogram: [],
+};
+
+function isLegal(srcKind, dstKind) {
+  return (VALID_CONNECTIONS[srcKind] || []).includes(dstKind);
+}
+
+const DRAG_THRESHOLD = 5; // px of pointer movement before a press counts as a drag, not a click
+
+// The only state this file keeps beyond the DOM itself. `nodes` carries
+// kind only -- column and slotIndex are always read back from live DOM
+// structure (persistUI), never duplicated here, so there is exactly one
+// place either fact can live. `edges` is the same ordered [from, to] list
+// shape Beamline and Bench both persist.
+const graphState = {
+  nodes: new Map(), // id -> { kind }
+  edges: [], // [fromId, toId][]
+  nextId: 1,
+  keyboardArmed: null, // { id, kind } while an out-port is armed
+};
+
+let els = {};
+
+function nodeLabel(id) {
+  const n = graphState.nodes.get(id);
+  return n ? `${KIND_BY_NAME[n.kind].label} (${id})` : id;
+}
+
+function persistUI() {
+  const nodes = [];
+  for (let col = 0; col < 5; col += 1) {
+    const list = els.columnLists[col];
+    Array.from(list.children).forEach((card, slotIndex) => {
+      nodes.push({ id: card.dataset.nodeId, column: col, slotIndex });
+    });
+  }
+  els.graph.setAttribute("data-ui", JSON.stringify({ nodes, edges: graphState.edges }));
+}
+
+function setStatus(text) {
+  els.status.textContent = text;
+}
+
+function portElFor(id, role) {
+  return els.graph.querySelector(`.node-card[data-node-id="${id}"] .port--${role}`);
+}
+
+function boardRelativePoint(clientX, clientY) {
+  const boardRect = els.board.getBoundingClientRect();
+  return { x: clientX - boardRect.left, y: clientY - boardRect.top };
+}
+
+function boardRelativeCenter(el) {
+  const r = el.getBoundingClientRect();
+  return boardRelativePoint(r.left + r.width / 2, r.top + r.height / 2);
+}
+
+function renderEdges() {
+  const boardRect = els.board.getBoundingClientRect();
+  const w = Math.max(els.board.scrollWidth, boardRect.width, 1);
+  const h = Math.max(els.board.scrollHeight, boardRect.height, 1);
+  els.svg.setAttribute("width", String(w));
+  els.svg.setAttribute("height", String(h));
+  els.edgesLayer.textContent = "";
+  graphState.edges.forEach(([from, to]) => {
+    const outEl = portElFor(from, "out");
+    const inEl = portElFor(to, "in");
+    if (!outEl || !inEl) return;
+    const p1 = boardRelativeCenter(outEl);
+    const p2 = boardRelativeCenter(inEl);
+    const midX = (p1.x + p2.x) / 2;
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("class", "edge");
+    path.setAttribute(
+      "d",
+      `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`
+    );
+    path.setAttribute("marker-end", "url(#board-arrow)");
+    els.edgesLayer.appendChild(path);
+  });
+}
+
+function renderLinksFor(id) {
+  const card = els.graph.querySelector(`.node-card[data-node-id="${id}"]`);
+  if (!card) return;
+  const links = card.querySelector(".node-card__links");
+  links.textContent = "";
+  graphState.edges
+    .filter(([from]) => from === id)
+    .forEach(([, to]) => {
+      const li = document.createElement("li");
+      li.textContent = `→ ${nodeLabel(to)}`;
+      links.appendChild(li);
+    });
+}
+
+function buildPlotEmbed() {
+  const figure = document.createElement("figure");
+  figure.className = "plot-embed";
+  figure.dataset.wf = "plot";
+
+  const ylab = document.createElement("span");
+  ylab.className = "plot-embed__ylab";
+  ylab.textContent = "events";
+  figure.appendChild(ylab);
+
+  const area = document.createElement("div");
+  area.className = "plot-embed__area";
+  const hist = document.createElement("div");
+  hist.className = "hist";
+  const heights = ["b1", "b1", "b1", "b2", "b2", "b2", "b3", "b3", "b4", "b5", "b6", "b8", "b10", "b9", "b5", "b3", "b2", "b1", "b1", "b1"];
+  heights.forEach((cls) => {
+    const bar = document.createElement("span");
+    bar.className = cls;
+    hist.appendChild(bar);
+  });
+  area.appendChild(hist);
+  figure.appendChild(area);
+
+  const caption = document.createElement("figcaption");
+  caption.className = "plot-embed__xlab";
+  caption.textContent = "m(l1, l2) [GeV]  0 · 30 · 60 · 90 · 120";
+  figure.appendChild(caption);
+
+  return figure;
+}
+
+function buildNodeEl(id, kind, subtitle) {
+  const meta = KIND_BY_NAME[kind];
+
+  const li = document.createElement("li");
+  li.className = `node-card node-card--${meta.cls}`;
+  li.dataset.nodeId = id;
+  li.dataset.nodeKind = kind;
+
+  const handle = document.createElement("button");
+  handle.type = "button";
+  handle.className = "node-card__handle";
+  handle.setAttribute(
+    "aria-label",
+    `Move ${meta.label} (${id}) within its own column. Drag, or use the arrow keys.`
+  );
+  const title = document.createElement("span");
+  title.className = "node-card__title";
+  title.textContent = meta.label;
+  handle.appendChild(title);
+  li.appendChild(handle);
+
+  const sub = document.createElement("p");
+  sub.className = "node-card__subtitle";
+  sub.textContent = subtitle || "not configured yet";
+  li.appendChild(sub);
+
+  const ports = document.createElement("div");
+  ports.className = "node-card__ports";
+
+  if (meta.hasIn) {
+    const inPort = document.createElement("button");
+    inPort.type = "button";
+    inPort.className = "port port--in";
+    inPort.dataset.role = "in";
+    inPort.setAttribute("aria-label", `Connect in to ${meta.label} (${id})`);
+    inPort.addEventListener("click", () => handleInActivate(id));
+    ports.appendChild(inPort);
+  } else {
+    const spacer = document.createElement("span");
+    spacer.className = "port port--absent";
+    spacer.setAttribute("aria-hidden", "true");
+    ports.appendChild(spacer);
+  }
+
+  if (meta.hasOut) {
+    const outPort = document.createElement("button");
+    outPort.type = "button";
+    outPort.className = "port port--out";
+    outPort.dataset.role = "out";
+    outPort.setAttribute("aria-label", `Connect out from ${meta.label} (${id})`);
+    outPort.setAttribute("aria-pressed", "false");
+    outPort.addEventListener("pointerdown", (ev) => startConnectDrag(id, outPort, ev));
+    outPort.addEventListener("click", () => handleOutActivate(id, outPort));
+    ports.appendChild(outPort);
+  } else {
+    const spacer = document.createElement("span");
+    spacer.className = "port port--absent";
+    spacer.setAttribute("aria-hidden", "true");
+    ports.appendChild(spacer);
+  }
+
+  li.appendChild(ports);
+
+  if (kind === "Histogram") {
+    li.appendChild(buildPlotEmbed());
+  }
+
+  const links = document.createElement("ul");
+  links.className = "node-card__links";
+  li.appendChild(links);
+
+  handle.addEventListener("pointerdown", (ev) => startReorderDrag(id, handle, ev));
+  handle.addEventListener("keydown", (ev) => handleReorderKey(id, ev));
+
+  return li;
+}
+
+function addNode(kind, subtitle) {
+  const id = `n${graphState.nextId}`;
+  graphState.nextId += 1;
+  graphState.nodes.set(id, { kind });
+  const meta = KIND_BY_NAME[kind];
+  const li = buildNodeEl(id, kind, subtitle);
+  els.columnLists[meta.column].appendChild(li);
+  renderLinksFor(id);
+  persistUI();
+  renderEdges();
+  return id;
+}
+
+// ---- reordering a node within its own column (never across columns: a
+// node's column is fixed by its kind). The reorder itself is applied once,
+// on pointerup, from the release position -- not live on every pointermove
+// -- because reparenting the dragged card's own subtree mid-drag (which a
+// live-reorder would do on every step, since the card holds the very
+// element pointer capture was set on) empirically drops that capture in
+// Chromium, silencing every pointermove after the first live reorder even
+// though the captured element never leaves the document. Tracking the
+// pointer position without mutating the DOM until release side-steps that
+// entirely, and still lands on the same final slot a live reorder would. */
+function startReorderDrag(id, handleEl, ev) {
+  if (ev.button !== undefined && ev.button !== 0) return;
+  ev.preventDefault();
+  handleEl.setPointerCapture(ev.pointerId);
+  const card = handleEl.closest(".node-card");
+  const list = card.parentElement;
+  let moved = false;
+  let lastClientY = ev.clientY;
+
+  function onMove(moveEv) {
+    moved = true;
+    lastClientY = moveEv.clientY;
+  }
+  function onUp() {
+    handleEl.removeEventListener("pointermove", onMove);
+    handleEl.removeEventListener("pointerup", onUp);
+    handleEl.removeEventListener("pointercancel", onCancel);
+    if (!moved) return;
+    const siblings = Array.from(list.children).filter((c) => c !== card);
+    let insertBefore = null;
+    for (const sib of siblings) {
+      const r = sib.getBoundingClientRect();
+      if (lastClientY < r.top + r.height / 2) {
+        insertBefore = sib;
+        break;
+      }
+    }
+    if (insertBefore) {
+      list.insertBefore(card, insertBefore);
+    } else {
+      list.appendChild(card);
+    }
+    renderEdges();
+    persistUI();
+    const slot = Array.from(list.children).indexOf(card);
+    setStatus(`${nodeLabel(id)} moved to slot ${slot} of its column.`);
+  }
+  function onCancel() {
+    handleEl.removeEventListener("pointermove", onMove);
+    handleEl.removeEventListener("pointerup", onUp);
+    handleEl.removeEventListener("pointercancel", onCancel);
+  }
+  handleEl.addEventListener("pointermove", onMove);
+  handleEl.addEventListener("pointerup", onUp);
+  handleEl.addEventListener("pointercancel", onCancel);
+}
+
+function handleReorderKey(id, ev) {
+  if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+  const card = els.graph.querySelector(`.node-card[data-node-id="${id}"]`);
+  const list = card.parentElement;
+  if (ev.key === "ArrowUp" && card.previousElementSibling) {
+    list.insertBefore(card, card.previousElementSibling);
+  } else if (ev.key === "ArrowDown" && card.nextElementSibling) {
+    list.insertBefore(card.nextElementSibling, card);
+  } else {
+    return;
+  }
+  ev.preventDefault();
+  renderEdges();
+  persistUI();
+  const slot = Array.from(list.children).indexOf(card);
+  setStatus(`${nodeLabel(id)} moved to slot ${slot} of its column.`);
+}
+
+// ---- pointer drag: connecting two nodes -----------------------------------
+function startConnectDrag(id, portEl, ev) {
+  if (ev.button !== undefined && ev.button !== 0) return;
+  ev.preventDefault();
+  clearKeyboardArm();
+  const kind = graphState.nodes.get(id).kind;
+  portEl.setPointerCapture(ev.pointerId);
+
+  const start = boardRelativeCenter(portEl);
+  const dragLine = document.createElementNS(SVG_NS, "line");
+  dragLine.setAttribute("class", "edge edge--drag");
+  dragLine.setAttribute("x1", start.x);
+  dragLine.setAttribute("y1", start.y);
+  dragLine.setAttribute("x2", start.x);
+  dragLine.setAttribute("y2", start.y);
+  els.edgesLayer.appendChild(dragLine);
+
+  const startClient = { x: ev.clientX, y: ev.clientY };
+  let dragging = false;
+  let lastTargetPort = null;
+
+  function clearTargetHighlight() {
+    if (lastTargetPort) {
+      lastTargetPort.classList.remove("port--drag-target");
+      lastTargetPort = null;
+    }
+  }
+
+  function onMove(moveEv) {
+    const dx = moveEv.clientX - startClient.x;
+    const dy = moveEv.clientY - startClient.y;
+    if (!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+      dragging = true;
+      setStatus(`Dragging from ${nodeLabel(id)} — drop on an input port to connect.`);
+    }
+    const cur = boardRelativePoint(moveEv.clientX, moveEv.clientY);
+    dragLine.setAttribute("x2", cur.x);
+    dragLine.setAttribute("y2", cur.y);
+    const under = document.elementFromPoint(moveEv.clientX, moveEv.clientY);
+    const targetPort = under ? under.closest(".port--in") : null;
+    if (targetPort !== lastTargetPort) {
+      clearTargetHighlight();
+      if (targetPort) {
+        targetPort.classList.add("port--drag-target");
+        lastTargetPort = targetPort;
+      }
+    }
+  }
+
+  function onUp(upEv) {
+    portEl.removeEventListener("pointermove", onMove);
+    portEl.removeEventListener("pointerup", onUp);
+    portEl.removeEventListener("pointercancel", onCancel);
+    clearTargetHighlight();
+    dragLine.remove();
+    if (!dragging) {
+      // Negligible movement: this was a press-release in place, not a drag.
+      // Mark the port so the click event the browser is about to dispatch
+      // (down and up landed on the same element) is treated as an ordinary
+      // click-to-connect arm rather than re-processed here.
+      return;
+    }
+    portEl.dataset.suppressClick = "1";
+    const under = document.elementFromPoint(upEv.clientX, upEv.clientY);
+    const targetPort = under ? under.closest(".port--in") : null;
+    if (!targetPort) {
+      setStatus("Connection cancelled — you did not drop on an input port.");
+      return;
+    }
+    const targetCard = targetPort.closest(".node-card");
+    const toId = targetCard ? targetCard.dataset.nodeId : null;
+    attemptConnect(id, kind, toId);
+  }
+  function onCancel() {
+    portEl.removeEventListener("pointermove", onMove);
+    portEl.removeEventListener("pointerup", onUp);
+    portEl.removeEventListener("pointercancel", onCancel);
+    clearTargetHighlight();
+    dragLine.remove();
+  }
+
+  portEl.addEventListener("pointermove", onMove);
+  portEl.addEventListener("pointerup", onUp);
+  portEl.addEventListener("pointercancel", onCancel);
+}
+
+function attemptConnect(fromId, fromKind, toId) {
+  if (!toId || toId === fromId) {
+    setStatus("A node cannot connect to itself.");
+    return;
+  }
+  const toKind = graphState.nodes.get(toId).kind;
+  if (isLegal(fromKind, toKind)) {
+    graphState.edges.push([fromId, toId]);
+    persistUI();
+    renderLinksFor(fromId);
+    renderEdges();
+    const card = els.graph.querySelector(`.node-card[data-node-id="${toId}"]`);
+    card.classList.remove("node-card--flash");
+    // eslint-disable-next-line no-unused-expressions
+    card.offsetWidth; // restart the flash animation on repeat connections
+    card.classList.add("node-card--flash");
+    setStatus(`Connected: ${nodeLabel(fromId)} → ${nodeLabel(toId)}.`);
+  } else {
+    setStatus(
+      `Refused: ${KIND_BY_NAME[fromKind].label} cannot connect to ${KIND_BY_NAME[toKind].label}.`
+    );
+  }
+}
+
+// ---- click-to-connect (also reached by Enter/Space on a focused port,
+// since a native <button> already turns that keypress into a synthesized
+// click — no separate keydown handler answers the keyboard here) ----------
+function handleOutActivate(id, outPort) {
+  if (outPort.dataset.suppressClick) {
+    delete outPort.dataset.suppressClick;
+    return;
+  }
+  if (graphState.keyboardArmed && graphState.keyboardArmed.id === id) {
+    clearKeyboardArm();
+    setStatus("Connection cancelled.");
+    return;
+  }
+  clearKeyboardArm();
+  graphState.keyboardArmed = { id, kind: graphState.nodes.get(id).kind };
+  outPort.classList.add("port--armed");
+  outPort.setAttribute("aria-pressed", "true");
+  setStatus(
+    `Armed from ${nodeLabel(id)} — click or press Enter on an input port to finish, or `
+    + "activate this port again to cancel."
+  );
+}
+
+function handleInActivate(id) {
+  if (!graphState.keyboardArmed) {
+    setStatus("Click (or press Enter on) an output port first, then an input port, to connect two nodes.");
+    return;
+  }
+  const { id: fromId, kind: fromKind } = graphState.keyboardArmed;
+  clearKeyboardArm();
+  attemptConnect(fromId, fromKind, id);
+}
+
+function clearKeyboardArm() {
+  if (!graphState.keyboardArmed) return;
+  const prev = portElFor(graphState.keyboardArmed.id, "out");
+  if (prev) {
+    prev.classList.remove("port--armed");
+    prev.setAttribute("aria-pressed", "false");
+  }
+  graphState.keyboardArmed = null;
+}
+
+function wirePalette() {
+  els.paletteButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const kind = btn.dataset.addKind;
+      addNode(kind, null);
+      setStatus(`Added a new ${KIND_BY_NAME[kind].label} node.`);
+    });
+  });
+}
+
+function wireRun() {
+  if (!els.runButton) return;
+  els.runButton.addEventListener("click", () => {
+    els.runPanel.classList.remove("run--pulse");
+    // eslint-disable-next-line no-unused-expressions
+    els.runPanel.offsetWidth;
+    els.runPanel.classList.add("run--pulse");
+    setStatus("Run started — reading events.");
+  });
+}
+
+function buildDemoGraph() {
+  const a = addNode("DataSource", "91 GeV · IDEA · all samples");
+  const b = addNode("Multiplicity", "≥ 2 leptons");
+  const c = addNode("Selection", "lepton pt > 20 GeV");
+  const d = addNode("ObsVectorSum", "mass of lepton 1 + lepton 2");
+  const e = addNode("Histogram", "40 bins, 0–120 GeV");
+  [
+    [a, b],
+    [b, c],
+    [c, d],
+    [d, e],
+  ].forEach(([from, to]) => {
+    graphState.edges.push([from, to]);
+    renderLinksFor(from);
+  });
+  persistUI();
+  renderEdges();
+}
+
+function init() {
+  els = {
+    graph: document.getElementById("graph"),
+    board: document.getElementById("board"),
+    svg: document.getElementById("edges-svg"),
+    edgesLayer: document.getElementById("edges-layer"),
+    status: document.getElementById("graph-status"),
+    columnLists: [0, 1, 2, 3, 4].map((i) => document.getElementById(`column-${i}`)),
+    paletteButtons: Array.from(document.querySelectorAll(".palette__add")),
+    runButton: document.getElementById("run-button"),
+    runPanel: document.getElementById("run-panel"),
+  };
+  buildDemoGraph();
+  wirePalette();
+  wireRun();
+  window.addEventListener("resize", renderEdges);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
+</script>
+</body>
+</html>
