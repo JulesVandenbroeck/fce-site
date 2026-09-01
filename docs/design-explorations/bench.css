@@ -1,0 +1,653 @@
+/* bench.css — D-005, node-graph style B. Every colour is a var() into
+ * tokens.css; nothing here sets an inline style or a bare hex value. Ground,
+ * ink and motion follow plot.css's (D-003) and beamline.css's (D-004) own
+ * conventions so all three explorations read as the same project.
+ *
+ * Positioning is the one thing this file does differently from beamline.css:
+ * a node's location on the canvas is never expressed in CSS at all. Each
+ * node is an SVG <foreignObject> whose x/y/width/height are set as plain
+ * geometry attributes set by bench.html's own inline script — not CSS, not `style=`. What this file
+ * styles is the HTML content painted *inside* that foreignObject (the node
+ * card, its ports, its handle) by class, exactly the way it would style any
+ * other element on the page.
+ */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    var(--paper-line) 27px,
+    var(--paper-line) 28px
+  );
+}
+
+h1, h2 { font-family: var(--font-body); color: var(--ink); margin: 0 0 var(--space-2); }
+p { margin: 0 0 var(--space-2); color: var(--ink-70); }
+.num, code { font-family: var(--font-mono); }
+
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) var(--space-5);
+}
+
+a, button {
+  font: inherit;
+}
+
+/* ---- focus — visible everywhere, never removed ------------------------- */
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Ports and the node handle sit inside a saturated --node-* fill, the same
+ * reason beamline.css's own .port:focus-visible rule gives: --graphite-blue
+ * is itself one of the --node-* fills (--node-histogram's own value is
+ * close in family), so a graphite-blue ring can under-contrast against a
+ * fill it happens to be painted on. --node-label-on-fill (white) is already
+ * proven >= 4.5:1 against every one of the 8 node fills for label text
+ * (tokens.css's node-identity comment), which composites as a ring with
+ * room to spare on top of that. */
+.port:focus-visible,
+.node__handle:focus-visible {
+  outline: 3px solid var(--node-label-on-fill);
+  outline-offset: 2px;
+}
+
+/* ---- topbar --------------------------------------------------------------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--paper-line);
+  margin-bottom: var(--space-4);
+}
+.topbar__brand {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 15px;
+}
+.topbar__who {
+  margin-left: auto;
+  color: var(--ink-70);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+.campaign-nav {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 3px var(--space-2);
+  border-radius: var(--radius);
+  font-size: 13px;
+  border: 1px solid var(--paper-line);
+  background: var(--panel);
+  color: var(--ink-70);
+}
+.chip--current {
+  border-color: var(--graphite-blue);
+  color: var(--ink);
+  font-weight: 700;
+}
+.chip--locked {
+  background: var(--locked-fill);
+  border-color: var(--locked-border);
+  color: var(--ink);
+}
+.lock-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-left: var(--space-1);
+  /* Sits on --locked-fill (the palette tile or a locked campaign chip);
+   * --ink-70 measures below the 4.5:1 floor there, so this uses full --ink,
+   * same as tokens.css's own lock-state comment specifies. */
+  color: var(--ink);
+}
+
+/* ---- brief / objective ------------------------------------------------------ */
+.brief { margin-bottom: var(--space-4); }
+.brief__title { font-size: 22px; }
+.brief__text { max-width: 62ch; }
+.objective {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--panel);
+  border-left: 3px solid var(--graphite-blue);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.objective .label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-70);
+  margin-bottom: 2px;
+}
+.objective p { margin: 0; color: var(--ink); }
+
+/* ---- builder ---------------------------------------------------------------- */
+.builder { margin-bottom: var(--space-5); }
+.builder__h {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 18px;
+}
+.style-tag {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--graphite-blue-strong);
+  background: var(--panel);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 1px var(--space-2);
+}
+.builder__note { max-width: 68ch; font-size: 14px; }
+
+/* ---- canvas ------------------------------------------------------------------
+ * A free surface, not a rail: the wrapper scrolls its own contents at
+ * narrow widths rather than the page body ever gaining horizontal scroll
+ * (design manual §4, and the same rule the cutflow table and the chart
+ * already follow). The canvas itself stays a fixed pixel size regardless of
+ * viewport — shrinking it would shrink node port hit targets below a
+ * comfortable touch size, which matters more here than it does for a rail
+ * that simply wraps. */
+.canvas-wrap {
+  background: var(--panel);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  margin-bottom: var(--space-3);
+  overflow-x: auto;
+}
+.canvas {
+  display: block;
+  width: 980px;
+  height: 460px;
+  max-width: none;
+}
+.canvas-bg { fill: var(--panel); }
+.grid-dot { fill: var(--paper-line); }
+
+.graph__status {
+  margin: var(--space-2) 0 0;
+  font-size: 13px;
+  color: var(--ink-70);
+  border-top: 1px dashed var(--paper-line);
+  padding-top: var(--space-2);
+}
+
+/* ---- edges (drawn lines — Bench persists a coordinate, so unlike Beamline
+ * it can afford to draw a real connector rather than list links as text) --- */
+.edge {
+  fill: none;
+  stroke: var(--graphite-blue);
+  stroke-width: 2;
+}
+.edge--drag {
+  stroke: var(--graphite-blue-strong);
+  stroke-dasharray: 5 4;
+}
+.edge-arrowhead {
+  fill: var(--graphite-blue);
+}
+
+/* ---- node card (the HTML painted inside each foreignObject) ---------------- */
+.node {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  color: var(--node-label-on-fill);
+  box-shadow: 0 1px 0 var(--node-shadow);
+  opacity: 0;
+  animation: node-enter var(--timing) ease-out forwards;
+  display: flex;
+  flex-direction: column;
+}
+
+.node--data { background: var(--node-data); }
+.node--multiplicity { background: var(--node-multiplicity); }
+.node--selection { background: var(--node-selection); }
+.node--obs-global { background: var(--node-obs-global); }
+.node--obs-object { background: var(--node-obs-object); }
+.node--obs-vecsum { background: var(--node-obs-vecsum); }
+.node--obs-custom { background: var(--node-obs-custom); }
+.node--histogram { background: var(--node-histogram); }
+
+.node__handle {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--node-label-on-fill);
+  text-align: left;
+  padding: 0;
+  cursor: grab;
+  /* A dashed "grip" affordance under the title communicates "draggable"
+   * without a glow — texture, not brightness (design manual §3). Every
+   * colour comes from a token (design manual §4); an alpha-washed white
+   * would have been a value this file invented rather than declared, so
+   * this uses --node-label-on-fill at full opacity instead. */
+  border-bottom: 1px dashed var(--node-label-on-fill);
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+}
+.node__handle:active { cursor: grabbing; }
+.node__title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--node-label-on-fill);
+  display: block;
+}
+.node__subtitle {
+  margin: 2px 0 var(--space-2);
+  font-size: 12px;
+  color: var(--node-label-on-fill);
+}
+.node__ports {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+.port {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0;
+  cursor: pointer;
+  touch-action: none;
+}
+.port--absent {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+/* Four distinct states, four distinct treatments (design manual §3: not
+ * four glows). Fill stays --paper throughout — a filled port on a
+ * saturated node background is exactly what crushed contrast in Beamline's
+ * own cycle-1 palette (beamline.css's own comment). Armed (keyboard) gets a
+ * thicker ring and a scale step; the pointer drag-target gets a dashed
+ * ring instead of a solid one, so the two states remain visually distinct
+ * from each other as well as from plain hover. */
+.port--armed {
+  border-width: 3px;
+  border-color: var(--graphite-blue-strong);
+  transform: scale(1.15);
+}
+.port--drag-target {
+  border-width: 3px;
+  border-style: dashed;
+  border-color: var(--graphite-blue-strong);
+  transform: scale(1.2);
+}
+.port:hover:not(.port--absent) {
+  border-color: var(--graphite-blue-strong);
+}
+.node__links {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  font-size: 11px;
+  color: var(--node-label-on-fill);
+}
+.node__links li { margin-top: 2px; }
+
+.node--flash {
+  animation: node-flash 600ms ease-out;
+}
+
+@keyframes node-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes node-flash {
+  0% { box-shadow: 0 0 0 3px var(--graphite-blue); }
+  100% { box-shadow: 0 1px 0 var(--node-shadow); }
+}
+
+/* ---- palette ------------------------------------------------------------------
+ * `.palette` is the `<ul>` itself (D-005 cycle-2 rework, C7 -- a list of
+ * controls is a list, not a <div> of siblings); `.node-palette` is the
+ * purely presentational row wrapper holding the label ahead of it. Every
+ * `.palette` child is an `<li>`; a plain button `<li>` is unboxed with
+ * `display: contents` so the button is the real flex item and the list
+ * keeps its original row-of-chips look, while `.palette__locked`'s own
+ * `<li>` keeps its box so its border/background still paint. */
+.node-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.palette > li:not(.palette__locked) {
+  display: contents;
+}
+.palette__label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-70);
+}
+.palette__add {
+  border: 1px solid var(--paper-line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 5px var(--space-2) 5px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.palette__add::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+.palette__add--data::before { background: var(--node-data); }
+.palette__add--multiplicity::before { background: var(--node-multiplicity); }
+.palette__add--selection::before { background: var(--node-selection); }
+.palette__add--obs-global::before { background: var(--node-obs-global); }
+.palette__add--obs-object::before { background: var(--node-obs-object); }
+.palette__add--obs-vecsum::before { background: var(--node-obs-vecsum); }
+.palette__add--obs-custom::before { background: var(--node-obs-custom); }
+.palette__add--histogram::before { background: var(--node-histogram); }
+.palette__add:hover { border-color: var(--graphite-blue); }
+
+.palette__locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed var(--locked-border);
+  background: var(--locked-fill);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 5px var(--space-2);
+  font-size: 13px;
+}
+
+/* ---- run panel ------------------------------------------------------------------ */
+.run-panel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.btn {
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px var(--space-3);
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn--go {
+  background: var(--graphite-blue);
+  color: var(--on-graphite-blue);
+}
+.btn--go:hover { background: var(--graphite-blue-strong); }
+.run-progress { min-width: 220px; }
+.run-progress__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--paper-line);
+  overflow: hidden;
+}
+.run-progress__fill {
+  display: block;
+  height: 100%;
+  width: 62%;
+  background: var(--graphite-blue);
+}
+.run--pulse .run-progress__fill {
+  animation: progress-pulse 900ms ease-in-out;
+}
+@keyframes progress-pulse {
+  0% { filter: brightness(1.4); }
+  100% { filter: brightness(1); }
+}
+.run-progress__phase {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-70);
+}
+
+/* ---- results -------------------------------------------------------------------- */
+.results { margin-bottom: var(--space-5); }
+.results__h { font-size: 18px; }
+
+.plot-placeholder {
+  margin: 0 0 var(--space-2);
+  border: 1px solid var(--plot-frame);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--panel);
+  max-width: 480px;
+}
+.plot__ylab {
+  font-size: 11px;
+  color: var(--ink-70);
+}
+.plot__area {
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+}
+.hist {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+.hist span {
+  flex: 1;
+  background: var(--syst-grey);
+  border-top: 1px solid var(--plot-edge);
+}
+.hist .b1 { height: 6%; } .hist .b2 { height: 14%; } .hist .b3 { height: 24%; }
+.hist .b4 { height: 34%; } .hist .b5 { height: 46%; } .hist .b6 { height: 58%; }
+.hist .b8 { height: 78%; } .hist .b9 { height: 92%; } .hist .b10 { height: 100%; }
+.plot__xlab {
+  font-size: 11px;
+  color: var(--ink-70);
+  margin-top: var(--space-1);
+}
+
+.legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0 0 var(--space-3);
+  font-size: 13px;
+}
+.legend li { display: flex; align-items: center; gap: 6px; color: var(--ink-70); }
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.swatch--data { background: var(--ink); }
+.swatch--x1 { background: var(--frozen-x1); }
+.swatch--x2 { background: var(--frozen-x2); }
+.swatch--x3 { background: var(--frozen-x3); }
+
+.readout {
+  margin-bottom: var(--space-2);
+}
+.readout .label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-70);
+}
+.readout .num { font-size: 22px; }
+
+.verdict {
+  color: var(--ink);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.stamp {
+  display: inline-block;
+  border: 2px solid var(--vermillion);
+  color: var(--vermillion);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transform: rotate(-3deg);
+  opacity: 0;
+  animation: stamp-press 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms forwards;
+}
+@keyframes stamp-press {
+  0% { opacity: 0; transform: rotate(-3deg) scale(1.6); }
+  70% { opacity: 1; transform: rotate(-3deg) scale(0.94); }
+  100% { opacity: 1; transform: rotate(-3deg) scale(1); }
+}
+
+.cutflow {
+  border-collapse: collapse;
+  margin-bottom: var(--space-3);
+  font-size: 13px;
+}
+.cutflow caption {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-70);
+  margin-bottom: 4px;
+}
+.cutflow th, .cutflow td {
+  padding: 4px var(--space-2);
+  border-bottom: 1px solid var(--paper-line);
+  text-align: left;
+}
+.cutflow .num { text-align: right; }
+
+.gauge {
+  max-width: 360px;
+}
+.gauge .label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-70);
+  margin-bottom: 4px;
+}
+.gauge__bar {
+  position: relative;
+  height: 10px;
+  background: var(--paper-line);
+  border-radius: 5px;
+  margin-bottom: 4px;
+}
+.gauge__tick {
+  position: absolute;
+  top: -16px;
+  font-size: 10px;
+  color: var(--ink-70);
+  border-left: 1px solid var(--ink-70);
+  padding-left: 3px;
+}
+.gauge__tick--3 { left: 30%; }
+.gauge__tick--5 { left: 62%; }
+.muted { font-size: 12px; color: var(--ink-70); margin: 0; }
+
+/* ---- log / marginalia --------------------------------------------------------- */
+.log { margin-bottom: var(--space-5); }
+.log h2 { font-size: 16px; }
+.count { font-size: 12px; color: var(--ink-70); font-weight: 400; }
+.log__entry header {
+  display: flex;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+.log__n { font-family: var(--font-mono); color: var(--ink-70); }
+.log__d { color: var(--ink); }
+.margin-note {
+  font-size: 13px;
+  color: var(--ink-70);
+  transform: rotate(-1deg);
+  max-width: 52ch;
+  border-left: 2px solid var(--paper-line);
+  padding-left: var(--space-2);
+  margin-top: 4px;
+}
+
+/* ---- annotations (reader-facing notes, not part of the app) ------------------- */
+.annotations {
+  border-top: 2px solid var(--paper-line);
+  padding-top: var(--space-3);
+  font-size: 14px;
+}
+.annotations li { margin-bottom: var(--space-2); }
+.annotations code { font-size: 13px; }
+
+/* ---- reduced motion — end state appears, no transit --------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .node {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .node--flash { animation: none; }
+  .run--pulse .run-progress__fill { animation: none; }
+  .stamp {
+    animation: none;
+    opacity: 1;
+    transform: rotate(-3deg);
+  }
+}
+
+/* ---- narrow widths — the page body never scrolls sideways; the canvas
+ * scrolls within .canvas-wrap instead (see that rule's own comment) --------- */
+@media (max-width: 768px) {
+  .page { padding: var(--space-3) var(--space-2) var(--space-4); }
+  .topbar__who { margin-left: 0; }
+  .plot-placeholder { max-width: 100%; }
+}
