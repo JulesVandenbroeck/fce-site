@@ -49,6 +49,15 @@ streams live — phase label and bar — because silence reads as broken to a te
 content-addressed cache means repeating an analysis returns almost instantly, and the UI
 should say so rather than hiding it: *"recognised these cuts — reusing your earlier run."*
 
+**And never passive.** Added 2026-09-01. A progress bar tells a student their run is alive; it
+does not give them anything to do while it is. The requirement is **interaction**, not just
+reassurance: a run should hold attention rather than merely ask for patience. The intended
+vehicle is **showing the data itself as it is read** — event displays streaming past, ideally
+ones the student can poke at — so that waiting is spent among collisions rather than in front
+of a bar. Deferred
+to **M6** by the user's ruling: M3 ships the phase label and bar above, and that is deliberate
+rather than an oversight.
+
 **Failing must be cheap and instructive.** Missing the objective is the normal case, not an
 error state. The response is a margin note pointing at what the numbers suggest, never a
 red banner. Students should feel free to try a cut just to see what happens.
@@ -132,6 +141,14 @@ be built around.
 > the superseded model was a committed decision that shaped D-001's ten wireframes, and
 > because `docs/wireframes/` still reads as current unless you know this happened.
 
+> **Amended again 2026-09-01, on the user's ruling at the M1 checkpoint.** The style is
+> **Bench** — a free canvas, drag-to-connect, persisting `{id, x, y}` per node. The D-007
+> comparison recommended *Board*; the user overruled it. Four further decisions came with that
+> ruling and are written into this section below: the `DataSource` node leaves the palette, the
+> canvas becomes the logbook, the page has three named regions, and node interiors are
+> explicitly *not* inherited from the reference tool. `docs/design-explorations/README.md`
+> still carries the superseded Board recommendation; it is a historical document.
+
 Students assemble the analysis as a **graph of nodes** that can be added, connected, and
 removed. The graph *is* the analysis: it is what runs, and it is what grows as the campaign
 progresses.
@@ -139,6 +156,20 @@ progresses.
 Nodes are the reference engine's node types, unchanged, so the underlying config is the
 engine's config: `DataSource`, `Multiplicity`, `Selection`, `Observable` (and its subtypes
 `ObsGlobal`, `ObsObject`, `ObsVectorSum`, `ObsCustom`), `Histogram`.
+
+**But `DataSource` is not one the student places.** V1 ships one energy (91 GeV, §8) and each
+mission declares its own dataset (§3), so a dataset node would be a node with exactly one legal
+value — a decision the student cannot get wrong and therefore cannot learn from. Decided
+2026-09-01. The concept splits in two, and the split matters because only one half is visible:
+
+| | What it holds |
+|---|---|
+| **The palette** — what the student places | **seven** kinds: `Multiplicity`, `Selection`, and the four `Obs*`, and `Histogram` |
+| **The run payload** — what the engine reads | those nodes, **plus a `DataSource` synthesised at submit** from the mission's declared dataset |
+
+The engine, and the allowlist below, are untouched: `DataSource` remains the root of every
+chain the engine sees. It is simply supplied rather than drawn. Future missions at other
+energies are separate missions, not a chooser inside one.
 
 **Which connections are legal is not a design choice.** The reference app defines an explicit
 allowlist (`ui/graph.py`, `_VALID_CONNECTIONS`), and the web version enforces the same one:
@@ -167,6 +198,33 @@ meet.** They were good reasons; dropping the stack does not drop them.
    nice-to-have.
 3. **It still reads as a pipeline.** A student should be able to point at the graph and say
    what it does, in order.
+
+**The canvas is the logbook.** Decided 2026-09-01. When a mission is completed, the graph that
+completed it is **frozen where it stands and boxed**, labelled with the mission it closed; the
+next mission is built beside it on the same canvas. The canvas therefore accumulates rather
+than clearing, and a student scrolling back over it is reading their own record of what they
+built. This is §7's stamp metaphor in the one place the student actually works — the same idea
+as "the logbook fills in", not a rival to it, and the two should be designed as one gesture.
+
+**The page has three regions, and only one of them is permanent.** Decided 2026-09-01.
+
+- The **graph canvas** is always present. It is never covered, collapsed, or navigated away
+  from; everything else arranges itself around it.
+- **"Add a Node"** sits on the **left** and **collapses**, because once a student knows the
+  seven kinds the palette is mostly in the way.
+- The **mission panel** sits on the **right** and **expands** — briefly by default, opened to
+  read the mission in full, and it is also how a student pages back to a previous mission.
+
+No payload change follows from any of this: "What the run payload carries", below, already
+classifies collapse state as `ui` state the engine ignores.
+
+**Node interiors are not inherited.** Decided 2026-09-01. In the reference desktop tool the
+inside of a node was fixed — the same dense property grid the engine's config implies. That is
+the one part of the reference UI this project does **not** take: how a cut is expressed, how an
+observable is chosen and configured, what a node shows when it is collapsed versus opened, are
+open design questions to be answered for a 15–18-year-old who has never seen a physics tool.
+Legible and hard-to-get-wrong beats complete. The engine's config is the *output* of that
+design, not its layout. **D-009 is where this is settled**, and it is a checkpoint.
 
 **Complexity ramps through the campaign.** Mission 1 exposes a minimal graph; later missions
 unlock further node types, and the graph grows with them. Node gating carries the teaching
@@ -298,6 +356,13 @@ Deliberate exclusions. Each is a candidate later; none is a gap to be helpfully 
   language. Short sentences, plain words, no idiom, no wordplay. Physics vocabulary is the
   deliberate exception — it is the thing being taught.
 - **Samples `X1`, `X2`, `X3`.** *(2026-08-15)* See §3. Missions 1 and 2 are unblocked.
+- **The node-graph style — Bench.** *(2026-09-01)* Chosen at the M1 checkpoint from the three
+  built explorations. A free canvas, drag-to-connect, persisting `{id, x, y}` per node plus an
+  edge list; the plot lives outside the graph in its own results region. The D-007 comparison
+  recommended *Board* and was overruled. Four further decisions came with the ruling and are
+  written into §4, plus one into §2 — the `DataSource` node leaving the palette, the canvas as
+  logbook, the three page regions, node interiors not inherited, and a run that is never
+  passive. The obligation it creates: `docs/design-explorations/` is now history, not a menu.
 
 ### Still open
 

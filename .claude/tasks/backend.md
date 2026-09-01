@@ -245,4 +245,11 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - `RunConfig.from_dict` **raises** `RunConfigError` on any digest mismatch — never warns (B-010)
 - Cancellation seam: `cancel: Optional[threading.Event] = None` on `fill_histogram_from_cache`
   and `filter_raw_event_data`. Granularity is one **basket**; the vectorised path never polls (B-007)
+- **`DataSource` is synthesised at submit, not sent by the client** (M1 ruling, 2026-09-01). It
+  left the node palette — V1 is 91 GeV only and the mission declares its dataset — but the
+  vendored engine's `_VALID_CONNECTIONS` still makes it the root of every chain. So the
+  `POST /api/run` builder adds one from the mission's dataset before the payload reaches the
+  engine. **The engine is not modified.** The student's graph and the engine's graph are
+  deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
+  marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
 - Suite floor **413 passed**; flake8 0 across `src/ tests/ scripts/`
