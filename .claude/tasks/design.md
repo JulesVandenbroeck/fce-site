@@ -97,8 +97,16 @@ All counts below were enumerated by `scout` at `9495696`, not inherited from the
   eventually serialise into. `bench.html:64-71` still renders EIGHT palette buttons including
   `DataSource`; that page is historical and out of scope, the new page ships seven.
 - **Depends on:** nothing. **Blocks D-010** — node size decides the palette width.
-- **Branch / PR:** `task/d-009-node-interiors` — not yet opened
-- **Status:** cycle 1, dispatched 2026-09-01
+- **Branch / PR:** `task/d-009-node-interiors` — **#22**, `8e4b76c`
+- **Status:** **cycle 1 in review.** §5.1 gate in `~/fce-gate-d009` with the primary
+  `.venv`: all four `interiors_verify.py` sections PASS — 2 options / 1 recommended,
+  both kind sets exactly the seven, 14 state rows all `opened>collapsed`, 4 labelled
+  guided controls + 1 raw expression field per option, none disabled or aria-hidden.
+  C5/C6 grep `exit=1`, C7 `3 0`, C8 exactly the four files. Reproduced, not accepted.
+  All four mutation gates present and each names what it caught.
+- **Delivered:** two options — **flyout inspector (recommended)** and **inline grow**.
+  The flyout argument is that the node's own footprint stays constant across open/closed,
+  which is the fixed dimension **D-010** needs for palette width. That is the user's call.
 - **History:** none yet — first cycle.
 
 ## Ready
