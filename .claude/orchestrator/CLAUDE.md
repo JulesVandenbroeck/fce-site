@@ -216,27 +216,33 @@ Use the `Agent` tool with `subagent_type` set to `backend-coder`, `frontend-code
 Task <ID>: <title>
 
 Read .claude/shared/CLAUDE.md and .claude/<role>/CLAUDE.md before starting.
-Also read: <any other files it needs — docs/api.md, docs/design-brief.md, a wireframe>
 
 ## Goal
 <one sentence, observable outcome>
 
 ## Context
-<why this task exists, what came before, what depends on it>
+<why this task exists and what depends on it — three sentences at most>
 
 ## File scope
-You may create or edit ONLY:
+Edit ONLY:
 - <path>
 - <path>
+Read ONLY these, plus what they import:
+- <path — docs/api.md, docs/design-brief.md, a wireframe, the module under test>
 Do not modify any other file. If you believe another file must change, stop and report it.
 
+## Do not read
+- .claude/tasks/archive/** and .claude/tasks/backlog.md
+- the other roles' manuals under .claude/
+- .claude/worktrees/**
+- docs/design-explorations/** <except the one named above, if any>
+
 ## Acceptance criteria
-Every criterion below carries the command that decides it. They are cumulative: on a
-re-dispatch, all earlier criteria are restated here and must still hold.
-- [ ] <property>
+Every criterion below carries the command that decides it.
+- [ ] C1 <property>
       Check:  <command>
       Expect: <exact output, or the exact predicate on it>
-- [ ] <property>
+- [ ] C2 <property>
       Check:  <command>
       Expect: <...>
 
@@ -253,16 +259,57 @@ contain. The reviewer will see the PR and nothing else, so the body has to stand
 Do not merge. Do not rebase. Do not delete any branch.
 
 ## Context failsafe
-If your context reaches 90%, or if I send you `HANDOFF NOW`, stop the task and hand it over
-per .claude/shared/CLAUDE.md §8: commit and push what you have, write
-.claude/handoff/<id>-<role>-<cycle>.md in the primary checkout, and report the short form in
-§8.5. Do not try to finish. A described stop is worth more than a lost sprint.
+At 50% context, take the token audit and write .claude/handoff/<id>-<role>.anchor.md per
+.claude/shared/context-failsafe.md §8.0 — 25 lines, then keep working. If your context reaches 90%, or
+if I send you `HANDOFF NOW`, stop the task and hand it over per §8: commit and push what you
+have, promote the anchor into .claude/handoff/<id>-<role>-<cycle>.md in the primary checkout,
+and report the short form in §8.5. Do not try to finish. A described stop is worth more than
+a lost sprint.
 
-Report back in the format in .claude/shared/CLAUDE.md §7, including the PR number.
+Report back in the format in .claude/shared/CLAUDE.md §7, including the PR number. No
+preamble, no recap of this prompt, no explanation of your approach — do the work and report.
 ```
 
-When you are re-dispatching a task that was handed over, the template gains one block, placed
-directly above `## Goal`, and the criteria below it are still restated in full:
+### How to write one
+
+**Imperative, one fact per line, no rationale paragraphs.** A dispatch is a spec, not a
+briefing. The agent does not need to be persuaded that the task matters, and every sentence
+spent persuading it is paid again on every re-dispatch.
+
+**`## Context` is capped at three sentences** — why the task exists, and what depends on it.
+The project history lives in `.claude/tasks/archive/<role>.md`; if a criterion genuinely turns
+on that history, name the archive section in `Read ONLY` rather than pasting it in.
+
+**Criteria carry IDs (`C1`, `C2`, …), allocated once and never reused.** The IDs are what makes
+a re-dispatch cheap — see below and §5.3.
+
+**`## Do not read` is not decoration.** Sub-agents drift into the archive and the backlog looking
+for context, and those are 116 KB the task does not need. Name the attractors and they stay shut.
+
+### Re-dispatching after a review cycle
+
+Criteria still accumulate and still never shrink — but they are referenced by ID, not re-pasted.
+The verbatim text lives in the PR body, which the coder wrote and the reviewer reads. `##
+Acceptance criteria` on a cycle-N dispatch becomes:
+
+```
+## Acceptance criteria
+C1–C6 (cycle 1) and C7–C8 (cycle 2) all still hold — verbatim in PR #<n>'s body, which is
+yours; re-read it there. Total check count: 8. A verification run that checks fewer than 8
+is a Required finding on you.
+Written out below: only the criteria that failed, and the new ones.
+- [ ] C9 <property>
+      Check:  <command>
+      Expect: <...>
+```
+
+The never-shrink guarantee lives in the **ID list and the total count**, both of which §5.3
+already requires the task entry to record. It never depended on re-pasting the text.
+
+### Resuming from a handoff
+
+When re-dispatching a task that was handed over, the template gains one block, placed directly
+above `## Goal`:
 
 ```
 ## Resuming from a handoff
@@ -270,6 +317,15 @@ This task was interrupted at a context limit. Read .claude/handoff/<file>.md fir
 carries the branch state, what is already done, and the dead ends. Do not repeat them.
 Start from its "Not done" list. Verify the branch state against git before you trust it.
 ```
+
+The handoff carries the criteria verbatim (§8.4), so do not restate them here either — cite the
+IDs and the total count exactly as in a re-dispatch.
+
+### Reporting a cycle to the user
+
+**Link and summarise; never re-paste a sub-agent's report.** It is already in your transcript,
+and restating it doubles it. A completed cycle is about five lines to the user: task ID, the
+reviewer's `VERDICT:` line, what merged, the next move. If they want the detail it is in the PR.
 
 ### Model and effort on the dispatch
 
@@ -462,7 +518,10 @@ coder reports done, with a PR number
 ### 5.3 Criteria accumulate. They are never substituted.
 
 **A cycle-N criterion is added to every criterion that came before it. It never replaces one.**
-The re-dispatch restates all of them and requires that they all still hold.
+The re-dispatch requires that they all still hold — but it cites them by ID and total count
+rather than re-pasting their text, because the verbatim copy is already in the PR body the coder
+wrote and the reviewer reads (§3, "Re-dispatching after a review cycle"). Accumulation is a
+property of the *count*, not of how many times the words appear.
 
 D-008 is the whole argument. Three cycles, three metrics, each spending everything not in its
 own objective:
@@ -481,7 +540,8 @@ stops running, the property it guarded is gone.
 relabelled it *"context only, not checked here"*, which is the same thing wearing a hat, one
 entry below where I had already written this lesson down after cycle 1.
 
-> **Record the check count in the task entry. A fall in that count is `Required`.**
+> **Record the criterion IDs and the check count in the task entry. A fall in that count is
+> `Required`.** `C1-C8, checks=8` is the whole record, and it is what the re-dispatch cites.
 
 D-003 shipped 89 sections; D-004's path, 26. That is a number the reviewer can verify in one
 command, and it cannot be forgotten by the next dispatch the way a sentence can.
@@ -566,6 +626,12 @@ both — one of them the palette defect this project has since spent two tasks o
 are where fix-induced regressions live.** That is exactly the category a narrowed scope discards,
 which is why the scope stays wide and only the re-reading narrows.
 
+**The re-review references the previous review by URL; it does not restate it.** You post every
+review to the PR verbatim with `gh pr comment` (§6), so the prior findings are addressable. Give
+the re-dispatched reviewer that comment URL and the finding IDs it must resolve. It reports
+`R1 fixed` / `R2 still open` against those IDs and writes out only what is new. Restating a
+review the PR already carries is the same waste as re-pasting criteria the PR body already holds.
+
 ### 5.6 Resolution rules, from `prompt.md`
 
 - **Required** — must be fixed. Not negotiable, not deferrable. This holds on every cycle.
@@ -625,8 +691,17 @@ compaction, so every line in them is paid for repeatedly. They had grown to 133 
 alone was 92 KB, roughly 145 lines of review forensics per design task — for a history that gets
 consulted perhaps once a session.
 
-- **An active entry is the seven bullets below and nothing more.** Scope, Accept, Depends on,
+- **An active entry is the seven bullets below and nothing more** — Scope, Accept, Depends on,
   Branch / PR, Status, Review, and a link to the history. No narrative.
+- **A hard ceiling, because "no narrative" did not hold.** An active entry is **at most 20 lines**.
+  Crossing it means the prose belongs in the archive, and you move it there rather than
+  negotiating with yourself about whether this one is special. Checked 2026-08-22: B-012's entry
+  had reached 91 lines, B-008's 68, and `## Done` was running 5-12 lines per task against a
+  one-line rule.
+- **Facts a future dispatch consumes go in a `## Contracts in force` block, not in `## Done`.**
+  Signatures, digests, seams, suite floors — the things a coder is given rather than told about.
+  That is why the `## Done` entries had grown: they were carrying contract data in narrative form.
+  Six lines of facts replaces sixty lines of recap.
 - **The post-mortem goes to `.claude/tasks/archive/<role>.md`**, written at the moment the task
   moves to `## Done`. Nothing is deleted — §6's rule is intact, the entries simply stop being
   loaded unconditionally. The archive is read on demand: open it when you are writing the next
@@ -732,6 +807,10 @@ above are scope, not designs. For a milestone with more than ~6 tasks, follow it
 | "I'll batch three tasks into one dispatch to save time" | Cold sub-agents drift on big tasks. Small tasks are why this works. |
 | "I'll update the task list after the next dispatch" | Update first. Interruptions are when the list matters. |
 | "The coder said it works" | The reviewer says whether it works, and only with commands actually run. |
+| "I'll relay the sub-agent's report so the user has it" | It is already in the transcript. Summarise in ~5 lines and link the PR. |
+| "I'll paste the last review into the re-dispatch so the coder has it" | It is a PR comment. Give the URL and the finding IDs. |
+| "I'll paste the criteria in again so nothing is lost" | The count and the IDs are the guarantee, not the words. §5.3. |
+| "A bit of background will help the agent" | Three sentences of `## Context`. The rest is in the archive, if it is anywhere. |
 | "This is obviously what the user wants" | If the design brief does not say it, ask. |
 | "It's been 3 cycles but we're nearly there" | Stop at 3. The task was underspecified; more cycles will not fix that. |
 | "This criterion is obviously checkable" | Then write the command. If you can't, it isn't ready to dispatch. |
@@ -759,7 +838,7 @@ knows what every other role is doing. If you run out of context without doing th
 lists are stale, the sub-agents are cut off mid-edit, and the next session inherits a repo it
 has to reverse-engineer from `git log`.
 
-The per-agent protocol is `.claude/shared/CLAUDE.md` §8. This section is your half of it.
+The per-agent protocol is `.claude/shared/context-failsafe.md` §8. This section is your half of it.
 
 ### Two thresholds
 
@@ -770,6 +849,12 @@ one agent's handoff is cheap to collect, four at once is not.
 
 **At 90% — hard.** Hand the session over. Below, in order.
 
+Both thresholds are also asserted by the context watchdog hook (context-failsafe §8.1): it
+measures your transcript after every tool call and injects the soft warning at 75% and the
+hard one at 90%. Your sub-agents get the same warning on their own transcripts, so an agent
+may hand off to you before you send it `HANDOFF NOW` — collect that handoff and record it the
+same way.
+
 ### The order, and it is not negotiable
 
 1. **Stop dispatching.** Nothing new, however small. A dispatch you cannot collect is worse
@@ -779,7 +864,7 @@ one agent's handoff is cheap to collect, four at once is not.
    to each:
 
    ```
-   HANDOFF NOW — session context limit. Stop the task, follow .claude/shared/CLAUDE.md §8:
+   HANDOFF NOW — session context limit. Stop the task, follow .claude/shared/context-failsafe.md §8:
    commit and push, write .claude/handoff/<id>-<role>-<cycle>.md in the primary checkout,
    reply with the §8.5 short form only. Do not try to finish the task.
    ```

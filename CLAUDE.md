@@ -44,10 +44,11 @@ it on demand. Nothing is ever deleted; it is only moved out of the startup path.
 ## Handoffs
 
 [`.claude/handoff/`](.claude/handoff/) — where a session goes when it runs out of context
-rather than where it stops. Any role at 90% context stops, commits, and writes a handoff a
-cold successor can resume from; the orchestrator then collects those and leaves a
-`SESSION.md` that the next `/orchestrate` picks up. Protocol in
-[`.claude/shared/CLAUDE.md`](.claude/shared/CLAUDE.md) §8 for every role, and
+rather than where it stops. Any role at 50% writes a 25-line *anchor* and keeps working; at 90%
+it stops, commits, and writes a handoff a cold successor can resume from. The orchestrator then
+collects those and leaves a `SESSION.md` that the next `/orchestrate` picks up. Protocol in
+[`.claude/shared/context-failsafe.md`](.claude/shared/context-failsafe.md) for every role — a
+separate file so its 200 lines load only when they are needed — and
 [`.claude/orchestrator/CLAUDE.md`](.claude/orchestrator/CLAUDE.md) §10 for the session-level
 half.
 
@@ -79,9 +80,13 @@ This applies to every role, including sub-agents.
    design owns CSS. Checked on every review. See [`.claude/shared/CLAUDE.md`](.claude/shared/CLAUDE.md) §4.
 3. **Every task is reviewed before it is done.** Zero *required* and zero *suggested-major*
    findings, or it goes back to the coder.
-4. **Nobody runs out of context silently.** At 90%, every role stops, commits and pushes,
-   and writes a handoff a cold successor can resume from — the dead ends especially, because
-   git recovers everything else. See §8 of the shared manual.
+4. **Nobody runs out of context silently.** At 50% every role writes an *anchor* — decisions,
+   dead ends, next step, on disk where compaction cannot reach it. At 90% it stops, commits and
+   pushes, and promotes that anchor into a handoff a cold successor can resume from. The dead
+   ends especially, because git recovers everything else. See
+   [`.claude/shared/context-failsafe.md`](.claude/shared/context-failsafe.md). A `PostToolUse`
+   hook (`.claude/scripts/context-watchdog.sh`) measures each role's own transcript and forces
+   the question at 50%, 75% and 90%, so nobody has to remember to check.
 5. **One task, one branch, one PR — and only the orchestrator merges.** The coder opens the
    PR before the first review, and that PR is the *only* context the reviewer is given.
    Never rebase. Never delete a branch. Full policy in

@@ -327,12 +327,18 @@ of it.
    - the task ID and title
    - the goal, in a sentence
    - the **file scope** you were given, verbatim
-   - the **acceptance criteria** you were given, verbatim, each marked met or not
+   - the **acceptance criteria** you were given, verbatim, **with their `C<n>` IDs**, each
+     marked met or not, and the total check count on its own line
    - your **verification output** — the real commands and their real results
    - deviations from the task, and why
 
    Write it as though for someone who has never seen this project's task list. A thin PR
-   body produces a blind review, and the review is the gate on your work. Template:
+   body produces a blind review, and the review is the gate on your work.
+
+   **This body is the project's only verbatim copy of the criteria.** Re-dispatches cite them
+   by ID and cite this PR rather than re-pasting them (`.claude/orchestrator/CLAUDE.md` §3,
+   §5.3), so on a later cycle you append the new criteria here — you never rewrite or drop the
+   earlier ones, and the check count never falls. Template:
 
    ````markdown
    ## <task ID> — <title>
@@ -345,8 +351,9 @@ of it.
    - `<path>`
 
    ### Acceptance criteria
-   - [x] <criterion> — <how it is met>
-   - [ ] <criterion> — <why it is not>
+   Total checks: <n>
+   - [x] C1 <criterion> — <how it is met>
+   - [ ] C2 <criterion> — <why it is not>
 
    ### Verification
    ```
@@ -360,6 +367,9 @@ of it.
 
 5. **Review fixes go on the same branch.** Commit them, push; the PR updates itself. Never
    open a second PR for the same task.
+
+6. **Never paste source into the PR body.** Cite `path:line` and let the reader open the diff —
+   it is attached to the PR. See "Cite, do not paste" in §7.
 
 **Never, under any circumstances:**
 
@@ -385,7 +395,10 @@ Every coder role ends its turn with exactly this structure. The orchestrator par
 - PR: #<n> — <url>
 
 ### What changed
-- <file:line or file> — <one line on what and why>
+```
+<the output of `git diff --stat main...HEAD`, unedited>
+```
+- <file:line> — <one line on what and why>
 
 ### Verification run
 - <command> → <actual result, e.g. "17 passed, 0 failed">
@@ -405,166 +418,41 @@ Every coder role ends its turn with exactly this structure. The orchestrator par
 Never write a verification line you did not run. If something failed and you could not fix
 it, say so plainly in that section — a reported failure is useful, a hidden one is not.
 
+### Cite, do not paste
+
+**Never paste source into a report, a PR body, or a handoff.** The diff is attached to the PR
+and the files are on disk; a pasted copy is a second copy of something the reader can already
+open, and it goes stale the moment the branch moves. Cite `path:line` — `runs.py:88-104` — and
+say what is there. `git diff --stat` is how you show the shape of a change; the diff itself is
+how someone reads it.
+
+The one carve-out: **up to five lines** of code, when the point is genuinely unintelligible
+without them — a regex, a formula, a changed signature. Five lines, not a function.
+
+The same rule governs your prose. No preamble, no recap of the dispatch you were given, no
+narration of your approach. The orchestrator asked for the six headings above; give it those.
+
 ---
+## 8. Context failsafe — the anchor at 50%, the handoff at 90%
 
-## 8. Context failsafe — the handoff at 90%
+**Full protocol: [`.claude/shared/context-failsafe.md`](context-failsafe.md).** It is split out
+so you do not pay ~200 lines on every dispatch for a procedure most tasks never reach. Read it
+the moment the watchdog fires, and read it *before* starting anything you can see you lack the
+budget to finish.
 
-A sub-agent that runs out of context mid-task does not fail politely. It gets compacted or
-cut off, and what is lost is exactly the expensive part: the dead ends, the commands that
-actually ran, the reason the third approach was abandoned. The work then has to be re-done
-by a cold successor who repeats every one of those mistakes.
+What you must know without opening it:
 
-So: **before you run out, you stop and write a handoff.** Every role. No exceptions except
-`scout`, which is covered at the end of this section.
+- **50% — anchor.** Take a token audit, then write or refresh
+  `.claude/handoff/<id>-<role>.anchor.md` in the primary checkout, at most 25 lines: decisions
+  and why, dead ends already ruled out, criteria still open, the exact next step. Then keep
+  working. You cannot run `/compact`; this file is the substitute, and compaction cannot touch it.
+- **90%, or the message `HANDOFF NOW`, or a step you cannot afford — stop and hand off.** Commit
+  and push (red is fine, say so), promote the anchor into
+  `.claude/handoff/<id>-<role>-<cycle>.md` in the **primary checkout**, report the short form,
+  stop. Do not gamble on finishing.
+- A `PostToolUse` hook measures your own transcript and fires at 50 / 75 / 90%. It is measuring
+  where you are guessing, so it wins.
+- `scout` never hands off — it re-runs cheaply.
 
-### 8.1 When to trigger
-
-Trigger the handoff the moment **any** of these is true:
-
-- your context is at or past **90%** — a harness warning that context is low, that
-  auto-compaction is imminent, or your own honest estimate;
-- the orchestrator sends you the message `HANDOFF NOW` (it triggers this when *its* own
-  session crosses 90%, so that the whole session can be handed over at once);
-- you are about to start something you can see you do not have the budget to finish — a
-  full-suite run plus its fixes, reading a 2000-line file, a fourth review cycle.
-
-**Do not gamble on finishing.** Being cut off two steps from done still loses the two steps
-*and* everything you learned getting there. Crossing the line and continuing is the failure
-this section exists to prevent — it has no upside, because the handoff makes the work
-resumable at exactly the point you stopped.
-
-**Compaction is not a substitute.** It keeps the summary and drops the specifics, and the
-specifics are what the successor needs.
-
-### 8.2 What to do, in this order
-
-Order matters. Every step assumes the one before it happened.
-
-1. **Stop.** Finish the edit currently in your hands — do not start another. Do not begin a
-   new tool call that reads or generates a large amount of text.
-2. **Commit and push everything.** Uncommitted work does not survive, and this project has
-   already lost a session's work to exactly that. On your task branch:
-   ```bash
-   git add -A && git commit -m "wip(<task-id>): handoff at context limit — <one line>"
-   git push -u origin task/<id>-<slug>
-   git rev-parse HEAD          # the SHA goes in the handoff
-   ```
-   Commit even if tests are red. A red commit that is described is worth more than a clean
-   working tree that is gone. Say plainly in the handoff that it is red.
-3. **Write the handoff file** — template in §8.4, location in §8.3.
-4. **Report to the orchestrator** with the short form in §8.5, and stop. Do not pick the
-   task back up "while you wait".
-
-### 8.3 Where the handoff goes
-
-Handoffs live in **`.claude/handoff/` in the primary checkout**, never on a task branch —
-the orchestrator reads them from `main`, and a file that exists only on your branch is a
-file it cannot see.
-
-If you are working in a worktree, `.claude/handoff/` in *your* directory is the wrong one.
-Resolve the primary checkout first:
-
-```bash
-MAIN=$(dirname "$(git rev-parse --git-common-dir)")   # primary checkout, from any worktree
-mkdir -p "$MAIN/.claude/handoff"
-```
-
-Name the file **`<task-id>-<role>-<cycle>.md`**, lowercase: `b-014-backend-1.md`,
-`d-009-design-2.md`, `f-006-review-1.md`. If that exact name already exists — you are the
-second agent to hand off on the same task and cycle — append `-b`, and say in the file which
-one you are continuing from.
-
-**Do not commit the handoff onto your task branch.** That is why step 2 comes before step 3:
-you commit and push your work first, then write the file, and it stays untracked until the
-orchestrator picks it up from `main`. If you are working directly in the primary checkout with
-your task branch checked out, leave it untracked — do not `git add` it, and do not let a later
-`git add -A` sweep it in.
-
-Handoff files are bookkeeping, not source. The orchestrator commits them to `main` under its
-carve-out. **Nothing in `.claude/handoff/` is ever deleted**; consumed handoffs are moved to
-`.claude/handoff/archive/`.
-
-### 8.4 The handoff file
-
-Write it for a successor who knows **nothing** — not your task, not this conversation, not
-what you tried. It is the only thing they get besides the dispatch. Assume the orchestrator
-that dispatched you is also gone.
-
-Concrete beats complete: exact paths, exact commands, exact SHAs. If you find yourself
-writing "the usual test command", write the command.
-
-```markdown
-# Handoff: <task ID> — <title>
-
-- **Role:** backend-coder | frontend-coder | design-coder | code-reviewer
-- **Written:** <YYYY-MM-DD HH:MM>, at ~<n>% context
-- **Cycle:** <review cycle this belongs to, 1 if none yet>
-- **Continues:** <earlier handoff file, or "nothing — first handoff on this task">
-
-## The task as I was given it
-<Goal, verbatim. Then the File scope, verbatim — the exact list of paths I was allowed to
-touch. Then every acceptance criterion with its Check: and Expect: lines, verbatim.
-Copy these; do not paraphrase them. The successor is re-dispatched from this file, and a
-paraphrased scope is how a task quietly grows.>
-
-## State of the branch
-- Branch: `task/<id>-<slug>` — pushed: yes/no
-- HEAD: `<full SHA>` — <one line on what that commit contains>
-- PR: #<n> / not opened yet
-- Working tree at handoff: clean / <what is dirty and why it could not be committed>
-- Tests at HEAD: <command> → <real result, including "red — 3 failing, listed below">
-
-## Acceptance criteria — where each one stands
-- [x] <criterion> — met. `<command>` → `<output>`
-- [ ] <criterion> — not met. `<command>` → `<output>`. <what is missing>
-- [?] <criterion> — unknown, never run. <why not>
-
-## Done
-- `<file:line>` — <what changed and why>
-
-## Not done, in the order I would do it
-1. <the next concrete action, specific enough to start on without re-deriving anything>
-2. <...>
-
-## Dead ends — do not repeat these
-- <what I tried, what happened, why it cannot work>
-
-**This section is the reason the handoff exists.** Everything else can be recovered from
-git and the dispatch; this cannot. Write it even when it is embarrassing, and especially
-when the failure was subtle. If you truly tried nothing that failed, write "none".
-
-## Open questions for the orchestrator
-- <anything I would have stopped and asked about — wrong file scope, a criterion with no
-  runnable command, a physics formula in the way. Or "none".>
-
-## Environment notes
-- <a running server on a port, a temp file, a venv in a fresh worktree, an export the
-  successor needs — e.g. PLAYWRIGHT_BROWSERS_PATH=~/.cache/ms-playwright. Or "none".>
-```
-
-**A reviewer's handoff carries one extra obligation.** A partial review is not a verdict.
-List every criterion you ran with its real output so the successor does not re-run them, list
-the findings you have so far at their honest severity, and end the file with
-`VERDICT: pr=<n> cycle=<c> verdict=incomplete-handoff` — never `approve`, never `rework`.
-An interrupted review that reports `approve` is how unreviewed code reaches `main`.
-
-### 8.5 What you report back
-
-Do not restate the file. The orchestrator may itself be near its limit.
-
-```markdown
-## Handoff: <task ID> — <title>
-
-- Reason: context at ~<n>% / orchestrator requested
-- Handoff file: `.claude/handoff/<file>.md`
-- Branch: `task/<id>-<slug>` @ `<SHA>` — pushed, PR #<n> / no PR yet
-- Criteria: <n> met, <n> not met, <n> unrun
-- Next action: <one line>
-- Blocking question: <one line, or "none">
-```
-
-### 8.6 `scout` never hands off
-
-`scout` answers one narrow question and is cheap to re-run. If it is somehow near its limit,
-it returns the facts it has already enumerated, says `partial: <what is not covered>`, and
-stops. It writes no file. A handoff for a lookup costs more than the lookup.
+Everything else — the exact templates, where the primary checkout is, what goes in the dead-ends
+section, what the orchestrator gets back — is in that file. Open it, do not reconstruct it.

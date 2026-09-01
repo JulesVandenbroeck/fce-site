@@ -1,0 +1,2874 @@
+diff --git a/docs/design-explorations/board.css b/docs/design-explorations/board.css
+new file mode 100644
+index 0000000..bea4ddf
+--- /dev/null
++++ b/docs/design-explorations/board.css
+@@ -0,0 +1,689 @@
++/* board.css — D-006, node-graph style C. Every colour is a var() into
++ * tokens.css; nothing here sets an inline style or a bare hex value. Ground,
++ * ink and motion follow plot.css's (D-003), beamline.css's (D-004) and
++ * bench.css's (D-005) own conventions so all three explorations read as the
++ * same project.
++ *
++ * Node placement is the one thing this file does differently from both:
++ * a node's lane and slot are never expressed as a coordinate anywhere. Each
++ * node lives inside one of five plain <ul> lists (one per typed column),
++ * and CSS lays each list out as an ordinary flex column — the node's
++ * position is exactly "which list, at what index", read back from live DOM
++ * order by board.html's own inline script, never written as x/y or as
++ * style=. The one place this file's companion script does draw real SVG
++ * geometry (not CSS, not style=) is the edges overlay connecting two ports,
++ * because a drawn line needs endpoints to draw between — the same kind of
++ * exception bench.css's own comment makes for its foreignObject geometry.
++ */
++
++* { box-sizing: border-box; }
++
++body {
++  margin: 0;
++  background: var(--paper);
++  color: var(--ink);
++  font-family: var(--font-body);
++  font-size: 16px;
++  line-height: 1.5;
++  background-image: repeating-linear-gradient(
++    to bottom,
++    transparent 0,
++    transparent 27px,
++    var(--paper-line) 27px,
++    var(--paper-line) 28px
++  );
++}
++
++h1, h2, h3 { font-family: var(--font-body); color: var(--ink); margin: 0 0 var(--space-2); }
++p { margin: 0 0 var(--space-2); color: var(--ink-70); }
++.num, code { font-family: var(--font-mono); }
++
++.page {
++  max-width: 1180px;
++  margin: 0 auto;
++  padding: var(--space-4) var(--space-3) var(--space-5);
++}
++
++a, button {
++  font: inherit;
++}
++
++/* ---- focus — visible everywhere, never removed ------------------------- */
++a:focus-visible,
++button:focus-visible {
++  outline: 3px solid var(--focus-ring);
++  outline-offset: 2px;
++}
++
++/* Ports and the node handle sit inside a saturated --node-* fill, the same
++ * reason bench.css's own .port:focus-visible rule gives: --graphite-blue is
++ * itself one of the --node-* fills, so a graphite-blue ring can
++ * under-contrast against a fill it happens to be painted on.
++ * --node-label-on-fill (white) is already proven >= 4.5:1 against every one
++ * of the 8 node fills for label text, which composites as a ring with room
++ * to spare on top of that. */
++.port:focus-visible,
++.node-card__handle:focus-visible {
++  outline: 3px solid var(--node-label-on-fill);
++  outline-offset: 2px;
++}
++
++/* ---- topbar --------------------------------------------------------------- */
++.topbar {
++  display: flex;
++  align-items: center;
++  gap: var(--space-4);
++  flex-wrap: wrap;
++  padding-bottom: var(--space-3);
++  border-bottom: 2px solid var(--paper-line);
++  margin-bottom: var(--space-4);
++}
++.topbar__brand {
++  font-weight: 700;
++  letter-spacing: 0.08em;
++  font-size: 15px;
++}
++.topbar__who {
++  margin-left: auto;
++  color: var(--ink-70);
++  font-family: var(--font-mono);
++  font-size: 14px;
++}
++.campaign-nav {
++  display: flex;
++  gap: var(--space-2);
++  flex-wrap: wrap;
++}
++.chip {
++  padding: 3px var(--space-2);
++  border-radius: var(--radius);
++  font-size: 13px;
++  border: 1px solid var(--paper-line);
++  background: var(--panel);
++  color: var(--ink-70);
++}
++.chip--current {
++  border-color: var(--graphite-blue);
++  color: var(--ink);
++  font-weight: 700;
++}
++.chip--locked {
++  background: var(--locked-fill);
++  border-color: var(--locked-border);
++  color: var(--ink);
++}
++.lock-tag {
++  font-size: 10px;
++  text-transform: uppercase;
++  letter-spacing: 0.06em;
++  margin-left: var(--space-1);
++  /* Sits on --locked-fill (the palette tile or a locked campaign chip);
++   * --ink-70 measures below the 4.5:1 floor there, so this uses full --ink,
++   * same as tokens.css's own lock-state comment specifies. */
++  color: var(--ink);
++}
++
++/* ---- brief / objective ------------------------------------------------------ */
++.brief { margin-bottom: var(--space-4); }
++.brief__title { font-size: 22px; }
++.brief__text { max-width: 62ch; }
++.objective {
++  display: inline-block;
++  padding: var(--space-2) var(--space-3);
++  background: var(--panel);
++  border-left: 3px solid var(--graphite-blue);
++  border-radius: 0 var(--radius) var(--radius) 0;
++}
++.objective .label {
++  display: block;
++  font-size: 11px;
++  text-transform: uppercase;
++  letter-spacing: 0.08em;
++  color: var(--ink-70);
++  margin-bottom: 2px;
++}
++.objective p { margin: 0; color: var(--ink); }
++
++/* ---- builder ---------------------------------------------------------------- */
++.builder { margin-bottom: var(--space-5); }
++.builder__h {
++  display: flex;
++  align-items: baseline;
++  gap: var(--space-2);
++  font-size: 18px;
++}
++.style-tag {
++  font-size: 12px;
++  font-weight: 400;
++  color: var(--graphite-blue-strong);
++  background: var(--panel);
++  border: 1px solid var(--paper-line);
++  border-radius: var(--radius);
++  padding: 1px var(--space-2);
++}
++.builder__note { max-width: 72ch; font-size: 14px; }
++
++/* ---- board -------------------------------------------------------------------
++ * A row of typed columns, not a rail and not a free canvas: the wrapper
++ * scrolls its own contents at narrow widths rather than the page body ever
++ * gaining horizontal scroll (design manual §4, and the same rule the
++ * cutflow table, bench's canvas and D-003's own figure already follow).
++ * The Histogram column is wide enough to hold its own embedded figure at
++ * that figure's fixed 650x460 intrinsic size without shrinking it — see
++ * .plot-embed below — so the row as a whole is wider than any of the three
++ * viewports this project measures against, on purpose: this is the layout
++ * fact .plot-embed's own comment says is budgeted for, not an accident. */
++.board-wrap {
++  background: var(--panel);
++  border: 1px solid var(--paper-line);
++  border-radius: var(--radius);
++  padding: var(--space-2);
++  margin-bottom: var(--space-3);
++  overflow-x: auto;
++}
++.board {
++  position: relative;
++  display: flex;
++  align-items: flex-start;
++  gap: var(--space-3);
++}
++.board-edges {
++  position: absolute;
++  top: 0;
++  left: 0;
++  pointer-events: none;
++}
++.edge {
++  fill: none;
++  stroke: var(--graphite-blue);
++  stroke-width: 2;
++}
++.edge--drag {
++  stroke: var(--graphite-blue-strong);
++  stroke-dasharray: 5 4;
++}
++.edge-arrowhead {
++  fill: var(--graphite-blue);
++}
++
++.board-column {
++  flex: none;
++  width: 190px;
++  background: var(--paper);
++  border: 1px solid var(--paper-line);
++  border-radius: var(--radius);
++  padding: var(--space-2);
++  position: relative;
++  z-index: 1;
++}
++.board-column--observable { width: 200px; }
++.board-column--histogram { width: 700px; }
++.board-column__h {
++  font-size: 13px;
++  text-transform: uppercase;
++  letter-spacing: 0.06em;
++  color: var(--ink-70);
++  border-bottom: 1px solid var(--paper-line);
++  padding-bottom: var(--space-1);
++  margin-bottom: var(--space-2);
++}
++.board-column__nodes {
++  list-style: none;
++  margin: 0;
++  padding: 0;
++  display: flex;
++  flex-direction: column;
++  gap: var(--space-2);
++  min-height: 48px;
++}
++
++/* ---- node card ------------------------------------------------------------ */
++.node-card {
++  border-radius: var(--radius);
++  padding: var(--space-2);
++  color: var(--node-label-on-fill);
++  box-shadow: 0 1px 0 var(--node-shadow);
++  opacity: 0;
++  animation: node-card-enter var(--timing) ease-out forwards;
++  display: flex;
++  flex-direction: column;
++}
++
++.node-card--data { background: var(--node-data); }
++.node-card--multiplicity { background: var(--node-multiplicity); }
++.node-card--selection { background: var(--node-selection); }
++.node-card--obs-global { background: var(--node-obs-global); }
++.node-card--obs-object { background: var(--node-obs-object); }
++.node-card--obs-vecsum { background: var(--node-obs-vecsum); }
++.node-card--obs-custom { background: var(--node-obs-custom); }
++.node-card--histogram { background: var(--node-histogram); }
++
++.node-card__handle {
++  display: block;
++  width: 100%;
++  border: none;
++  background: transparent;
++  color: var(--node-label-on-fill);
++  text-align: left;
++  padding: 0;
++  cursor: grab;
++  /* A dashed "grip" affordance under the title, the same device bench.css
++   * uses for the same reason: texture communicates "draggable", not a
++   * glow (design manual §3). */
++  border-bottom: 1px dashed var(--node-label-on-fill);
++  padding-bottom: 2px;
++  margin-bottom: 2px;
++  touch-action: none;
++}
++.node-card__handle:active { cursor: grabbing; }
++.node-card__title {
++  margin: 0;
++  font-weight: 700;
++  font-size: 14px;
++  color: var(--node-label-on-fill);
++  display: block;
++}
++.node-card__subtitle {
++  margin: 2px 0 var(--space-2);
++  font-size: 12px;
++  color: var(--node-label-on-fill);
++}
++.node-card__ports {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++}
++.port {
++  width: 20px;
++  height: 20px;
++  border-radius: 50%;
++  border: 2px solid var(--ink);
++  background: var(--paper);
++  color: var(--ink);
++  padding: 0;
++  cursor: pointer;
++  touch-action: none;
++}
++.port--absent {
++  border-color: transparent;
++  background: transparent;
++  cursor: default;
++}
++/* Four distinct states, four distinct treatments (design manual §3: not
++ * four glows). Fill stays --paper throughout — a filled port on a
++ * saturated node background is exactly what crushed contrast in Beamline's
++ * own cycle-1 palette. Armed (click or keyboard) gets a thicker solid ring
++ * and a scale step; the pointer drag-target gets a dashed ring instead, so
++ * the two states remain visually distinct from each other as well as from
++ * plain hover. */
++.port--armed {
++  border-width: 3px;
++  border-color: var(--graphite-blue-strong);
++  transform: scale(1.15);
++}
++.port--drag-target {
++  border-width: 3px;
++  border-style: dashed;
++  border-color: var(--graphite-blue-strong);
++  transform: scale(1.2);
++}
++.port:hover:not(.port--absent) {
++  border-color: var(--graphite-blue-strong);
++}
++.node-card__links {
++  list-style: none;
++  margin: var(--space-2) 0 0;
++  padding: 0;
++  font-size: 11px;
++  color: var(--node-label-on-fill);
++}
++.node-card__links li { margin-top: 2px; }
++
++.node-card--flash {
++  animation: node-card-flash 600ms ease-out;
++}
++
++@keyframes node-card-enter {
++  from { opacity: 0; transform: translateY(6px); }
++  to { opacity: 1; transform: translateY(0); }
++}
++@keyframes node-card-flash {
++  0% { box-shadow: 0 0 0 3px var(--graphite-blue); }
++  100% { box-shadow: 0 1px 0 var(--node-shadow); }
++}
++
++/* ---- the plot, embedded as the Histogram node's own content ---------------
++ * Fixed at the reference figure's own intrinsic 650x460 CSS px (D-003's
++ * plot.html, FIG.w/FIG.h) and never shrunk — the same "does not reflow"
++ * rule D-003's own .figure-scroll honours, met here by the board's own
++ * horizontal scroll (.board-wrap, above) rather than a second nested
++ * scroller. Sits on --panel, not the node's own saturated fill, so it reads
++ * as a pasted-in figure rather than part of the node chrome — the same
++ * "physical attachment" device the design manual's game-feel section
++ * names. */
++.plot-embed {
++  width: 650px;
++  height: 460px;
++  flex: none;
++  margin: var(--space-2) 0;
++  padding: var(--space-2);
++  background: var(--panel);
++  border: 1px solid var(--plot-frame);
++  border-radius: var(--radius);
++  color: var(--ink-70);
++}
++.plot-embed__ylab {
++  font-size: 11px;
++}
++.plot-embed__area {
++  height: calc(100% - 40px);
++  display: flex;
++  align-items: flex-end;
++}
++.hist {
++  display: flex;
++  align-items: flex-end;
++  gap: 3px;
++  width: 100%;
++  height: 100%;
++}
++.hist span {
++  flex: 1;
++  background: var(--syst-grey);
++  border-top: 1px solid var(--plot-edge);
++}
++.hist .b1 { height: 6%; } .hist .b2 { height: 14%; } .hist .b3 { height: 24%; }
++.hist .b4 { height: 34%; } .hist .b5 { height: 46%; } .hist .b6 { height: 58%; }
++.hist .b8 { height: 78%; } .hist .b9 { height: 92%; } .hist .b10 { height: 100%; }
++.plot-embed__xlab {
++  font-size: 11px;
++  margin-top: var(--space-1);
++}
++
++/* ---- palette ------------------------------------------------------------------
++ * `.palette` is the `<ul>` itself, `.node-palette` the purely presentational
++ * row wrapper holding the label ahead of it — the same "a list of controls
++ * is a list, not a <div> of siblings" rework bench.css's own comment
++ * describes, applied here from the start rather than as a later fix. */
++.node-palette {
++  display: flex;
++  flex-wrap: wrap;
++  align-items: center;
++  gap: var(--space-2);
++  margin-bottom: var(--space-3);
++}
++.palette {
++  display: flex;
++  flex-wrap: wrap;
++  gap: var(--space-2);
++  align-items: center;
++  list-style: none;
++  margin: 0;
++  padding: 0;
++}
++.palette > li:not(.palette__locked) {
++  display: contents;
++}
++.palette__label {
++  font-size: 12px;
++  text-transform: uppercase;
++  letter-spacing: 0.06em;
++  color: var(--ink-70);
++}
++.palette__add {
++  border: 1px solid var(--paper-line);
++  background: var(--panel);
++  color: var(--ink);
++  border-radius: var(--radius);
++  padding: 5px var(--space-2) 5px 8px;
++  font-size: 13px;
++  cursor: pointer;
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++}
++.palette__add::before {
++  content: "";
++  display: inline-block;
++  width: 9px;
++  height: 9px;
++  border-radius: 2px;
++}
++.palette__add--data::before { background: var(--node-data); }
++.palette__add--multiplicity::before { background: var(--node-multiplicity); }
++.palette__add--selection::before { background: var(--node-selection); }
++.palette__add--obs-global::before { background: var(--node-obs-global); }
++.palette__add--obs-object::before { background: var(--node-obs-object); }
++.palette__add--obs-vecsum::before { background: var(--node-obs-vecsum); }
++.palette__add--obs-custom::before { background: var(--node-obs-custom); }
++.palette__add--histogram::before { background: var(--node-histogram); }
++.palette__add:hover { border-color: var(--graphite-blue); }
++
++.palette__locked {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  border: 1px dashed var(--locked-border);
++  background: var(--locked-fill);
++  color: var(--ink);
++  border-radius: var(--radius);
++  padding: 5px var(--space-2);
++  font-size: 13px;
++}
++
++/* ---- run panel ------------------------------------------------------------------ */
++.run-panel {
++  display: flex;
++  align-items: center;
++  gap: var(--space-3);
++  flex-wrap: wrap;
++}
++.btn {
++  border: none;
++  border-radius: var(--radius);
++  padding: 8px var(--space-3);
++  font-size: 14px;
++  cursor: pointer;
++}
++.btn--go {
++  background: var(--graphite-blue);
++  color: var(--on-graphite-blue);
++}
++.btn--go:hover { background: var(--graphite-blue-strong); }
++.run-progress { min-width: 220px; }
++.run-progress__bar {
++  height: 6px;
++  border-radius: 3px;
++  background: var(--paper-line);
++  overflow: hidden;
++}
++.run-progress__fill {
++  display: block;
++  height: 100%;
++  width: 62%;
++  background: var(--graphite-blue);
++}
++.run--pulse .run-progress__fill {
++  animation: progress-pulse 900ms ease-in-out;
++}
++@keyframes progress-pulse {
++  0% { filter: brightness(1.4); }
++  100% { filter: brightness(1); }
++}
++.run-progress__phase {
++  margin: 4px 0 0;
++  font-size: 12px;
++  color: var(--ink-70);
++}
++
++/* ---- results -------------------------------------------------------------------- */
++.results { margin-bottom: var(--space-5); }
++.results__h { font-size: 18px; }
++.results__note { max-width: 68ch; font-size: 13px; }
++
++.legend {
++  list-style: none;
++  display: flex;
++  flex-wrap: wrap;
++  gap: var(--space-3);
++  padding: 0;
++  margin: 0 0 var(--space-3);
++  font-size: 13px;
++}
++.legend li { display: flex; align-items: center; gap: 6px; color: var(--ink-70); }
++.swatch {
++  width: 12px;
++  height: 12px;
++  border-radius: 2px;
++  display: inline-block;
++}
++.swatch--data { background: var(--ink); }
++.swatch--x1 { background: var(--frozen-x1); }
++.swatch--x2 { background: var(--frozen-x2); }
++.swatch--x3 { background: var(--frozen-x3); }
++
++.readout {
++  margin-bottom: var(--space-2);
++}
++.readout .label {
++  display: block;
++  font-size: 11px;
++  text-transform: uppercase;
++  letter-spacing: 0.08em;
++  color: var(--ink-70);
++}
++.readout .num { font-size: 22px; }
++
++.verdict {
++  color: var(--ink);
++  font-weight: 600;
++  display: flex;
++  align-items: center;
++  gap: var(--space-2);
++}
++.stamp {
++  display: inline-block;
++  border: 2px solid var(--vermillion);
++  color: var(--vermillion);
++  font-family: var(--font-mono);
++  font-size: 11px;
++  font-weight: 700;
++  letter-spacing: 0.06em;
++  padding: 2px 6px;
++  border-radius: 3px;
++  transform: rotate(-3deg);
++  opacity: 0;
++  animation: stamp-press 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms forwards;
++}
++@keyframes stamp-press {
++  0% { opacity: 0; transform: rotate(-3deg) scale(1.6); }
++  70% { opacity: 1; transform: rotate(-3deg) scale(0.94); }
++  100% { opacity: 1; transform: rotate(-3deg) scale(1); }
++}
++
++.cutflow {
++  border-collapse: collapse;
++  margin-bottom: var(--space-3);
++  font-size: 13px;
++}
++.cutflow caption {
++  text-align: left;
++  font-size: 11px;
++  text-transform: uppercase;
++  letter-spacing: 0.08em;
++  color: var(--ink-70);
++  margin-bottom: 4px;
++}
++.cutflow th, .cutflow td {
++  padding: 4px var(--space-2);
++  border-bottom: 1px solid var(--paper-line);
++  text-align: left;
++}
++.cutflow .num { text-align: right; }
++
++.gauge {
++  max-width: 360px;
++}
++.gauge .label {
++  display: block;
++  font-size: 11px;
++  text-transform: uppercase;
++  letter-spacing: 0.08em;
++  color: var(--ink-70);
++  margin-bottom: 4px;
++}
++.gauge__bar {
++  position: relative;
++  height: 10px;
++  background: var(--paper-line);
++  border-radius: 5px;
++  margin-bottom: 4px;
++}
++.gauge__tick {
++  position: absolute;
++  top: -16px;
++  font-size: 10px;
++  color: var(--ink-70);
++  border-left: 1px solid var(--ink-70);
++  padding-left: 3px;
++}
++.gauge__tick--3 { left: 30%; }
++.gauge__tick--5 { left: 62%; }
++.muted { font-size: 12px; color: var(--ink-70); margin: 0; }
++
++/* ---- log / marginalia --------------------------------------------------------- */
++.log { margin-bottom: var(--space-5); }
++.log h2 { font-size: 16px; }
++.count { font-size: 12px; color: var(--ink-70); font-weight: 400; }
++.log__entry header {
++  display: flex;
++  gap: var(--space-2);
++  font-size: 13px;
++}
++.log__n { font-family: var(--font-mono); color: var(--ink-70); }
++.log__d { color: var(--ink); }
++.margin-note {
++  font-size: 13px;
++  color: var(--ink-70);
++  transform: rotate(-1deg);
++  max-width: 52ch;
++  border-left: 2px solid var(--paper-line);
++  padding-left: var(--space-2);
++  margin-top: 4px;
++}
++
++/* ---- annotations (reader-facing notes, not part of the app) ------------------- */
++.annotations {
++  border-top: 2px solid var(--paper-line);
++  padding-top: var(--space-3);
++  font-size: 14px;
++}
++.annotations li { margin-bottom: var(--space-2); }
++.annotations code { font-size: 13px; }
++
++/* ---- reduced motion — end state appears, no transit --------------------------- */
++@media (prefers-reduced-motion: reduce) {
++  .node-card {
++    animation: none;
++    opacity: 1;
++    transform: none;
++  }
++  .node-card--flash { animation: none; }
++  .run--pulse .run-progress__fill { animation: none; }
++  .stamp {
++    animation: none;
++    opacity: 1;
++    transform: rotate(-3deg);
++  }
++}
++
++/* ---- narrow widths — the page body never scrolls sideways; the board
++ * scrolls within .board-wrap instead (see that rule's own comment). At
++ * 768px the board's own content width comfortably exceeds the viewport
++ * (five columns, one of them 700px wide to hold the embedded figure), so
++ * this is the width the horizontal scroll this rule relies on is actually
++ * exercised at, not merely provisioned for. -------------------------------- */
++@media (max-width: 768px) {
++  .page { padding: var(--space-3) var(--space-2) var(--space-4); }
++  .topbar__who { margin-left: 0; }
++}
+diff --git a/docs/design-explorations/board.html b/docs/design-explorations/board.html
+new file mode 100644
+index 0000000..bd5f348
+--- /dev/null
++++ b/docs/design-explorations/board.html
+@@ -0,0 +1,811 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++<meta charset="utf-8" />
++<meta name="viewport" content="width=device-width, initial-scale=1" />
++<title>D-006 — node graph style C: Board (design exploration)</title>
++<link rel="stylesheet" href="tokens.css" />
++<link rel="stylesheet" href="board.css" />
++</head>
++<body>
++<main class="page">
++
++  <header class="topbar">
++    <span class="topbar__brand" data-wf="brand">FCE</span>
++    <nav class="campaign-nav" data-wf="campaign-nav" aria-label="Missions">
++      <span class="chip chip--current">1 · First Light</span>
++      <span class="chip chip--locked" data-wf="mission-locked" aria-disabled="true">2 · Cleaning the Signal <span class="lock-tag">locked</span></span>
++      <span class="chip chip--locked" aria-disabled="true">3 · The Unknown <span class="lock-tag">locked</span></span>
++    </nav>
++    <span class="topbar__who" data-wf="student-id">kwark_42</span>
++  </header>
++
++  <section class="brief">
++    <h1 class="brief__title" data-wf="mission-title">M-1 · First Light</h1>
++    <p class="brief__text" data-wf="mission-brief">A Z boson lives for a moment and then falls
++      apart into two leptons. Those two leptons still carry its mass between them. Add them
++      together, take the mass, and plot it.</p>
++    <div class="objective" data-wf="objective">
++      <span class="label">Objective</span>
++      <p>Find the peak, and read its position within <strong>±2 GeV of 91.2 GeV</strong>.</p>
++    </div>
++  </section>
++
++  <section class="builder">
++    <h2 class="builder__h">Your analysis <span class="style-tag">Board — typed columns, drag or click to connect</span></h2>
++    <p class="builder__note">Board lays your analysis out in five typed lanes — Data,
++      Multiplicity, Selection, Observable, Histogram — the same order a pipeline runs in. A
++      new node joins the bottom of its own lane; drag a node's title bar up or down (or focus
++      it and press the arrow keys) to reorder it within that lane. To connect two nodes, either
++      drag from an output port to an input port, or click one output port and then one input
++      port — both work here. The result figure lives inside the graph itself, as the
++      Histogram lane's own content.</p>
++
++    <div class="board-wrap" id="graph" data-wf="graph" data-ui='{"nodes":[],"edges":[]}'>
++      <div class="board" id="board">
++        <svg class="board-edges" id="edges-svg" role="presentation" aria-hidden="true">
++          <defs>
++            <marker id="board-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
++              <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead"></path>
++            </marker>
++          </defs>
++          <g id="edges-layer"></g>
++        </svg>
++
++        <div class="board-column" data-column="0">
++          <h3 class="board-column__h">Data</h3>
++          <ul class="board-column__nodes" id="column-0" data-column-nodes="0"></ul>
++        </div>
++        <div class="board-column" data-column="1">
++          <h3 class="board-column__h">Multiplicity</h3>
++          <ul class="board-column__nodes" id="column-1" data-column-nodes="1"></ul>
++        </div>
++        <div class="board-column" data-column="2">
++          <h3 class="board-column__h">Selection</h3>
++          <ul class="board-column__nodes" id="column-2" data-column-nodes="2"></ul>
++        </div>
++        <div class="board-column board-column--observable" data-column="3">
++          <h3 class="board-column__h">Observable</h3>
++          <ul class="board-column__nodes" id="column-3" data-column-nodes="3"></ul>
++        </div>
++        <div class="board-column board-column--histogram" data-column="4">
++          <h3 class="board-column__h">Histogram</h3>
++          <ul class="board-column__nodes" id="column-4" data-column-nodes="4"></ul>
++        </div>
++      </div>
++      <p class="graph__status" id="graph-status" data-wf="connect-status" aria-live="polite">
++        Drag from an output port to an input port, or click one and then the other, to
++        connect two nodes.</p>
++    </div>
++
++    <div class="node-palette">
++      <span class="palette__label">Add a node</span>
++      <ul class="palette" data-wf="node-palette">
++        <li><button class="palette__add palette__add--data" data-add-kind="DataSource" type="button">+ Data</button></li>
++        <li><button class="palette__add palette__add--multiplicity" data-add-kind="Multiplicity" type="button">+ Multiplicity</button></li>
++        <li><button class="palette__add palette__add--selection" data-add-kind="Selection" type="button">+ Selection</button></li>
++        <li><button class="palette__add palette__add--obs-global" data-add-kind="ObsGlobal" type="button">+ Obs: Global</button></li>
++        <li><button class="palette__add palette__add--obs-object" data-add-kind="ObsObject" type="button">+ Obs: Object</button></li>
++        <li><button class="palette__add palette__add--obs-vecsum" data-add-kind="ObsVectorSum" type="button">+ Obs: Vec Sum</button></li>
++        <li><button class="palette__add palette__add--obs-custom" data-add-kind="ObsCustom" type="button">+ Obs: Custom</button></li>
++        <li><button class="palette__add palette__add--histogram" data-add-kind="Histogram" type="button">+ Histogram</button></li>
++        <li class="palette__locked" data-wf="node-locked" aria-disabled="true">
++          <span class="lock-tag">locked</span> Node kind — opens in a later mission
++        </li>
++      </ul>
++    </div>
++
++    <div class="run-panel" id="run-panel">
++      <button class="btn btn--go" id="run-button" data-wf="run-control" type="button">▶ Run analysis</button>
++      <div class="run-progress" data-wf="run-progress">
++        <div class="run-progress__bar"><span class="run-progress__fill"></span></div>
++        <p class="run-progress__phase">Reading events — 62% · sample 3 of 6</p>
++      </div>
++    </div>
++  </section>
++
++  <section class="results">
++    <h2 class="results__h">Result</h2>
++    <p class="results__note">The figure itself is drawn inside the Histogram lane above, as
++      that node's own content — see <code>.plot-embed</code> there. What follows is the
++      numeric readout the figure feeds.</p>
++
++    <ul class="legend" data-wf="legend">
++      <li><span class="swatch swatch--data"></span>data</li>
++      <li><span class="swatch swatch--x1"></span>Z → 2 leptons</li>
++      <li><span class="swatch swatch--x2"></span>Z → 2 quarks</li>
++      <li><span class="swatch swatch--x3"></span>Z → 2 leptons + γ</li>
++    </ul>
++
++    <div class="readout" data-wf="readout">
++      <span class="label">Peak position</span>
++      <strong class="num">90.8 GeV</strong>
++    </div>
++
++    <p class="verdict verdict--met" data-wf="verdict">Objective met — mission 2 is now open.
++      <span class="stamp" data-wf="stamp" aria-hidden="true">LOGGED</span></p>
++
++    <table class="cutflow" data-wf="cutflow">
++      <caption>Cutflow</caption>
++      <thead>
++        <tr><th scope="col">Stage</th><th scope="col">Events</th><th scope="col">Efficiency</th></tr>
++      </thead>
++      <tbody>
++        <tr><th scope="row">All events</th><td class="num">240 000</td><td class="num">—</td></tr>
++        <tr><th scope="row">≥ 2 leptons</th><td class="num">18 420</td><td class="num">7.7%</td></tr>
++        <tr><th scope="row">pt &gt; 20 GeV</th><td class="num">12 108</td><td class="num">65.7%</td></tr>
++      </tbody>
++    </table>
++
++    <div class="gauge" data-wf="gauge">
++      <span class="label">Significance Z</span>
++      <div class="gauge__bar">
++        <span class="gauge__tick gauge__tick--3">3σ</span>
++        <span class="gauge__tick gauge__tick--5">5σ</span>
++      </div>
++      <p class="muted">no fit in this mission</p>
++    </div>
++  </section>
++
++  <section class="log" data-wf="run-history">
++    <h2>Previous runs <span class="count">1 entry</span></h2>
++    <article class="log__entry">
++      <header>
++        <span class="log__n">run 1</span>
++        <span class="log__d">no filter — peak at 88.4 GeV, 2.8 low</span>
++      </header>
++      <p class="margin-note" data-wf="margin-note">You measured the peak a bit low. Something
++        carried energy away before you measured it — look at the left side of your plot.</p>
++    </article>
++  </section>
++
++  <section class="annotations">
++    <h2>What Board is, and what it gives up</h2>
++    <ul>
++      <li><strong>Persists {column, slotIndex} per node, plus the edge list.</strong> The
++        board container (<code>#graph</code>) carries one attribute, <code>data-ui</code>,
++        holding a JSON object shaped <code>{ nodes: [{id, column, slotIndex}], edges: [[from,
++        to]] }</code>. A node's <code>column</code> is fixed by its kind — DataSource always
++        lands in lane 0, Histogram always in lane 4 — and is read back from wherever that
++        node's element actually sits in the live DOM at persist time, not carried as separate
++        mutable state that could drift from the render. <code>slotIndex</code> is that node's
++        position within its own lane's list, likewise read from DOM order. Node kind itself
++        stays on the node's own element (<code>data-node-kind</code>), the same place Beamline
++        and Bench put it, because kind is analysis content the run payload carries, not a
++        layout fact. <code>verify.py --board</code> reads this attribute after a real slot
++        move, not just at load, so the claim covers a moved node, not only a spawned one.</li>
++      <li><strong>Both connection gestures work, plus a keyboard path.</strong> An output port
++        carries a <code>pointerdown</code> listener for drag-to-connect (drop on an input port
++        to finish, the same mechanics as Bench) and a plain <code>click</code> listener for
++        click-to-connect (click an output port to arm it, then an input port to finish, the
++        same mechanics as Beamline). A native <code>&lt;button&gt;</code> already turns an
++        Enter or Space keypress into a synthesized <code>click</code>, so the same click
++        handler that answers a mouse click also answers the keyboard, with no separate keydown
++        listener needed for it. Bench refused click on purpose, and Beamline refused drag on
++        purpose — Board is the one style asked to accept both, so both are wired deliberately
++        here rather than one falling out as an accident of a shared handler.</li>
++      <li><strong>The plot lives inside the graph, as the Histogram lane's own content.</strong>
++        Every Histogram node's card carries a <code>.plot-embed</code> figure
++        (<code>data-wf="plot"</code>) sized at the reference figure's own fixed 650×460 CSS
++        px, the intrinsic size D-003's <code>plot.html</code> renders at and does not reflow
++        below. That size does not fit a 768px-wide viewport once the other four lanes sit
++        beside it, so the whole board scrolls horizontally inside its own wrapper
++        (<code>.board-wrap</code>, <code>overflow-x: auto</code>) — the same device Bench's
++        canvas and D-003's own figure already use — rather than the page body ever gaining
++        horizontal scroll.</li>
++      <li><strong>No inline <code>style=</code> attribute, anywhere.</strong> A node's lane and
++        slot are both facts about where its element sits in ordinary DOM flow — which
++        <code>&lt;ul&gt;</code> it is a child of, and at what index — so placing a node needs
++        no coordinate and no <code>style=</code> at all; reordering within a lane is plain
++        <code>insertBefore</code>/<code>appendChild</code>. The one thing this style still
++        draws as geometry rather than flow is the connector between two ports, since a
++        drawn line needs endpoints to draw between: those live in the edges layer's own SVG
++        <code>&lt;path d&gt;</code> and the overlay <code>&lt;svg&gt;</code>'s own
++        <code>width</code>/<code>height</code> attributes, computed from each port's live
++        position and written as plain SVG geometry attributes, never a <code>style</code>
++        property — the same category of exception Bench's <code>&lt;foreignObject x y&gt;</code>
++        already makes for the same reason.</li>
++      <li><strong>The trade this style makes, on purpose.</strong> Board gives up Bench's free
++        spatial arrangement — a node cannot be dragged next to an unrelated node just because
++        the student wants them near each other — and gives up Beamline's single-glance
++        simplicity, since five lanes read as more machinery than one rail. What it buys instead
++        is a structure that answers a question neither of the other two can: which pipeline
++        stage is this node in, at a glance, from its column alone, independent of the order it
++        happened to be added — the same {column, slotIndex} shape the real run payload's own
++        "ui" object would need to carry, whichever style ships.</li>
++      <li><strong>Locked node kind.</strong> The palette's final tile is not one of the 8
++        addable kinds — it stands for a node type a later mission unlocks, shown so a student
++        can see it is coming. It carries no port, no click handler, and no tab stop, so it
++        cannot be reached as an active control by keyboard or by mouse.</li>
++    </ul>
++    <p>Nothing on this page ships; it exists to be compared against Beamline (D-004, single
++      rail, click-to-connect) and Bench (D-005, free canvas, drag-to-connect) at the D-007
++      checkpoint. See <code>verify.py --board</code> for what is actually measured about this
++      rendering, rather than claimed here.</p>
++  </section>
++
++</main>
++<!-- Inlined, not fetched by src=: a plain, unflagged Chromium refuses to load a file:// <script type="module" src=...> as a cross-origin fetch (CORS on the module loader specifically), so this page would be empty for any student who opens it without a server -- the exact defect D-005 cycle 1 shipped and cycle 2 fixed by inlining. The script stays type="module" (module scope, no leaked globals). This inline block is the only copy of this script -- there is no separate board.js file. -->
++<script type="module">
++/* D-006 exploration: style C, "Board".
++ *
++ * Not part of the shipping app. Demonstrates the third of the three
++ * persistence/interaction models the user asked to compare (Beamline,
++ * D-004, ordered edge list, click-to-connect; Bench, D-005, {x, y} free
++ * canvas, drag-to-connect): five TYPED COLUMNS, one per pipeline stage, each
++ * an ordinary DOM list a node lives inside. A node's position is entirely a
++ * fact about DOM structure -- which list, and at what index -- never a
++ * coordinate.
++ *
++ * Persistence lives in one attribute, `data-ui`, on `#graph`:
++ *   { "nodes": [ { "id": "n1", "column": 0, "slotIndex": 0 }, ... ],
++ *     "edges": [ ["n1", "n2"], ... ] }
++ * Both `column` and `slotIndex` are read back from the live DOM at persist
++ * time (which <ul> a node's card sits in, and at what index in that list),
++ * not tracked as separate mutable state that could drift from what is
++ * actually rendered. Node *kind* is not in it; that lives on each node's
++ * own element (`data-node-kind`), the same place Beamline and Bench put it.
++ *
++ * Connections: an output port answers both a real pointer drag (drop on an
++ * input port) and a real click (click the output port to arm it, then an
++ * input port to finish) -- the union of what Bench and Beamline each
++ * deliberately refuse one half of. A drag that moves the pointer past a
++ * small threshold is handled entirely inside the drag's own pointerup
++ * handler and marks the port so the click handler ignores the click that
++ * would otherwise still follow a down/up pair on the same element; a
++ * plain click (no meaningful movement) falls through to the click handler
++ * unchanged. A native <button> turns Enter/Space into a synthesized click,
++ * so the same click handler is the keyboard path too -- no separate keydown
++ * listener answers Enter/Space here.
++ *
++ * No inline `style=` attribute is used anywhere for node placement -- a
++ * node's lane and slot are exactly which list it is a child of and at what
++ * index, both ordinary DOM facts. The one place this file does write SVG
++ * geometry (not CSS, not `style=`) is the edges overlay: each connector's
++ * own `<path d>`, and the overlay `<svg>`'s own `width`/`height`
++ * attributes, both computed from live port positions -- the same kind of
++ * exception Bench's `<foreignObject x y>` makes, for the same reason: a
++ * drawn line needs endpoints to draw between.
++ *
++ * The 8 addable node kinds and the legal source -> destination pairs are
++ * the same facts Beamline and Bench source from the vendored reference's
++ * own allowlist (`ui/graph.py:_VALID_CONNECTIONS`) -- see beamline.js's own
++ * comment for how that was checked. Bare "Observable" stays excluded for
++ * the same reason.
++ */
++
++const SVG_NS = "http://www.w3.org/2000/svg";
++
++const NODE_KINDS = [
++  { kind: "DataSource", label: "Data", cls: "data", column: 0, hasIn: false, hasOut: true },
++  { kind: "Multiplicity", label: "Multiplicity", cls: "multiplicity", column: 1, hasIn: true, hasOut: true },
++  { kind: "Selection", label: "Selection", cls: "selection", column: 2, hasIn: true, hasOut: true },
++  { kind: "ObsGlobal", label: "Obs: Global", cls: "obs-global", column: 3, hasIn: true, hasOut: true },
++  { kind: "ObsObject", label: "Obs: Object", cls: "obs-object", column: 3, hasIn: true, hasOut: true },
++  { kind: "ObsVectorSum", label: "Obs: Vec Sum", cls: "obs-vecsum", column: 3, hasIn: true, hasOut: true },
++  { kind: "ObsCustom", label: "Obs: Custom", cls: "obs-custom", column: 3, hasIn: true, hasOut: true },
++  { kind: "Histogram", label: "Histogram", cls: "histogram", column: 4, hasIn: true, hasOut: false },
++];
++
++const KIND_BY_NAME = Object.fromEntries(NODE_KINDS.map((k) => [k.kind, k]));
++
++const VALID_CONNECTIONS = {
++  DataSource: ["Multiplicity", "Selection"],
++  Multiplicity: ["Multiplicity", "Selection"],
++  Selection: ["Selection", "ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom"],
++  ObsGlobal: ["Histogram"],
++  ObsObject: ["Histogram"],
++  ObsVectorSum: ["Histogram"],
++  ObsCustom: ["Histogram"],
++  Histogram: [],
++};
++
++function isLegal(srcKind, dstKind) {
++  return (VALID_CONNECTIONS[srcKind] || []).includes(dstKind);
++}
++
++const DRAG_THRESHOLD = 5; // px of pointer movement before a press counts as a drag, not a click
++
++// The only state this file keeps beyond the DOM itself. `nodes` carries
++// kind only -- column and slotIndex are always read back from live DOM
++// structure (persistUI), never duplicated here, so there is exactly one
++// place either fact can live. `edges` is the same ordered [from, to] list
++// shape Beamline and Bench both persist.
++const graphState = {
++  nodes: new Map(), // id -> { kind }
++  edges: [], // [fromId, toId][]
++  nextId: 1,
++  keyboardArmed: null, // { id, kind } while an out-port is armed
++};
++
++let els = {};
++
++function nodeLabel(id) {
++  const n = graphState.nodes.get(id);
++  return n ? `${KIND_BY_NAME[n.kind].label} (${id})` : id;
++}
++
++function persistUI() {
++  const nodes = [];
++  for (let col = 0; col < 5; col += 1) {
++    const list = els.columnLists[col];
++    Array.from(list.children).forEach((card, slotIndex) => {
++      nodes.push({ id: card.dataset.nodeId, column: col, slotIndex });
++    });
++  }
++  els.graph.setAttribute("data-ui", JSON.stringify({ nodes, edges: graphState.edges }));
++}
++
++function setStatus(text) {
++  els.status.textContent = text;
++}
++
++function portElFor(id, role) {
++  return els.graph.querySelector(`.node-card[data-node-id="${id}"] .port--${role}`);
++}
++
++function boardRelativePoint(clientX, clientY) {
++  const boardRect = els.board.getBoundingClientRect();
++  return { x: clientX - boardRect.left, y: clientY - boardRect.top };
++}
++
++function boardRelativeCenter(el) {
++  const r = el.getBoundingClientRect();
++  return boardRelativePoint(r.left + r.width / 2, r.top + r.height / 2);
++}
++
++function renderEdges() {
++  const boardRect = els.board.getBoundingClientRect();
++  const w = Math.max(els.board.scrollWidth, boardRect.width, 1);
++  const h = Math.max(els.board.scrollHeight, boardRect.height, 1);
++  els.svg.setAttribute("width", String(w));
++  els.svg.setAttribute("height", String(h));
++  els.edgesLayer.textContent = "";
++  graphState.edges.forEach(([from, to]) => {
++    const outEl = portElFor(from, "out");
++    const inEl = portElFor(to, "in");
++    if (!outEl || !inEl) return;
++    const p1 = boardRelativeCenter(outEl);
++    const p2 = boardRelativeCenter(inEl);
++    const midX = (p1.x + p2.x) / 2;
++    const path = document.createElementNS(SVG_NS, "path");
++    path.setAttribute("class", "edge");
++    path.setAttribute(
++      "d",
++      `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`
++    );
++    path.setAttribute("marker-end", "url(#board-arrow)");
++    els.edgesLayer.appendChild(path);
++  });
++}
++
++function renderLinksFor(id) {
++  const card = els.graph.querySelector(`.node-card[data-node-id="${id}"]`);
++  if (!card) return;
++  const links = card.querySelector(".node-card__links");
++  links.textContent = "";
++  graphState.edges
++    .filter(([from]) => from === id)
++    .forEach(([, to]) => {
++      const li = document.createElement("li");
++      li.textContent = `→ ${nodeLabel(to)}`;
++      links.appendChild(li);
++    });
++}
++
++function buildPlotEmbed() {
++  const figure = document.createElement("figure");
++  figure.className = "plot-embed";
++  figure.dataset.wf = "plot";
++
++  const ylab = document.createElement("span");
++  ylab.className = "plot-embed__ylab";
++  ylab.textContent = "events";
++  figure.appendChild(ylab);
++
++  const area = document.createElement("div");
++  area.className = "plot-embed__area";
++  const hist = document.createElement("div");
++  hist.className = "hist";
++  const heights = ["b1", "b1", "b1", "b2", "b2", "b2", "b3", "b3", "b4", "b5", "b6", "b8", "b10", "b9", "b5", "b3", "b2", "b1", "b1", "b1"];
++  heights.forEach((cls) => {
++    const bar = document.createElement("span");
++    bar.className = cls;
++    hist.appendChild(bar);
++  });
++  area.appendChild(hist);
++  figure.appendChild(area);
++
++  const caption = document.createElement("figcaption");
++  caption.className = "plot-embed__xlab";
++  caption.textContent = "m(l1, l2) [GeV]  0 · 30 · 60 · 90 · 120";
++  figure.appendChild(caption);
++
++  return figure;
++}
++
++function buildNodeEl(id, kind, subtitle) {
++  const meta = KIND_BY_NAME[kind];
++
++  const li = document.createElement("li");
++  li.className = `node-card node-card--${meta.cls}`;
++  li.dataset.nodeId = id;
++  li.dataset.nodeKind = kind;
++
++  const handle = document.createElement("button");
++  handle.type = "button";
++  handle.className = "node-card__handle";
++  handle.setAttribute(
++    "aria-label",
++    `Move ${meta.label} (${id}) within its own column. Drag, or use the arrow keys.`
++  );
++  const title = document.createElement("span");
++  title.className = "node-card__title";
++  title.textContent = meta.label;
++  handle.appendChild(title);
++  li.appendChild(handle);
++
++  const sub = document.createElement("p");
++  sub.className = "node-card__subtitle";
++  sub.textContent = subtitle || "not configured yet";
++  li.appendChild(sub);
++
++  const ports = document.createElement("div");
++  ports.className = "node-card__ports";
++
++  if (meta.hasIn) {
++    const inPort = document.createElement("button");
++    inPort.type = "button";
++    inPort.className = "port port--in";
++    inPort.dataset.role = "in";
++    inPort.setAttribute("aria-label", `Connect in to ${meta.label} (${id})`);
++    inPort.addEventListener("click", () => handleInActivate(id));
++    ports.appendChild(inPort);
++  } else {
++    const spacer = document.createElement("span");
++    spacer.className = "port port--absent";
++    spacer.setAttribute("aria-hidden", "true");
++    ports.appendChild(spacer);
++  }
++
++  if (meta.hasOut) {
++    const outPort = document.createElement("button");
++    outPort.type = "button";
++    outPort.className = "port port--out";
++    outPort.dataset.role = "out";
++    outPort.setAttribute("aria-label", `Connect out from ${meta.label} (${id})`);
++    outPort.setAttribute("aria-pressed", "false");
++    outPort.addEventListener("pointerdown", (ev) => startConnectDrag(id, outPort, ev));
++    outPort.addEventListener("click", () => handleOutActivate(id, outPort));
++    ports.appendChild(outPort);
++  } else {
++    const spacer = document.createElement("span");
++    spacer.className = "port port--absent";
++    spacer.setAttribute("aria-hidden", "true");
++    ports.appendChild(spacer);
++  }
++
++  li.appendChild(ports);
++
++  if (kind === "Histogram") {
++    li.appendChild(buildPlotEmbed());
++  }
++
++  const links = document.createElement("ul");
++  links.className = "node-card__links";
++  li.appendChild(links);
++
++  handle.addEventListener("pointerdown", (ev) => startReorderDrag(id, handle, ev));
++  handle.addEventListener("keydown", (ev) => handleReorderKey(id, ev));
++
++  return li;
++}
++
++function addNode(kind, subtitle) {
++  const id = `n${graphState.nextId}`;
++  graphState.nextId += 1;
++  graphState.nodes.set(id, { kind });
++  const meta = KIND_BY_NAME[kind];
++  const li = buildNodeEl(id, kind, subtitle);
++  els.columnLists[meta.column].appendChild(li);
++  renderLinksFor(id);
++  persistUI();
++  renderEdges();
++  return id;
++}
++
++// ---- reordering a node within its own column (never across columns: a
++// node's column is fixed by its kind). The reorder itself is applied once,
++// on pointerup, from the release position -- not live on every pointermove
++// -- because reparenting the dragged card's own subtree mid-drag (which a
++// live-reorder would do on every step, since the card holds the very
++// element pointer capture was set on) empirically drops that capture in
++// Chromium, silencing every pointermove after the first live reorder even
++// though the captured element never leaves the document. Tracking the
++// pointer position without mutating the DOM until release side-steps that
++// entirely, and still lands on the same final slot a live reorder would. */
++function startReorderDrag(id, handleEl, ev) {
++  if (ev.button !== undefined && ev.button !== 0) return;
++  ev.preventDefault();
++  handleEl.setPointerCapture(ev.pointerId);
++  const card = handleEl.closest(".node-card");
++  const list = card.parentElement;
++  let moved = false;
++  let lastClientY = ev.clientY;
++
++  function onMove(moveEv) {
++    moved = true;
++    lastClientY = moveEv.clientY;
++  }
++  function onUp() {
++    handleEl.removeEventListener("pointermove", onMove);
++    handleEl.removeEventListener("pointerup", onUp);
++    handleEl.removeEventListener("pointercancel", onCancel);
++    if (!moved) return;
++    const siblings = Array.from(list.children).filter((c) => c !== card);
++    let insertBefore = null;
++    for (const sib of siblings) {
++      const r = sib.getBoundingClientRect();
++      if (lastClientY < r.top + r.height / 2) {
++        insertBefore = sib;
++        break;
++      }
++    }
++    if (insertBefore) {
++      list.insertBefore(card, insertBefore);
++    } else {
++      list.appendChild(card);
++    }
++    renderEdges();
++    persistUI();
++    const slot = Array.from(list.children).indexOf(card);
++    setStatus(`${nodeLabel(id)} moved to slot ${slot} of its column.`);
++  }
++  function onCancel() {
++    handleEl.removeEventListener("pointermove", onMove);
++    handleEl.removeEventListener("pointerup", onUp);
++    handleEl.removeEventListener("pointercancel", onCancel);
++  }
++  handleEl.addEventListener("pointermove", onMove);
++  handleEl.addEventListener("pointerup", onUp);
++  handleEl.addEventListener("pointercancel", onCancel);
++}
++
++function handleReorderKey(id, ev) {
++  if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
++  const card = els.graph.querySelector(`.node-card[data-node-id="${id}"]`);
++  const list = card.parentElement;
++  if (ev.key === "ArrowUp" && card.previousElementSibling) {
++    list.insertBefore(card, card.previousElementSibling);
++  } else if (ev.key === "ArrowDown" && card.nextElementSibling) {
++    list.insertBefore(card.nextElementSibling, card);
++  } else {
++    return;
++  }
++  ev.preventDefault();
++  renderEdges();
++  persistUI();
++  const slot = Array.from(list.children).indexOf(card);
++  setStatus(`${nodeLabel(id)} moved to slot ${slot} of its column.`);
++}
++
++// ---- pointer drag: connecting two nodes -----------------------------------
++function startConnectDrag(id, portEl, ev) {
++  if (ev.button !== undefined && ev.button !== 0) return;
++  ev.preventDefault();
++  clearKeyboardArm();
++  const kind = graphState.nodes.get(id).kind;
++  portEl.setPointerCapture(ev.pointerId);
++
++  const start = boardRelativeCenter(portEl);
++  const dragLine = document.createElementNS(SVG_NS, "line");
++  dragLine.setAttribute("class", "edge edge--drag");
++  dragLine.setAttribute("x1", start.x);
++  dragLine.setAttribute("y1", start.y);
++  dragLine.setAttribute("x2", start.x);
++  dragLine.setAttribute("y2", start.y);
++  els.edgesLayer.appendChild(dragLine);
++
++  const startClient = { x: ev.clientX, y: ev.clientY };
++  let dragging = false;
++  let lastTargetPort = null;
++
++  function clearTargetHighlight() {
++    if (lastTargetPort) {
++      lastTargetPort.classList.remove("port--drag-target");
++      lastTargetPort = null;
++    }
++  }
++
++  function onMove(moveEv) {
++    const dx = moveEv.clientX - startClient.x;
++    const dy = moveEv.clientY - startClient.y;
++    if (!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
++      dragging = true;
++      setStatus(`Dragging from ${nodeLabel(id)} — drop on an input port to connect.`);
++    }
++    const cur = boardRelativePoint(moveEv.clientX, moveEv.clientY);
++    dragLine.setAttribute("x2", cur.x);
++    dragLine.setAttribute("y2", cur.y);
++    const under = document.elementFromPoint(moveEv.clientX, moveEv.clientY);
++    const targetPort = under ? under.closest(".port--in") : null;
++    if (targetPort !== lastTargetPort) {
++      clearTargetHighlight();
++      if (targetPort) {
++        targetPort.classList.add("port--drag-target");
++        lastTargetPort = targetPort;
++      }
++    }
++  }
++
++  function onUp(upEv) {
++    portEl.removeEventListener("pointermove", onMove);
++    portEl.removeEventListener("pointerup", onUp);
++    portEl.removeEventListener("pointercancel", onCancel);
++    clearTargetHighlight();
++    dragLine.remove();
++    if (!dragging) {
++      // Negligible movement: this was a press-release in place, not a drag.
++      // Mark the port so the click event the browser is about to dispatch
++      // (down and up landed on the same element) is treated as an ordinary
++      // click-to-connect arm rather than re-processed here.
++      return;
++    }
++    portEl.dataset.suppressClick = "1";
++    const under = document.elementFromPoint(upEv.clientX, upEv.clientY);
++    const targetPort = under ? under.closest(".port--in") : null;
++    if (!targetPort) {
++      setStatus("Connection cancelled — you did not drop on an input port.");
++      return;
++    }
++    const targetCard = targetPort.closest(".node-card");
++    const toId = targetCard ? targetCard.dataset.nodeId : null;
++    attemptConnect(id, kind, toId);
++  }
++  function onCancel() {
++    portEl.removeEventListener("pointermove", onMove);
++    portEl.removeEventListener("pointerup", onUp);
++    portEl.removeEventListener("pointercancel", onCancel);
++    clearTargetHighlight();
++    dragLine.remove();
++  }
++
++  portEl.addEventListener("pointermove", onMove);
++  portEl.addEventListener("pointerup", onUp);
++  portEl.addEventListener("pointercancel", onCancel);
++}
++
++function attemptConnect(fromId, fromKind, toId) {
++  if (!toId || toId === fromId) {
++    setStatus("A node cannot connect to itself.");
++    return;
++  }
++  const toKind = graphState.nodes.get(toId).kind;
++  if (isLegal(fromKind, toKind)) {
++    graphState.edges.push([fromId, toId]);
++    persistUI();
++    renderLinksFor(fromId);
++    renderEdges();
++    const card = els.graph.querySelector(`.node-card[data-node-id="${toId}"]`);
++    card.classList.remove("node-card--flash");
++    // eslint-disable-next-line no-unused-expressions
++    card.offsetWidth; // restart the flash animation on repeat connections
++    card.classList.add("node-card--flash");
++    setStatus(`Connected: ${nodeLabel(fromId)} → ${nodeLabel(toId)}.`);
++  } else {
++    setStatus(
++      `Refused: ${KIND_BY_NAME[fromKind].label} cannot connect to ${KIND_BY_NAME[toKind].label}.`
++    );
++  }
++}
++
++// ---- click-to-connect (also reached by Enter/Space on a focused port,
++// since a native <button> already turns that keypress into a synthesized
++// click — no separate keydown handler answers the keyboard here) ----------
++function handleOutActivate(id, outPort) {
++  if (outPort.dataset.suppressClick) {
++    delete outPort.dataset.suppressClick;
++    return;
++  }
++  if (graphState.keyboardArmed && graphState.keyboardArmed.id === id) {
++    clearKeyboardArm();
++    setStatus("Connection cancelled.");
++    return;
++  }
++  clearKeyboardArm();
++  graphState.keyboardArmed = { id, kind: graphState.nodes.get(id).kind };
++  outPort.classList.add("port--armed");
++  outPort.setAttribute("aria-pressed", "true");
++  setStatus(
++    `Armed from ${nodeLabel(id)} — click or press Enter on an input port to finish, or `
++    + "activate this port again to cancel."
++  );
++}
++
++function handleInActivate(id) {
++  if (!graphState.keyboardArmed) {
++    setStatus("Click (or press Enter on) an output port first, then an input port, to connect two nodes.");
++    return;
++  }
++  const { id: fromId, kind: fromKind } = graphState.keyboardArmed;
++  clearKeyboardArm();
++  attemptConnect(fromId, fromKind, id);
++}
++
++function clearKeyboardArm() {
++  if (!graphState.keyboardArmed) return;
++  const prev = portElFor(graphState.keyboardArmed.id, "out");
++  if (prev) {
++    prev.classList.remove("port--armed");
++    prev.setAttribute("aria-pressed", "false");
++  }
++  graphState.keyboardArmed = null;
++}
++
++function wirePalette() {
++  els.paletteButtons.forEach((btn) => {
++    btn.addEventListener("click", () => {
++      const kind = btn.dataset.addKind;
++      addNode(kind, null);
++      setStatus(`Added a new ${KIND_BY_NAME[kind].label} node.`);
++    });
++  });
++}
++
++function wireRun() {
++  if (!els.runButton) return;
++  els.runButton.addEventListener("click", () => {
++    els.runPanel.classList.remove("run--pulse");
++    // eslint-disable-next-line no-unused-expressions
++    els.runPanel.offsetWidth;
++    els.runPanel.classList.add("run--pulse");
++    setStatus("Run started — reading events.");
++  });
++}
++
++function buildDemoGraph() {
++  const a = addNode("DataSource", "91 GeV · IDEA · all samples");
++  const b = addNode("Multiplicity", "≥ 2 leptons");
++  const c = addNode("Selection", "lepton pt > 20 GeV");
++  const d = addNode("ObsVectorSum", "mass of lepton 1 + lepton 2");
++  const e = addNode("Histogram", "40 bins, 0–120 GeV");
++  [
++    [a, b],
++    [b, c],
++    [c, d],
++    [d, e],
++  ].forEach(([from, to]) => {
++    graphState.edges.push([from, to]);
++    renderLinksFor(from);
++  });
++  persistUI();
++  renderEdges();
++}
++
++function init() {
++  els = {
++    graph: document.getElementById("graph"),
++    board: document.getElementById("board"),
++    svg: document.getElementById("edges-svg"),
++    edgesLayer: document.getElementById("edges-layer"),
++    status: document.getElementById("graph-status"),
++    columnLists: [0, 1, 2, 3, 4].map((i) => document.getElementById(`column-${i}`)),
++    paletteButtons: Array.from(document.querySelectorAll(".palette__add")),
++    runButton: document.getElementById("run-button"),
++    runPanel: document.getElementById("run-panel"),
++  };
++  buildDemoGraph();
++  wirePalette();
++  wireRun();
++  window.addEventListener("resize", renderEdges);
++}
++
++if (document.readyState === "loading") {
++  document.addEventListener("DOMContentLoaded", init);
++} else {
++  init();
++}
++
++</script>
++</body>
++</html>
+diff --git a/docs/design-explorations/verify.py b/docs/design-explorations/verify.py
+index fe14395..00a4595 100644
+--- a/docs/design-explorations/verify.py
++++ b/docs/design-explorations/verify.py
+@@ -91,6 +91,9 @@ BEAMLINE_HTML = HERE / "beamline.html"
+ # ---- D-005 (Bench) ---------------------------------------------------------
+ BENCH_HTML = HERE / "bench.html"
+ 
++# ---- D-006 (Board) -----------------------------------------------------
++BOARD_HTML = HERE / "board.html"
++
+ 
+ def _primary_checkout_root() -> Optional[Path]:
+     """Return the *primary* checkout's root directory, even when this file is
+@@ -392,6 +395,36 @@ def load_bench_page(
+     return browser, context, page, console_errors, page_errors, requests
+ 
+ 
++def load_board_page(
++    pw: Playwright,
++    width: int,
++    height: int = 1200,
++    reduced_motion: Optional[str] = None,
++    html_path: Optional[Path] = None,
++) -> tuple[Browser, BrowserContext, Page, list[str], list[str], list[str]]:
++    """Same contract as `load_bench_page`, but for `board.html` (D-006).
++    Board's own inline `<script type="module">` is, like Bench's, the only
++    copy of its script on disk -- no `board.js` file exists -- for the same
++    file:// module-script CORS reason `load_bench_page`'s own docstring
++    explains, so this launches Chromium with no launch arguments at all, the
++    same as `check_board_unflagged_file_url` below."""
++    browser = pw.chromium.launch()
++    context_kwargs = {"viewport": {"width": width, "height": height}}
++    if reduced_motion:
++        context_kwargs["reduced_motion"] = reduced_motion
++    context = browser.new_context(**context_kwargs)
++    page = context.new_page()
++    console_errors = []
++    page_errors = []
++    requests = []
++    page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
++    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
++    page.on("request", lambda req: requests.append(req.url))
++    page.goto((html_path or BOARD_HTML).as_uri())
++    page.wait_for_timeout(400)  # let the node-entrance stagger animation finish
++    return browser, context, page, console_errors, page_errors, requests
++
++
+ # ---------------------------------------------------------------------
+ def check_anatomy(page: Page) -> CheckResult:
+     """Read the main histogram figure's anatomy from the live DOM — panel
+@@ -4857,79 +4890,1244 @@ def check_bench_unflagged_file_url(pw: Playwright) -> bool:
+     return ok
+ 
+ 
+-# ---------------------------------------------------------------------
+-def run_section(name: str, fn, *args) -> bool:
+-    """Call one registered check function and catch any exception it raises
+-    at this section boundary, rather than letting it abort the whole suite.
+-    On a badly broken page (e.g. the module script never loading), a check
+-    that assumes a populated graph can hang out a Playwright `TimeoutError`
+-    on a selector that never appears, or throw `StopIteration` walking an
+-    empty node list -- and an uncaught exception here kills `main()` before
+-    later sections, including `bench-unflagged-file-url` (the section built
+-    to diagnose exactly that state), ever run. Reported as a normal
+-    `[FAIL]` line naming the section and the exception, the same shape every
+-    other failure in this file already takes."""
++# =======================================================================
++# D-006 — Board (node-graph style C)
++def check_board_persistence(pw: Playwright) -> bool:
++    """Criterion 1: Board persists `{column, slotIndex}` per node, plus the
++    edge list, in one `data-ui` attribute on `#graph` -- read, parsed, and
++    printed back, then re-read after a real slot move (a pointer drag that
++    reorders two nodes within one column) so the claim covers a moved node,
++    not only a spawned one. Also makes the same positive, falsifiable claim
++    the design law's "no inline style=, ever" rule implies here that Bench's
++    own check makes for its own style: Board places a node purely by which
++    DOM list it lives in and at what index, so this scans every element in
++    the rendered DOM for a `style` attribute and asserts zero."""
++    section(
++        "Board persistence -- {column, slotIndex} per node + edge list in one data-ui attribute, "
++        "no inline style anywhere"
++    )
++    browser, context, page, *_ = load_board_page(pw, 1024)
++
++    raw = page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')")
+     try:
+-        return bool(fn(*args))
+-    except Exception as exc:
+-        line(f"{name} (raised during the section, did not return)", False, f"{type(exc).__name__}: {exc}")
++        ui = json.loads(raw)
++        nodes = ui.get("nodes")
++        edges = ui.get("edges")
++        shape_ok = (
++            isinstance(nodes, list)
++            and isinstance(edges, list)
++            and len(nodes) > 0
++            and all(
++                isinstance(n, dict) and set(n.keys()) == {"id", "column", "slotIndex"}
++                and isinstance(n["id"], str)
++                and isinstance(n["column"], int) and not isinstance(n["column"], bool)
++                and isinstance(n["slotIndex"], int) and not isinstance(n["slotIndex"], bool)
++                and 0 <= n["column"] <= 4
++                and n["slotIndex"] >= 0
++                for n in nodes
++            )
++            and all(
++                isinstance(e, list) and len(e) == 2 and all(isinstance(x, str) for x in e) for e in edges
++            )
++        )
++    except (json.JSONDecodeError, TypeError, AttributeError):
++        nodes, edges, shape_ok = None, None, False
++    # A container can have the right shape and still be empty -- {"nodes":
++    # [], "edges": []} satisfies every clause above except this one, and an
++    # empty graph is exactly the failure mode D-005 cycle 1's own R1 shipped
++    # undetected, so the count itself is asserted, not only the shape of
++    # what it contains.
++    node_count = len(nodes) if isinstance(nodes, list) else 0
++    edge_count = len(edges) if isinstance(edges, list) else 0
++    empty_note = " -- empty node list" if isinstance(nodes, list) and node_count == 0 else ""
++    line(
++        "data-ui attribute on #graph parses as {nodes: [{id, column, slotIndex}], edges: [[from, to]]}, "
++        "non-empty, with no other key on a node (nothing the engine needs, per design-brief.md §4)",
++        shape_ok,
++        f"{node_count} node(s) / {edge_count} edge(s){empty_note} -- raw attribute: {raw!r}",
++    )
++    if shape_ok:
++        print(f"       {len(nodes)} node(s): {nodes}")
++        print(f"       {len(edges)} edge(s): {edges}")
++
++    no_style = page.evaluate(
++        """() => {
++            const all = Array.from(document.querySelectorAll('*'));
++            const offenders = all.filter(el => el.getAttribute('style'));
++            return { inspected: all.length, count: offenders.length,
++                     sample: offenders.slice(0, 5).map(el => el.tagName) };
++        }"""
++    )
++    ok_no_style = no_style["count"] == 0
++    line(
++        f"No inline style= attribute anywhere: {no_style['inspected']} elements scanned",
++        ok_no_style,
++        "0 found" if ok_no_style else f"{no_style['count']} found, e.g. {no_style['sample']}",
++    )
++    browser.close()
++
++    if not shape_ok:
+         return False
+ 
++    # Re-check after a real slot move: add a second Multiplicity node (so
++    # column 1 holds two), drag n2's own handle down past it, and confirm
++    # data-ui reflects the swapped slotIndex values for both -- the claim
++    # this criterion makes has to cover a moved node, not only a spawned one.
++    browser, context, page, *_ = load_board_page(pw, 1024)
++    page.click('[data-add-kind="Multiplicity"]')
++    before = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    before_n2 = next(n for n in before["nodes"] if n["id"] == "n2")
++    before_n6 = next(n for n in before["nodes"] if n["id"] == "n6")
++    handle = page.locator('.node-card[data-node-id="n2"] .node-card__handle')
++    handle.scroll_into_view_if_needed()
++    n6_handle = page.locator('.node-card[data-node-id="n6"] .node-card__handle')
++    box = handle.bounding_box()
++    n6box = n6_handle.bounding_box()
++    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
++    page.mouse.down()
++    page.mouse.move(box["x"] + box["width"] / 2, n6box["y"] + n6box["height"] + 10, steps=12)
++    page.mouse.up()
++    after = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    after_n2 = next(n for n in after["nodes"] if n["id"] == "n2")
++    after_n6 = next(n for n in after["nodes"] if n["id"] == "n6")
++    moved_ok = (
++        before_n2["column"] == 1 and before_n6["column"] == 1
++        and after_n2["column"] == 1 and after_n6["column"] == 1
++        and before_n2["slotIndex"] == 0 and before_n6["slotIndex"] == 1
++        and after_n6["slotIndex"] == 0 and after_n2["slotIndex"] == 1
++    )
++    line(
++        "A real drag on n2's handle, past n6 in the same column, swaps their persisted slotIndex "
++        "(n2: 0 -> 1, n6: 1 -> 0), column unchanged for both",
++        moved_ok,
++        f"before: n2={before_n2}, n6={before_n6}; after: n2={after_n2}, n6={after_n6}",
++    )
++    browser.close()
++    return shape_ok and ok_no_style and moved_ok
+ 
+-def main() -> None:
+-    """Run the anatomy checks (always) plus the full sweep (`--all`, the
+-    default) or just anatomy (`--plot`), print a summary table, and exit
+-    non-zero if any section failed. `--beamline` additionally (or, given
+-    alone, only in addition to the unconditional anatomy block above, which
+-    is D-003's existing behaviour and out of this task's file scope to
+-    change) runs the D-004 Beamline section; `--bench` does the same for the
+-    D-005 Bench section."""
+-    parser = argparse.ArgumentParser()
+-    parser.add_argument("--plot", action="store_true", help="anatomy-only report")
+-    parser.add_argument("--all", action="store_true", help="full sweep")
+-    parser.add_argument("--beamline", action="store_true", help="D-004 Beamline section only")
+-    parser.add_argument("--bench", action="store_true", help="D-005 Bench section only")
+-    args = parser.parse_args()
+-    if not args.plot and not args.all and not args.beamline and not args.bench:
+-        args.all = True
+ 
+-    all_results = []
+-    with sync_playwright() as pw:
+-        browser, context, page, *_ = load_page(pw, 1024)
+-        all_results.append(("anatomy-main", all(ok for _, ok, _ in check_anatomy(page))))
+-        all_results.append(("anatomy-ratio", all(ok for _, ok, _ in check_ratio_panel(page))))
+-        all_results.append(("anatomy-fit-readout", all(ok for _, ok, _ in check_fit_readout(page))))
+-        all_results.append(("anatomy-cutflow", all(ok for _, ok, _ in check_cutflow(page))))
+-        browser.close()
+-        all_results.append(("payload-schema-sanity", all(ok for _, ok, _ in check_payload_schema_sanity())))
++def check_board_connection_gestures(pw: Playwright) -> bool:
++    """Criterion 2's gesture half: drag-to-connect AND click-to-connect are
++    both accepted -- Board is the one style asked to accept both, unlike
++    Beamline (click only) and Bench (drag only) -- driven by real Playwright
++    gestures (`mouse.down`/`move`/`up` for drag; `.click()` for click),
++    never by calling this page's own JS handlers directly. Also checks an
++    illegal-kind drag is refused and names why. The keyboard path is
++    checked separately (`check_board_keyboard_path`); both gestures here are
++    mutation-tested in the PR body's own transcript."""
++    section("Board connection gestures -- both drag and click accepted")
++    all_ok = True
+ 
+-        if args.all:
+-            all_results.append(("payload-consistency", check_payload_consistency(pw)))
+-            all_results.append(("measurements", check_measurements(pw)))
+-            all_results.append(("legend-layout", check_legend_layout(pw)))
+-            all_results.append(("paint-sweep", check_paint_sweep(pw)))
+-            all_results.append(("contrast", check_contrast(pw)))
+-            all_results.append(("focus-walk", check_focus_walk(pw)))
+-            all_results.append(("reduced-motion", check_reduced_motion(pw)))
+-            all_results.append(("network-and-errors", check_network_and_errors(pw)))
+-            all_results.append(("git-diff-clean", check_git_diff()))
+-            all_results.append(("no-exhaustive-prose", check_no_exhaustive_prose()))
+-            all_results.append(("no-fabricated-identifiers", check_no_fabricated_identifiers()))
++    # drag accept: Data -> Selection
++    browser, context, page, *_ = load_board_page(pw, 1024)
++    page.click('[data-add-kind="DataSource"]')
++    page.click('[data-add-kind="Selection"]')
++    src = page.locator('.node-card[data-node-id="n6"] .port--out').bounding_box()
++    dst = page.locator('.node-card[data-node-id="n7"] .port--in').bounding_box()
++    page.mouse.move(src["x"] + src["width"] / 2, src["y"] + src["height"] / 2)
++    page.mouse.down()
++    page.mouse.move(dst["x"] + dst["width"] / 2, dst["y"] + dst["height"] / 2, steps=15)
++    page.mouse.up()
++    ui = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    accepted_drag = ["n6", "n7"] in ui["edges"]
++    all_ok = all_ok and accepted_drag
++    status_text = page.eval_on_selector("#graph-status", "el => el.textContent")
++    line(
++        "Drag-to-connect: a real mouse down/move/up between a legal pair (Data -> Selection) creates the edge",
++        accepted_drag,
++        f"edges={ui['edges']}, status={status_text!r}",
++    )
++    browser.close()
+ 
+-        if args.all or args.beamline:
+-            all_results.append(("beamline-persistence", check_beamline_persistence(pw)))
+-            all_results.append(("beamline-connection-gestures", check_beamline_connection_gestures(pw)))
+-            all_results.append(("beamline-pairs", check_beamline_pairs(pw)))
+-            all_results.append(("beamline-inventory", check_beamline_inventory(pw)))
+-            all_results.append(("beamline-paint-sweep", check_beamline_paint_sweep(pw)))
+-            all_results.append(("beamline-contrast", check_beamline_contrast(pw)))
+-            all_results.append(("beamline-pairwise-luminance", check_beamline_pairwise_luminance(pw)))
+-            all_results.append(("beamline-clamping-bound", check_cam02ucs_clamping_bound()))
+-            all_results.append(("beamline-node-fill-normal-vision", check_beamline_node_fill_normal_vision(pw)))
+-            all_results.append(("beamline-focus-walk", check_beamline_focus_walk(pw)))
+-            all_results.append(("beamline-reduced-motion", check_beamline_reduced_motion(pw)))
+-            all_results.append(("beamline-network-and-errors", check_beamline_network_and_errors(pw)))
+-            all_results.append(("beamline-no-exhaustive-prose", check_beamline_no_exhaustive_prose()))
++    # click accept: Multiplicity -> Selection
++    browser, context, page, *_ = load_board_page(pw, 1024)
++    page.click('[data-add-kind="Multiplicity"]')
++    page.click('[data-add-kind="Selection"]')
++    page.click('.node-card[data-node-id="n6"] .port--out')
++    page.click('.node-card[data-node-id="n7"] .port--in')
++    ui2 = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    accepted_click = ["n6", "n7"] in ui2["edges"]
++    all_ok = all_ok and accepted_click
++    status_text2 = page.eval_on_selector("#graph-status", "el => el.textContent")
++    line(
++        "Click-to-connect: two real .click() calls, output port then input port, between a legal "
++        "pair (Multiplicity -> Selection) creates the edge",
++        accepted_click,
++        f"edges={ui2['edges']}, status={status_text2!r}",
++    )
++    browser.close()
++
++    # refuse by kind: a legal drag path onto an illegal-kind target
++    browser, context, page, *_ = load_board_page(pw, 1024)
++    page.click('[data-add-kind="Multiplicity"]')
++    page.click('[data-add-kind="ObsGlobal"]')
++    src2 = page.locator('.node-card[data-node-id="n6"] .port--out').bounding_box()
++    dst2 = page.locator('.node-card[data-node-id="n7"] .port--in').bounding_box()
++    page.mouse.move(src2["x"] + src2["width"] / 2, src2["y"] + src2["height"] / 2)
++    page.mouse.down()
++    page.mouse.move(dst2["x"] + dst2["width"] / 2, dst2["y"] + dst2["height"] / 2, steps=15)
++    page.mouse.up()
++    ui3 = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    refused_by_kind = ["n6", "n7"] not in ui3["edges"]
++    status_text3 = page.eval_on_selector("#graph-status", "el => el.textContent")
++    names_refusal = "cannot connect to" in status_text3
++    all_ok = all_ok and refused_by_kind and names_refusal
++    line(
++        "Illegal-kind drag (Multiplicity -> Obs: Global) is refused, and the status region names why",
++        refused_by_kind and names_refusal,
++        f"edges={ui3['edges']}, status={status_text3!r}",
++    )
++    browser.close()
++
++    return all_ok
++
++
++def check_board_keyboard_path(pw: Playwright) -> bool:
++    """Criterion 2's keyboard half: connecting two nodes from the keyboard
++    alone -- focus an output port, press Enter to arm it, focus an input
++    port, press Enter to complete -- and confirm the edge is what data-ui
++    persists afterward. Board's own click handler already answers this: a
++    native <button> turns Enter/Space into a synthesized click, so no
++    separate keydown listener exists in board.html for arming a port. Also
++    checks the keyboard reorder path (ArrowUp on a focused node handle), the
++    keyboard equivalent of the pointer-drag slot move
++    `check_board_persistence` already exercises with a mouse."""
++    section("Board keyboard path -- connecting and reordering nodes without a pointer")
++    browser, context, page, *_ = load_board_page(pw, 1024)
++
++    page.eval_on_selector('.node-card[data-node-id="n1"] .port--out', "el => el.focus()")
++    page.keyboard.press("Enter")
++    armed_status = page.eval_on_selector("#graph-status", "el => el.textContent")
++    armed_ok = "Armed" in armed_status
++    page.eval_on_selector('.node-card[data-node-id="n3"] .port--in', "el => el.focus()")
++    page.keyboard.press("Enter")
++    ui = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    connected_ok = ["n1", "n3"] in ui["edges"]
++    line(
++        "Enter on an out-port arms it, Enter on a legal in-port completes the connection "
++        "(DataSource -> Selection, n1 -> n3), and the edge is what data-ui persists",
++        armed_ok and connected_ok,
++        f"armed status={armed_status!r}, edges={ui['edges']}",
++    )
++
++    page.click('[data-add-kind="Multiplicity"]')
++    before = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    before_n2 = next(n for n in before["nodes"] if n["id"] == "n2")
++    before_n6 = next(n for n in before["nodes"] if n["id"] == "n6")
++    page.eval_on_selector('.node-card[data-node-id="n6"] .node-card__handle', "el => el.focus()")
++    page.keyboard.press("ArrowUp")
++    after = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    after_n2 = next(n for n in after["nodes"] if n["id"] == "n2")
++    after_n6 = next(n for n in after["nodes"] if n["id"] == "n6")
++    reorder_ok = (
++        before_n2["slotIndex"] == 0 and before_n6["slotIndex"] == 1
++        and after_n6["slotIndex"] == 0 and after_n2["slotIndex"] == 1
++    )
++    line(
++        "ArrowUp on a focused node handle swaps it with its previous sibling and persists the "
++        "new slot order",
++        reorder_ok,
++        f"before: n2={before_n2}, n6={before_n6}; after: n2={after_n2}, n6={after_n6}",
++    )
++
++    browser.close()
++    return armed_ok and connected_ok and reorder_ok
++
++
++def check_board_pairs(pw: Playwright) -> bool:
++    """Criterion 3: every one of the 64 ordered (src, dst) pairs among the 8
++    addable node kinds is attempted between two distinct, freshly-added node
++    instances, through the real drag-to-connect interaction path (drag is
++    used here as the representative gesture; click-to-connect on a legal
++    pair is already checked separately in `check_board_connection_gestures`,
++    so this does not re-enumerate all 64 a second time under the other
++    gesture). The expected accept/refuse verdict for each pair comes from
++    `derive_reference_legal_pairs`, the same function `check_beamline_pairs`
++    and `check_bench_pairs` use -- executed fresh each run, not transcribed,
++    and not duplicated here as a second copy of the reference-reading
++    logic."""
++    section(
++        "Board: all 64 ordered node-kind pairs, real drag gestures, against the reference's own allowlist"
++    )
++
++    reference_legal = derive_reference_legal_pairs()
++    if reference_legal is None:
++        line(
++            f"Reference allowlist executed from {REFERENCE_GRAPH_PY}",
++            False,
++            "sibling reference repo not found at this path -- cannot check parity against it",
++        )
++        return False
++    line(
++        f"Reference allowlist executed from {REFERENCE_GRAPH_PY} (not transcribed)",
++        len(reference_legal) == 13,
++        f"{len(reference_legal)} legal pairs derived among the 8 addable kinds",
++    )
++
++    browser = pw.chromium.launch()
++    results: dict[tuple[str, str], bool] = {}
++    for src_kind in BEAMLINE_ADDABLE_KINDS:
++        for dst_kind in BEAMLINE_ADDABLE_KINDS:
++            page = browser.new_page(viewport={"width": 1400, "height": 1600})
++            page.goto(BOARD_HTML.as_uri())
++            page.wait_for_timeout(60)
++            page.click(f'[data-add-kind="{src_kind}"]')
++            page.click(f'[data-add-kind="{dst_kind}"]')
++            out_sel = '.node-card[data-node-id="n6"] .port--out'
++            in_sel = '.node-card[data-node-id="n7"] .port--in'
++            edge_made = False
++            if page.locator(out_sel).count() > 0 and page.locator(in_sel).count() > 0:
++                src = page.locator(out_sel).bounding_box()
++                dst = page.locator(in_sel).bounding_box()
++                page.mouse.move(src["x"] + src["width"] / 2, src["y"] + src["height"] / 2)
++                page.mouse.down()
++                page.mouse.move(dst["x"] + dst["width"] / 2, dst["y"] + dst["height"] / 2, steps=12)
++                page.mouse.up()
++                ui = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++                edge_made = ["n6", "n7"] in ui["edges"]
++            results[(src_kind, dst_kind)] = edge_made
++            page.close()
++    browser.close()
++
++    accepted = {pair for pair, ok in results.items() if ok}
++    refused = {pair for pair, ok in results.items() if not ok}
++    disagreements = [pair for pair in results if results[pair] != (pair in reference_legal)]
++
++    ok = len(results) == 64 and len(accepted) == 13 and len(refused) == 51 and not disagreements
++    line(
++        f"{len(results)} of 64 ordered pairs attempted via real drag gestures",
++        ok,
++        f"{len(accepted)} accepted, {len(refused)} refused, {len(disagreements)} disagree with "
++        "the reference-derived allowlist",
++    )
++    print("       accepted set:")
++    for src_kind, dst_kind in sorted(accepted):
++        print(f"         {src_kind} -> {dst_kind}")
++    for pair in disagreements:
++        print(
++            f"       DISAGREES with reference: {pair} -- UI said {results[pair]}, "
++            f"reference said {pair in reference_legal}"
++        )
++    return ok
++
++
++def check_board_inventory(pw: Playwright) -> bool:
++    """Criterion 4: every domain-inventory item (the same 22-item,
++    style-neutral MISSION_SCREEN_DOMAIN_INVENTORY list Beamline's and
++    Bench's own checks read too) is present via a `data-wf` attribute,
++    reported as n of N; plus the one locked node kind is present, visibly
++    gated, not connectable, and not reachable by keyboard as an active
++    control -- checked by a real Tab walk, not by reading its tabindex value
++    alone. `.palette` is asserted to be a real `<ul>` with every one of its
++    element children an `<li>`, the same semantic-list check Bench's own
++    inventory check makes."""
++    section("Board domain inventory -- every data-wf item present, plus the locked node kind's own checks")
++    browser, context, page, *_ = load_board_page(pw, 1024)
++
++    palette_shape = page.evaluate(
++        """() => {
++            const el = document.querySelector('.palette');
++            if (!el) return null;
++            const children = Array.from(el.children);
++            return {
++                tag: el.tagName,
++                childCount: children.length,
++                nonLiChildren: children.filter(c => c.tagName !== 'LI').map(c => c.tagName),
++            };
++        }"""
++    )
++    palette_ok = (
++        palette_shape is not None
++        and palette_shape["tag"] == "UL"
++        and palette_shape["childCount"] > 0
++        and not palette_shape["nonLiChildren"]
++    )
++    palette_label = (
++        f".palette is a UL with {palette_shape['childCount']} element children, all LI"
++        if palette_shape
++        else ".palette not found"
++    )
++    line(palette_label, palette_ok, "" if palette_ok else f"raw: {palette_shape}")
++
++    names = [name for name, _ in MISSION_SCREEN_DOMAIN_INVENTORY]
++    counts = page.evaluate(
++        """(names) => Object.fromEntries(
++            names.map(n => [n, document.querySelectorAll(`[data-wf="${n}"]`).length])
++        )""",
++        names,
++    )
++    present = [n for n in names if counts[n] > 0]
++    missing = [n for n in names if counts[n] == 0]
++    n_total = len(MISSION_SCREEN_DOMAIN_INVENTORY)
++    ok_inventory = len(missing) == 0
++    line(
++        f"{len(present)} of {n_total} domain-inventory items present (MISSION_SCREEN_DOMAIN_INVENTORY, "
++        "shared with Beamline's and Bench's own checks)",
++        ok_inventory,
++        f"missing: {missing}" if missing else "all present",
++    )
++    for name, source in MISSION_SCREEN_DOMAIN_INVENTORY:
++        mark = "x" if counts[name] > 0 else " "
++        print(f"       [{mark}] {name} ({counts[name]}) -- {source}")
++
++    locked_info = page.evaluate(
++        """() => {
++            const el = document.querySelector('[data-wf="node-locked"]');
++            if (!el) return null;
++            const rect = el.getBoundingClientRect();
++            return {
++                visible: rect.width > 0 && rect.height > 0,
++                ariaDisabled: el.getAttribute('aria-disabled'),
++                isButtonOrLink: ['BUTTON', 'A', 'INPUT'].includes(el.tagName),
++                hasTabindexNonNegative: (
++                    el.hasAttribute('tabindex') && parseInt(el.getAttribute('tabindex'), 10) >= 0
++                ),
++                hasPort: !!el.querySelector('.port:not(.port--absent)'),
++            };
++        }"""
++    )
++    page.evaluate("""() => { window.__boardLockWalk = { map: new WeakMap(), next: 1 }; }""")
++    page.keyboard.press("Tab")
++    seen: set = set()
++    locked_focused = False
++    for _ in range(300):
++        info = page.evaluate(
++            """() => {
++                const el = document.activeElement;
++                if (!el || el === document.body) return null;
++                const w = window.__boardLockWalk;
++                let wid = w.map.get(el);
++                if (wid === undefined) { wid = w.next++; w.map.set(el, wid); }
++                return { wid, isLocked: el.matches('[data-wf="node-locked"]') };
++            }"""
++        )
++        if info is None:
++            break
++        if info["wid"] in seen:
++            break
++        seen.add(info["wid"])
++        if info["isLocked"]:
++            locked_focused = True
++        page.keyboard.press("Tab")
++
++    locked_ok = (
++        locked_info is not None
++        and locked_info["visible"]
++        and locked_info["ariaDisabled"] == "true"
++        and not locked_info["isButtonOrLink"]
++        and not locked_info["hasTabindexNonNegative"]
++        and not locked_info["hasPort"]
++        and not locked_focused
++    )
++    line(
++        f"Locked node kind: visible={locked_info and locked_info['visible']}, "
++        f"aria-disabled={locked_info and locked_info['ariaDisabled']!r}, not a button/link/input, "
++        f"no non-negative tabindex, no port, reached by a real {len(seen)}-stop Tab walk="
++        f"{locked_focused}",
++        locked_ok,
++        "" if locked_ok else f"raw: {locked_info}",
++    )
++
++    browser.close()
++    return ok_inventory and locked_ok and palette_ok
++
++
++def check_board_paint_sweep(pw: Playwright) -> bool:
++    """Criterion 5's general sweep: computed-style paint properties at
++    1440/1024/768, with a printed denominator, checked against tokens.css's
++    :root set (`PAINT_PROPS`, including `fill`/`stroke`, guarded to SVG
++    shape elements only -- Board draws SVG for its edges layer, the same
++    reason this guard is load-bearing for Bench), plus zero horizontal body
++    overflow at every width -- the board's own wrapper is allowed, and at
++    768 is expected, to need horizontal scroll (`.board-wrap`,
++    `overflow-x: auto`, checked directly by `check_board_terminal_plot_
++    budget`); the page body is not. All 8 addable kinds are clicked into
++    existence first, so every node fill this sweep can reach is actually
++    painted somewhere before this measures it."""
++    section("Board paint sweep -- token-set membership, every width")
++    tokens = parse_root_tokens(TOKENS_CSS.read_text())
++    all_ok = True
++    for width in WIDTHS:
++        browser, context, page, *_ = load_board_page(pw, width)
++        for kind in BEAMLINE_ADDABLE_KINDS:
++            page.click(f'[data-add-kind="{kind}"]')
++        allowed, resolved = resolve_allowed_colors(page, tokens)
++        report = page.evaluate(
++            r"""(args) => {
++                const [props, allowedList] = args;
++                const allowed = new Set(allowedList);
++                const results = { inspected: 0, violations: [], exemptCount: 0 };
++                const scope = [document.body, ...document.body.querySelectorAll('*')];
++                const fillableSvgTags = new Set(['rect', 'circle', 'path', 'polygon', 'text', 'ellipse', 'polyline']);
++                const strokableSvgTags = new Set([...fillableSvgTags, 'line']);
++                const isSvg = (el) => el.namespaceURI === 'http://www.w3.org/2000/svg';
++                scope.forEach(el => {
++                    const cs = getComputedStyle(el);
++                    const tag = el.tagName.toLowerCase();
++                    for (const prop of props) {
++                        if (prop === 'fill' && !(isSvg(el) && fillableSvgTags.has(tag))) continue;
++                        if (prop === 'stroke' && !(isSvg(el) && strokableSvgTags.has(tag))) continue;
++                        const val = cs[prop];
++                        if (val === undefined || val === '') continue;
++                        results.inspected++;
++                        const lower = String(val).toLowerCase();
++                        const exempt = (
++                            lower === 'none' || lower === 'transparent' ||
++                            lower === 'rgba(0, 0, 0, 0)' || lower === 'currentcolor'
++                        );
++                        if (exempt) { results.exemptCount++; continue; }
++                        if (!allowed.has(val)) {
++                            results.violations.push({ tag: el.tagName, cls: el.getAttribute('class'), prop, val });
++                        }
++                    }
++                    const bs = cs.boxShadow;
++                    if (bs && bs !== 'none') {
++                        const colorTokens = bs.match(/rgba?\([^)]*\)/g) || [];
++                        colorTokens.forEach(val => {
++                            results.inspected++;
++                            const lower = val.toLowerCase();
++                            const exempt = lower === 'rgba(0, 0, 0, 0)';
++                            if (exempt) { results.exemptCount++; return; }
++                            if (!allowed.has(val)) {
++                                results.violations.push({
++                                    tag: el.tagName, cls: el.getAttribute('class'), prop: 'boxShadow', val,
++                                });
++                            }
++                        });
++                    }
++                });
++                const bodyOverflow = document.body.scrollWidth > document.documentElement.clientWidth + 1;
++                return { ...results, bodyOverflow };
++            }""",
++            [PAINT_PROPS, list(allowed)],
++        )
++        ok = len(report["violations"]) == 0 and not report["bodyOverflow"]
++        all_ok = all_ok and ok
++        line(
++            f"width={width}px: {report['inspected']} property reads across {len(PAINT_PROPS)} "
++            f"properties plus every box-shadow colour token, {report['exemptCount']} exempt, "
++            f"body horizontal overflow={report['bodyOverflow']}",
++            ok,
++            f"{len(report['violations'])} off-token violations",
++        )
++        for v in report["violations"][:10]:
++            print(f"       off-token: <{v['tag']} class={v['cls']!r}> {v['prop']}={v['val']}")
++        browser.close()
++    return all_ok
++
++
++def check_board_contrast(pw: Playwright) -> bool:
++    """Criterion 5's node-label requirement: the contrast of every node
++    label against its own fill, alpha-composited, against the 4.5:1 AA
++    floor -- plus the locked tile's own label against `--locked-fill`, plus
++    a general sweep of every other text-bearing element against its own
++    resolved background. All 8 addable kinds are clicked into existence
++    before measuring, not just the 5 the demo graph happens to build, so
++    this sweep's own denominator matches the claim it makes."""
++    section("Board contrast -- text against its real background, alpha-composited")
++    browser, context, page, *_ = load_board_page(pw, 1024)
++    demo_kinds = {"DataSource", "Multiplicity", "Selection", "ObsVectorSum", "Histogram"}
++    for kind in BEAMLINE_ADDABLE_KINDS:
++        if kind not in demo_kinds:
++            page.click(f'[data-add-kind="{kind}"]')
++
++    def resolve_token(name: str) -> tuple[float, float, float]:
++        c = page.evaluate(
++            """(v) => {
++                const probe = document.createElement('div');
++                probe.style.color = `var(${v})`;
++                document.body.appendChild(probe);
++                const r = getComputedStyle(probe).color;
++                document.body.removeChild(probe);
++                return r;
++            }""",
++            name,
++        )
++        return parse_rgba(c)[:3]
++
++    paper = resolve_token("--paper")
++
++    node_texts = page.evaluate(
++        """() => {
++            const out = [];
++            document.querySelectorAll('.node-card').forEach(node => {
++                const bg = getComputedStyle(node).backgroundColor;
++                node.querySelectorAll('.node-card__title, .node-card__subtitle, .node-card__links li')
++                    .forEach(el => {
++                        const rect = el.getBoundingClientRect();
++                        if (rect.width === 0 || rect.height === 0) return;
++                        const cs = getComputedStyle(el);
++                        out.push({
++                            kind: node.dataset.nodeKind, bg, color: cs.color,
++                            fontSize: parseFloat(cs.fontSize), fontWeight: cs.fontWeight,
++                            text: el.textContent.trim().slice(0, 24),
++                        });
++                    });
++            });
++            return out;
++        }"""
++    )
++    checked = 0
++    failures = []
++    per_kind_ratio: dict[str, float] = {}
++    for t in node_texts:
++        rgba = parse_rgba(t["color"])
++        bg = parse_rgba(t["bg"])
++        if not rgba or not bg:
++            continue
++        ground = composite_over(bg, paper)
++        composited = composite_over(rgba, ground)
++        ratio = contrast_ratio(composited, ground)
++        checked += 1
++        large = t["fontSize"] >= 24 or (t["fontSize"] >= 18.66 and t["fontWeight"] in ("700", "bold"))
++        threshold = 3.0 if large else 4.5
++        per_kind_ratio.setdefault(t["kind"], ratio)
++        if ratio < threshold:
++            failures.append((t, ratio, threshold))
++    ok_nodes = checked > 0 and len(failures) == 0
++    line(
++        f"{checked} node label(s) checked against their own node fill, across "
++        f"{len(per_kind_ratio)} of {len(BEAMLINE_ADDABLE_KINDS)} node kinds",
++        ok_nodes and len(per_kind_ratio) == len(BEAMLINE_ADDABLE_KINDS),
++        f"{len(failures)} below AA",
++    )
++    for kind, ratio in sorted(per_kind_ratio.items()):
++        print(f"       {kind}: {ratio:.2f}:1 against its own fill")
++    for t, ratio, threshold in failures[:10]:
++        print(f"       below AA: {t['kind']} {t['color']} on {t['bg']} = {ratio:.2f}:1 (needs {threshold})")
++
++    locked = page.evaluate(
++        """() => {
++            const el = document.querySelector('[data-wf="node-locked"]');
++            if (!el) return null;
++            const cs = getComputedStyle(el);
++            return { bg: cs.backgroundColor, color: cs.color };
++        }"""
++    )
++    locked_ratio = None
++    if locked:
++        bg = parse_rgba(locked["bg"])
++        fg = parse_rgba(locked["color"])
++        ground = composite_over(bg, paper)
++        composited = composite_over(fg, ground)
++        locked_ratio = contrast_ratio(composited, ground)
++    ok_locked = locked_ratio is not None and locked_ratio >= 4.5
++    line(
++        "Locked node-kind tile label against --locked-fill",
++        ok_locked,
++        f"{locked_ratio:.2f}:1" if locked_ratio else "n/a",
++    )
++
++    general = page.evaluate(
++        """() => {
++            const isPaintedBg = (c) => c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent';
++            const out = [];
++            document.querySelectorAll('body :not(script):not(style)').forEach(el => {
++                if (el.closest('.node-card') || el.matches('[data-wf="node-locked"]')) return;
++                const direct = Array.from(el.childNodes).some(
++                    n => n.nodeType === 3 && n.textContent.trim().length > 0
++                );
++                if (!direct) return;
++                const rect = el.getBoundingClientRect();
++                if (rect.width === 0 || rect.height === 0) return;
++                const cs = getComputedStyle(el);
++                let bg = null;
++                let cur = el;
++                while (cur && cur !== document.documentElement.parentElement) {
++                    const c = getComputedStyle(cur).backgroundColor;
++                    if (isPaintedBg(c)) { bg = c; break; }
++                    cur = cur.parentElement;
++                }
++                out.push({
++                    tag: el.tagName, cls: el.getAttribute('class'), color: cs.color, bg,
++                    fontSize: parseFloat(cs.fontSize), fontWeight: cs.fontWeight,
++                    text: el.textContent.trim().slice(0, 24),
++                });
++            });
++            return out;
++        }"""
++    )
++    checked2 = 0
++    failures2 = []
++    for s in general:
++        rgba = parse_rgba(s["color"])
++        if not rgba:
++            continue
++        bg_rgba = parse_rgba(s["bg"]) if s["bg"] else None
++        ground = composite_over(bg_rgba, paper) if bg_rgba else paper
++        composited = composite_over(rgba, ground)
++        ratio = contrast_ratio(composited, ground)
++        large = s["fontSize"] >= 24 or (s["fontSize"] >= 18.66 and s["fontWeight"] in ("700", "bold"))
++        threshold = 3.0 if large else 4.5
++        checked2 += 1
++        if ratio < threshold:
++            failures2.append((s, ratio, threshold, ground))
++    ok_general = checked2 > 0 and len(failures2) == 0
++    line(
++        f"{checked2} other text-bearing elements checked against their own resolved background",
++        ok_general,
++        f"{len(failures2)} below AA",
++    )
++    for s, ratio, threshold, ground in failures2[:10]:
++        print(
++            f"       below AA: <{s['tag']} class={s['cls']!r}> {s['color']} on {ground} "
++            f"{ratio:.2f}:1 (needs {threshold}) text={s['text']!r}"
++        )
++
++    browser.close()
++    return ok_nodes and len(per_kind_ratio) == len(BEAMLINE_ADDABLE_KINDS) and ok_locked and ok_general
++
++
++def check_board_terminal_plot_budget(pw: Playwright) -> bool:
++    """Criterion 6: the terminal Histogram node's own embedded figure
++    (`.plot-embed`, `data-wf="plot"`) is measured at exactly the reference
++    figure's fixed 650x460 CSS px at all three widths -- it does not shrink
++    just because the viewport did. At 768px that figure, plus the other
++    four typed columns beside it, does not fit the viewport: the chosen
++    behaviour is that `.board-wrap` (not the page body) grows a horizontal
++    scrollbar, checked directly by comparing its scrollWidth against its own
++    clientWidth. `document.body` itself is asserted to carry zero horizontal
++    overflow at all three widths -- a design-manual §4 requirement that
++    binds regardless of which node-graph style is on screen."""
++    section("Board terminal plot -- fixed 650x460 figure budgeted for, board-wrap scrolls, body never does")
++    all_ok = True
++    for width in WIDTHS:
++        browser, context, page, *_ = load_board_page(pw, width)
++        facts = page.evaluate(
++            """() => {
++                const embed = document.querySelector('.plot-embed');
++                const wrap = document.querySelector('.board-wrap');
++                const rect = embed ? embed.getBoundingClientRect() : null;
++                return {
++                    embedFound: !!embed,
++                    embedW: rect ? rect.width : null,
++                    embedH: rect ? rect.height : null,
++                    wrapScrollW: wrap ? wrap.scrollWidth : null,
++                    wrapClientW: wrap ? wrap.clientWidth : null,
++                    bodyScrollW: document.body.scrollWidth,
++                    docClientW: document.documentElement.clientWidth,
++                };
++            }"""
++        )
++        size_ok = (
++            facts["embedFound"]
++            and facts["embedW"] is not None
++            and facts["embedH"] is not None
++            and abs(facts["embedW"] - 650) < 1.0
++            and abs(facts["embedH"] - 460) < 1.0
++        )
++        body_ok = facts["bodyScrollW"] <= facts["docClientW"] + 1
++        # At 768 the board is wider than the viewport (five columns, one of
++        # them wide enough to hold the 650px figure) so .board-wrap needing
++        # a scrollbar there is the budgeted-for behaviour this check exists
++        # to prove actually happened, not merely a possibility left
++        # unexercised.
++        needs_scroll_expected = width <= 768
++        wrap_scrolls = bool(facts["wrapScrollW"]) and facts["wrapScrollW"] > (facts["wrapClientW"] or 0) + 1
++        scroll_ok = wrap_scrolls if needs_scroll_expected else True
++        ok = size_ok and body_ok and scroll_ok
++        all_ok = all_ok and ok
++        line(
++            f"width={width}px: .plot-embed={facts['embedW']}x{facts['embedH']}px (fixed 650x460 expected), "
++            f"body scrollWidth={facts['bodyScrollW']} vs clientWidth={facts['docClientW']}, "
++            f".board-wrap scrollWidth={facts['wrapScrollW']} vs clientWidth={facts['wrapClientW']}"
++            + (" (scroll expected here)" if needs_scroll_expected else ""),
++            ok,
++            f"size_ok={size_ok}, body_ok={body_ok}, scroll_ok={scroll_ok}",
++        )
++        browser.close()
++    return all_ok
++
++
++def check_board_focus_walk(pw: Playwright, html_path: Optional[Path] = None) -> bool:
++    """Real keyboard Tab walk from the top of the page, same method as
++    `check_beamline_focus_walk`/`check_bench_focus_walk`: every reachable
++    stop must carry a focus ring that is both present (`:focus-visible` + a
++    painted outline) and perceivable (>= 3:1 against its real adjacent
++    background, alpha-composited). `html_path`, when given, points at a
++    scratch mutated copy for a mutation-transcript proof; the unconditional
++    call from `main()` never passes it."""
++    section("Board keyboard focus walk -- real Tab presses, present AND >=3:1 ring count")
++    browser, context, page, *_ = load_board_page(pw, 1024, html_path=html_path)
++
++    def resolve_token(name: str) -> tuple[float, float, float]:
++        c = page.evaluate(
++            """(v) => {
++                const probe = document.createElement('div');
++                probe.style.color = `var(${v})`;
++                document.body.appendChild(probe);
++                const r = getComputedStyle(probe).color;
++                document.body.removeChild(probe);
++                return r;
++            }""",
++            name,
++        )
++        return parse_rgba(c)[:3]
++
++    paper = resolve_token("--paper")
++
++    page.evaluate("""() => { window.__boardFocusWalk = { map: new WeakMap(), next: 1 }; }""")
++    page.keyboard.press("Tab")
++    stops = []
++    seen_ids: set = set()
++    for _ in range(300):
++        info = page.evaluate(
++            """() => {
++                const el = document.activeElement;
++                if (!el || el === document.body) return null;
++                const w = window.__boardFocusWalk;
++                let wid = w.map.get(el);
++                if (wid === undefined) { wid = w.next++; w.map.set(el, wid); }
++                const cs = getComputedStyle(el);
++                const present = (
++                    el.matches(':focus-visible') &&
++                    cs.outlineStyle !== 'none' &&
++                    parseFloat(cs.outlineWidth) > 0
++                );
++                const isPaintedBg = (c) => c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent';
++                let ground = null;
++                let cur = el.parentElement;
++                while (cur) {
++                    const c = getComputedStyle(cur).backgroundColor;
++                    if (isPaintedBg(c)) { ground = c; break; }
++                    cur = cur.parentElement;
++                }
++                return {
++                    wid, tag: el.tagName, cls: el.getAttribute('class'),
++                    present, outlineColor: cs.outlineColor, ground,
++                };
++            }"""
++        )
++        if info is None:
++            break
++        if info["wid"] in seen_ids:
++            break
++        seen_ids.add(info["wid"])
++        stops.append(info)
++        page.keyboard.press("Tab")
++
++    checked = []
++    for s in stops:
++        outline_rgba = parse_rgba(s["outlineColor"])
++        ground_rgba = parse_rgba(s["ground"]) if s["ground"] else None
++        ground = composite_over(ground_rgba, paper) if ground_rgba else paper
++        ratio = None
++        if outline_rgba:
++            composited = composite_over(outline_rgba, ground)
++            ratio = contrast_ratio(composited, ground)
++        visible = bool(s["present"]) and ratio is not None and ratio >= 3.0
++        checked.append({**s, "ratio": ratio, "visible": visible})
++
++    with_ring = sum(1 for s in checked if s["visible"])
++    without_ring = [s for s in checked if not s["visible"]]
++    ok = len(checked) > 0 and len(without_ring) == 0
++    line(
++        f"{len(checked)} focusable stops reached by real Tab presses",
++        ok,
++        f"{with_ring} carried a ring both present and >=3:1 against its real adjacent "
++        f"background, {len(without_ring)} did not",
++    )
++    for s in checked:
++        ratio_str = f"{s['ratio']:.2f}:1" if s["ratio"] is not None else "n/a"
++        mark = "ok " if s["visible"] else "FAIL"
++        print(
++            f"       [{mark}] <{s['tag']} class={s['cls']!r}> outline={s['outlineColor']} "
++            f"ground={s['ground']} ratio={ratio_str}"
++        )
++    browser.close()
++    return ok
++
++
++def check_board_reduced_motion(pw: Playwright) -> bool:
++    """Re-render with prefers-reduced-motion: reduce and check every
++    animated element (the `.node-card` entrance stagger, the `.stamp`
++    press) renders its finished end state immediately, no transit."""
++    section("Board prefers-reduced-motion re-render")
++    browser, context, page, *_ = load_board_page(pw, 1024, reduced_motion="reduce")
++    facts = page.evaluate(
++        """() => {
++            return Array.from(document.querySelectorAll('.node-card, .stamp')).map(el => {
++                const cs = getComputedStyle(el);
++                return {
++                    cls: el.getAttribute('class'),
++                    animationName: cs.animationName,
++                    opacity: parseFloat(cs.opacity),
++                };
++            });
++        }"""
++    )
++    bad = [f for f in facts if f["animationName"] != "none" or f["opacity"] < 1]
++    ok = len(facts) > 0 and len(bad) == 0
++    line(
++        f"{len(facts)} reveal/press-animated elements checked under prefers-reduced-motion: reduce",
++        ok,
++        f"{len(bad)} still animating or not at full opacity",
++    )
++    for f in bad[:10]:
++        print(f"       still animating: {f}")
++    browser.close()
++    return ok
++
++
++def check_board_network_and_errors(pw: Playwright) -> bool:
++    """Zero non-local requests, zero console/page errors, at each width --
++    driven through the add-node/connect/run interactions, not just a bare
++    load. `load_board_page` (see its own docstring) launches Chromium with
++    no launch arguments, so this is also where a regression back to a
++    `file://` module-script CORS error would show up first."""
++    section("Board -- non-local requests + console/page errors")
++    all_ok = True
++    for width in WIDTHS:
++        browser, context, page, console_errors, page_errors, requests = load_board_page(pw, width)
++        page.click('[data-add-kind="Selection"]')
++        src = page.locator('.node-card[data-node-id="n1"] .port--out').bounding_box()
++        dst = page.locator('.node-card[data-node-id="n6"] .port--in').bounding_box()
++        page.mouse.move(src["x"] + src["width"] / 2, src["y"] + src["height"] / 2)
++        page.mouse.down()
++        page.mouse.move(dst["x"] + dst["width"] / 2, dst["y"] + dst["height"] / 2, steps=10)
++        page.mouse.up()
++        page.click("#run-button")
++        page.wait_for_timeout(200)
++        non_local = [r for r in requests if not r.startswith("file://")]
++        ok = len(non_local) == 0 and len(console_errors) == 0 and len(page_errors) == 0
++        all_ok = all_ok and ok
++        line(
++            f"width={width}px: {len(requests)} requests total, {len(console_errors)} console "
++            f"errors, {len(page_errors)} page errors",
++            ok,
++            f"non-local requests: {non_local}; console errors: {console_errors}",
++        )
++        browser.close()
++    return all_ok
++
++
++def check_board_no_exhaustive_prose() -> bool:
++    """Same lint as `check_no_exhaustive_prose` (reusing the shared
++    `EXHAUSTIVE_CLAIM_PATTERNS` denylist), run over this task's own files --
++    `board.html` and `board.css`, the only two files D-006 adds (plus this
++    section of `verify.py` itself, out of scope for this particular lint,
++    which is about the exploration pages, not the checker)."""
++    section("Board prose/comment lint -- no exhaustive claims about this directory's own rendering")
++    files = [HERE / "board.html", HERE / "board.css"]
++    hits: list[tuple[str, str]] = []
++    for f in files:
++        text = f.read_text()
++        for pat in EXHAUSTIVE_CLAIM_PATTERNS:
++            for m in re.finditer(pat, text, re.I):
++                start = max(0, m.start() - 40)
++                hits.append((f.name, text[start:m.end() + 10].replace("\n", " ")))
++    ok = len(hits) == 0
++    line(f"{len(files)} files scanned for exhaustive-claim phrasing", ok, f"{len(hits)} matches")
++    for fname, ctx in hits:
++        print(f"       {fname}: ...{ctx}...")
++    return ok
++
++
++def check_board_unflagged_file_url(pw: Playwright) -> bool:
++    """Criterion 7: the page a student actually reaches -- Chromium launched
++    with no command-line arguments whatsoever, opened directly at
++    `board.html`'s own `file://` URL, nothing else in front of it. Every
++    other Board section in this file already runs against exactly this same
++    unflagged launch (see `load_board_page`'s own docstring), so this
++    section exists to name the floor explicitly and prove it with a real
++    interaction, not only a static read: the graph is populated, and a live
++    mouse drag between two legal ports still creates an edge, on the page a
++    browser with no arguments actually renders."""
++    section("Board unflagged file:// -- no launch args, real drag, zero console/page errors")
++    browser = pw.chromium.launch()
++    console_errors: list[str] = []
++    page_errors: list[str] = []
++    context = browser.new_context(viewport={"width": 1200, "height": 1400})
++    page = context.new_page()
++    page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
++    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
++    page.goto(BOARD_HTML.as_uri())
++    page.wait_for_timeout(400)  # let the node-entrance stagger animation finish
++
++    ui_before = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++    nodes_before = len(ui_before.get("nodes", []))
++    edges_before = len(ui_before.get("edges", []))
++    node_els_before = page.locator(".node-card").count()
++
++    # A blocked module load (e.g. an external `<script type="module"
++    # src=...>` reintroduced on a `file://` page with no launch flags)
++    # leaves the graph empty and the page's own listeners never attach, so a
++    # bare `.bounding_box()` on a port that will never exist hangs for a
++    # full Playwright timeout rather than failing fast -- short-circuit on
++    # the diagnosis this section exists to make instead.
++    nodes_after = nodes_before
++    edges_after = edges_before
++    edge_made = False
++    drag_error = ""
++    if console_errors or page_errors or nodes_before == 0 or node_els_before == 0:
++        drag_error = "skipped -- graph already empty or console/page errors present at load"
++    else:
++        try:
++            page.click('[data-add-kind="DataSource"]', timeout=3000)
++            page.click('[data-add-kind="Selection"]', timeout=3000)
++            src = page.locator('.node-card[data-node-id="n6"] .port--out').bounding_box(timeout=3000)
++            dst = page.locator('.node-card[data-node-id="n7"] .port--in').bounding_box(timeout=3000)
++            page.mouse.move(src["x"] + src["width"] / 2, src["y"] + src["height"] / 2)
++            page.mouse.down()
++            page.mouse.move(dst["x"] + dst["width"] / 2, dst["y"] + dst["height"] / 2, steps=12)
++            page.mouse.up()
++            ui_after = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
++            nodes_after = len(ui_after.get("nodes", []))
++            edges_after = len(ui_after.get("edges", []))
++            edge_made = ["n6", "n7"] in ui_after["edges"]
++        except Exception as exc:  # deliberately broad: any failure here (timeout,
++            # missing element, detached frame) means the drag could not be
++            # performed, which is itself the failure this section reports,
++            # not a reason to crash the whole suite.
++            drag_error = f"drag failed: {exc}"
++
++    browser.close()
++
++    ok = (
++        len(console_errors) == 0
++        and len(page_errors) == 0
++        and nodes_before > 0
++        and node_els_before > 0
++        and node_els_before == nodes_before
++        and not drag_error
++        and nodes_after == nodes_before + 2
++        and edges_after == edges_before + 1
++        and edge_made
++    )
++    line(
++        f"nodes: {nodes_before} at load ({node_els_before} .node-card elements) -> {nodes_after} after "
++        f"adding 2; edges: {edges_before} at load -> {edges_after} after one real drag "
++        "(n6 -> n7); 0 console errors, 0 page errors, Chromium launched with no args",
++        ok,
++        f"console_errors={console_errors}, page_errors={page_errors}, edge n6->n7 made={edge_made}"
++        + (f", {drag_error}" if drag_error else ""),
++    )
++    return ok
++
++
++# Criterion 8's own banned-flag set: a file:// CORS workaround for the
++# module-script load, or a sandbox/security bypass, none of which a student
++# who double-clicks board.html/beamline.html/bench.html from a file manager
++# can supply -- D-005 cycle 1 shipped a page certified only under one of
++# these, and D-005 cycle-1 review's minor m4 asked that the ban be asserted
++# by this harness itself from then on, not by a grep pasted into a PR body.
++BANNED_CHROMIUM_LAUNCH_FLAGS: tuple[str, ...] = (
++    "--allow-file-access-from-files",
++    "--disable-web-security",
++    "--allow-running-insecure-content",
++    "--no-sandbox",
++)
++
++
++def check_no_launch_flags_in_verify_py() -> bool:
++    """Criterion 8 (closes review minor m4, carried from D-005): the ban on
++    launching Chromium with a file:// CORS workaround flag is asserted by
++    this harness itself, not by a grep pasted into a PR body. Two checks:
++    this file's own source is scanned for each of the four
++    `BANNED_CHROMIUM_LAUNCH_FLAGS` as a literal substring, and this file's
++    own AST is parsed to confirm every `<expr>.chromium.launch(...)` call in
++    it passes zero positional or keyword arguments -- the two ways a launch
++    flag could sneak back in, a string literal or a passed `args=`."""
++    section("verify.py self-check -- no banned Chromium launch flag, no chromium.launch(...) with any argument")
++    text = Path(__file__).read_text()
++    found_flags = [f for f in BANNED_CHROMIUM_LAUNCH_FLAGS if f in text]
++    ok_flags = not found_flags
++    line(
++        f"{len(BANNED_CHROMIUM_LAUNCH_FLAGS)} banned launch flags searched for as literal substrings "
++        "in this file's own source",
++        ok_flags,
++        "none found" if ok_flags else f"found: {found_flags}",
++    )
++
++    tree = ast.parse(text, filename=str(Path(__file__)))
++    launch_calls = [
++        node
++        for node in ast.walk(tree)
++        if isinstance(node, ast.Call)
++        and isinstance(node.func, ast.Attribute)
++        and node.func.attr == "launch"
++        and isinstance(node.func.value, ast.Attribute)
++        and node.func.value.attr == "chromium"
++    ]
++    offending = [n for n in launch_calls if n.args or n.keywords]
++    ok_calls = len(launch_calls) > 0 and not offending
++    line(
++        f"{len(launch_calls)} <expr>.chromium.launch(...) call(s) found by parsing this file's own AST",
++        ok_calls,
++        "none pass any argument" if ok_calls else f"{len(offending)} pass at least one argument",
++    )
++    for n in offending[:5]:
++        print(f"       chromium.launch(...) with an argument at line {n.lineno}")
++    return ok_flags and ok_calls
++
++
++# ---------------------------------------------------------------------
++def run_section(name: str, fn, *args) -> bool:
++    """Call one registered check function and catch any exception it raises
++    at this section boundary, rather than letting it abort the whole suite.
++    On a badly broken page (e.g. the module script never loading), a check
++    that assumes a populated graph can hang out a Playwright `TimeoutError`
++    on a selector that never appears, or throw `StopIteration` walking an
++    empty node list -- and an uncaught exception here kills `main()` before
++    later sections, including `bench-unflagged-file-url` (the section built
++    to diagnose exactly that state), ever run. Reported as a normal
++    `[FAIL]` line naming the section and the exception, the same shape every
++    other failure in this file already takes."""
++    try:
++        return bool(fn(*args))
++    except Exception as exc:
++        line(f"{name} (raised during the section, did not return)", False, f"{type(exc).__name__}: {exc}")
++        return False
++
++
++def main() -> None:
++    """Run the anatomy checks (always) plus the full sweep (`--all`, the
++    default) or just anatomy (`--plot`), print a summary table, and exit
++    non-zero if any section failed. `--beamline` additionally (or, given
++    alone, only in addition to the unconditional anatomy block above, which
++    is D-003's existing behaviour and out of this task's file scope to
++    change) runs the D-004 Beamline section; `--bench` does the same for the
++    D-005 Bench section; `--board` does the same for the D-006 Board
++    section.
++
++    Criterion 9 (D-006, closes review minor m9 carried from D-005): every
++    section registered here goes through `run_section` (see its own
++    docstring), not only the 17 Bench sections that carried that wrapping
++    before this task. Previously the 29 non-bench sections (anatomy,
++    payload, and every Beamline section) ran unwrapped and first, so an
++    uncaught exception in any of them aborted the whole run before the
++    summary printed and before any later section -- including Bench's and
++    Board's own diagnostic unflagged-file-url sections -- ever executed.
++    Wrapping changes only that an uncaught exception becomes a named
++    `[FAIL]` line and the run continues to print a summary and exit
++    non-zero; no section's own pass/fail logic changes."""
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--plot", action="store_true", help="anatomy-only report")
++    parser.add_argument("--all", action="store_true", help="full sweep")
++    parser.add_argument("--beamline", action="store_true", help="D-004 Beamline section only")
++    parser.add_argument("--bench", action="store_true", help="D-005 Bench section only")
++    parser.add_argument("--board", action="store_true", help="D-006 Board section only")
++    args = parser.parse_args()
++    if not args.plot and not args.all and not args.beamline and not args.bench and not args.board:
++        args.all = True
++
++    all_results = []
++    with sync_playwright() as pw:
++        browser, context, page, *_ = load_page(pw, 1024)
++        all_results.append(
++            ("anatomy-main", run_section("anatomy-main", lambda p: all(ok for _, ok, _ in check_anatomy(p)), page))
++        )
++        all_results.append(
++            (
++                "anatomy-ratio",
++                run_section("anatomy-ratio", lambda p: all(ok for _, ok, _ in check_ratio_panel(p)), page),
++            )
++        )
++        all_results.append(
++            (
++                "anatomy-fit-readout",
++                run_section(
++                    "anatomy-fit-readout", lambda p: all(ok for _, ok, _ in check_fit_readout(p)), page
++                ),
++            )
++        )
++        all_results.append(
++            (
++                "anatomy-cutflow",
++                run_section("anatomy-cutflow", lambda p: all(ok for _, ok, _ in check_cutflow(p)), page),
++            )
++        )
++        browser.close()
++        all_results.append(
++            (
++                "payload-schema-sanity",
++                run_section(
++                    "payload-schema-sanity",
++                    lambda: all(ok for _, ok, _ in check_payload_schema_sanity()),
++                ),
++            )
++        )
++
++        if args.all:
++            all_results.append(
++                ("payload-consistency", run_section("payload-consistency", check_payload_consistency, pw))
++            )
++            all_results.append(("measurements", run_section("measurements", check_measurements, pw)))
++            all_results.append(("legend-layout", run_section("legend-layout", check_legend_layout, pw)))
++            all_results.append(("paint-sweep", run_section("paint-sweep", check_paint_sweep, pw)))
++            all_results.append(("contrast", run_section("contrast", check_contrast, pw)))
++            all_results.append(("focus-walk", run_section("focus-walk", check_focus_walk, pw)))
++            all_results.append(("reduced-motion", run_section("reduced-motion", check_reduced_motion, pw)))
++            all_results.append(
++                ("network-and-errors", run_section("network-and-errors", check_network_and_errors, pw))
++            )
++            all_results.append(("git-diff-clean", run_section("git-diff-clean", check_git_diff)))
++            all_results.append(("no-exhaustive-prose", run_section("no-exhaustive-prose", check_no_exhaustive_prose)))
++            all_results.append(
++                (
++                    "no-fabricated-identifiers",
++                    run_section("no-fabricated-identifiers", check_no_fabricated_identifiers),
++                )
++            )
++
++        if args.all or args.beamline:
++            all_results.append(
++                ("beamline-persistence", run_section("beamline-persistence", check_beamline_persistence, pw))
++            )
++            all_results.append(
++                (
++                    "beamline-connection-gestures",
++                    run_section("beamline-connection-gestures", check_beamline_connection_gestures, pw),
++                )
++            )
++            all_results.append(("beamline-pairs", run_section("beamline-pairs", check_beamline_pairs, pw)))
++            all_results.append(
++                ("beamline-inventory", run_section("beamline-inventory", check_beamline_inventory, pw))
++            )
++            all_results.append(
++                ("beamline-paint-sweep", run_section("beamline-paint-sweep", check_beamline_paint_sweep, pw))
++            )
++            all_results.append(
++                ("beamline-contrast", run_section("beamline-contrast", check_beamline_contrast, pw))
++            )
++            all_results.append(
++                (
++                    "beamline-pairwise-luminance",
++                    run_section("beamline-pairwise-luminance", check_beamline_pairwise_luminance, pw),
++                )
++            )
++            all_results.append(
++                ("beamline-clamping-bound", run_section("beamline-clamping-bound", check_cam02ucs_clamping_bound))
++            )
++            all_results.append(
++                (
++                    "beamline-node-fill-normal-vision",
++                    run_section(
++                        "beamline-node-fill-normal-vision", check_beamline_node_fill_normal_vision, pw
++                    ),
++                )
++            )
++            all_results.append(
++                ("beamline-focus-walk", run_section("beamline-focus-walk", check_beamline_focus_walk, pw))
++            )
++            all_results.append(
++                (
++                    "beamline-reduced-motion",
++                    run_section("beamline-reduced-motion", check_beamline_reduced_motion, pw),
++                )
++            )
++            all_results.append(
++                (
++                    "beamline-network-and-errors",
++                    run_section("beamline-network-and-errors", check_beamline_network_and_errors, pw),
++                )
++            )
++            all_results.append(
++                (
++                    "beamline-no-exhaustive-prose",
++                    run_section("beamline-no-exhaustive-prose", check_beamline_no_exhaustive_prose),
++                )
++            )
+ 
+         if args.all or args.bench:
+             # Every call below goes through run_section (see its own

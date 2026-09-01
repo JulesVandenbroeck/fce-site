@@ -9,20 +9,9 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
+*(D-005 closed — see Done.)*
 
 ## Ready
-
-### D-005 — Node-graph style B: Bench
-- **Scope:** `docs/design-explorations/` — create `bench.{html,css,js}`; append a `--bench`
-  section to `verify.py`. `tokens.css` is **read-only** here.
-- **Accept:** as D-004, with the model and gestures inverted — Bench persists `{x, y}` per
-  node on a free canvas, **drag-to-connect accepted, click-to-connect refused**. Same
-  64/13/51 enumeration, same inventory denominators, same three-width sweep.
-- **Depends on:** ~~D-004~~ (merged `bac2f62`) and ~~D-008~~ — **UNBLOCKED 2026-08-21**, D-008
-  merged `2d0de23` on a clean gate. `tokens.css`'s eight `--node-*` fills are now final and
-  read-only here; build against them. Note `--node-data` is `#966746`, **not** D-004's `#8d5548`
-  — anything harvested from the D-004 era is stale.
 
 ### D-006 — Node-graph style C: Board
 - **Scope:** `docs/design-explorations/` — create `board.{html,css,js}`; append a `--board`
@@ -31,8 +20,18 @@ _none_
   gestures plus keyboard connection. Same 64/13/51 enumeration and sweeps. The plot lives
   *inside* the graph as the terminal node, so it must budget for D-003's fixed intrinsic
   **650×460** figure and be shown doing so at 768.
-- **Depends on:** ~~D-004~~ (merged `bac2f62`) and ~~D-008~~ — **UNBLOCKED 2026-08-21**, D-008
-  merged `2d0de23`. Same note as D-005: the fills are final, and `--node-data` is `#966746`.
+- **Depends on:** ~~D-004~~ (merged `bac2f62`), ~~D-008~~ (merged `2d0de23`) and ~~D-005~~
+  (merged `4720179`). Same note as D-005: the fills are final, and `--node-data` is `#966746`.
+- **Branch / PR:** `task/d-006-board` — **dispatched 2026-09-01**, cycle 1, worktree isolation,
+  branched off `4720179`. **checks=9.** C1 `{column, slotIndex}` shape, non-empty node list
+  required; C2 both gestures plus a keyboard path; C3 the 64/13/51 enumeration, allowlist
+  executed from the reference, helpers reused not re-transcribed; C4 22-of-22 inventory off the
+  shared `MISSION_SCREEN_DOMAIN_INVENTORY`; C5 the three-width sweep plus D-008's six floors;
+  C6 the terminal plot node budgeting for D-003's fixed 650×460 at 768; C7 unflagged `file://`;
+  **C8 closes D-005's m4** — the launch-flag ban asserted by the harness, not by a grep in a PR
+  body; **C9 closes D-005's m9** — `run_section` extended to all 46 sections, not just the 17
+  bench ones. Told explicitly **not** to create a `board.js`: inline the module from the start,
+  which is the two cycles D-005 spent on exactly that, spent once.
 
 **Run D-005 then D-006, serially — never in parallel.** Both append a new section to
 `verify.py`; two coders in flight would collide on it, and the worktree rule protects the
@@ -50,85 +49,81 @@ branch, not the merge.
   and names what each option gives up. **This is the checkpoint the user reads to choose.**
 - **Depends on:** D-004, D-005, D-006.
 
-#### Why this is four tasks and not one
-The single-task version was 12 files and three interactive prototypes — well past the
-orchestrator manual's own splitting test (§2, "more than about three files, suspect it is
-really two tasks"). D-003 took four cycles at half the size, and the first D-004 attempt
-never got far enough to show the big shape works. Split costs an extra PR or two and buys
-much tighter review loops. `tokens.css` and `verify.py` are extended by D-004 and read-only
-or append-only thereafter, so the shared files have exactly one author.
+#### Constraints all four node-graph tasks inherit
 
-**Run these serially, not in parallel.** D-005 and D-006 both append to `verify.py`; two
-coders in flight would collide on it, and the manual's §3 worktree rule only protects the
-branch, not the merge.
+**Run D-005 and D-006 serially, never in parallel** — both append to `verify.py`, and the §3
+worktree rule protects the branch, not the merge.
 
-#### The three, pushed apart on what the graph persists
-The one axis CSS cannot swap, and the thing that later lands in `POST /api/run`:
+The one axis CSS cannot swap is **what the graph persists**, and it is what later lands in
+`POST /api/run`: **A · Beamline** ordered edge list only; **B · Bench** `{x, y}`;
+**C · Board** `{column, slotIndex}` — recommended, and the only one where the plot lives inside
+the graph as the terminal node.
 
-- **A · Beamline** — auto-laid rail, ordered edge list only, click-to-connect, colour on
-  node chrome. Best 768 story; gives up all arrangement agency.
-- **B · Bench** — free canvas, `{x, y}`, drag-to-connect, colour on the wires. Its real
-  cost is not the drag — the plot inspector always occludes the graph, so cut and
-  consequence are never co-visible. Framed as the *sandbox-mode candidate*.
-- **C · Board** — typed columns with slots, `{column, slotIndex}`, both gestures plus
-  keyboard, colour on the columns. **Recommended:** the only one where the shape of the
-  page changes per mission (columns appear as missions unlock) and the only one where the
-  plot lives inside the graph as the terminal node.
+What D-003 hands all four:
 
-#### What D-003 hands all four, and it is not just a file to import
-- The figure is a **fixed intrinsic 650×460** CSS px (widened from 480 when the legend moved
-  outside the axes). Every layout must budget for that; it does not reflow.
-- `tokens.css` is the input to D-002 — **harvest the cycle-4 `--tab10-x2`/`--tab10-x3`
-  values, not cycle 3's, which were wrong.** `--ink-45` is 2.60:1 and not text-safe.
-- Four verification rules earned across D-001's and D-003's seven cycles: name the
-  verification *method* in the criterion; mutation-test every new assertion; list
-  deviations, never count them; and check parity by rendering the reference, never by
-  reading the code. `verify.py` now carries a lint for the third.
-- Two markup patterns **not** to copy: the `role="tablist"` with no arrow-key handling, and
-  per-item tab stops (D-003 has 40 individually focusable bins).
+- The figure is a **fixed intrinsic 650×460** CSS px. It does not reflow; budget for it.
+- Harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values, not cycle 3's, which were wrong.
+  `--ink-45` is 2.60:1 and not text-safe.
+- Four verification rules earned over seven cycles: name the verification *method* in the
+  criterion; mutation-test every new assertion; list deviations, never count them; check parity
+  by rendering the reference, never by reading the code.
+- Two markup patterns **not** to copy: `role="tablist"` with no arrow-key handling, and per-item
+  tab stops (D-003 has 40 individually focusable bins).
 
+Why this is four tasks and not one, and the fuller case for each style:
+[`archive/design.md`](archive/design.md).
 
 ### D-002 — Design token foundation
 - **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
-- **Accept:** every colour, spacing, type-scale, radius, and timing value defined as a
-  custom property; the palette committed with measured AA contrast ratios documented in the
-  file; self-hosted woff2 fonts, no CDN; a chosen serif and mono that are explicitly not
-  Inter/Roboto/system-ui/Space Grotesk
-- **Depends on:** ~~D-001 and the user's D-001 layout decision~~ — **blocker changed
-  2026-08-16.** Now blocked on the user's choice among Beamline / Bench / Board — presented
-  at the **D-007** checkpoint (2026-08-18: the D-004 checkpoint moved there when D-004 was
-  split into D-004/005/006/007), with `docs/design-explorations/tokens.css` as its input
-  rather than a blank page. Left pointing at the old blocker it would read as waiting on
-  something extinct.
-- **New scope pressure from the pivot:** the palette must now carry node-type hues, sample
-  identity, and lock state — not just paper, ink and one accent. AA must be measured for
-  labels sitting *on* saturated fills, not only on paper.
-- **Owed from D-001:** the wireframe contrast ratios were measured against wireframe white,
-  because no paper colour exists yet. AA must be re-measured against the real paper token.
-- **Owed from D-003:** `--ink-45` composites to 2.60:1 against paper and fails AA if ever
-  used for text; it is currently unused. Do not inherit it unstated. And take the **corrected**
-  tab10 values — cycle 3 shipped `#ff7f0e`/`#2ca02c`, which are `tab10(0),(1),(2)` unresampled
-  and wrong; cycle 4 corrected them to `#8c564b`/`#17becf`.
+- **Accept:** C1 every colour, spacing, type-scale, radius and timing value is a custom property;
+  C2 the palette committed with measured AA ratios documented in the file — measured against the
+  real paper token, and for labels sitting *on* saturated fills, not only on paper; C3 self-hosted
+  woff2, no CDN; C4 a serif and a mono that are explicitly not Inter/Roboto/system-ui/Space
+  Grotesk. checks=4.
+- **Depends on:** the user's choice among Beamline / Bench / Board, presented at the **D-007**
+  checkpoint, with `docs/design-explorations/tokens.css` as its input rather than a blank page.
+- **Owed forward:** the palette must now carry node-type hues, sample identity and lock state.
+  `--ink-45` composites to 2.60:1 and fails AA for text — do not inherit it unstated. Take the
+  **corrected** tab10 values (`#8c564b`/`#17becf`), not cycle 3's `#ff7f0e`/`#2ca02c`.
 - **Branch / PR:** not yet opened
+- **History:** [`archive/design.md`](archive/design.md)
 
 ## Done
 
-Full entries — scope, criteria, and the cycle-by-cycle review record — are in
-[`archive/design.md`](archive/design.md). Read it only when a task's history is actually in
-question. Every design task so far has closed on an override or at the loop limit; if you are
-about to write a design criterion, the archive is where that pattern is documented.
+One line per task. Full entries in [`archive/design.md`](archive/design.md). Every design task so
+far has closed on an override or at the loop limit except D-008; if you are about to write a
+design criterion, the archive is where that pattern is documented.
 
-- **D-008** — CVD-safe node palette, and the checker claim that certifies it —
-  `task/d-008-cvd-palette` #7, merged `2d0de23` (**3 cycles + 1 re-specification; 0 required,
-  0 suggested-major — the first design task on this project to close on a clean gate rather than
-  an override or the loop limit**; 1 suggested-minor backlogged). Final palette clears six
-  simultaneous floors: min CVD ΔE 5.129 (≥4.0), normal-vision node-node 14.170 (≥14.0),
-  node-vs-reserved 13.442 (≥4.0), white-on-fill 4.595:1 (≥4.5), fill-vs-reserved hue gap 14.1°
-  (≥12.0°), clamping excess +0.0051 (≤0.01). `verify.py` carries 31 sections / 48 assertions.
-- **D-004** — Beamline node graph, shared node palette and checker — `task/d-004-node-graphs` #6,
-  merged `bac2f62` (3 cycles, **§5 loop limit; 2 suggested-major still open → became D-008**)
-- **D-003** — Interactive plot component at reference parity — `task/d-003-plot-component` #5,
-  merged `99ec8f3` (4 cycles, 3 reviews, merged on the user's explicit override)
-- **D-001** — Wireframe exploration: mission screen and recipe builder —
-  `task/d-001-wireframes-clean` #2, merged `b580729` (4 cycles, **1 required still open**;
-  superseded by the 2026-08-16 node-graph pivot)
+- **D-005** — Bench node graph, free canvas, drag-to-connect — #16, `4720179`, 3 cycles,
+  `0R / 0M / 4m`, `verdict=approve`. The second design task to close on a clean gate.
+  **Merged before its cycle-3 review ran** — see the process note below. 4 minors: m4 and m9
+  carried into D-006 as C8/C9; **m7 open** (the "chips render identically" body claim, three
+  cycles uncorrected); m9's own generalisation now C9.
+- **D-008** — CVD-safe node palette + the checker claim — #7, `2d0de23`, 3 cycles + 1 re-spec,
+  **first design task to close on a clean gate**. `verify.py` at 31 sections / 48 assertions.
+- **D-004** — Beamline node graph, shared palette and checker — #6, `bac2f62`, 3 cycles,
+  §5.7 limit; 2 open → **D-008**.
+- **D-003** — interactive plot component at reference parity — #5, `99ec8f3`, 4 cycles, merged on
+  the user's explicit override.
+- **D-001** — wireframes: mission screen and recipe builder — #2, `b580729`, 4 cycles, 1 open;
+  superseded by the 2026-08-16 node-graph pivot.
+
+## Floors in force
+
+- D-008's six simultaneous palette floors: min CVD ΔE **5.129** (≥4.0), normal-vision node-node
+  **14.170** (≥14.0), node-vs-reserved **13.442** (≥4.0), white-on-fill **4.595:1** (≥4.5),
+  fill-vs-reserved hue gap **14.1°** (≥12.0°), clamping excess **+0.0051** (≤0.01).
+- `verify.py` on `main` as of `4720179`, measured by the reviewer at cycle 3: **46** registered
+  sections / **149** assertion lines, of which **121** are non-bench. A fall in any is `Required`.
+  The historical "31 / 48" figure is D-008's own claim and does **not** reproduce; reconciling it
+  is backlogged. Exactly two assertion lines changed between cycles 2 and 3 — C9's strengthening
+  and the intended `3 → 2` prose-lint denominator — machine-diffed by the reviewer, every other
+  integer in the suite unchanged.
+
+## Process note — D-005 was merged before its gate ran (RESOLVED)
+
+`4720179` landed on `main` at **2026-09-01T08:23:27Z**, ~12 minutes before I dispatched the
+cycle-3 reviewer. **The user merged it themselves, by hand, having judged cycle 3 finished** —
+confirmed by them 2026-09-01. Legitimate, and not a rule-5 breach: rule 5 binds the agents, not
+the person who owns the repo. Closed, no action. The gate ran afterwards and returned
+`0R / 0M`, so what is on `main` is what a clean review would have approved anyway.

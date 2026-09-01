@@ -35,20 +35,22 @@ Before reporting done: screenshot with Playwright at 1440 / 1024 / 768 px and **
 them**. Report measured contrast ratios against the real paper background (AA minimum),
 confirm `prefers-reduced-motion` is handled, and confirm focus is visible everywhere.
 
-**Context failsafe — hand off at 90%.** If your context reaches 90%, or the orchestrator
-sends you `HANDOFF NOW`, stop the task and hand it over rather than trying to finish. Commit
-and push what you have — red tests included — write
-`.claude/handoff/<task-id>-design-<cycle>.md` in the primary checkout, and report the short
-form. The full protocol, including what the file must contain and why the dead-ends section
-is the part that matters, is `.claude/shared/CLAUDE.md` §8. Being cut off mid-task loses the
-work *and* everything you learned doing it; a handoff loses neither.
+**Context failsafe.** At 50% context, write the 25-line anchor; at 90%, or on `HANDOFF NOW`,
+stop and hand off rather than trying to finish. Protocol, templates and paths:
+`.claude/shared/context-failsafe.md` — open it when the watchdog fires.
 
 **Git — branch, commit, open a PR.** Before you write anything, branch from `main`:
 `git checkout main && git pull --ff-only && git checkout -b task/<id>-<short-slug>`. Commit your work
 there. Then, **before you report done**, push and open a pull request with `gh pr create`.
 The PR body must carry the whole task — ID, goal, the file scope you were given, the
-acceptance criteria each marked met or not, and your real verification output — because the
-reviewer will be shown that PR and nothing else. See `.claude/shared/CLAUDE.md` §6.
-Never merge, never rebase, never force-push, never delete a branch.
+acceptance criteria **with their C<n> IDs** each marked met or not, the total check count, and
+your real verification output — because the reviewer will be shown that PR and nothing else,
+and because that body is the project's only verbatim copy of the criteria. See
+`.claude/shared/CLAUDE.md` §6. Never merge, never rebase, never force-push, never delete a branch.
+
+**Cite, do not paste.** No source excerpts in your report, your PR body or a handoff — give
+`path:line` and `git diff --stat`, and let the reader open the diff. Five lines at the outside,
+and only when the point is unintelligible without them. No preamble, no recap of the dispatch,
+no narration of your approach.
 
 Then report in the format in `.claude/shared/CLAUDE.md` §7, including the PR number.

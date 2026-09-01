@@ -1,0 +1,105 @@
+diff --git a/tests/test_path_filter_exprs.py b/tests/test_path_filter_exprs.py
+index 42ca790..f6c0cc1 100644
+--- a/tests/test_path_filter_exprs.py
++++ b/tests/test_path_filter_exprs.py
+@@ -14,6 +14,8 @@ Four things this file exists to prove, one per acceptance criterion:
+   a one-line comment documenting the drift guard's name-shaped detection; the guard
+   and its assertions are otherwise unchanged).
+ """
++import math
++
+ import numpy as np
+ import pytest
+ 
+@@ -113,7 +115,10 @@ EXPR_CORPUS = [
+ #: values in this corpus's range (single to low hundreds of GeV) an absolute error on
+ #: the order of 1e-3 at worst. ``_axis_for`` below pads bin edges well clear of that
+ #: noise floor so the two paths' independent roundings never land an event on opposite
+-#: sides of an edge.
++#: sides of an edge, and ``RTOL``/``ATOL`` below set the same noise floor for the
++#: per-value comparison that runs alongside it.
++RTOL = 1e-4
++ATOL = 1e-3
+ 
+ 
+ def _build_cache(tmp_path, name="expr_corpus.npz"):
+@@ -316,6 +321,79 @@ def test_fill_histogram_parity_mutation_gate_perturbed_vectorized_mass_is_caught
+     )
+ 
+ 
++# ---------------------------------------------------------------------------
++# C2 (PR #19 cycle-2 review, M3): the histogram comparison above proves the two paths
++# land in the same bin, at a floor of one bin width -- a real disagreement well under
++# that width ships green. The two tests below restore cycle 1's per-value comparison at
++# ``RTOL``/``ATOL`` (the float32 cache-roundtrip noise floor, ~1e-3) alongside the
++# histogram tests, additively: this does not replace the production-entry-point coverage
++# above, it restores the sensitivity that binning traded away. Unlike cycle 1's original
++# version of this test, this one is still exercised alongside (not instead of) the
++# production entry point, so it is a second, finer-grained proof of the same claim
++# rather than the only one.
++# ---------------------------------------------------------------------------
++
++def test_vectorized_and_per_event_paths_agree_on_corpus(tmp_path):
++    cache_file = _build_cache(tmp_path, name="per_value_corpus.npz")
++    data = np.load(cache_file, mmap_mode="r")
++    n = len(data["weight"])
++    compiled = [compile_expr(e) for e in EXPR_CORPUS]
++
++    checked = 0
++    for expr, ce in zip(EXPR_CORPUS, compiled):
++        vec_result = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
++        assert vec_result.shape[0] == n, f"expr {expr!r}: vectorized result shape mismatch"
++        for i in range(n):
++            per_event_result = float(evaluate(ce, _local_vars(data, i)))
++            checked += 1
++            assert math.isclose(vec_result[i], per_event_result, rel_tol=RTOL, abs_tol=ATOL), (
++                f"expr {expr!r} event {i}: vectorized={vec_result[i]!r} "
++                f"per-event={per_event_result!r}"
++            )
++
++    assert checked == len(EXPR_CORPUS) * n
++    print(f"compared {len(EXPR_CORPUS)} expressions x {n} events = {checked} values, "
++          f"rtol={RTOL} atol={ATOL}")
++
++
++def test_corpus_parity_mutation_gate_perturbed_vectorized_operand_is_caught(tmp_path, monkeypatch):
++    """Perturbing only the vectorized ``_P4Proxy.mass`` (the per-event path computes mass
++    through the ``vector`` package, an entirely separate code path, so this mutation cannot
++    touch it) must make the comparison above fail -- proving it actually compares values
++    at a sub-bin-width tolerance instead of merely running both paths without checking
++    anything, or checking only at bin-width granularity.
++    """
++    from fce_web.engine import path_filter as pf
++
++    cache_file = _build_cache(tmp_path, name="per_value_mutation_corpus.npz")
++    data = np.load(cache_file, mmap_mode="r")
++    n = len(data["weight"])
++    expr = "(l1.p4 + l2.p4).mass"
++    ce = compile_expr(expr)
++
++    original_mass = pf._P4Proxy.mass
++
++    def _perturbed_mass(self):
++        return original_mass.fget(self) + 5.0
++
++    monkeypatch.setattr(pf._P4Proxy, "mass", property(_perturbed_mass))
++
++    vec_result = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
++
++    mismatch = None
++    for i in range(n):
++        per_event_result = float(evaluate(ce, _local_vars(data, i)))
++        if not math.isclose(vec_result[i], per_event_result, rel_tol=RTOL, abs_tol=ATOL):
++            mismatch = (i, vec_result[i], per_event_result)
++            break
++
++    assert mismatch is not None, "the +5.0 mutation produced no detectable mismatch"
++    i, vv, pv = mismatch
++    message = f"expr {expr!r} event {i}: vectorized={vv!r} per-event={pv!r}"
++    assert expr in message
++    assert repr(vv) in message
++
++
+ # ---------------------------------------------------------------------------
+ # C3: an UnsafeExpression is never swallowed
+ # ---------------------------------------------------------------------------
