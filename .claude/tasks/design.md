@@ -62,6 +62,29 @@ IDs are `D-nnn`, allocated in order and never reused.
   misrepresents a source, which is precisely what M2 was; the coder must therefore table every
   characterising sentence with its supporting `file:line` for the reviewer to check by hand.
 - **At cycle 2 of 3.** If cycle 3 does not close `0R/0M`, escalate to the user — no cycle 4.
+- **CYCLE 2 DELIVERED `1e9b369`, GATE FULLY REPRODUCED 2026-09-01 — NOT YET REVIEWED.**
+  Scope (three-dot) exactly the 4 files; only `README.md` changed since `19bc819` (27+/20-).
+  C1 hrefs exact, no script/http. C4 `1/1/3/1`, **Recommended: Board** unchanged. C5 wireframes
+  `2 0`. C6 greps 69/233 and `verify.py` blob-identical to `main` (`d3fc619b`). Sections carry
+  `id="beamline|bench|board"` (plus `class="cmp-card"`). **C8 re-verified independently: all four
+  document quotations are verbatim once whitespace is normalised** across README line-wraps —
+  `"Any layout state … lives in a separate \`ui\` object the engine ignores."` and
+  `"It still reads as a pipeline."` in `design-brief.md`, `"_To be defined in M3._"` in `api.md`.
+  `README:58`'s `"these two belong together"` is the README's own prose, not a citation.
+- **M2's substance held but the REVIEWER'S LINE NUMBERS WERE WRONG.** It cited
+  `design-brief.md:43-44` and `:51-54`; those are unrelated text. The true lines, verified at the
+  gate, are **`:168`** ("3. **It still reads as a pipeline.**") and **`:176-179`** (the
+  `ui`-object / "slot indices" passage). The coder used the correct ones. Do not propagate the
+  reviewer's figures.
+- **The cycle-2 fix concedes the point rather than dodging it:** the lede now states outright that
+  §4 does *not* pose this as a question and *does* classify `column`/`slotIndex` as ui state the
+  engine ignores, then re-grounds Board on the requirement §4 states outright. Recommendation
+  unchanged.
+- **NEXT MOVE: dispatch `code-reviewer` on PR #21, effort medium, PR number + prior review URL
+  only.** The §5.1 gate is already done and passed — do not re-run it. Prior review:
+  PR #21 comment `5498754050`. Ask for `M2 fixed` / `M2 still open`, all 8 criteria re-run,
+  incremental diff since `19bc819` (one file), and an independent check that the design-brief
+  citations resolve — that is the class of defect this task has produced twice.
 - **This is the M1 checkpoint** — the user picks Beamline / Bench / Board from it, and that choice
   unblocks D-002. Preview worktree: `~/d007-preview` (detached, under `$HOME`, never `/tmp`).
 - **Enumerated 2026-09-01, not inherited:** `verify.py` registers **65** sections, **64** pass,
