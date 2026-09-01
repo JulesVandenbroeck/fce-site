@@ -161,6 +161,25 @@ design criterion, the archive is where that pattern is documented.
   threshold as unreachable is a legitimate outcome** — tuning the threshold or narrowing the
   measurement to force green is not. **If cycle 3 does not close `0R/0M`, escalate to the user;
   do not open a cycle 4.**
+- **Cycle 3 delivered `40f33c1` and ends at the §5.7 limit with C10 HONESTLY UNMET.** R1 fixed:
+  `check_board_lane_fill` (`verify.py:5706`) now measures only `.node-card` elements inside the
+  column's own `<ul class="board-column__nodes">`, excluding the filler, the `<h3>` and anything
+  `aria-hidden`. With a truthful instrument the property is false: `--all` exits 1 with
+  `board-lane-fill` the **only** failing section of 63. `pytest` 413 passed, flake8 clean, floors
+  unchanged at 69 / 233, 19 `board-*` sections — nothing added or removed this cycle.
+- **Why it cannot be met by styling.** Data / Multiplicity / Selection / Observable each hold one
+  166px `.node-card` in a 632.5px column, whose height is fixed by C6's non-negotiable 650×460
+  plot and stretched by M1's accepted fix. Clearing 25% needs ~4 stacked cards per lane.
+  **Structurally impossible for Data:** `VALID_CONNECTIONS` (`board.html:297`) chains nothing to
+  a second `DataSource`, so that lane can never hold a second real card without inventing a
+  physics-meaningless data source. The coder rejected padding the other lanes as the gaming the
+  dispatch forbade, and reported the failure instead. **That was the right call and it is what
+  the dispatch asked for.**
+- **ESCALATED TO THE USER 2026-09-01 — three-way product decision, not a styling one.** C6, M1
+  and C10 cannot all hold at once: the plot's fixed height sets the lane height, M1 forbids the
+  lanes looking empty, C10 forbids the emptiness being papered over. **Do not open a cycle 4 and
+  do not re-dispatch without the user's ruling.** PR #20 is unmerged with one Required open.
+
 - **Do not re-derive:** `.board-wrap { overflow-x: hidden }` does *not* break C11 — `overflow:
   hidden` remains programmatically scrollable via `scrollLeft`. Established by the cycle-2
   reviewer.
