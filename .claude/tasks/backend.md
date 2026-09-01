@@ -9,6 +9,9 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
+**B-008 (#19), B-013 (#17) and B-014 (#18) are all PAUSED as of 2026-09-01** — the user
+dispatched D-002 + D-009 instead and left all three backend PRs held.
+
 **B-013 (#17) and B-014 (#18) are HELD BY THE USER 2026-09-01** until the M1 design choice is
 made — neither is crucial to it, and the user's token budget is the binding constraint. Their
 cycle-1 reviews were dispatched 2026-08-31 and never returned a verdict; do not re-dispatch
@@ -71,7 +74,10 @@ without the user. All three dispatched in parallel 2026-08-31, one worktree each
   20-bin `np.array_equal`, moving the detection floor from ~`1e-3` to ~one bin width — perturbing
   the per-event `_delta_r` passes at `+0.5` and only fails at `+1.0`, so **a 0.5 GeV vectorised/
   per-event disagreement ships green**. C2 says "identical numbers"; the assertion says "same
-  coarse bin". **Cycle 3 dispatched at the §5.7 limit** — fix additively, never by trading the
+  coarse bin". **Cycle 3 was dispatched at the §5.7 limit but NEVER LANDED** — reconciled against git
+  2026-09-01: branch head is still `fba2ad6`, the cycle-2 delivery, and no reviewer verdict
+  returned. The dispatch is lost, not in flight. Re-dispatch is cycle 3, not cycle 4.
+  When it is re-dispatched — fix additively, never by trading the
   entry-point coverage back. If it does not close at 0R/0M, stop and escalate. C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,

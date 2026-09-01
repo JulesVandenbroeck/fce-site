@@ -47,46 +47,63 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none._
-
-## Ready
+**Both dispatched 2026-09-01, one worktree each, `effort: high`.** They share no files: D-002
+owns `src/fce_web/static/**` plus append-only sections in `verify.py`; D-009 owns the new
+`interiors.*` files plus a 3-line README note, and is forbidden `verify.py` and `tokens.css`.
+All counts below were enumerated by `scout` at `9495696`, not inherited from the entries.
 
 ### D-002 — Design token foundation
-- **Scope:** `src/fce_web/static/css/tokens.css`, `src/fce_web/static/fonts/`
-- **Accept:** C1 every colour, spacing, type-scale, radius and timing value is a custom property;
-  C2 the palette committed with measured AA ratios documented in the file — measured against the
-  real paper token, and for labels sitting *on* saturated fills, not only on paper; C3 self-hosted
-  woff2, no CDN; C4 a serif and a mono that are explicitly not Inter/Roboto/system-ui/Space
-  Grotesk. checks=4.
-- **Depends on:** ~~the M1 style choice~~ — **settled 2026-09-01: Bench.** Unblocked. Its input is
-  `docs/design-explorations/tokens.css` as harvested by the Bench page, not a blank file.
-- **Owed forward:** the palette must carry node-type hues, sample identity and lock state.
-  `--ink-45` composites to 2.60:1 and fails AA for text — do not inherit it unstated. Take the
-  **corrected** tab10 values (`#8c564b`/`#17becf`), not cycle 3's `#ff7f0e`/`#2ca02c`.
-  **Seven** node kinds now need a hue, not eight — `DataSource` left the palette.
-- **Parallel with:** D-009. They share no files.
-- **Branch / PR:** not yet opened
+- **Scope:** `src/fce_web/static/css/tokens.css` (NEW), `src/fce_web/static/fonts/` (NEW),
+  `docs/design-explorations/verify.py` (append-only)
+- **Accept:** C1 token declarations only, zero non-custom-property declarations outside
+  `@font-face`; C2 documented AA ratios computed not asserted, text pairs >=4.5:1, `--ink-45`
+  labelled non-text-safe; C3 self-hosted woff2, every `src:` resolves on disk, no network
+  reference; C4 a serif and a mono, none of Inter/Roboto/system-ui/Space Grotesk; C5 seven
+  node hues + sample identity + lock state, D-008's six floors re-verified; C6 `verify.py`
+  counts rise, `board-lane-fill` still the only red, diff confined. **checks=6.** C2 and C5
+  are mutation-gated.
+- **CONTRACT TASK** — `tokens.css` is consumed read-only by D-010, F-002 and every later
+  design task. Raise the reviewer's *effort*, not its model (§3). Do not merge with an open
+  finding against the token set; D-004 did and it cost D-008.
+- **Enumerated:** input `docs/design-explorations/tokens.css` is 308 lines / 46 properties;
+  `--tab10-x1/2/3` = `#1f77b4`/`#8c564b`/`#17becf` at :74-76 (the CORRECTED pair, not
+  `#ff7f0e`/`#2ca02c`); `--ink-45: rgba(43,38,32,0.45)` at :42, composites 2.60:1, fails AA;
+  ten `--node-*` tokens exist but only **seven** are palette hues now. `verify.py` floors
+  **69** / **233**. Neither target file exists yet — this creates them.
+- **Feasibility (§2), stated so it is not re-derived:** D-008's six floors were measured over
+  EIGHT fills; seven are retained. Removing a member from a set can only raise or hold a
+  pairwise minimum, so all six stay reachable by harvesting D-008's committed values. The
+  dispatch forbids a new palette search.
+- **Depends on:** ~~the M1 style choice~~ — settled 2026-09-01, Bench.
+- **Branch / PR:** `task/d-002-tokens` — not yet opened
+- **Status:** cycle 1, dispatched 2026-09-01
 - **History:** [`archive/design.md`](archive/design.md)
 
 ### D-009 — Node interiors: how a cut and an observable are actually configured
-- **Scope:** `docs/design-explorations/` — new page(s) for the node-interior options, their own
-  CSS, and a `## Ruling` note of **≤3 insertions / 0 deletions** at the top of
-  `docs/design-explorations/README.md` recording that Board was recommended and **Bench chosen**.
-  No `tokens.css`, no `verify.py`, no existing page file.
-- **Outcome:** present options for what is *inside* a node, for each of the seven palette kinds,
-  and recommend one. A checkpoint task, same shape as D-004–D-007.
-- **The question:** a `Selection` must let a student say `l1.pt > 20` without knowing what any of
-  those characters mean, and an `Obs*` must let them choose a quantity and a binning. The
-  reference tool's dense property grid is explicitly not the answer (brief §4, "Node interiors
-  are not inherited"). Collapsed vs. opened state is part of the question.
-- **Carry in:** the expression path (brief §4) is not being removed — it stays for students who
-  get that far. So the design has to hold both a guided form and raw expression entry without
-  the guided one feeling like a toy.
-- **Criteria:** to be written at dispatch, each with its `Check:`/`Expect:`. Every count in them
-  gets enumerated by `scout` first — not inherited from this entry.
-- **Depends on:** nothing. Parallel with D-002.
-- **Branch / PR:** not yet opened
+- **Scope:** `docs/design-explorations/interiors.html`, `interiors.css`, `interiors_verify.py`
+  (all NEW), plus <=3 insertions / 0 deletions at the top of `README.md`. Forbidden:
+  `tokens.css`, `verify.py`, and every existing page file.
+- **Accept:** C1 >=2 options, exactly one recommended; C2 all seven kinds per option, zero
+  `DataSource`; C3 collapsed AND opened per (option, kind), rendered heights strictly
+  ordered; C4 the `Selection` interior holds both a guided form and raw expression entry,
+  both keyboard-reachable, neither `disabled` nor `aria-hidden`; C5 no inline `style=`, no
+  network, no build step; C6 no colour defined outside `var(--…)`; C7 README note <=3/0;
+  C8 diff confined to the four files. **checks=8.** C1-C4 mutation-gated.
+- **A checkpoint task** — same shape as D-004-D-007. The user reads the page and rules.
+- **Enumerated:** `README.md` is 81 lines, `**Recommended:** Board` at line 14 — the note goes
+  above it. `bench.html` is 727 lines; `buildNodeEl` at :380-460; a node today holds exactly
+  ONE configurable property, `subtitle` at :410, value `"not configured yet"` — so this is the
+  first interior, not a refinement. `persistUI()` at :289-292 is what any interior must
+  eventually serialise into. `bench.html:64-71` still renders EIGHT palette buttons including
+  `DataSource`; that page is historical and out of scope, the new page ships seven.
+- **Depends on:** nothing. **Blocks D-010** — node size decides the palette width.
+- **Branch / PR:** `task/d-009-node-interiors` — not yet opened
+- **Status:** cycle 1, dispatched 2026-09-01
+- **History:** none yet — first cycle.
 
+## Ready
+
+_none — both released tasks are in flight._
 
 ## Blocked
 
