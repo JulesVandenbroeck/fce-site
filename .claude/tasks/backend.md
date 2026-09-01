@@ -13,7 +13,7 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
 `scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
-- **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `a8f79d8`
+- **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `fba2ad6`
 - **Status:** **§5.1 gate FAILED at `51d46e9`, 2026-09-01 — back to the coder, no reviewer
   dispatched.** In `~/fce-gate-b008`: flake8 0 on `src/ tests/ scripts/`, diff correctly scoped to
   `path_filter.py` + the new `tests/test_path_filter_exprs.py`, but `pytest tests/` is
@@ -50,7 +50,16 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
   with the vectorised path forced into its `except`. M2: `:454` compiles unconditionally where
   `:602` guards, so a valid `observable: ""` now aborts a run that used to return an empty
   histogram — restore the old behaviour, put emptiness validation in `runconfig.py` (backlogged).
-  The C5 replacement guard was mutation-tested by the reviewer and is genuinely sensitive. C1 is
+  The C5 replacement guard was mutation-tested by the reviewer and is genuinely sensitive.
+  **Cycle 2 delivered `fba2ad6`; §5.1 gate reproduced 2026-09-01: 424 passed / 0 failed
+  (floor 423), flake8 0, diff still the same three files. Cycle 2 in review.** M2 fixed at
+  `path_filter.py:460` — the blank-observable guard now matches the sibling at `:601`, pinned by a
+  test. M1 fixed at `tests/test_path_filter_exprs.py:225-308` — parity now runs through
+  `fill_histogram_from_cache` twice per corpus expression, the fallback forced by monkeypatching
+  `_ArrayProxy.__init__` to raise, asserting bin-for-bin equality, with a `_P4Proxy.mass`
+  mutation gate. Reviewer asked to **re-instrument the call sites** rather than read the diff: a
+  test that claims to force the `except` without entering it looks identical from the diff.
+  **Suite floor becomes 424 when this merges**, not before. C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
   outside the given scope — the coder reports the call is now functionally inert because
