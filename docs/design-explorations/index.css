@@ -1,0 +1,161 @@
+/* index.css — the D-007 comparison index. Presentational only: reads every
+ * colour, spacing and type value from tokens.css (READ-ONLY, not edited
+ * here) rather than declaring a fresh hex value or scale of its own.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.page {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4) var(--space-5);
+}
+
+/* ---- header ------------------------------------------------------------ */
+.cmp-header {
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--paper-line);
+}
+.cmp-header__eyebrow {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-70);
+  margin-bottom: var(--space-2);
+}
+.cmp-header__title {
+  margin: 0 0 var(--space-3);
+  font-size: clamp(1.6rem, 2.6vw, 2.25rem);
+  line-height: 1.15;
+}
+.cmp-header__lede {
+  margin: 0;
+  max-width: 74ch;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ink-70);
+}
+.cmp-header__lede code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+.cmp-header__lede a {
+  color: var(--graphite-blue-strong);
+  text-decoration-thickness: 1px;
+}
+.cmp-header__lede a:hover { color: var(--graphite-blue); }
+
+/* ---- the three cards ---------------------------------------------------- */
+.cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.cmp-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+}
+
+/* Each card owns its style's node-fill hue as a quiet top rule, matching the
+ * same hue used for that node kind everywhere else in these explorations —
+ * not a new colour assignment, a restatement of an existing one. */
+#beamline { border-top: 3px solid var(--node-data); }
+#bench { border-top: 3px solid var(--node-obs-vecsum); }
+#board { border-top: 3px solid var(--node-histogram); }
+
+.cmp-card__n {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-70);
+}
+.cmp-card__h {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.cmp-card__h a {
+  color: var(--ink);
+  text-decoration-color: var(--graphite-blue);
+}
+.cmp-card__h a:hover,
+.cmp-card__h a:focus-visible {
+  color: var(--graphite-blue-strong);
+}
+
+.cmp-card p {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: var(--ink-70);
+}
+.cmp-card p strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.cmp-card__cost {
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--paper-line);
+}
+
+/* ---- footnote ------------------------------------------------------------ */
+.cmp-footnote {
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--paper-line);
+}
+.cmp-footnote p {
+  margin: 0;
+  max-width: 80ch;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--ink-70);
+}
+.cmp-footnote code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+.cmp-footnote a {
+  color: var(--graphite-blue-strong);
+}
+.cmp-footnote a:hover { color: var(--graphite-blue); }
+
+/* ---- focus — visible on every interactive element, never removed -------- */
+a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---- responsive: 1024 and 768 -------------------------------------------- */
+@media (max-width: 1024px) {
+  .cmp-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-4) var(--space-3);
+  }
+  .cmp-grid {
+    grid-template-columns: 1fr;
+  }
+}

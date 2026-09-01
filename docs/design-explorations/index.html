@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-007 — node graph style comparison (design explorations)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="index.css" />
+</head>
+<body>
+<main class="page">
+
+  <header class="cmp-header">
+    <span class="cmp-header__eyebrow">FCE-site design explorations</span>
+    <h1 class="cmp-header__title">Three ways to build the analysis graph</h1>
+    <p class="cmp-header__lede">Three complete, standalone renderings of the same mission
+      screen (M-1 · First Light), each answering the node-graph question
+      (<code>docs/design-brief.md</code> §4) a different way: what a graph <em>remembers</em>
+      about where a node sits, and what gesture <em>joins</em> two of them. This page is the
+      M1 checkpoint — open each page, then read
+      <a href="README.md"><code>README.md</code></a> for the recommendation.</p>
+  </header>
+
+  <div class="cmp-grid">
+
+    <section id="beamline" class="cmp-card">
+      <span class="cmp-card__n">Style A</span>
+      <h2 class="cmp-card__h"><a href="beamline.html">Beamline →</a></h2>
+      <p class="cmp-card__persists"><strong>Persists:</strong> an ordered edge list, and
+        nothing else. The graph container carries one attribute holding the sequence of
+        source→destination node-id pairs a student has connected. No node carries a
+        position, so there is nothing to remember about where anything sits on screen —
+        layout is a straight rail, recomputed by ordinary flex flow every time.</p>
+      <p class="cmp-card__gesture"><strong>Connects by:</strong> clicking. Click an output
+        port to arm it, then click an input port on a different node to complete the
+        connection. Dragging a port does nothing on purpose.</p>
+      <p class="cmp-card__cost">Gives up: any spatial arrangement at all — a student cannot
+        place two related nodes near each other. In exchange, it is the only one of the
+        three with a real answer at 768 px: the rail simply wraps, rather than needing a
+        scrolling canvas.</p>
+    </section>
+
+    <section id="bench" class="cmp-card">
+      <span class="cmp-card__n">Style B</span>
+      <h2 class="cmp-card__h"><a href="bench.html">Bench →</a></h2>
+      <p class="cmp-card__persists"><strong>Persists:</strong> a free position per node —
+        {id, x, y} — plus the edge list. A student can drag any node anywhere on an open
+        canvas and that placement survives a reload, so grouping related nodes or spreading
+        a wide pipeline out is a real tool, not an accident of add order.</p>
+      <p class="cmp-card__gesture"><strong>Connects by:</strong> dragging. Press an output
+        port, drag to an input port on another node, and release to link them. A plain
+        press-and-release in place on a port is deliberately inert — it is dragging or
+        nothing.</p>
+      <p class="cmp-card__cost">Gives up: a graph reading the same way twice. Two students
+        who build an identical pipeline can leave it looking entirely different, and the
+        canvas needs real width to be worth having — it is the one style with no strong
+        story at 768 px.</p>
+    </section>
+
+    <section id="board" class="cmp-card">
+      <span class="cmp-card__n">Style C</span>
+      <h2 class="cmp-card__h"><a href="board.html">Board →</a></h2>
+      <p class="cmp-card__persists"><strong>Persists:</strong> a node's pipeline stage and
+        its position within that stage — column and slotIndex — plus the edge list. A
+        node's column is fixed by its kind (Data always lane 0, Histogram always lane 4);
+        slotIndex is its order within that lane's own list, read back from live DOM order
+        rather than tracked separately. The result figure lives inside the graph itself, as
+        the Histogram lane's own content.</p>
+      <p class="cmp-card__gesture"><strong>Connects by:</strong> either drag or click — both
+        gestures work here. Drag from an output port to an input port, or click one and
+        then the other, and either completes the connection.</p>
+      <p class="cmp-card__cost">Gives up: Bench's free arrangement (a node cannot sit next
+        to an unrelated one just because a student wants them near each other) and
+        Beamline's single-glance simplicity — five typed lanes read as more machinery than
+        one rail, and the whole board needs to scroll horizontally once those five lanes
+        exceed 768 px.</p>
+    </section>
+
+  </div>
+
+  <section class="cmp-footnote">
+    <p>Nothing on this page, or on the three it links, ships in the application. Each is a
+      complete standalone render — open any of the three directly as a <code>file://</code>
+      URL, with no server and no build step — built to be compared here, not to be the
+      final markup. The recommendation and what each option gives up in full are in
+      <a href="README.md"><code>README.md</code></a>.</p>
+  </section>
+
+</main>
+</body>
+</html>
