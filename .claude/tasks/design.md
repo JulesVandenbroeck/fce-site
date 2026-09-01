@@ -27,7 +27,10 @@ IDs are `D-nnn`, allocated in order and never reused.
   scripts/`, `pytest tests/` **413 passed**, branch diff = `bench.css`, `bench.html`,
   `verify.py` only — `src/`, `tests/`, `content/`, `tokens.css` untouched. **Reviewer not yet
   dispatched: the PR body still stops at cycle 2** — no C8/C9/C10 evidence, no c3 transcript.
-  Back to the coder for a body-only update (§5.1, **not a cycle**).
+  Back to the coder for a body-only update (§5.1, **not a cycle**) — **dispatched 2026-09-01**,
+  worktree isolation, code frozen at `6b123ee`: body to `checks=10` with C8/C9/C10 verbatim, c3
+  transcript, per-criterion mutation transcripts, the floors re-measured, and the intended 3 → 2
+  denominator fall stated in the body. Reviewer goes out the moment the body lands.
   c3 deletes `bench.js` (the inline module was
   already the only copy running), so `check_bench_no_exhaustive_prose`'s denominator falls
   3 → 2 **by design** — a fall the reviewer must read as intended, not as a floor breach.
