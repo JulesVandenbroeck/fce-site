@@ -5704,25 +5704,29 @@ def check_board_terminal_plot_budget(pw: Playwright) -> bool:
 
 
 def check_board_lane_fill(pw: Playwright, html_path: Optional[Path] = None) -> bool:
-    """Criterion 10 (D-006 cycle-2 review, M1): no `.board-column` reserves
-    substantial empty vertical space below its own real content. `.board`
-    stretches every column to the row's own height (the Histogram column's,
-    since its fixed 650x460 figure -- C6, not negotiable -- is the tallest
-    thing on the board), and each non-Histogram column now closes the gap
-    that stretch alone would leave with a purely presentational, aria-hidden
-    `.board-column__fill` sibling of its own `<ul>` (ruled lines, the same
-    motif the page background already uses -- never inside the `<ul>` itself,
-    so it is invisible to `persistUI`'s own `Array.from(list.children)` walk
-    and cannot appear as a node in `data-ui`).
+    """Criterion 10, restated (D-006 cycle-3 review, R1): no `.board-column`
+    reserves substantial empty vertical space below its own *real* content,
+    where real content means something the student could focus or connect --
+    a `.node-card` -- and nothing else. The cycle-2 instrument measured the
+    bottom edge among the column's own *direct children*, and
+    `.board-column__fill` (the aria-hidden, purely decorative ruled-line
+    filler added for M1) is one of those direct children with `flex: 1 1
+    auto`, so it always reached the column's own bottom -- the check was
+    certifying that the wallpaper was present, not that the space behind it
+    held anything a person could use. This version reads only the node
+    cards actually sitting in the column's own `<ul class="board-column__nodes">`
+    -- `.board-column__fill`, the `<h3>` and any other `aria-hidden` or
+    decorative element are excluded from the measurement by construction,
+    since only `.node-card` elements are ever counted, and a `.node-card` is
+    never `aria-hidden` (it is the focusable, connectable unit `persistUI`
+    itself walks). A column holding no real node cards therefore now reads
+    as its content height being the space above the (empty) list -- i.e.
+    almost the entire column unused -- rather than the ~1px the filler used
+    to report.
 
-    "Content actually occupies" is read from the live DOM, not asserted: for
-    each `.board-column`, the lowest bottom edge among its own *direct*
-    children's own `getBoundingClientRect()`s (relative to the column's own
-    top, plus the column's own bottom padding) -- so a column's box height
-    minus that figure is the same number a person would get by looking at
-    where the visible content actually stops. `html_path`, when given,
-    points at a scratch mutated copy for a mutation-transcript proof; the
-    unconditional call from `main()` never passes it."""
+    `html_path`, when given, points at a scratch mutated copy for a
+    mutation-transcript proof; the unconditional call from `main()` never
+    passes it."""
     section("Board lane fill -- no lane reserves substantial empty vertical space beyond its own content")
     all_ok = True
     for width in WIDTHS:
@@ -5734,14 +5738,18 @@ def check_board_lane_fill(pw: Playwright, html_path: Optional[Path] = None) -> b
                     const h3 = col.querySelector('h3');
                     const name = h3 ? h3.textContent.trim() : (col.getAttribute('data-column') || '?');
                     const box = col.getBoundingClientRect();
+                    const list = col.querySelector('.board-column__nodes');
+                    const cards = list ? Array.from(list.children).filter(
+                        (c) => c.classList.contains('node-card') && c.getAttribute('aria-hidden') !== 'true'
+                    ) : [];
                     let maxBottom = box.top;
-                    Array.from(col.children).forEach(child => {
-                        const r = child.getBoundingClientRect();
+                    cards.forEach((card) => {
+                        const r = card.getBoundingClientRect();
                         if (r.height > 0 && r.bottom > maxBottom) maxBottom = r.bottom;
                     });
                     const padBottom = parseFloat(getComputedStyle(col).paddingBottom) || 0;
                     const contentHeight = Math.min(box.height, (maxBottom - box.top) + padBottom);
-                    return { name, boxHeight: box.height, contentHeight };
+                    return { name, boxHeight: box.height, contentHeight, cardCount: cards.length };
                 });
             }"""
         )
@@ -5752,8 +5760,8 @@ def check_board_lane_fill(pw: Playwright, html_path: Optional[Path] = None) -> b
             all_ok = all_ok and ok
             line(
                 f"width={width}px lane={f['name']!r}: box height={f['boxHeight']:.1f}px, "
-                f"content height={f['contentHeight']:.1f}px, unused={unused:.1f}px "
-                f"(limit max(25%, 120px)={limit:.1f}px)",
+                f"real-content height={f['contentHeight']:.1f}px ({f['cardCount']} node card(s)), "
+                f"unused={unused:.1f}px (limit max(25%, 120px)={limit:.1f}px)",
                 ok,
             )
         browser.close()
