@@ -59,7 +59,17 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
   `_ArrayProxy.__init__` to raise, asserting bin-for-bin equality, with a `_P4Proxy.mass`
   mutation gate. Reviewer asked to **re-instrument the call sites** rather than read the diff: a
   test that claims to force the `except` without entering it looks identical from the diff.
-  **Suite floor becomes 424 when this merges**, not before. C1 is
+  **Suite floor becomes 424 when this merges**, not before.
+  **Cycle 2 reviewed: `0R / 1M / 2m`, `verdict=rework`. R1, R2, M1, M2, m1, m3 all closed and
+  verified — M1 by re-instrumentation, not by reading the diff: `{489: 10, 543: 50}`, so the
+  per-event observable fallback at `:543` that cycle 1 found driven by nothing now runs 50 times.
+  M2 confirmed by splicing the `:466` guard back out.** **M3, new and a §5.3 shape:** the M1
+  rework *deleted* cycle 1's per-value comparison (50 values, `atol=1e-3`) and replaced it with a
+  20-bin `np.array_equal`, moving the detection floor from ~`1e-3` to ~one bin width — perturbing
+  the per-event `_delta_r` passes at `+0.5` and only fails at `+1.0`, so **a 0.5 GeV vectorised/
+  per-event disagreement ships green**. C2 says "identical numbers"; the assertion says "same
+  coarse bin". **Cycle 3 dispatched at the §5.7 limit** — fix additively, never by trading the
+  entry-point coverage back. If it does not close at 0R/0M, stop and escalate. C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
   outside the given scope — the coder reports the call is now functionally inert because
