@@ -120,14 +120,10 @@ design criterion, the archive is where that pattern is documented.
   and the intended `3 → 2` prose-lint denominator — machine-diffed by the reviewer, every other
   integer in the suite unchanged.
 
-## Process note — D-005 was merged before its gate ran
+## Process note — D-005 was merged before its gate ran (RESOLVED)
 
 `4720179` landed on `main` at **2026-09-01T08:23:27Z**, ~12 minutes before I dispatched the
-cycle-3 reviewer. I did not issue that merge, and the `design-coder` doing the body-only update
-— the only agent running in that window — states it ran no merge command of any kind, only
-`gh pr view` and `gh pr edit`. GitHub attributes the merge to the account with no app
-attribution, i.e. an ordinary `gh`/web merge. **The most likely remaining explanation is a manual
-merge from the GitHub UI.** No harm resulted: the review came back `0R / 0M`, so the merged
-content is what a clean gate would have approved. That is luck, not process — rule 5 says only
-the orchestrator merges, and a bypass that happens to come out right is the case that normalises
-the bypass. Raised with the user.
+cycle-3 reviewer. **The user merged it themselves, by hand, having judged cycle 3 finished** —
+confirmed by them 2026-09-01. Legitimate, and not a rule-5 breach: rule 5 binds the agents, not
+the person who owns the repo. Closed, no action. The gate ran afterwards and returned
+`0R / 0M`, so what is on `main` is what a clean review would have approved anyway.
