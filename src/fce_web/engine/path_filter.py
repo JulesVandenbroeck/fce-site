@@ -32,10 +32,14 @@ now validated once by ``fce_web.safe_eval.compile_expr`` -- outside any per-even
 try/except, so a rejected expression's ``fce_web.safe_eval.UnsafeExpression`` is never
 swallowed by this module's ``except Exception`` handlers -- and evaluated with
 ``fce_web.safe_eval.evaluate`` against the same compiled code object for both the vectorized
-fast path and the per-event fallback. This file contains no direct call of either builtin by
-name anymore; ``tests/test_path_filter.py::test_docstring_eval_compile_line_numbers_match_this_file``
-is retired by this change -- see B-008's PR for why its exact regex format cannot survive a
-file with zero such calls.
+fast path and the per-event fallback. **This file now contains zero direct calls of the
+builtins named ``eval`` or ``compile``** -- guarded by
+``tests/test_path_filter.py::test_no_eval_or_compile_call_sites``, which parses this exact
+claim out of this docstring and checks it against what ``ast`` finds in this file, so a
+reintroduced ``eval()``/``compile()`` call here fails the suite instead of drifting undetected
+a second time -- see B-008's PR for why its predecessor's line-number-matching form of this
+guard could not survive a file with zero such calls, and had to be inverted rather than
+retired.
 
 **Not done here, on purpose:**
 
