@@ -13,32 +13,39 @@ blocked on; nothing past this checkpoint is decided until it is read.
 
 **Recommended:** Board
 
-Board is the only one of the three whose persisted shape already answers the question
-`docs/design-brief.md` §4 poses about the run payload's own "ui object": which pipeline
-stage a node is in, read directly from structure rather than inferred from an arrival
-order or a free coordinate. It persists `{nodes: [{id, column, slotIndex}], edges}` — a
-node's `column` fixed by its kind (Data always lane 0, Histogram always lane 4) and its
-`slotIndex` its order within that lane, both read back from live DOM structure rather than
-tracked as separate state that could drift from the render. `docs/api.md` marks
-`POST /api/run` "_To be defined in M3._" — it specifies no request body today, and its only
-`edges` are histogram bin edges, not graph edges. So this is not a case of Board already
-matching a settled contract; it is the reverse. Whatever style wins this comparison is what
-the M3 request-body definition will have to persist: the engine will still ignore
-`column`/`slotIndex` exactly as it would ignore Bench's `{x, y}` (design-brief.md §4 — "any
-layout state … lives in a separate `ui` object the engine ignores"), but the `nodes[] +
-edges[]` half of whichever shape is chosen here is what a future `POST /api/run` body will
-carry to the physics engine, node-for-node and edge-for-edge. Choosing Board now is choosing
-to define that undefined contract as one where a node's pipeline stage is recoverable from
-structure rather than inferred — which makes this recommendation more load-bearing than a
-comparison of three finished demos usually is, not less.
+Board is the only one of the three whose persisted shape makes a node's pipeline stage
+recoverable from structure alone, without inferring it from an arrival order or a free
+coordinate. It persists `{nodes: [{id, column, slotIndex}], edges}` — a node's `column`
+fixed by its kind (Data always lane 0, Histogram always lane 4) and its `slotIndex` its
+order within that lane, both read back from live DOM structure rather than tracked as
+separate state that could drift from the render. `docs/design-brief.md` §4 does not pose
+this as an open question for the payload to answer — it already classifies `column` and
+`slotIndex` as exactly the layout state its own `ui` object exists to segregate: "Any
+layout state … lives in a separate `ui` object the engine ignores." So neither field
+carries any more weight in the run payload than Bench's `{x, y}` does; the engine will
+discard all three identically, and `docs/api.md` marks `POST /api/run` "_To be defined in
+M3._" — it specifies no request body today, and its only `edges` are histogram bin edges,
+not graph edges. Board is not already matching a settled contract, and does not become one
+by being chosen: whatever style wins this comparison is what the M3 request-body
+definition will have to persist, and the `nodes[] + edges[]` half of whichever shape is
+chosen here — never the ui-object half — is what a future `POST /api/run` body will carry
+to the physics engine, node-for-node and edge-for-edge. What Board buys instead is the
+requirement `docs/design-brief.md` §4 states outright, not one it merely implies: "It still
+reads as a pipeline." A student should be able to point at the graph and say what it does,
+in order. Its five typed lanes make that legible from structure without inference; Beamline
+needs an arrival order and Bench needs a free coordinate to convey the same thing. Choosing
+Board is choosing legibility for the student, not pre-empting any part of an undefined
+contract — but it still
+makes this recommendation more load-bearing than a comparison of three finished demos
+usually is, because whatever `nodes[]`/`edges[]` shape ships here is the one M3 inherits.
 
 The consequence of choosing Board: build cost is real. Five typed lanes are more surface
 than Beamline's single rail or Bench's blank canvas, and a board wide enough for all five
 needs to scroll horizontally under 768 px (`.board-wrap`, the same device Bench's canvas
 already needs). Both are accepted rather than discovered late, because the thing Board buys
 in return — a graph that reads as *which pipeline stage is this node in* at a glance,
-independent of when a student happened to add it, satisfying design-brief.md §4's own "it
-still reads as a pipeline" requirement more literally than either alternative — is worth
+independent of when a student happened to add it, satisfying `docs/design-brief.md` §4's own
+"It still reads as a pipeline" requirement more literally than either alternative — is worth
 that cost for a teaching tool whose whole point is that pipeline.
 
 ---
