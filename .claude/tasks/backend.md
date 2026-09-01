@@ -13,7 +13,7 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
 `scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
-- **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `51d46e9`
+- **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `a8f79d8`
 - **Status:** **§5.1 gate FAILED at `51d46e9`, 2026-09-01 — back to the coder, no reviewer
   dispatched.** In `~/fce-gate-b008`: flake8 0 on `src/ tests/ scripts/`, diff correctly scoped to
   `path_filter.py` + the new `tests/test_path_filter_exprs.py`, but `pytest tests/` is
@@ -26,7 +26,15 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
   the guard (docstring claims zero call sites, asserted against `ast`) and retiring it against a
   named replacement shown failing on a reintroduced `eval(`. **Note for every future gate: a bare
   `pytest` in a fresh worktree collects nothing (`No module named 'fce_web'`) — use the
-  worktree's own `./.venv/bin/python -m pytest`.** C1 is
+  worktree's own `./.venv/bin/python -m pytest`.**
+  **Gate re-run at `a8f79d8` 2026-09-01: 423 passed / 0 failed, flake8 0, diff confined to
+  `path_filter.py` + `tests/test_path_filter.py` + `tests/test_path_filter_exprs.py` —
+  reproduced. Cycle 1 reviewer dispatched.** The coder took the first option: the docstring now
+  claims **zero** call sites and `test_no_eval_or_compile_call_sites` asserts that against `ast`,
+  with a perturbation twin. `tests/test_path_filter.py` was edited outside the original file
+  scope — **authorised by me at the gate**, declared in the body. **Suite floor becomes 423 when
+  this merges**, not before. C1 stays deviated: `analytical_loop.py:290` still holds a live
+  `compile()`; the reviewer rules on whether that satisfies C1 as written. C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
   outside the given scope — the coder reports the call is now functionally inert because
