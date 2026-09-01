@@ -9,7 +9,10 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
+**B-013 (#17) and B-014 (#18) are HELD BY THE USER 2026-09-01** until the M1 design choice is
+made — neither is crucial to it, and the user's token budget is the binding constraint. Their
+cycle-1 reviews were dispatched 2026-08-31 and never returned a verdict; do not re-dispatch
+without the user. All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
 `scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`

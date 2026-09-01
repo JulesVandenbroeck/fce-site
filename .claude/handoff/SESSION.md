@@ -1,8 +1,9 @@
 # Session handoff — 2026-09-01 (time of writing: after the user stopped two agents)
 
-**Why:** the **user stopped D-006 and B-008 cycle 3 mid-flight** and asked for a handoff. This is
-not a context exhaustion — the orchestrator was at ~52%. Neither stopped agent wrote its own
-handoff, because neither was given the chance; their work is preserved as patches instead.
+**Why:** the **user stopped D-006 and B-008 cycle 3 mid-flight** and asked for a handoff —
+**the user's own token budget was near its limit**, not orchestrator context (which was ~52%).
+Neither stopped agent wrote its own handoff; their work is preserved as patches instead.
+**Budget is the binding constraint on the next session — dispatch deliberately, not in parallel.**
 **Milestone:** M1 — D-005 merged; **D-006 Board is the last style before D-007**, the checkpoint
 where the user picks Beamline / Bench / Board. M2 cleanup (B-008/B-013/B-014) runs alongside.
 
@@ -19,8 +20,8 @@ Do not load `.claude/tasks/archive/` or `backlog.md`. Same reason as always.
 |---|---|---|---|---|---|---|
 | D-006 | design | `task/d-006-board` (local only, **never pushed**) | — | 1 | **stopped by user.** Uncommitted: `board.html`, `board.css`, +1330 lines of `verify.py`. No commit was ever made. | `d-006-board-cycle1-interrupted.patch` |
 | B-008 | backend | `task/b-008-path-filter-safe-eval` | #19 | 3 | **stopped by user.** Cycle 2 reviewed `0R/1M/2m`; cycle 3 was fixing M3 alone. Uncommitted: +79 lines in `tests/test_path_filter_exprs.py`. HEAD is still cycle 2's `fba2ad6`. **At the §5.7 limit** — if cycle 3 does not close `0R/0M`, escalate, do not open a cycle 4. | `b-008-cycle3-interrupted.patch` |
-| B-013 | backend | `task/b-013-safe-eval-findings` | #17 | 1 | in review since 2026-08-31, **no verdict has come back**. Gate reproduced (`4d5f374`, 413 passed). Re-dispatch the reviewer; do not assume it is still running. | — |
-| B-014 | backend | `task/b-014-api-contract-findings` | #18 | 1 | same — in review since 2026-08-31, no verdict. Gate reproduced (`3e3550f`, 565 passed). | — |
+| B-013 | backend | `task/b-013-safe-eval-findings` | #17 | 1 | **HELD BY THE USER** until the M1 design choice is made. Not crucial to M1. Gate reproduced (`4d5f374`, 413 passed); review dispatched 2026-08-31, no verdict returned. Do not re-dispatch without the user. | — |
+| B-014 | backend | `task/b-014-api-contract-findings` | #18 | 1 | **HELD BY THE USER**, same reason. Gate reproduced (`3e3550f`, 565 passed). | — |
 
 The two patches apply to the worktrees they came from, which still exist and are untouched:
 `~/fce-worktrees/d-006-board` (D-006) and `.claude/worktrees/agent-a209cb7cb16742776` (B-008).
@@ -28,15 +29,16 @@ Both were captured with `git add -N` + `git diff`, so they include the untracked
 
 ## First moves
 
-1. **Ask the user why they stopped D-006 and B-008 before re-dispatching either.** They stopped
-   two healthy tasks deliberately; re-starting them without asking discards whatever that
-   judgement was. This is the one thing not to guess at.
-2. Chase #17 and #18 — reviews dispatched 2026-08-31 that never reported.
-3. **Unanswered question owed to the user:** PR #16 was merged at 08:23:27Z, ~12 minutes *before*
-   its cycle-3 reviewer was dispatched. Not issued by this orchestrator; the only agent running in
-   that window denies any merge command; GitHub shows the account with no app attribution. Most
-   likely a manual web-UI merge. No harm — the review returned `0R/0M`. Rule 5 still says only the
-   orchestrator merges.
+1. **D-006 Board is the only thing between here and the M1 checkpoint.** Resume it from
+   `d-006-board-cycle1-interrupted.patch` in `~/fce-worktrees/d-006-board` — the coder was
+   mid-cycle-1 with `board.html`, `board.css` and the `--board` verify section already written.
+   Re-dispatching from scratch would pay for that twice. Its dispatch, checks=9, is in
+   `.claude/tasks/design.md`.
+2. Then D-007 — the comparison index and the recommendation. **That is the user's checkpoint.**
+3. **#17 and #18 stay parked until the user says otherwise.** Their hold is deliberate.
+4. **The #16 merge question is CLOSED:** the user merged it themselves, by hand, having judged
+   cycle 3 finished. Legitimate. No process breach, nothing to chase. The gate ran afterwards and
+   returned `0R/0M`, so the merged content is what a clean review approved.
 
 ## Traps this session paid for — do not re-learn them
 
