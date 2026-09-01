@@ -29,7 +29,9 @@ Both were captured with `git add -N` + `git diff`, so they include the untracked
 
 ## First moves
 
-1. **D-006 Board is the only thing between here and the M1 checkpoint.** Resume it from
+1. ~~**D-006 Board**~~ — **RESUMED 2026-09-01**, cycle 1, in `~/fce-worktrees/d-006-board` with
+   the interrupted work intact and checks=9 now carrying `Check:`/`Expect:` pairs. This move is
+   consumed; see `.claude/tasks/design.md`. Original text: resume it from
    `d-006-board-cycle1-interrupted.patch` in `~/fce-worktrees/d-006-board` — the coder was
    mid-cycle-1 with `board.html`, `board.css` and the `--board` verify section already written.
    Re-dispatching from scratch would pay for that twice. Its dispatch, checks=9, is in

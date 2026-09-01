@@ -9,10 +9,6 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-*(D-005 closed — see Done.)*
-
-## Ready
-
 ### D-006 — Node-graph style C: Board
 - **Scope:** `docs/design-explorations/` — create `board.{html,css,js}`; append a `--board`
   section to `verify.py`. `tokens.css` read-only.
@@ -22,21 +18,21 @@ IDs are `D-nnn`, allocated in order and never reused.
   **650×460** figure and be shown doing so at 768.
 - **Depends on:** ~~D-004~~ (merged `bac2f62`), ~~D-008~~ (merged `2d0de23`) and ~~D-005~~
   (merged `4720179`). Same note as D-005: the fills are final, and `--node-data` is `#966746`.
-- **Branch / PR:** `task/d-006-board` — **dispatched 2026-09-01**, cycle 1, worktree isolation,
-  branched off `4720179`. **checks=9.** C1 `{column, slotIndex}` shape, non-empty node list
-  required; C2 both gestures plus a keyboard path; C3 the 64/13/51 enumeration, allowlist
-  executed from the reference, helpers reused not re-transcribed; C4 22-of-22 inventory off the
-  shared `MISSION_SCREEN_DOMAIN_INVENTORY`; C5 the three-width sweep plus D-008's six floors;
-  C6 the terminal plot node budgeting for D-003's fixed 650×460 at 768; C7 unflagged `file://`;
-  **C8 closes D-005's m4** — the launch-flag ban asserted by the harness, not by a grep in a PR
-  body; **C9 closes D-005's m9** — `run_section` extended to all 46 sections, not just the 17
-  bench ones. Told explicitly **not** to create a `board.js`: inline the module from the start,
-  which is the two cycles D-005 spent on exactly that, spent once.
-
+- **Branch / PR:** `task/d-006-board` — local only at `4720179`, no commits yet. **Cycle 1
+  RESUMED 2026-09-01** in the pre-existing worktree `~/fce-worktrees/d-006-board`, which still
+  holds the interrupted work uncommitted (`board.html`, `board.css` staged; `verify.py` +1330).
+  The coder was told to build on it, not restart, and to merge `main` in (bookkeeping only,
+  never rebase). **checks=9**, and this dispatch is the first to carry `Check:`/`Expect:` pairs
+  for all nine — the original had none recorded anywhere, which is why they were rewritten
+  rather than cited.
 **Run D-005 then D-006, serially — never in parallel.** Both append a new section to
 `verify.py`; two coders in flight would collide on it, and the worktree rule protects the
 branch, not the merge.
 
+
+## Ready
+
+_none — D-007 is blocked on D-006._
 
 ## Blocked
 
@@ -109,6 +105,30 @@ design criterion, the archive is where that pattern is documented.
   superseded by the 2026-08-16 node-graph pivot.
 
 ## Floors in force
+
+### Enumerated for D-006 by `scout` at `b054481` — facts, not inherited claims
+- **Enumerated by `scout` at `b054481`, not inherited:** `run_section` at `verify.py:4861`
+  wraps **only** the bench block (`:4941-5014`); the beamline block (`:4920-4932`) does not use
+  it — that is C9's target. D-008's six floors are asserted inside **three** registered
+  sections (`:4959`, `:4967`, `:4974`), not six. `MISSION_SCREEN_DOMAIN_INVENTORY` at `:192`,
+  22 items. `derive_reference_legal_pairs()` at `:2222`, `BEAMLINE_ADDABLE_KINDS` at `:168`
+  (8 kinds). `check_bench_unflagged_file_url` at `:4777`. `grep -c 'all_results.append'` = 46.
+  `verify.py` is 5029 lines. **A bare `python` there has no `playwright`** — the worktree venv
+  and `PLAYWRIGHT_BROWSERS_PATH` are both required.
+- **Criteria:** C1 `{column, slotIndex}` shape, empty list refused; C2 both pointer gestures
+  plus a keyboard-only path; C3 64/13/51 through the reference-executed allowlist, helpers
+  reused not re-transcribed; C4 22-of-22 off the shared inventory; C5 the bench sweep's own
+  three widths plus D-008's six floors, reusing the three check functions; C6 the terminal plot
+  node budgeting D-003's fixed 650×460 at 768; C7 unflagged `file://`; **C8 closes D-005's m4**
+  — launch-flag ban asserted by `ast` in the harness, a regex explicitly ruled insufficient;
+  **C9 closes D-005's m9** — every `all_results.append` must come from `run_section`. Each is
+  mutation-gated with a transcript pair. Told explicitly **not** to create `board.js`.
+- **Floors handed to the coder as measurements, not quotes:** both `verify.py` counts are to be
+  taken on the merge-base and on HEAD with the same command and both pasted. The recorded
+  "46 sections / 149 assertion lines / 121 non-bench" figure has an unrecorded command behind
+  the 149; `scout`'s `grep -c 'results.append\|line('` gives **177**. **Reconcile at review —
+  do not treat 149 as authoritative until the command that produced it is known.**
+
 
 - D-008's six simultaneous palette floors: min CVD ΔE **5.129** (≥4.0), normal-vision node-node
   **14.170** (≥14.0), node-vs-reserved **13.442** (≥4.0), white-on-fill **4.595:1** (≥4.5),
