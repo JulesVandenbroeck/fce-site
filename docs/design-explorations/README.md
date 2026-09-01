@@ -1,3 +1,6 @@
+> **D-009 note.** This file's own recommendation below (Board) was overruled for Bench at
+> the M1 checkpoint — see [`interiors.html`](interiors.html) for the node-interior work
+> built on that ruling.
 # Design explorations — D-007 comparison
 
 **Open [`index.html`](index.html) in a browser** — no server, no internet, no build step.
