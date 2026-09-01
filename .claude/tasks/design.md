@@ -9,22 +9,31 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### D-007 — Comparison index and the recommendation
+- **Scope:** `docs/design-explorations/index.html`, `index.css` (**added to scope 2026-09-01 on the
+  user's ruling** — no legal place for CSS otherwise; the D-001 precedent gave its index one too),
+  `docs/design-explorations/README.md`, plus a two-line superseded note at the top of
+  `docs/wireframes/README.md`. No page files, no `tokens.css`, no `verify.py`.
+- **Accept:** C1 the index links exactly the three style pages, offline-standalone, no `<script>`;
+  C2 each `<section id>` states what that style's graph persists; C3 the gesture named per style
+  matches that page's own style tag; C4 the README carries `## Recommendation` with exactly one
+  `**Recommended:**` line, the persisted shape it commits, and `### ` per style under
+  `## What each option gives up`; C5 the wireframes note is ≤3 insertions / 0 deletions and the
+  diff is exactly the four scoped files; C6 `verify.py` grep counts and red-set identical to
+  `main`. C2 and C3 are mutation-gated. **checks=6.**
+- **Depends on:** ~~D-004~~ (`bac2f62`), ~~D-005~~ (`4720179`), ~~D-006~~ (`0aee604`) — all merged.
+- **Branch / PR:** `task/d-007-index` — dispatched 2026-09-01, `design-coder`, worktree, effort high.
+- **Status:** cycle 1, in flight. **This is the M1 checkpoint** — the user picks Beamline / Bench /
+  Board from it, and that choice unblocks D-002.
+- **Enumerated 2026-09-01, not inherited:** `verify.py` registers **65** sections, **64** pass,
+  `board-lane-fill` is the only red, `--all` exits 1. `grep -c 'all_results.append'` = **69** (4 are
+  comment mentions), `grep -c 'results.append\|line('` = **233**. It hard-codes its four page
+  paths (`verify.py:83,89,92,95`) and globs nothing, so a new `index.html` in that directory is
+  invisible to it. **`SESSION.md`'s "63 sections" was stale; 65 is right.**
 
 ## Ready
 
-### D-007 — Comparison index and the recommendation
-- **Scope:** `docs/design-explorations/index.html`, `README.md`, plus a two-line superseded
-  note at the top of `docs/wireframes/README.md`. No page files, no `tokens.css`, no `verify.py`.
-- **Accept:** the index links all three styles and states, per style, what the graph persists
-  and which gesture connects; the README states a recommendation with reasoning and names what
-  each option gives up. **This is the checkpoint the user reads to choose.**
-- **Depends on:** ~~D-004~~ (`bac2f62`), ~~D-005~~ (`4720179`), ~~D-006~~ (`0aee604`). **All
-  three merged — D-007 is UNBLOCKED as of 2026-09-01 and is the next thing to dispatch.**
-- **Must tell the coder:** `verify.py --all` exits 1 on `main` with one known-red section
-  (`board-lane-fill`). That is D-006's overruled C10, not a regression. D-007 does not touch
-  `verify.py`, so it must not try to fix it.
-- **Branch / PR:** not yet opened
+_none._
 
 ## Blocked
 
