@@ -34,7 +34,23 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
   with a perturbation twin. `tests/test_path_filter.py` was edited outside the original file
   scope — **authorised by me at the gate**, declared in the body. **Suite floor becomes 423 when
   this merges**, not before. C1 stays deviated: `analytical_loop.py:290` still holds a live
-  `compile()`; the reviewer rules on whether that satisfies C1 as written. C1 is
+  `compile()`; the reviewer rules on whether that satisfies C1 as written.
+  **Cycle 1 reviewed 2026-09-01: `2R / 2M / 3m`, `verdict=rework`, scope pass.
+  Both Required are against my dispatch, not the coder** — R1: no criterion carried a
+  `Check:`/`Expect:` pair (§5.2); R2: C1's wording spanned `src/fce_web/engine/` while the file
+  scope covered one file in it, so it was unsatisfiable as written. **Re-spec'd, cycle 2
+  dispatched:** C1 now reads "`path_filter.py` contains zero direct `eval()`/`compile()` call
+  sites, asserted against `ast`"; `analytical_loop.py:290` is out of scope and becomes **B-015**.
+  The inertness argument was verified independently, not accepted — the reviewer instrumented the
+  golden and all **1,424,355** evaluations went through `safe_eval`, none through a
+  caller-supplied code object. M1: the golden reaches only 2 of 6 `safe_evaluate` call sites
+  (`:483` 7 calls, `:749` 1,424,348), so **the per-event observable fallback at `:537` — the half
+  C2 names — is driven by nothing**; the parity test reconstructs the namespace dicts locally
+  instead of calling a public function. Fix goes through `fill_histogram_from_cache` twice, once
+  with the vectorised path forced into its `except`. M2: `:454` compiles unconditionally where
+  `:602` guards, so a valid `observable: ""` now aborts a run that used to return an empty
+  histogram — restore the old behaviour, put emptiness validation in `runconfig.py` (backlogged).
+  The C5 replacement guard was mutation-tested by the reviewer and is genuinely sensitive. C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
   outside the given scope — the coder reports the call is now functionally inert because
@@ -135,6 +151,23 @@ merge `main` into the branch. Never rebase.
 - **History:** [`archive/backend.md`](archive/backend.md) — why the length cap guards a surface the
   node cap structurally cannot (the 5.6 MB / 1.68 s measurement, the 501-digit 3-node payload), and
   why the docstring contradiction matters to B-008.
+
+### B-015 — Bound and validate the expression reaching `analytical_loop.py:290`
+- **Scope:** `src/fce_web/engine/analytical_loop.py`, plus tests. Opened 2026-09-01 out of
+  B-008's cycle-1 review (R2), which found C1 unsatisfiable within B-008's file scope.
+- **Why:** `compile(preprocess_hep_expr(e), '<sel>', 'eval')` at `analytical_loop.py:290` is the
+  last live `compile()` in `src/fce_web/engine/`. It is **functionally inert today** — verified,
+  not assumed: the list it builds reaches only `branch_cfg["compiled_sel_exprs"]`
+  (`analytical_loop.py:132`), `path_filter` no longer reads that key, and an instrumented golden
+  run put all 1,424,355 evaluations through `safe_eval`. `compile()` alone executes nothing, so
+  there is no RCE at that line today. **What is not inert:** the expression reaching it has had
+  no validation and no size bound, so `safe_eval.py:75-80`'s `MAX_EXPR_LENGTH` /
+  `MAX_AST_NODES` caps do not protect that path — a deeply nested student expression still
+  reaches the parser unbounded.
+- **Accept:** either the call site goes, or the expression reaching it is bounded by the same caps
+  as every other path, with a test that fails if the bound is removed.
+- **Depends on:** B-008 merging first — same file neighbourhood, and B-008's own deviation points
+  here.
 
 ## Blocked
 
