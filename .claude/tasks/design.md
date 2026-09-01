@@ -20,7 +20,17 @@ IDs are `D-nnn`, allocated in order and never reused.
   read-only here; build against them. Note `--node-data` is `#966746`, **not** D-004's `#8d5548`
   — anything harvested from the D-004 era is stale.
 - **Branch / PR:** `task/d-005-bench` — **#16**, dispatched 2026-08-31, worktree isolation.
-- **Status:** **cycle 3 dispatched — the §5.7 limit. If it does not converge, stop and escalate.**
+- **Status:** **cycle 3 delivered — `6b123ee`, pushed to #16. The §5.7 limit: if this cycle
+  does not close at 0R/0M, stop and escalate rather than opening a cycle 4.** Gate **not yet
+  §5.1 gate at `6b123ee` in `~/fce-gate-d005-c3`: **46 sections / 149 assertions / 0 FAIL**
+  (level with c2, far above the 31/48 floor), flake8 0 on `verify.py` and on `src/ tests/
+  scripts/`, `pytest tests/` **413 passed**, branch diff = `bench.css`, `bench.html`,
+  `verify.py` only — `src/`, `tests/`, `content/`, `tokens.css` untouched. **Reviewer not yet
+  dispatched: the PR body still stops at cycle 2** — no C8/C9/C10 evidence, no c3 transcript.
+  Back to the coder for a body-only update (§5.1, **not a cycle**).
+  c3 deletes `bench.js` (the inline module was
+  already the only copy running), so `check_bench_no_exhaustive_prose`'s denominator falls
+  3 → 2 **by design** — a fall the reviewer must read as intended, not as a floor breach.
   c1 **1R/0M/3m**; c2 **0R/1M/5m** —
   https://github.com/JulesVandenbroeck/fce-site/pull/16#issuecomment-5483184132. R1 **fixed**,
   confirmed two ways. §5.1 gate at `bbd3eee`: **46 sections / 149 assertions / 0 FAIL**, flake8 0,

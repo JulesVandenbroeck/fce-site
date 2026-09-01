@@ -13,8 +13,15 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
 `scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
-- **Branch / PR:** `task/b-008-path-filter-safe-eval` — PR not yet opened
-- **Status:** cycle 1 in flight. **checks=5.** C1 no `eval`/`compile` in `engine/`; C2 vectorised
+- **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `51d46e9`
+- **Status:** cycle 1 in review. Gate worktree `~/fce-gate-b008` stands at `51d46e9`; **no §5.1
+  result recorded yet** — reproduce before dispatching the reviewer. C1 is
+  **deviated, in writing**: `path_filter.py` itself is clean, but
+  `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
+  outside the given scope — the coder reports the call is now functionally inert because
+  `path_filter.py` recompiles from `cfg["sel_exprs"]` and never trusts
+  `cfg["compiled_sel_exprs"]`. **The reviewer decides whether an out-of-scope live `compile()`
+  satisfies C1 as written.** **checks=5.** C1 no `eval`/`compile` in `engine/`; C2 vectorised
   vs per-event golden values; C3 `UnsafeExpression` not swallowed; C4 escape refused before any
   event is read; C5 the docstring line-number test stays green.
 - **Enumerated:** 7 `eval(` at 335/377/456/515/718/730/748, 1 `compile(` at 481, file is 761
