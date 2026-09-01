@@ -10,10 +10,10 @@ Four things this file exists to prove, one per acceptance criterion:
   this module's several bare ``except Exception`` handlers.
 * C4 -- a malicious expression fed in as a selection is refused before a single event
   in the basket is read, measured rather than assumed.
-* C5 is exercised by ``tests/test_path_filter.py`` (unchanged, read-only to this task).
+* C5 is exercised by ``tests/test_path_filter.py`` (this task also touched it, adding
+  a one-line comment documenting the drift guard's name-shaped detection; the guard
+  and its assertions are otherwise unchanged).
 """
-import math
-
 import numpy as np
 import pytest
 
@@ -109,12 +109,11 @@ EXPR_CORPUS = [
 ]
 
 #: float32 is the cache's on-disk storage dtype (``make_cache_acc``); round-tripping a
-#: value through it loses precision below roughly the 6th-7th significant digit. For
-#: values in this corpus's range (single to low hundreds of GeV) that is an absolute
-#: error on the order of 1e-3 at worst, so ``ATOL`` is set an order of magnitude above
-#: that float32 noise floor, and ``RTOL`` covers the rest for larger magnitudes.
-RTOL = 1e-4
-ATOL = 1e-3
+#: value through it loses precision below roughly the 6th-7th significant digit -- for
+#: values in this corpus's range (single to low hundreds of GeV) an absolute error on
+#: the order of 1e-3 at worst. ``_axis_for`` below pads bin edges well clear of that
+#: noise floor so the two paths' independent roundings never land an event on opposite
+#: sides of an edge.
 
 
 def _build_cache(tmp_path, name="expr_corpus.npz"):
@@ -160,30 +159,95 @@ def _local_vars(data, i):
 
 
 # ---------------------------------------------------------------------------
-# C2: vectorized/per-event parity over the corpus
+# C2: vectorized/per-event parity, proven through the production entry point
 # ---------------------------------------------------------------------------
+#
+# PR #19 cycle-1 review, M1: the earlier version of this test reconstructed the
+# vectorized and per-event namespace dicts itself (test-local ``_vec_vars``/
+# ``_local_vars`` copies of ``path_filter.py:473-482``/``:530-536``) instead of
+# calling a ``path_filter`` public function -- correct today, but a copy that can
+# drift silently over exactly the path it exists to protect, and it never reached
+# the per-event *observable* fallback at ``path_filter.py:537`` at all (only the
+# per-event *selection* path was exercised elsewhere in this suite). The tests
+# below run the same cache and the same expression through
+# ``fill_histogram_from_cache`` -- the real production entry point -- twice: once
+# taking its normal vectorized fast path, once with the vectorized path forced
+# into its own ``except Exception: pass`` so every event falls through to the
+# per-event loop instead, and assert the two resulting histograms are equal bin
+# for bin.
 
-def test_vectorized_and_per_event_paths_agree_on_corpus(tmp_path):
-    cache_file = _build_cache(tmp_path)
+
+def _fill_via_production(cache_file, expr, axis, *, force_fallback, monkeypatch=None):
+    """Run ``fill_histogram_from_cache`` and return its filled bin contents.
+
+    ``force_fallback=True`` monkeypatches ``_ArrayProxy.__init__`` to raise --
+    caught by the vectorized path's own ``except Exception: pass`` at
+    ``path_filter.py``'s ``fill_histogram_from_cache`` -- so every event is
+    driven through the per-event fallback instead. ``monkeypatch`` is required
+    in that case; nothing tracked is ever modified.
+    """
+    import boost_histogram as bh
+    from fce_web.engine import path_filter as pf
+
+    if force_fallback:
+        assert monkeypatch is not None
+
+        def _raising_init(self, prefix, data):
+            raise RuntimeError("forced fallback for C2 production-entry-point parity test")
+
+        monkeypatch.setattr(pf._ArrayProxy, "__init__", _raising_init)
+
+    class _Hist:
+        def __init__(self):
+            self.h = {"h": bh.Histogram(axis)}
+
+    hist = _Hist()
+    pf.fill_histogram_from_cache(cache_file, hist, expr, with_syst=False)
+    return hist.h["h"].view(flow=False).copy()
+
+
+def _axis_for(vec_vals, bins=20):
+    """A ``bh.axis.Regular`` wide enough that float32-cache-roundtrip-scale noise
+    between the two paths cannot land two computations of the same event on
+    either side of a bin edge -- padded 1.0 past the observed range on both sides.
+    """
+    import boost_histogram as bh
+
+    finite = vec_vals[np.isfinite(vec_vals) & (vec_vals > -900.0)]
+    if finite.size == 0:
+        return bh.axis.Regular(bins, 0.0, 1.0)
+    lo = float(np.floor(finite.min())) - 1.0
+    hi = float(np.ceil(finite.max())) + 1.0
+    return bh.axis.Regular(bins, lo, hi)
+
+
+def test_vectorized_and_per_event_paths_agree_through_fill_histogram(tmp_path, monkeypatch):
+    pytest.importorskip("boost_histogram")
+
+    cache_file = _build_cache(tmp_path, name="fill_hist_corpus.npz")
     data = np.load(cache_file, mmap_mode="r")
-    n = len(data["weight"])
-    compiled = [compile_expr(e) for e in EXPR_CORPUS]
 
     checked = 0
-    for expr, ce in zip(EXPR_CORPUS, compiled):
-        vec_result = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
-        assert vec_result.shape[0] == n, f"expr {expr!r}: vectorized result shape mismatch"
-        for i in range(n):
-            per_event_result = float(evaluate(ce, _local_vars(data, i)))
-            checked += 1
-            assert math.isclose(vec_result[i], per_event_result, rel_tol=RTOL, abs_tol=ATOL), (
-                f"expr {expr!r} event {i}: vectorized={vec_result[i]!r} "
-                f"per-event={per_event_result!r}"
-            )
+    for expr in EXPR_CORPUS:
+        ce = compile_expr(expr)
+        vec_vals = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
+        axis = _axis_for(vec_vals)
 
-    assert checked == len(EXPR_CORPUS) * n
-    print(f"compared {len(EXPR_CORPUS)} expressions x {n} events = {checked} values, "
-          f"rtol={RTOL} atol={ATOL}")
+        normal = _fill_via_production(cache_file, expr, axis, force_fallback=False)
+        fallback = _fill_via_production(
+            cache_file, expr, axis, force_fallback=True, monkeypatch=monkeypatch,
+        )
+        monkeypatch.undo()  # restore _ArrayProxy before the next expression's normal run
+
+        assert np.array_equal(normal, fallback), (
+            f"expr {expr!r}: vectorized-path histogram != per-event-fallback histogram "
+            f"through fill_histogram_from_cache\nvectorized={normal!r}\nfallback={fallback!r}"
+        )
+        checked += 1
+
+    assert checked == len(EXPR_CORPUS)
+    print(f"compared {len(EXPR_CORPUS)} expressions through fill_histogram_from_cache, "
+          "vectorized path vs. forced per-event fallback, bin-for-bin")
 
 
 def test_boolean_operators_agree_with_manual_combination(tmp_path):
@@ -217,19 +281,22 @@ def test_boolean_operators_agree_with_manual_combination(tmp_path):
     print(f"compared 3 boolean expressions x {n} events = {checked} values (per-event only)")
 
 
-def test_corpus_parity_mutation_gate_perturbed_vectorized_operand_is_caught(tmp_path, monkeypatch):
+def test_fill_histogram_parity_mutation_gate_perturbed_vectorized_mass_is_caught(tmp_path, monkeypatch):
     """Perturbing only the vectorized ``_P4Proxy.mass`` (the per-event path computes mass
     through the ``vector`` package, an entirely separate code path, so this mutation cannot
-    touch it) must make the comparison above fail -- proving it actually compares values
-    instead of merely running both paths without checking anything.
+    touch it) must make the production-entry-point comparison above fail -- proving it
+    actually compares filled histograms instead of merely running both paths without
+    checking anything.
     """
+    pytest.importorskip("boost_histogram")
     from fce_web.engine import path_filter as pf
 
-    cache_file = _build_cache(tmp_path, name="mutation_corpus.npz")
+    cache_file = _build_cache(tmp_path, name="fill_hist_mutation_corpus.npz")
     data = np.load(cache_file, mmap_mode="r")
-    n = len(data["weight"])
     expr = "(l1.p4 + l2.p4).mass"
     ce = compile_expr(expr)
+    vec_vals = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
+    axis = _axis_for(vec_vals)
 
     original_mass = pf._P4Proxy.mass
 
@@ -238,20 +305,15 @@ def test_corpus_parity_mutation_gate_perturbed_vectorized_operand_is_caught(tmp_
 
     monkeypatch.setattr(pf._P4Proxy, "mass", property(_perturbed_mass))
 
-    vec_result = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
+    normal = _fill_via_production(cache_file, expr, axis, force_fallback=False)
+    fallback = _fill_via_production(
+        cache_file, expr, axis, force_fallback=True, monkeypatch=monkeypatch,
+    )
 
-    mismatch = None
-    for i in range(n):
-        per_event_result = float(evaluate(ce, _local_vars(data, i)))
-        if not math.isclose(vec_result[i], per_event_result, rel_tol=RTOL, abs_tol=ATOL):
-            mismatch = (i, vec_result[i], per_event_result)
-            break
-
-    assert mismatch is not None, "the +5.0 mutation produced no detectable mismatch"
-    i, vv, pv = mismatch
-    message = f"expr {expr!r} event {i}: vectorized={vv!r} per-event={pv!r}"
-    assert expr in message
-    assert repr(vv) in message
+    assert not np.array_equal(normal, fallback), (
+        "the +5.0 mutation on the vectorized path's _P4Proxy.mass produced no detectable "
+        "mismatch through fill_histogram_from_cache"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -296,6 +358,34 @@ def test_unsafe_expression_propagates_from_filter_selection_cache(tmp_path):
 
     with pytest.raises(UnsafeExpression):
         filter_selection_cache(cache_file, [ESCAPE_EXPR], out_path)
+
+
+# ---------------------------------------------------------------------------
+# M2 (PR #19 cycle-1 review): a blank observable is a valid RunConfig
+# (``runconfig.py`` checks type, not emptiness) and must behave identically at
+# both entry points that compile an observable -- ``fill_histogram_from_cache``
+# must guard exactly as ``filter_raw_event_data`` already does, restoring the
+# pre-PR behaviour (empty histogram, run completes) rather than surfacing an
+# ``UnsafeExpression`` from deep in the engine.
+# ---------------------------------------------------------------------------
+
+def test_blank_observable_produces_empty_histogram_not_unsafe_expression(tmp_path):
+    pytest.importorskip("boost_histogram")
+    import boost_histogram as bh
+    from fce_web.engine.path_filter import fill_histogram_from_cache
+
+    cache_file = _build_cache(tmp_path, name="blank_obs_hist.npz")
+
+    class _Hist:
+        def __init__(self):
+            ax = bh.axis.Regular(10, 0.0, 100.0)
+            self.h = {"h": bh.Histogram(ax)}
+
+    hist = _Hist()
+    # Must not raise -- a blank observable is a valid (if useless) RunConfig,
+    # not a rejected expression.
+    fill_histogram_from_cache(cache_file, hist, "", with_syst=False)
+    assert hist.h["h"].sum() == 0.0
 
 
 def test_unsafe_expression_mutation_gate_widened_handler_is_caught(monkeypatch):

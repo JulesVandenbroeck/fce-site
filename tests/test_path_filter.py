@@ -201,7 +201,14 @@ def test_path_filter_imports_with_ui_poisoned():
 # ---------------------------------------------------------------------------
 
 def _actual_eval_compile_lines(source: str):
-    """Return (sorted eval() call lines, sorted compile() call lines) found by ast."""
+    """Return (sorted eval() call lines, sorted compile() call lines) found by ast.
+
+    Deliberately name-shaped: it matches ``ast.Call`` nodes whose ``func`` is an
+    ``ast.Name`` equal to ``"eval"``/``"compile"``, so e.g. ``builtins.eval(...)``
+    (an ``ast.Attribute`` func, not an ``ast.Name``) would slip past this guard.
+    That is a known, accepted gap for this module -- do not widen the check to
+    close it without re-deriving what else it would then need to reject.
+    """
     tree = ast.parse(source)
     eval_lines, compile_lines = [], []
     for node in ast.walk(tree):

@@ -452,12 +452,18 @@ def fill_histogram_from_cache(cache_file: str, outHist, observable_target: str,
     expression is rejected without reading a single byte of the cache. The same compiled
     code object is then reused, via ``fce_web.safe_eval.evaluate``, by both the vectorized
     fast path and the per-event fallback below.
+
+    A falsy ``observable_target`` (``None`` or ``""`` -- a blank observable is a valid
+    ``RunConfig``, see ``runconfig.py``) is not compiled at all, matching
+    ``filter_raw_event_data``'s guard: this is a pre-existing, pre-B-008 behaviour
+    (an empty histogram, the run completes) being preserved, not a new one, and
+    B-008 does not change what a valid config does.
     """
     # Local import: keeps module import-time deps minimal (boost_histogram is only
     # needed here, not for the proxy/eval/cache-I/O paths exercised by unit tests).
     import boost_histogram as bh
 
-    compiled_obs = compile_expr(observable_target)
+    compiled_obs = compile_expr(observable_target) if observable_target else None
 
     # OPT-1: mmap_mode='r' lets the OS page in only accessed columns; unaccessed arrays
     # are never faulted into RAM (particularly useful in the vectorized path below).
