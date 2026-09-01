@@ -519,3 +519,17 @@ and are historical now that #6 is merged.
 - **D-007 m3 — unnamed `<section>` landmark.** `docs/design-explorations/index.html:81` is a
   `<section>` with no accessible name, so it is an unlabelled landmark for screen-reader users.
   Filed from PR #21 cycle 1, suggested-minor.
+- **D-007 m4 — a verbatim `design-brief.md` quotation sits outside its closing quote mark.**
+  `docs/design-explorations/README.md:34-35` — "A student should be able to point at the graph
+  and say what it does, in order." is `design-brief.md:169` verbatim but reads as the README's
+  own prose. Extending the quotation by one sentence also brings it inside C8's checker instead
+  of leaving it to a human. Filed from PR #21 cycle 2, suggested-minor.
+- **D-007 m5 — ragged wrap and a stranded antecedent in the recommendation.**
+  `docs/design-explorations/README.md:36-40` — line 38 is four words, and "but it still" points
+  at the M3-inheritance fact two clauses away rather than at "choosing Board". Filed from PR #21
+  cycle 2, suggested-minor.
+- **D-007 m6 — C7's and C8's instruments live only in the PR body.** The cycle-2 reviewer had to
+  re-implement C8 to run it, and its §-attribution rule differed from the coder's (`"_To be
+  defined in M3._"` attributed to §4 rather than `section=None`); the quotation verdicts agreed,
+  so it cost nothing this time. Same shape as m2: a check that cannot be re-run identically by
+  the next reader is weaker than one in `verify.py`. Filed from PR #21 cycle 2, suggested-minor.

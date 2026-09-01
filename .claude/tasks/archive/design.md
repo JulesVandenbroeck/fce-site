@@ -1371,3 +1371,116 @@ a prose note.
 two of the coder's own assertions, confirmed `--node-data` renders `#966746` (not D-004's stale
 `#8d5548`), reproduced all six D-008 palette floors exactly, and confirmed the section registry
 grew 29 → 45 with **nothing removed, renamed away or softened** across the 84 deleted lines.
+
+---
+
+## D-007 — Comparison index and the recommendation (merged 5839027, PR #21, 2 cycles + 1 re-spec)
+
+Closed 0R / 0M / 3m on cycle 2. Entry below verbatim as it stood at merge; the cycle-2
+review is PR #21 comment `5499440100`, cycle 1 is `5498754050`.
+
+### D-007 — Comparison index and the recommendation
+- **Scope:** `docs/design-explorations/index.html`, `index.css` (**added to scope 2026-09-01 on the
+  user's ruling** — no legal place for CSS otherwise; the D-001 precedent gave its index one too),
+  `docs/design-explorations/README.md`, plus a two-line superseded note at the top of
+  `docs/wireframes/README.md`. No page files, no `tokens.css`, no `verify.py`.
+- **Accept:** C1 the index links exactly the three style pages, offline-standalone, no `<script>`;
+  C2 each `<section id>` states what that style's graph persists; C3 the gesture named per style
+  matches that page's own style tag; C4 the README carries `## Recommendation` with exactly one
+  `**Recommended:**` line, the persisted shape it commits, and `### ` per style under
+  `## What each option gives up`; C5 the wireframes note is ≤3 insertions / 0 deletions and the
+  diff is exactly the four scoped files; C6 `verify.py` grep counts and red-set identical to
+  `main`. C2 and C3 are mutation-gated. **checks=6.**
+- **Depends on:** ~~D-004~~ (`bac2f62`), ~~D-005~~ (`4720179`), ~~D-006~~ (`0aee604`) — all merged.
+- **Branch / PR:** `task/d-007-index` — **#21**, `71c6022`. `design-coder`, worktree, effort high.
+- **Status:** **re-specification in flight (NOT cycle 2).** Cycle 1 = PR #21 `71c6022`, gate
+  reproduced all 6 (verify.py exit 1, 265 assertions, only `board-lane-fill` red). Reviewed
+  `0R / 1M / 3m`, scope pass. **M1 is my defect:** C4's second half — "names `docs/api.md` /
+  `POST /api/run` as what the shape commits" — shipped with *"quote the lines in the PR body"*
+  instead of a `Check:`, and that unfalsifiable half is the one that failed. §5.4 clause 2 →
+  re-specification, does not count against §5.7. The README argued Board's `{column, slotIndex}`
+  "is what `POST /api/run` actually carries"; `docs/api.md` marks `/api/run` **to be defined in
+  M3** with no request body. Re-dispatched with **C7**: any `docs/api.md` claim in
+  `## Recommendation` must also state the endpoint is unspecified, mutation-gated by restoring
+  the false sentence. **checks=6 → 7.** The coder may change the recommendation if the honest
+  argument no longer supports Board.
+- **Review:** m1/m2/m3 all **backlogged and named individually** (index.css top-rule tokens on the
+  wrong axis; the C2/C3 gate living only in the PR body; the unnamed `<section>` landmark).
+  Backlog 76 → 79.
+- **Gate defect found and fixed 2026-09-01:** C5's `git diff main --name-only` (two-dot) returned
+  **seven** files at the re-spec gate, because I had committed bookkeeping to `main` twice while
+  the task was in flight. Three-dot `git diff origin/main...HEAD` returns the correct four. The
+  coder's work was never out of scope; my command was. Lesson written into
+  [`orchestrator/CLAUDE.md`](../orchestrator/CLAUDE.md) §2.
+- **Re-spec gate reproduced at `19bc819`:** scope exactly 4 files (three-dot), C1 hrefs exact,
+  C4 `1/1/3/1` (**Recommended: Board**, unchanged), C7 exit 0 with hedges `to be defined` /
+  `undefined` / `M3` present and no present-tense carry-claim, C6 greps 69/233. `verify.py` and
+  `tokens.css` **byte-identical to `main` by blob SHA**, and the only file changed since the
+  reviewed head is `README.md`, which `verify.py` never opens — so C6 holds by identity.
+- **Re-spec reviewed at `19bc819`: `0R / 1M / 0m`, scope pass. M1 fixed and mutation-verified.
+  M2 is NEW and is M1's defect one citation over** — the rewritten lede claimed
+  `docs/design-brief.md` §4 "poses a question" about the run payload's `ui` object that §4 does
+  not pose; `design-brief.md:51-54` in fact names **"slot indices"** as layout state *the engine
+  ignores*, which leans against Board's differentiator rather than for it. §5.4 clause 3: C7 was
+  met and **no criterion ever gated design-brief citations**, so this is the coder's ordinary-craft
+  miss, not my brief. **CYCLE 2** (the re-spec did not consume one). Review posted:
+  PR #21 comment `5498754050`.
+- **Cycle 2 dispatched with C8:** every claim the README attributes to another document must be
+  supported by it — quoted spans verbatim (ellipsis-aware), cited `§n` sections must exist —
+  mutation-gated by altering one word inside a quotation. **checks=7 → 8.** C8's stated limit is
+  written into the dispatch: it checks *quotations*, and cannot catch a *paraphrase* that
+  misrepresents a source, which is precisely what M2 was; the coder must therefore table every
+  characterising sentence with its supporting `file:line` for the reviewer to check by hand.
+- **At cycle 2 of 3.** If cycle 3 does not close `0R/0M`, escalate to the user — no cycle 4.
+- **CYCLE 2 DELIVERED `1e9b369`, GATE FULLY REPRODUCED 2026-09-01 — NOT YET REVIEWED.**
+  Scope (three-dot) exactly the 4 files; only `README.md` changed since `19bc819` (27+/20-).
+  C1 hrefs exact, no script/http. C4 `1/1/3/1`, **Recommended: Board** unchanged. C5 wireframes
+  `2 0`. C6 greps 69/233 and `verify.py` blob-identical to `main` (`d3fc619b`). Sections carry
+  `id="beamline|bench|board"` (plus `class="cmp-card"`). **C8 re-verified independently: all four
+  document quotations are verbatim once whitespace is normalised** across README line-wraps —
+  `"Any layout state … lives in a separate \`ui\` object the engine ignores."` and
+  `"It still reads as a pipeline."` in `design-brief.md`, `"_To be defined in M3._"` in `api.md`.
+  `README:58`'s `"these two belong together"` is the README's own prose, not a citation.
+- **M2's substance held but the REVIEWER'S LINE NUMBERS WERE WRONG.** It cited
+  `design-brief.md:43-44` and `:51-54`; those are unrelated text. The true lines, verified at the
+  gate, are **`:168`** ("3. **It still reads as a pipeline.**") and **`:176-179`** (the
+  `ui`-object / "slot indices" passage). The coder used the correct ones. Do not propagate the
+  reviewer's figures.
+- **The cycle-2 fix concedes the point rather than dodging it:** the lede now states outright that
+  §4 does *not* pose this as a question and *does* classify `column`/`slotIndex` as ui state the
+  engine ignores, then re-grounds Board on the requirement §4 states outright. Recommendation
+  unchanged.
+- **NEXT MOVE: dispatch `code-reviewer` on PR #21, effort medium, PR number + prior review URL
+  only.** The §5.1 gate is already done and passed — do not re-run it. Prior review:
+  PR #21 comment `5498754050`. Ask for `M2 fixed` / `M2 still open`, all 8 criteria re-run,
+  incremental diff since `19bc819` (one file), and an independent check that the design-brief
+  citations resolve — that is the class of defect this task has produced twice.
+- **This is the M1 checkpoint** — the user picks Beamline / Bench / Board from it, and that choice
+  unblocks D-002. Preview worktree: `~/d007-preview` (detached, under `$HOME`, never `/tmp`).
+- **Enumerated 2026-09-01, not inherited:** `verify.py` registers **65** sections, **64** pass,
+  `board-lane-fill` is the only red, `--all` exits 1. `grep -c 'all_results.append'` = **69** (4 are
+  comment mentions), `grep -c 'results.append\|line('` = **233**. It hard-codes its four page
+  paths (`verify.py:83,89,92,95`) and globs nothing, so a new `index.html` in that directory is
+  invisible to it. **`SESSION.md`'s "63 sections" was stale; 65 is right.**
+
+### Cycle 2 review — 0R / 0M / 3m, scope pass, approved
+- **M2 fixed and mutation-verified.** `README.md:21-24` no longer attributes an unposed
+  question to `design-brief.md` §4; it states that §4 *classifies* `column`/`slotIndex` as
+  `ui`-object layout state the engine ignores, quotes `:177-178` verbatim, and re-grounds
+  Board on `:168`. Recommendation unchanged: **Board**.
+- **The reviewer re-derived the disputed line numbers itself and confirmed the coder, not
+  cycle 1.** `## 4.` spans `design-brief.md:126-187`; `:168` and `:176-178` are the true
+  lines. Cycle 1's `:43-44` / `:51-54` do not exist at this content.
+- **The paraphrase audit C8 structurally cannot do was done by hand** — eight cross-document
+  claims resolved against their sources, including the one the reviewer expected to break
+  (`README:16-19`, Board's stage-recoverable-from-structure claim; it holds — `beamline.js:76`
+  persists edges only, `bench.html:290` `{id,x,y}`, `board.html:337` `{id,column,slotIndex}`,
+  and none of the three persists node kind). No false claim found.
+- All 8 criteria re-run, C2/C3/C7/C8 each mutation-gated in memory. `verify.py` blob-identical
+  to `main`, floors 69/233 held, `--all` still exit 1 on `board-lane-fill` alone.
+- m4/m5/m6 backlogged and named individually. Backlog 79 → 82.
+
+**The lesson this task paid for twice:** a cross-document *citation* can be gated by a
+command (C8, quotation-verbatim); a cross-document *paraphrase* cannot, and both of this
+task's majors were paraphrases. The dispatch that works is C8 plus a required table of every
+characterising sentence with its supporting `file:line`, for the reviewer to check by hand.
