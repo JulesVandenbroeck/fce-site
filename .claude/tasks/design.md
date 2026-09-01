@@ -9,39 +9,7 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### D-005 — Node-graph style B: Bench
-- **Scope:** `docs/design-explorations/` — create `bench.{html,css,js}`; append a `--bench`
-  section to `verify.py`. `tokens.css` is **read-only** here.
-- **Accept:** as D-004, with the model and gestures inverted — Bench persists `{x, y}` per
-  node on a free canvas, **drag-to-connect accepted, click-to-connect refused**. Same
-  64/13/51 enumeration, same inventory denominators, same three-width sweep.
-- **Depends on:** ~~D-004~~ (merged `bac2f62`) and ~~D-008~~ — **UNBLOCKED 2026-08-21**, D-008
-  merged `2d0de23` on a clean gate. `tokens.css`'s eight `--node-*` fills are now final and
-  read-only here; build against them. Note `--node-data` is `#966746`, **not** D-004's `#8d5548`
-  — anything harvested from the D-004 era is stale.
-- **Branch / PR:** `task/d-005-bench` — **#16**, dispatched 2026-08-31, worktree isolation.
-- **Status:** **cycle 3 delivered — `6b123ee`, pushed to #16. The §5.7 limit: if this cycle
-  does not close at 0R/0M, stop and escalate rather than opening a cycle 4.** Gate **not yet
-  §5.1 gate at `6b123ee` in `~/fce-gate-d005-c3`: **46 sections / 149 assertions / 0 FAIL**
-  (level with c2, far above the 31/48 floor), flake8 0 on `verify.py` and on `src/ tests/
-  scripts/`, `pytest tests/` **413 passed**, branch diff = `bench.css`, `bench.html`,
-  `verify.py` only — `src/`, `tests/`, `content/`, `tokens.css` untouched. **Reviewer not yet
-  dispatched: the PR body still stops at cycle 2** — no C8/C9/C10 evidence, no c3 transcript.
-  Back to the coder for a body-only update (§5.1, **not a cycle**) — **dispatched 2026-09-01**,
-  worktree isolation, code frozen at `6b123ee`: body to `checks=10` with C8/C9/C10 verbatim, c3
-  transcript, per-criterion mutation transcripts, the floors re-measured, and the intended 3 → 2
-  denominator fall stated in the body. Reviewer goes out the moment the body lands.
-  c3 deletes `bench.js` (the inline module was
-  already the only copy running), so `check_bench_no_exhaustive_prose`'s denominator falls
-  3 → 2 **by design** — a fall the reviewer must read as intended, not as a floor breach.
-  c1 **1R/0M/3m**; c2 **0R/1M/5m** —
-  https://github.com/JulesVandenbroeck/fce-site/pull/16#issuecomment-5483184132. R1 **fixed**,
-  confirmed two ways. §5.1 gate at `bbd3eee`: **46 sections / 149 assertions / 0 FAIL**, flake8 0,
-  `pytest tests/` 413 — reproduced. **M1 is fix-induced by c2's own fix** (§5.5): the inline
-  module left `bench.js` an unasserted second copy. → **C8** single source, **C9** (m5) the C1
-  shape assertion passes on an empty graph, **C10** (m6) a broken page aborts as an uncaught
-  `TimeoutError`. **checks=10.** A **cycle**, §5.4 clause 3. m7/m8 body corrections; m4 → D-006.
-- **History:** [`archive/design.md`](archive/design.md)
+*(D-005 closed — see Done.)*
 
 ## Ready
 
@@ -52,8 +20,18 @@ IDs are `D-nnn`, allocated in order and never reused.
   gestures plus keyboard connection. Same 64/13/51 enumeration and sweeps. The plot lives
   *inside* the graph as the terminal node, so it must budget for D-003's fixed intrinsic
   **650×460** figure and be shown doing so at 768.
-- **Depends on:** ~~D-004~~ (merged `bac2f62`) and ~~D-008~~ — **UNBLOCKED 2026-08-21**, D-008
-  merged `2d0de23`. Same note as D-005: the fills are final, and `--node-data` is `#966746`.
+- **Depends on:** ~~D-004~~ (merged `bac2f62`), ~~D-008~~ (merged `2d0de23`) and ~~D-005~~
+  (merged `4720179`). Same note as D-005: the fills are final, and `--node-data` is `#966746`.
+- **Branch / PR:** `task/d-006-board` — **dispatched 2026-09-01**, cycle 1, worktree isolation,
+  branched off `4720179`. **checks=9.** C1 `{column, slotIndex}` shape, non-empty node list
+  required; C2 both gestures plus a keyboard path; C3 the 64/13/51 enumeration, allowlist
+  executed from the reference, helpers reused not re-transcribed; C4 22-of-22 inventory off the
+  shared `MISSION_SCREEN_DOMAIN_INVENTORY`; C5 the three-width sweep plus D-008's six floors;
+  C6 the terminal plot node budgeting for D-003's fixed 650×460 at 768; C7 unflagged `file://`;
+  **C8 closes D-005's m4** — the launch-flag ban asserted by the harness, not by a grep in a PR
+  body; **C9 closes D-005's m9** — `run_section` extended to all 46 sections, not just the 17
+  bench ones. Told explicitly **not** to create a `board.js`: inline the module from the start,
+  which is the two cycles D-005 spent on exactly that, spent once.
 
 **Run D-005 then D-006, serially — never in parallel.** Both append a new section to
 `verify.py`; two coders in flight would collide on it, and the worktree rule protects the
@@ -116,6 +94,11 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md). Eve
 far has closed on an override or at the loop limit except D-008; if you are about to write a
 design criterion, the archive is where that pattern is documented.
 
+- **D-005** — Bench node graph, free canvas, drag-to-connect — #16, `4720179`, 3 cycles,
+  `0R / 0M / 4m`, `verdict=approve`. The second design task to close on a clean gate.
+  **Merged before its cycle-3 review ran** — see the process note below. 4 minors: m4 and m9
+  carried into D-006 as C8/C9; **m7 open** (the "chips render identically" body claim, three
+  cycles uncorrected); m9's own generalisation now C9.
 - **D-008** — CVD-safe node palette + the checker claim — #7, `2d0de23`, 3 cycles + 1 re-spec,
   **first design task to close on a clean gate**. `verify.py` at 31 sections / 48 assertions.
 - **D-004** — Beamline node graph, shared palette and checker — #6, `bac2f62`, 3 cycles,
@@ -130,7 +113,21 @@ design criterion, the archive is where that pattern is documented.
 - D-008's six simultaneous palette floors: min CVD ΔE **5.129** (≥4.0), normal-vision node-node
   **14.170** (≥14.0), node-vs-reserved **13.442** (≥4.0), white-on-fill **4.595:1** (≥4.5),
   fill-vs-reserved hue gap **14.1°** (≥12.0°), clamping excess **+0.0051** (≤0.01).
-- `verify.py` on `task/d-005-bench`, measured by the reviewer 2026-08-31: **45** registered
-  sections / **147** assertion lines, of which **121** are non-bench. A fall in any is `Required`.
-  The historical "31 / 48" figure is D-008's own claim and does **not** reproduce — `origin/main`
-  registers **29** sections. Use the measured numbers; reconciling the D-008 claim is backlogged.
+- `verify.py` on `main` as of `4720179`, measured by the reviewer at cycle 3: **46** registered
+  sections / **149** assertion lines, of which **121** are non-bench. A fall in any is `Required`.
+  The historical "31 / 48" figure is D-008's own claim and does **not** reproduce; reconciling it
+  is backlogged. Exactly two assertion lines changed between cycles 2 and 3 — C9's strengthening
+  and the intended `3 → 2` prose-lint denominator — machine-diffed by the reviewer, every other
+  integer in the suite unchanged.
+
+## Process note — D-005 was merged before its gate ran
+
+`4720179` landed on `main` at **2026-09-01T08:23:27Z**, ~12 minutes before I dispatched the
+cycle-3 reviewer. I did not issue that merge, and the `design-coder` doing the body-only update
+— the only agent running in that window — states it ran no merge command of any kind, only
+`gh pr view` and `gh pr edit`. GitHub attributes the merge to the account with no app
+attribution, i.e. an ordinary `gh`/web merge. **The most likely remaining explanation is a manual
+merge from the GitHub UI.** No harm resulted: the review came back `0R / 0M`, so the merged
+content is what a clean gate would have approved. That is luck, not process — rule 5 says only
+the orchestrator merges, and a bypass that happens to come out right is the case that normalises
+the bypass. Raised with the user.
