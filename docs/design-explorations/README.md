@@ -19,12 +19,18 @@ stage a node is in, read directly from structure rather than inferred from an ar
 order or a free coordinate. It persists `{nodes: [{id, column, slotIndex}], edges}` — a
 node's `column` fixed by its kind (Data always lane 0, Histogram always lane 4) and its
 `slotIndex` its order within that lane, both read back from live DOM structure rather than
-tracked as separate state that could drift from the render. That shape is what later lands
-in the run request: the engine ignores `column`/`slotIndex` exactly as it ignores Bench's
-`{x, y}` (design-brief.md §4 — "any layout state … lives in a separate `ui` object the
-engine ignores"), but the `nodes[] + edges[]` half of the same payload is what
-`POST /api/run` (`docs/api.md`) actually carries to the physics engine, so the graph a
-student sees is, node-for-node and edge-for-edge, the graph that runs.
+tracked as separate state that could drift from the render. `docs/api.md` marks
+`POST /api/run` "_To be defined in M3._" — it specifies no request body today, and its only
+`edges` are histogram bin edges, not graph edges. So this is not a case of Board already
+matching a settled contract; it is the reverse. Whatever style wins this comparison is what
+the M3 request-body definition will have to persist: the engine will still ignore
+`column`/`slotIndex` exactly as it would ignore Bench's `{x, y}` (design-brief.md §4 — "any
+layout state … lives in a separate `ui` object the engine ignores"), but the `nodes[] +
+edges[]` half of whichever shape is chosen here is what a future `POST /api/run` body will
+carry to the physics engine, node-for-node and edge-for-edge. Choosing Board now is choosing
+to define that undefined contract as one where a node's pipeline stage is recoverable from
+structure rather than inferred — which makes this recommendation more load-bearing than a
+comparison of three finished demos usually is, not less.
 
 The consequence of choosing Board: build cost is real. Five typed lanes are more surface
 than Beamline's single rail or Bench's blank canvas, and a board wide enough for all five
