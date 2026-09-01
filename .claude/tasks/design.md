@@ -115,6 +115,27 @@ design criterion, the archive is where that pattern is documented.
   (8 kinds). `check_bench_unflagged_file_url` at `:4777`. `grep -c 'all_results.append'` = 46.
   `verify.py` is 5029 lines. **A bare `python` there has no `playwright`** — the worktree venv
   and `PLAYWRIGHT_BROWSERS_PATH` are both required.
+- **Cycle 1 delivered `f871dc9` as PR #20** (2026-09-01). **§5.1 gate reproduced** in
+  `~/fce-gate-d006` (detached worktree, primary checkout's venv, `PLAYWRIGHT_BROWSERS_PATH`
+  exported): `--all` exit 0, **257** assertion lines, **0 FAIL**, "All sections passed";
+  `--board` exit 0, **123** lines, 0 FAIL. Scope clean on the three-dot diff — `board.html`,
+  `board.css`, `verify.py` only; the `.claude/settings.json` that `gh pr diff --name-only`
+  shows is my own `b054481` bleeding through a two-dot diff, **not** a coder edit. **No
+  `board.js`** — the module is inlined, so D-005's two wasted cycles were not repaid. Floors
+  rose, measured by me at the base and at HEAD with the same command: `all_results.append`
+  **46 → 67**, assertion lines **177 → 228**.
+- **Sent back at the gate, body-only, NOT a cycle:** the body claims **21** board sections; the
+  `--board` run prints **22** distinct section names (17 `board-*` + 4 `anatomy-*` +
+  `payload-schema-sanity`). Every other number reproduced. Same shape as D-004 cycle 3's
+  "25 sections / listed 26" — the count was decoration. Coder asked to fix the number, state
+  the command that yields it, and leave HEAD at `f871dc9`.
+- **Two questions left for the reviewer, deliberately not pre-judged by me:** (a) C2 — the coder
+  reads D-005's "two supports" as drag-to-connect **and** click-to-connect, where Bench accepts
+  the first and refuses the second; that is an interpretation of my wording, not a fact.
+  (b) C9 — the coder reports every section already went through `run_section` before this task,
+  which contradicts `scout`'s finding that the beamline block at `:4920` was unwrapped. If the
+  coder is right, D-005's m9 was already closed and C9 adds the proof rather than the fix.
+  **One of those two is wrong; the reviewer settles it against the base commit.**
 - **Criteria:** C1 `{column, slotIndex}` shape, empty list refused; C2 both pointer gestures
   plus a keyboard-only path; C3 64/13/51 through the reference-executed allowlist, helpers
   reused not re-transcribed; C4 22-of-22 off the shared inventory; C5 the bench sweep's own
