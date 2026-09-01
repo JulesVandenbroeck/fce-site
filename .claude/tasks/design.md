@@ -37,6 +37,16 @@ IDs are `D-nnn`, allocated in order and never reused.
 - **Review:** m1/m2/m3 all **backlogged and named individually** (index.css top-rule tokens on the
   wrong axis; the C2/C3 gate living only in the PR body; the unnamed `<section>` landmark).
   Backlog 76 → 79.
+- **Gate defect found and fixed 2026-09-01:** C5's `git diff main --name-only` (two-dot) returned
+  **seven** files at the re-spec gate, because I had committed bookkeeping to `main` twice while
+  the task was in flight. Three-dot `git diff origin/main...HEAD` returns the correct four. The
+  coder's work was never out of scope; my command was. Lesson written into
+  [`orchestrator/CLAUDE.md`](../orchestrator/CLAUDE.md) §2.
+- **Re-spec gate reproduced at `19bc819`:** scope exactly 4 files (three-dot), C1 hrefs exact,
+  C4 `1/1/3/1` (**Recommended: Board**, unchanged), C7 exit 0 with hedges `to be defined` /
+  `undefined` / `M3` present and no present-tense carry-claim, C6 greps 69/233. `verify.py` and
+  `tokens.css` **byte-identical to `main` by blob SHA**, and the only file changed since the
+  reviewed head is `README.md`, which `verify.py` never opens — so C6 holds by identity.
 - **This is the M1 checkpoint** — the user picks Beamline / Bench / Board from it, and that choice
   unblocks D-002. Preview worktree: `~/d007-preview` (detached, under `$HOME`, never `/tmp`).
 - **Enumerated 2026-09-01, not inherited:** `verify.py` registers **65** sections, **64** pass,

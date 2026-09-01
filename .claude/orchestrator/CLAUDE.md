@@ -168,6 +168,15 @@ session. The test's own docstring already claimed the broader property my criter
 than. Write both: the property in the sentence, the method in the `Check:`. A criterion naming
 only a mechanism gets you that mechanism and nothing else.
 
+**A criterion whose command is relative to a moving reference will falsify itself.** D-007,
+2026-09-01: C5 read `git diff main --name-only`, expecting exactly the four scoped files. At the
+gate it returned **seven** — because between dispatch and gate I had committed my own bookkeeping
+to `main` twice under the §4 carve-out, and a two-dot diff reports those as differences of the
+branch. The coder's work was clean; my command was measuring the distance between two moving
+points. **Write `git diff <base>...HEAD` — three-dot, against the merge base — in every scope
+criterion**, because you *will* commit to `main` while the task is in flight; that is what the
+carve-out is for. The two-dot form only works if you never touch `main`, and you always do.
+
 **Do the feasibility arithmetic before you impose a floor.** D-004 cycle 3's 1.15:1 pairwise
 floor was not reachable: the true ceiling for eight fills under Machado CVD is about 1.05:1,
 which the coder established only after building the search. State the floor **and** show it is
