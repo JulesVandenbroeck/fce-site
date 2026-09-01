@@ -139,7 +139,32 @@ design criterion, the archive is where that pattern is documented.
   sensitive *now* only because the fix moved to `align-items: stretch` — **a future revert to
   `flex-start` turns C10 green again with the blank panel back.** Documented in the PR body; the
   cycle-2 reviewer rules on whether C10 needs strengthening. Do not let this close unexamined.
-- **Cycle 2 in review.** §5.7: this is 2 of 3. If cycle 3 does not close `0R/0M`, escalate.
+- **Cycle 2 reviewed: `1R / 0M / 0m`, `verdict=rework`, scope=PASS.** Review posted verbatim:
+  PR #20 comment `5496706014`. R1, M1, m1, m2 all confirmed fixed and verified independently —
+  M1 by screenshots at three widths plus a check that the filler carries no tab stop and is
+  invisible to `persistUI`. Every claim in the body reproduced exactly.
+- **The single Required is a stronger form of the C10 hole I had already recorded, and the
+  reviewer found it by mutating what the PR body had not.** `check_board_lane_fill` takes
+  `contentHeight` from the column's *direct children*, and `.board-column__fill` is a direct
+  child with `flex: 1 1 auto`, so it always reaches the bottom and `unused` is ~1px whatever the
+  lane holds. **Proof: deleting the Multiplicity node outright left a 632.5px lane holding only
+  decorative ruling and the check reported `unused=1.0px (limit 158.1px)` `[PASS]` at all three
+  widths.** It certifies the wallpaper is present, not that the space behind it is used.
+  **Mine before the coder's:** C10 said "the height its own content actually occupies" and never
+  defined *content*, and the filler added to satisfy M1 became the thing satisfying the
+  measurement — circular by construction.
+- **Cycle 3 dispatched — the §5.7 limit.** C10 **restated, not replaced**: same ID, same section
+  name, same 25%/120px threshold; *content* now means user-addressable node cards only, with
+  `aria-hidden`/decorative children excluded, and the mutation gate is now **node deletion**, not
+  filler shrinking. The coder is told explicitly that C10 and M1 are now in tension, that a
+  genuine `[FAIL]` is a page problem rather than a measurement problem, and that **reporting the
+  threshold as unreachable is a legitimate outcome** — tuning the threshold or narrowing the
+  measurement to force green is not. **If cycle 3 does not close `0R/0M`, escalate to the user;
+  do not open a cycle 4.**
+- **Do not re-derive:** `.board-wrap { overflow-x: hidden }` does *not* break C11 — `overflow:
+  hidden` remains programmatically scrollable via `scrollLeft`. Established by the cycle-2
+  reviewer.
+
 
 ## Ready
 
