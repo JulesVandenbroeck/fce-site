@@ -9,26 +9,7 @@ IDs are `D-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### D-006 — Node-graph style C: Board
-- **Scope:** `docs/design-explorations/` — create `board.{html,css,js}`; append a `--board`
-  section to `verify.py`. `tokens.css` read-only.
-- **Accept:** Board persists `{column, slotIndex}` in typed columns and accepts **both**
-  gestures plus keyboard connection. Same 64/13/51 enumeration and sweeps. The plot lives
-  *inside* the graph as the terminal node, so it must budget for D-003's fixed intrinsic
-  **650×460** figure and be shown doing so at 768.
-- **Depends on:** ~~D-004~~ (merged `bac2f62`), ~~D-008~~ (merged `2d0de23`) and ~~D-005~~
-  (merged `4720179`). Same note as D-005: the fills are final, and `--node-data` is `#966746`.
-- **Branch / PR:** `task/d-006-board` — local only at `4720179`, no commits yet. **Cycle 1
-  RESUMED 2026-09-01** in the pre-existing worktree `~/fce-worktrees/d-006-board`, which still
-  holds the interrupted work uncommitted (`board.html`, `board.css` staged; `verify.py` +1330).
-  The coder was told to build on it, not restart, and to merge `main` in (bookkeeping only,
-  never rebase). **checks=9**, and this dispatch is the first to carry `Check:`/`Expect:` pairs
-  for all nine — the original had none recorded anywhere, which is why they were rewritten
-  rather than cited.
-**Run D-005 then D-006, serially — never in parallel.** Both append a new section to
-`verify.py`; two coders in flight would collide on it, and the worktree rule protects the
-branch, not the merge.
-
+_none._
 
 ## Ready
 
@@ -90,6 +71,13 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md). Eve
 far has closed on an override or at the loop limit except D-008; if you are about to write a
 design criterion, the archive is where that pattern is documented.
 
+- **D-006** — Board node graph, typed columns, terminal plot node — #20, `0aee604`, 3 cycles,
+  final gate `1R / 0M / 0m`. **Merged on the user's ruling with C10 overruled in writing**
+  (PR #20 comment `5497106719`): C6's fixed 650×460 plot, M1's "lanes must not read as empty"
+  and C10's "the emptiness must not be papered over" are mutually unsatisfiable, and the Data
+  lane provably cannot hold a second card. **C10 was my defect twice** — first trivially
+  satisfiable, then unreachable by construction; §2's "do the feasibility arithmetic before you
+  impose a floor" was never done. checks=11, 10 met.
 - **D-005** — Bench node graph, free canvas, drag-to-connect — #16, `4720179`, 3 cycles,
   `0R / 0M / 4m`, `verdict=approve`. The second design task to close on a clean gate.
   **Merged before its cycle-3 review ran** — see the process note below. 4 minors: m4 and m9
@@ -309,8 +297,12 @@ design criterion, the archive is where that pattern is documented.
 - D-008's six simultaneous palette floors: min CVD ΔE **5.129** (≥4.0), normal-vision node-node
   **14.170** (≥14.0), node-vs-reserved **13.442** (≥4.0), white-on-fill **4.595:1** (≥4.5),
   fill-vs-reserved hue gap **14.1°** (≥12.0°), clamping excess **+0.0051** (≤0.01).
-- `verify.py` on `main` as of `4720179`, measured by the reviewer at cycle 3: **46** registered
-  sections / **149** assertion lines, of which **121** are non-bench. A fall in any is `Required`.
+- **`verify.py` on `main` as of `0aee604`: 65 registered sections / 265 passing assertion lines;
+  `grep -c 'all_results.append'` = **69**, `grep -c 'results.append\|line('` = **233**.**
+  **`verify.py --all` now EXITS 1 on `main`** with exactly one known-red section,
+  `board-lane-fill` — D-006's overruled C10, left registered and red on purpose so the
+  constraint stays visible. **A future task must not read that as a regression it introduced.**
+  Historical figure, superseded: 46 sections / 149 assertion lines / 121 non-bench at `4720179`. A fall in any is `Required`.
   The historical "31 / 48" figure is D-008's own claim and does **not** reproduce; reconciling it
   is backlogged. Exactly two assertion lines changed between cycles 2 and 3 — C9's strengthening
   and the intended `3 → 2` prose-lint denominator — machine-diffed by the reviewer, every other
