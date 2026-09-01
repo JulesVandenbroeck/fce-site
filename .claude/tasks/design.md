@@ -47,6 +47,21 @@ IDs are `D-nnn`, allocated in order and never reused.
   `undefined` / `M3` present and no present-tense carry-claim, C6 greps 69/233. `verify.py` and
   `tokens.css` **byte-identical to `main` by blob SHA**, and the only file changed since the
   reviewed head is `README.md`, which `verify.py` never opens — so C6 holds by identity.
+- **Re-spec reviewed at `19bc819`: `0R / 1M / 0m`, scope pass. M1 fixed and mutation-verified.
+  M2 is NEW and is M1's defect one citation over** — the rewritten lede claimed
+  `docs/design-brief.md` §4 "poses a question" about the run payload's `ui` object that §4 does
+  not pose; `design-brief.md:51-54` in fact names **"slot indices"** as layout state *the engine
+  ignores*, which leans against Board's differentiator rather than for it. §5.4 clause 3: C7 was
+  met and **no criterion ever gated design-brief citations**, so this is the coder's ordinary-craft
+  miss, not my brief. **CYCLE 2** (the re-spec did not consume one). Review posted:
+  PR #21 comment `5498754050`.
+- **Cycle 2 dispatched with C8:** every claim the README attributes to another document must be
+  supported by it — quoted spans verbatim (ellipsis-aware), cited `§n` sections must exist —
+  mutation-gated by altering one word inside a quotation. **checks=7 → 8.** C8's stated limit is
+  written into the dispatch: it checks *quotations*, and cannot catch a *paraphrase* that
+  misrepresents a source, which is precisely what M2 was; the coder must therefore table every
+  characterising sentence with its supporting `file:line` for the reviewer to check by hand.
+- **At cycle 2 of 3.** If cycle 3 does not close `0R/0M`, escalate to the user — no cycle 4.
 - **This is the M1 checkpoint** — the user picks Beamline / Bench / Board from it, and that choice
   unblocks D-002. Preview worktree: `~/d007-preview` (detached, under `$HOME`, never `/tmp`).
 - **Enumerated 2026-09-01, not inherited:** `verify.py` registers **65** sections, **64** pass,
