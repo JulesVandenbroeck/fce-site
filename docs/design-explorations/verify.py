@@ -5020,8 +5020,10 @@ def check_board_connection_gestures(pw: Playwright) -> bool:
     never by calling this page's own JS handlers directly. Also checks an
     illegal-kind drag is refused and names why. The keyboard path is
     checked separately (`check_board_keyboard_path`); both gestures here are
-    mutation-tested in the PR body's own transcript."""
-    section("Board connection gestures -- both drag and click accepted")
+    mutation-tested in the PR body's own transcript. No `section(...)` call
+    of its own -- `check_board_connect_gestures`, the only caller, prints
+    the one banner for the registered `board-connect-gestures` section
+    (m2, D-006 cycle-2 review)."""
     all_ok = True
 
     # drag accept: Data -> Selection
@@ -5119,8 +5121,10 @@ def check_board_keyboard_path(pw: Playwright) -> bool:
     handle, itself reached by Tab), the keyboard equivalent of the
     pointer-drag slot move `check_board_persistence` already exercises with
     a mouse. No `page.mouse.*` or `page.click()` call appears anywhere in
-    this function -- every interaction is a `page.keyboard.press`."""
-    section("Board keyboard path -- connecting and reordering nodes without a pointer")
+    this function -- every interaction is a `page.keyboard.press`. No
+    `section(...)` call of its own, for the same reason
+    `check_board_connection_gestures` above has none (m2, D-006 cycle-2
+    review)."""
     browser, context, page, *_ = load_board_page(pw, 1024)
 
     found_out = tab_walk_to(page, '.node-card[data-node-id="n1"] .port--out')
@@ -5178,7 +5182,10 @@ def check_board_connect_gestures(pw: Playwright) -> bool:
     kind-refusal and Tab-reachability). This wrapper does not duplicate any
     gesture logic -- it calls both existing functions and ANDs their
     results under one section name so the one required grep target
-    (`board-connect-gestures`) covers all three."""
+    (`board-connect-gestures`) covers all three. This is the only
+    `section(...)` call across all three functions -- the two delegates
+    print no banner of their own -- so one registered section prints
+    exactly one `==` header, not three (m2, D-006 cycle-2 review)."""
     section("Board connect gestures -- drag, click, and keyboard-alone, three separately-driven connections")
     gestures_ok = check_board_connection_gestures(pw)
     keyboard_ok = check_board_keyboard_path(pw)
@@ -5693,6 +5700,123 @@ def check_board_terminal_plot_budget(pw: Playwright) -> bool:
             f"size_ok={size_ok}, body_ok={body_ok}, scroll_ok={scroll_ok}",
         )
         browser.close()
+    return all_ok
+
+
+def check_board_lane_fill(pw: Playwright, html_path: Optional[Path] = None) -> bool:
+    """Criterion 10 (D-006 cycle-2 review, M1): no `.board-column` reserves
+    substantial empty vertical space below its own real content. `.board`
+    stretches every column to the row's own height (the Histogram column's,
+    since its fixed 650x460 figure -- C6, not negotiable -- is the tallest
+    thing on the board), and each non-Histogram column now closes the gap
+    that stretch alone would leave with a purely presentational, aria-hidden
+    `.board-column__fill` sibling of its own `<ul>` (ruled lines, the same
+    motif the page background already uses -- never inside the `<ul>` itself,
+    so it is invisible to `persistUI`'s own `Array.from(list.children)` walk
+    and cannot appear as a node in `data-ui`).
+
+    "Content actually occupies" is read from the live DOM, not asserted: for
+    each `.board-column`, the lowest bottom edge among its own *direct*
+    children's own `getBoundingClientRect()`s (relative to the column's own
+    top, plus the column's own bottom padding) -- so a column's box height
+    minus that figure is the same number a person would get by looking at
+    where the visible content actually stops. `html_path`, when given,
+    points at a scratch mutated copy for a mutation-transcript proof; the
+    unconditional call from `main()` never passes it."""
+    section("Board lane fill -- no lane reserves substantial empty vertical space beyond its own content")
+    all_ok = True
+    for width in WIDTHS:
+        browser, context, page, *_ = load_board_page(pw, width, html_path=html_path)
+        facts = page.evaluate(
+            """() => {
+                const cols = Array.from(document.querySelectorAll('.board-column'));
+                return cols.map(col => {
+                    const h3 = col.querySelector('h3');
+                    const name = h3 ? h3.textContent.trim() : (col.getAttribute('data-column') || '?');
+                    const box = col.getBoundingClientRect();
+                    let maxBottom = box.top;
+                    Array.from(col.children).forEach(child => {
+                        const r = child.getBoundingClientRect();
+                        if (r.height > 0 && r.bottom > maxBottom) maxBottom = r.bottom;
+                    });
+                    const padBottom = parseFloat(getComputedStyle(col).paddingBottom) || 0;
+                    const contentHeight = Math.min(box.height, (maxBottom - box.top) + padBottom);
+                    return { name, boxHeight: box.height, contentHeight };
+                });
+            }"""
+        )
+        for f in facts:
+            unused = f["boxHeight"] - f["contentHeight"]
+            limit = max(f["boxHeight"] * 0.25, 120.0)
+            ok = unused <= limit + 0.5
+            all_ok = all_ok and ok
+            line(
+                f"width={width}px lane={f['name']!r}: box height={f['boxHeight']:.1f}px, "
+                f"content height={f['contentHeight']:.1f}px, unused={unused:.1f}px "
+                f"(limit max(25%, 120px)={limit:.1f}px)",
+                ok,
+            )
+        browser.close()
+    return all_ok
+
+
+def check_board_plot_reachable_768(pw: Playwright, html_path: Optional[Path] = None) -> bool:
+    """Criterion 11 (D-006 cycle-2 review, M1): the terminal Histogram
+    node's `.plot-embed` is actually reachable at 768px -- not merely
+    budgeted for, the distinction C6's own check (`board-plot-node-budget`)
+    stops short of, since it proves `.board-wrap` gains a scrollbar but
+    never proves scrolling it actually lands the figure in view. Also
+    reconfirms, at all three widths, that `document.body` itself never
+    grows horizontal scroll -- the same body-level fact
+    `check_board_terminal_plot_budget` already checks, repeated here as this
+    criterion's own explicit gate rather than borrowed from that one.
+    `html_path`, when given, points at a scratch mutated copy for a
+    mutation-transcript proof; the unconditional call from `main()` never
+    passes it."""
+    section("Board plot reachable at 768 -- scrolled into view within .board-wrap, body never scrolls sideways")
+    all_ok = True
+    for width in WIDTHS:
+        browser, context, page, *_ = load_board_page(pw, width, html_path=html_path)
+        body_scroll_w = page.evaluate("() => document.body.scrollWidth")
+        doc_client_w = page.evaluate("() => document.documentElement.clientWidth")
+        body_ok = body_scroll_w <= doc_client_w + 1
+        all_ok = all_ok and body_ok
+        line(
+            f"width={width}px: document.body never scrolls horizontally "
+            f"(scrollWidth={body_scroll_w} vs clientWidth={doc_client_w})",
+            body_ok,
+        )
+        browser.close()
+
+    browser, context, page, *_ = load_board_page(pw, 768, html_path=html_path)
+    facts = page.evaluate(
+        """() => {
+            const wrap = document.querySelector('.board-wrap');
+            const plot = document.querySelector('.plot-embed');
+            wrap.scrollLeft = wrap.scrollWidth - wrap.clientWidth;
+            const w = wrap.getBoundingClientRect();
+            const p = plot.getBoundingClientRect();
+            return {
+                wrap: { left: w.left, top: w.top, right: w.right, bottom: w.bottom },
+                plot: { left: p.left, top: p.top, right: p.right, bottom: p.bottom },
+            };
+        }"""
+    )
+    w, p = facts["wrap"], facts["plot"]
+    contained = (
+        p["left"] >= w["left"] - 0.5
+        and p["right"] <= w["right"] + 0.5
+        and p["top"] >= w["top"] - 0.5
+        and p["bottom"] <= w["bottom"] + 0.5
+    )
+    all_ok = all_ok and contained
+    line(
+        "At 768px, after scrolling .board-wrap fully right, .plot-embed's own bounding rect lies "
+        "entirely within .board-wrap's own visible box",
+        contained,
+        f"wrap={w}, plot={p}",
+    )
+    browser.close()
     return all_ok
 
 
@@ -6384,6 +6508,15 @@ def main() -> None:
                 (
                     "board-plot-node-budget",
                     run_section("board-plot-node-budget", check_board_terminal_plot_budget, pw),
+                )
+            )
+            all_results.append(
+                ("board-lane-fill", run_section("board-lane-fill", check_board_lane_fill, pw))
+            )
+            all_results.append(
+                (
+                    "board-plot-reachable-768",
+                    run_section("board-plot-reachable-768", check_board_plot_reachable_768, pw),
                 )
             )
             all_results.append(("board-contrast", run_section("board-contrast", check_board_contrast, pw)))
