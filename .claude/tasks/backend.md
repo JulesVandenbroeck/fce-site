@@ -14,8 +14,19 @@ All three dispatched in parallel 2026-08-31, one worktree each. Counts below wer
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
 - **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `51d46e9`
-- **Status:** cycle 1 in review. Gate worktree `~/fce-gate-b008` stands at `51d46e9`; **no §5.1
-  result recorded yet** — reproduce before dispatching the reviewer. C1 is
+- **Status:** **§5.1 gate FAILED at `51d46e9`, 2026-09-01 — back to the coder, no reviewer
+  dispatched.** In `~/fce-gate-b008`: flake8 0 on `src/ tests/ scripts/`, diff correctly scoped to
+  `path_filter.py` + the new `tests/test_path_filter_exprs.py`, but `pytest tests/` is
+  **2 failed / 421 passed** against a 413-passed / 0-failed floor.
+  `test_docstring_eval_compile_line_numbers_match_this_file` and its perturbation twin both fail:
+  `tests/test_path_filter.py:221` parses the module docstring for its literal `eval`/`compile`
+  line-number claims, the rewrite removed both call sites and the claims with them, so the regex
+  returns `None`. **That is C5 — "the docstring line-number test stays green" — failing**, and it
+  is the drift guard that kept the seven `eval(` sites honest. Coder to decide between inverting
+  the guard (docstring claims zero call sites, asserted against `ast`) and retiring it against a
+  named replacement shown failing on a reintroduced `eval(`. **Note for every future gate: a bare
+  `pytest` in a fresh worktree collects nothing (`No module named 'fce_web'`) — use the
+  worktree's own `./.venv/bin/python -m pytest`.** C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
   outside the given scope — the coder reports the call is now functionally inert because
