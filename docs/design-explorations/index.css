@@ -85,7 +85,7 @@ body {
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-45);
+  color: var(--ink-70);
 }
 .cmp-card__h {
   margin: 0;
@@ -127,7 +127,7 @@ body {
   max-width: 80ch;
   font-size: 0.88rem;
   line-height: 1.55;
-  color: var(--ink-45);
+  color: var(--ink-70);
 }
 .cmp-footnote code {
   font-family: var(--font-mono);
