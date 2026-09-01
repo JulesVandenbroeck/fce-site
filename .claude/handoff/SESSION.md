@@ -1,60 +1,56 @@
-# Session handoff — 2026-09-01 (time of writing: after the user stopped two agents)
+# Session handoff — 2026-09-01 (orchestrator context 90%)
 
-**Why:** the **user stopped D-006 and B-008 cycle 3 mid-flight** and asked for a handoff —
-**the user's own token budget was near its limit**, not orchestrator context (which was ~52%).
-Neither stopped agent wrote its own handoff; their work is preserved as patches instead.
-**Budget is the binding constraint on the next session — dispatch deliberately, not in parallel.**
-**Milestone:** M1 — D-005 merged; **D-006 Board is the last style before D-007**, the checkpoint
-where the user picks Beamline / Bench / Board. M2 cleanup (B-008/B-013/B-014) runs alongside.
+**Why:** orchestrator context reached 90%. No sub-agents were running at handoff — all four
+completed and reported. Nothing was cut off.
+**Milestone:** M1 — **D-006 merged, so all three node-graph styles now exist. D-007 is unblocked
+and is the next dispatch. It is the user's checkpoint.**
 
 ## Read first
 1. This file.
-2. `.claude/tasks/{backend,design}.md` — current as of this commit; every cycle result is there.
-3. `.claude/handoff/orchestrator-session.anchor.md` — the anchor this session refreshed at 50%.
+2. `.claude/tasks/design.md` — rewritten clean this session; D-007 sits in `## Ready` with the
+   one warning its dispatch must carry.
+3. `.claude/tasks/backend.md` — unchanged this session. B-008 is the live one.
 
-Do not load `.claude/tasks/archive/` or `backlog.md`. Same reason as always.
+Do not load `.claude/tasks/archive/` or `backlog.md`.
+
+## The one thing that will confuse you if you do not read it here
+
+**`verify.py --all` exits 1 on `main` and that is correct.** Exactly one section is red:
+`board-lane-fill`. It is D-006's C10, overruled in writing on the user's ruling (PR #20 comment
+`5497106719`), and left registered and red deliberately so the constraint stays visible.
+**It is not a regression, it is not yours, and it must not be deleted, disabled, relabelled or
+downgraded to make the run green.** 62 of 63 sections pass, 265 assertions.
 
 ## In flight
 
 | Task | Role | Branch | PR | Cycle | State | Handoff |
 |---|---|---|---|---|---|---|
-| D-006 | design | `task/d-006-board` (local only, **never pushed**) | — | 1 | **stopped by user.** Uncommitted: `board.html`, `board.css`, +1330 lines of `verify.py`. No commit was ever made. | `d-006-board-cycle1-interrupted.patch` |
-| B-008 | backend | `task/b-008-path-filter-safe-eval` | #19 | 3 | **stopped by user.** Cycle 2 reviewed `0R/1M/2m`; cycle 3 was fixing M3 alone. Uncommitted: +79 lines in `tests/test_path_filter_exprs.py`. HEAD is still cycle 2's `fba2ad6`. **At the §5.7 limit** — if cycle 3 does not close `0R/0M`, escalate, do not open a cycle 4. | `b-008-cycle3-interrupted.patch` |
-| B-013 | backend | `task/b-013-safe-eval-findings` | #17 | 1 | **HELD BY THE USER** until the M1 design choice is made. Not crucial to M1. Gate reproduced (`4d5f374`, 413 passed); review dispatched 2026-08-31, no verdict returned. Do not re-dispatch without the user. | — |
+| B-008 | backend | `task/b-008-path-filter-safe-eval` | #19 | 3 | **stopped by the user last session, never resumed this one.** HEAD is cycle 2's `fba2ad6`; uncommitted +79 lines in `tests/test_path_filter_exprs.py` in `.claude/worktrees/agent-a209cb7cb16742776`. **At the §5.7 limit — if cycle 3 does not close `0R/0M`, escalate, do not open a cycle 4.** | `b-008-cycle3-interrupted.patch` |
+| B-013 | backend | `task/b-013-safe-eval-findings` | #17 | 1 | **HELD BY THE USER.** Gate reproduced (`4d5f374`, 413 passed); review dispatched 2026-08-31, no verdict ever returned. Do not re-dispatch without the user. | — |
 | B-014 | backend | `task/b-014-api-contract-findings` | #18 | 1 | **HELD BY THE USER**, same reason. Gate reproduced (`3e3550f`, 565 passed). | — |
-
-The two patches apply to the worktrees they came from, which still exist and are untouched:
-`~/fce-worktrees/d-006-board` (D-006) and `.claude/worktrees/agent-a209cb7cb16742776` (B-008).
-Both were captured with `git add -N` + `git diff`, so they include the untracked files.
-
-## First moves
-
-1. ~~**D-006 Board**~~ — **RESUMED 2026-09-01**, cycle 1, in `~/fce-worktrees/d-006-board` with
-   the interrupted work intact and checks=9 now carrying `Check:`/`Expect:` pairs. This move is
-   consumed; see `.claude/tasks/design.md`. Original text: resume it from
-   `d-006-board-cycle1-interrupted.patch` in `~/fce-worktrees/d-006-board` — the coder was
-   mid-cycle-1 with `board.html`, `board.css` and the `--board` verify section already written.
-   Re-dispatching from scratch would pay for that twice. Its dispatch, checks=9, is in
-   `.claude/tasks/design.md`.
-2. Then D-007 — the comparison index and the recommendation. **That is the user's checkpoint.**
-3. **#17 and #18 stay parked until the user says otherwise.** Their hold is deliberate.
-4. **The #16 merge question is CLOSED:** the user merged it themselves, by hand, having judged
-   cycle 3 finished. Legitimate. No process breach, nothing to chase. The gate ran afterwards and
-   returned `0R/0M`, so the merged content is what a clean review approved.
-
-## Traps this session paid for — do not re-learn them
-
-- A bare `pytest` in a fresh worktree collects nothing (`No module named 'fce_web'`). Always
-  `./.venv/bin/python -m pytest`. B-008's failing gate nearly read as clean because of this.
-- Floors on `main`: `verify.py` **46** sections / **149** assertion lines / **121** non-bench.
-  pytest **413**, becoming **424** when B-008 merges and **565** when B-014 merges.
-- Never rebase. Local `main` divergence is fixed with `git merge --no-ff origin/main`.
 
 ## Git as of this commit
 
-    origin/main = 4720179 (Merge PR #16, D-005 Bench)
-    open PRs: #19 B-008 (cycle 2 reviewed, rework), #18 B-014 (in review), #17 B-013 (in review)
-    task/d-006-board exists LOCALLY ONLY, at 4720179, no commits, dirty worktree
+    origin/main = 0aee604 (Merge PR #20, D-006 Board)
+    open PRs: #19 B-008 (cycle 2 reviewed, rework), #18 B-014 (held), #17 B-013 (held)
+    gate worktree ~/fce-gate-d006 exists, detached — reusable, its venv is the primary checkout's
 
 Re-run `git branch -a` and `gh pr list --state open` before you act. If they disagree with the
 table above, **git is right.**
+
+## First moves, in order
+1. **Dispatch D-007.** Entry is in `.claude/tasks/design.md` `## Ready`, dependencies all merged.
+   Its dispatch must tell the coder about the known-red `board-lane-fill` section, and that
+   D-007 does not touch `verify.py` so it must not try to fix it.
+2. **Then stop — D-007 is the checkpoint.** The user picks Beamline / Bench / Board, and that
+   choice is what unblocks D-002.
+3. B-008 cycle 3 only if the user wants it before the checkpoint; it is independent of M1.
+
+## Waiting on the user
+- **The M1 style choice**, at D-007. Everything in design after that depends on it.
+- Whether to unhold #17 and #18.
+
+## Not carried over
+- D-005's **m7** (the "chips render identically" PR-body claim, three cycles uncorrected) is
+  recorded in `design.md` `## Done` and is not being chased.
+- The C10 argument is closed by the user's ruling. Do not reopen it without them.
