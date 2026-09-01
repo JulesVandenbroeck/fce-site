@@ -4980,9 +4980,15 @@ def check_board_persistence(pw: Playwright) -> bool:
     before_n6 = next(n for n in before["nodes"] if n["id"] == "n6")
     handle = page.locator('.node-card[data-node-id="n2"] .node-card__handle')
     handle.scroll_into_view_if_needed()
-    n6_handle = page.locator('.node-card[data-node-id="n6"] .node-card__handle')
+    # The reorder handler's own release-position test (board.html's
+    # `startReorderDrag`) compares the pointer's release Y against each
+    # sibling *card's* (`.node-card`, the full `<li>`, taller than its own
+    # `.node-card__handle` strip) vertical midpoint -- so the drag target
+    # has to clear n6's whole card, not just its handle, or the release
+    # point can land above that midpoint and no reorder happens.
+    n6_card = page.locator('.node-card[data-node-id="n6"]')
     box = handle.bounding_box()
-    n6box = n6_handle.bounding_box()
+    n6box = n6_card.bounding_box()
     page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
     page.mouse.down()
     page.mouse.move(box["x"] + box["width"] / 2, n6box["y"] + n6box["height"] + 10, steps=12)
@@ -5082,56 +5088,107 @@ def check_board_connection_gestures(pw: Playwright) -> bool:
     return all_ok
 
 
+def tab_walk_to(page, selector: str, max_steps: int = 300) -> bool:
+    """Press real `Tab` key events (`page.keyboard` only -- no `el.focus()`,
+    no pointer event of any kind) until `document.activeElement` matches
+    `selector`, or give up after `max_steps` presses. Used everywhere
+    Criterion 2 requires the keyboard path to be driven by the keyboard
+    alone, including reaching the control in the first place -- a check
+    that called `el.focus()` to *position* the keyboard would only be
+    testing the key handler, not that the control is keyboard-reachable at
+    all."""
+    for _ in range(max_steps):
+        page.keyboard.press("Tab")
+        matched = page.evaluate(
+            "sel => document.activeElement && document.activeElement.matches(sel)", selector
+        )
+        if matched:
+            return True
+    return False
+
+
 def check_board_keyboard_path(pw: Playwright) -> bool:
     """Criterion 2's keyboard half: connecting two nodes from the keyboard
-    alone -- focus an output port, press Enter to arm it, focus an input
-    port, press Enter to complete -- and confirm the edge is what data-ui
-    persists afterward. Board's own click handler already answers this: a
-    native <button> turns Enter/Space into a synthesized click, so no
-    separate keydown listener exists in board.html for arming a port. Also
-    checks the keyboard reorder path (ArrowUp on a focused node handle), the
-    keyboard equivalent of the pointer-drag slot move
-    `check_board_persistence` already exercises with a mouse."""
+    alone -- Tab to an output port (real `page.keyboard` presses only, via
+    `tab_walk_to`, never `el.focus()`), press Enter to arm it, Tab to an
+    input port, press Enter to complete -- and confirm the edge is what
+    data-ui persists afterward. Board's own click handler already answers
+    this: a native <button> turns Enter/Space into a synthesized click, so
+    no separate keydown listener exists in board.html for arming a port.
+    Also checks the keyboard reorder path (ArrowUp on a focused node
+    handle, itself reached by Tab), the keyboard equivalent of the
+    pointer-drag slot move `check_board_persistence` already exercises with
+    a mouse. No `page.mouse.*` or `page.click()` call appears anywhere in
+    this function -- every interaction is a `page.keyboard.press`."""
     section("Board keyboard path -- connecting and reordering nodes without a pointer")
     browser, context, page, *_ = load_board_page(pw, 1024)
 
-    page.eval_on_selector('.node-card[data-node-id="n1"] .port--out', "el => el.focus()")
+    found_out = tab_walk_to(page, '.node-card[data-node-id="n1"] .port--out')
     page.keyboard.press("Enter")
     armed_status = page.eval_on_selector("#graph-status", "el => el.textContent")
-    armed_ok = "Armed" in armed_status
-    page.eval_on_selector('.node-card[data-node-id="n3"] .port--in', "el => el.focus()")
+    armed_ok = found_out and "Armed" in armed_status
+    found_in = tab_walk_to(page, '.node-card[data-node-id="n3"] .port--in')
     page.keyboard.press("Enter")
     ui = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
-    connected_ok = ["n1", "n3"] in ui["edges"]
+    connected_ok = found_in and ["n1", "n3"] in ui["edges"]
     line(
-        "Enter on an out-port arms it, Enter on a legal in-port completes the connection "
-        "(DataSource -> Selection, n1 -> n3), and the edge is what data-ui persists",
+        "Tab to an out-port (real key presses), Enter arms it, Tab to a legal in-port, Enter "
+        "completes the connection (DataSource -> Selection, n1 -> n3), and the edge is what "
+        "data-ui persists",
         armed_ok and connected_ok,
-        f"armed status={armed_status!r}, edges={ui['edges']}",
+        f"reached out-port={found_out}, armed status={armed_status!r}, reached in-port={found_in}, "
+        f"edges={ui['edges']}",
     )
 
-    page.click('[data-add-kind="Multiplicity"]')
+    found_add = tab_walk_to(page, '[data-add-kind="Multiplicity"]')
+    page.keyboard.press("Enter")
     before = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
     before_n2 = next(n for n in before["nodes"] if n["id"] == "n2")
     before_n6 = next(n for n in before["nodes"] if n["id"] == "n6")
-    page.eval_on_selector('.node-card[data-node-id="n6"] .node-card__handle', "el => el.focus()")
+    found_handle = tab_walk_to(page, '.node-card[data-node-id="n6"] .node-card__handle')
     page.keyboard.press("ArrowUp")
     after = json.loads(page.eval_on_selector("#graph", "el => el.getAttribute('data-ui')"))
     after_n2 = next(n for n in after["nodes"] if n["id"] == "n2")
     after_n6 = next(n for n in after["nodes"] if n["id"] == "n6")
     reorder_ok = (
-        before_n2["slotIndex"] == 0 and before_n6["slotIndex"] == 1
+        found_add
+        and found_handle
+        and before_n2["slotIndex"] == 0 and before_n6["slotIndex"] == 1
         and after_n6["slotIndex"] == 0 and after_n2["slotIndex"] == 1
     )
     line(
-        "ArrowUp on a focused node handle swaps it with its previous sibling and persists the "
-        "new slot order",
+        "Tab to the 'Multiplicity' palette button, Enter adds it; Tab to its handle, ArrowUp "
+        "swaps it with its previous sibling and persists the new slot order",
         reorder_ok,
+        f"reached add-button={found_add}, reached handle={found_handle}, "
         f"before: n2={before_n2}, n6={before_n6}; after: n2={after_n2}, n6={after_n6}",
     )
 
     browser.close()
     return armed_ok and connected_ok and reorder_ok
+
+
+def check_board_connect_gestures(pw: Playwright) -> bool:
+    """Criterion 2, registered as the single `board-connect-gestures`
+    section: three separately-driven connections must each succeed --
+    drag-to-connect and click-to-connect (`check_board_connection_gestures`,
+    the two D-005 Bench supports: Bench itself accepts only drag, Beamline
+    only click, so Board is asked to accept both) plus the keyboard-alone
+    connection (`check_board_keyboard_path`, which also proves the illegal
+    kind-refusal and Tab-reachability). This wrapper does not duplicate any
+    gesture logic -- it calls both existing functions and ANDs their
+    results under one section name so the one required grep target
+    (`board-connect-gestures`) covers all three."""
+    section("Board connect gestures -- drag, click, and keyboard-alone, three separately-driven connections")
+    gestures_ok = check_board_connection_gestures(pw)
+    keyboard_ok = check_board_keyboard_path(pw)
+    ok = gestures_ok and keyboard_ok
+    line(
+        "All three connection paths succeed: drag-to-connect, click-to-connect, keyboard-alone",
+        ok,
+        f"pointer gestures (drag+click+refusal)={gestures_ok}, keyboard-alone={keyboard_ok}",
+    )
+    return ok
 
 
 def check_board_pairs(pw: Playwright) -> bool:
@@ -5930,15 +5987,27 @@ def check_no_launch_flags_in_verify_py() -> bool:
     flag could sneak back in, a string literal or a passed `args=`."""
     section("verify.py self-check -- no banned Chromium launch flag, no chromium.launch(...) with any argument")
     text = Path(__file__).read_text()
-    found_flags = [f for f in BANNED_CHROMIUM_LAUNCH_FLAGS if f in text]
+    # Each flag necessarily appears once already, as a string literal inside
+    # BANNED_CHROMIUM_LAUNCH_FLAGS' own definition above -- a bare substring
+    # search would always find it there and could never pass. Any *second*
+    # occurrence is what would indicate the flag has actually been passed to
+    # a real launch() call somewhere in this file.
+    counts = {f: text.count(f) for f in BANNED_CHROMIUM_LAUNCH_FLAGS}
+    found_flags = [f for f, n in counts.items() if n > 1]
     ok_flags = not found_flags
     line(
         f"{len(BANNED_CHROMIUM_LAUNCH_FLAGS)} banned launch flags searched for as literal substrings "
-        "in this file's own source",
+        "in this file's own source (each expected exactly once, in this list's own definition)",
         ok_flags,
-        "none found" if ok_flags else f"found: {found_flags}",
+        "none found outside their own definition" if ok_flags else f"found extra occurrence(s): {found_flags}",
     )
 
+    # Deliberately not narrowed to `<x>.chromium.launch(...)`: Criterion 8
+    # asks that *every* `.launch(...)` call in this file pass no argument,
+    # so this walks every `ast.Call` whose func is any attribute named
+    # `launch` -- catching a hypothetical `browser_type.launch(channel=...)`
+    # or a differently-spelled launch site that a check narrowed to
+    # `.chromium.launch` would silently miss.
     tree = ast.parse(text, filename=str(Path(__file__)))
     launch_calls = [
         node
@@ -5946,19 +6015,78 @@ def check_no_launch_flags_in_verify_py() -> bool:
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "launch"
-        and isinstance(node.func.value, ast.Attribute)
-        and node.func.value.attr == "chromium"
     ]
     offending = [n for n in launch_calls if n.args or n.keywords]
     ok_calls = len(launch_calls) > 0 and not offending
     line(
-        f"{len(launch_calls)} <expr>.chromium.launch(...) call(s) found by parsing this file's own AST",
+        f"{len(launch_calls)} .launch(...) call(s) found by parsing this file's own AST (not narrowed "
+        "to any particular receiver expression)",
         ok_calls,
-        "none pass any argument" if ok_calls else f"{len(offending)} pass at least one argument",
+        "none pass any positional or keyword argument (args=, channel=, ignore_default_args=, or "
+        "any other)"
+        if ok_calls
+        else f"{len(offending)} pass at least one argument",
     )
     for n in offending[:5]:
-        print(f"       chromium.launch(...) with an argument at line {n.lineno}")
+        print(f"       .launch(...) with an argument at line {n.lineno}")
     return ok_flags and ok_calls
+
+
+def check_all_sections_wrapped_in_run_section() -> bool:
+    """Criterion 9 (closes review minor m9, carried from D-005): every
+    section registered in `main()` goes through `run_section`'s
+    exception-safety wrapper, checked by parsing this file's own AST rather
+    than by re-reading `main()` and trusting the eye. Finds `main`'s
+    `FunctionDef`, walks every `all_results.append(...)` call inside it, and
+    for each requires that the appended value is a 2-tuple whose second
+    element is itself a `Call` to a name `run_section` -- the same shape
+    every currently-registered section (anatomy, payload, Beamline, Bench,
+    Board) already takes. A section whose result is computed directly
+    (`check_x(pw)` passed straight into the tuple, bypassing `run_section`)
+    would raise past `main()`'s own top-level `with sync_playwright()`
+    block on any exception, aborting the whole run before later sections --
+    including this file's own unflagged-file-url diagnostics -- executed."""
+    section("verify.py self-check -- every all_results.append(...) in main() goes through run_section(...)")
+    text = Path(__file__).read_text()
+    tree = ast.parse(text, filename=str(Path(__file__)))
+    main_def = next(
+        (node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == "main"), None
+    )
+    if main_def is None:
+        line("main() found in this file's own AST", False, "no top-level def main() found")
+        return False
+
+    appends = [
+        node
+        for node in ast.walk(main_def)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "append"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "all_results"
+    ]
+
+    def is_run_section_wrapped(append_call: ast.Call) -> bool:
+        if len(append_call.args) != 1:
+            return False
+        arg = append_call.args[0]
+        if not isinstance(arg, ast.Tuple) or len(arg.elts) != 2:
+            return False
+        second = arg.elts[1]
+        return isinstance(second, ast.Call) and isinstance(second.func, ast.Name) and second.func.id == "run_section"
+
+    unwrapped = [n for n in appends if not is_run_section_wrapped(n)]
+    ok = len(appends) > 0 and not unwrapped
+    line(
+        f"{len(appends)} all_results.append(...) call(s) found in main() by parsing this file's own AST",
+        ok,
+        "every one wraps its result in run_section(...)"
+        if ok
+        else f"{len(unwrapped)} unwrapped at line(s) {[n.lineno for n in unwrapped]}",
+    )
+    for n in unwrapped[:10]:
+        print(f"       all_results.append(...) at line {n.lineno} does not call run_section(...)")
+    return ok
 
 
 # ---------------------------------------------------------------------
@@ -6208,6 +6336,86 @@ def main() -> None:
                 (
                     "bench-unflagged-file-url",
                     run_section("bench-unflagged-file-url", check_bench_unflagged_file_url, pw),
+                )
+            )
+
+        if args.all or args.board:
+            # Same reasoning as the bench block above: every call goes
+            # through run_section so an uncaught exception in an early
+            # section cannot prevent board-unflagged-file-url -- registered
+            # last -- from ever running.
+            all_results.append(
+                ("board-persistence-shape", run_section("board-persistence-shape", check_board_persistence, pw))
+            )
+            all_results.append(
+                ("board-connect-gestures", run_section("board-connect-gestures", check_board_connect_gestures, pw))
+            )
+            all_results.append(("board-pairs", run_section("board-pairs", check_board_pairs, pw)))
+            all_results.append(("board-inventory", run_section("board-inventory", check_board_inventory, pw)))
+            all_results.append(("board-widths", run_section("board-widths", check_board_paint_sweep, pw)))
+            # D-008's six palette floors, reused unmodified against board.html
+            # (the functions are tokens.css-driven, not page-specific --
+            # see their own docstrings) rather than re-derived here.
+            all_results.append(
+                (
+                    "board-palette-floors-pairwise-luminance",
+                    run_section(
+                        "board-palette-floors-pairwise-luminance", check_beamline_pairwise_luminance, pw
+                    ),
+                )
+            )
+            all_results.append(
+                (
+                    "board-palette-floors-clamping-bound",
+                    run_section("board-palette-floors-clamping-bound", check_cam02ucs_clamping_bound),
+                )
+            )
+            all_results.append(
+                (
+                    "board-palette-floors-node-fill-normal-vision",
+                    run_section(
+                        "board-palette-floors-node-fill-normal-vision",
+                        check_beamline_node_fill_normal_vision,
+                        pw,
+                    ),
+                )
+            )
+            all_results.append(
+                (
+                    "board-plot-node-budget",
+                    run_section("board-plot-node-budget", check_board_terminal_plot_budget, pw),
+                )
+            )
+            all_results.append(("board-contrast", run_section("board-contrast", check_board_contrast, pw)))
+            all_results.append(("board-focus-walk", run_section("board-focus-walk", check_board_focus_walk, pw)))
+            all_results.append(
+                ("board-reduced-motion", run_section("board-reduced-motion", check_board_reduced_motion, pw))
+            )
+            all_results.append(
+                (
+                    "board-network-and-errors",
+                    run_section("board-network-and-errors", check_board_network_and_errors, pw),
+                )
+            )
+            all_results.append(
+                ("board-no-exhaustive-prose", run_section("board-no-exhaustive-prose", check_board_no_exhaustive_prose))
+            )
+            all_results.append(
+                (
+                    "board-no-launch-flags",
+                    run_section("board-no-launch-flags", check_no_launch_flags_in_verify_py),
+                )
+            )
+            all_results.append(
+                (
+                    "board-all-sections-wrapped",
+                    run_section("board-all-sections-wrapped", check_all_sections_wrapped_in_run_section),
+                )
+            )
+            all_results.append(
+                (
+                    "board-unflagged-file-url",
+                    run_section("board-unflagged-file-url", check_board_unflagged_file_url, pw),
                 )
             )
 
