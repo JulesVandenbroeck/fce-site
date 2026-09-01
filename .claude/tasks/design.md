@@ -22,9 +22,23 @@ IDs are `D-nnn`, allocated in order and never reused.
   diff is exactly the four scoped files; C6 `verify.py` grep counts and red-set identical to
   `main`. C2 and C3 are mutation-gated. **checks=6.**
 - **Depends on:** ~~D-004~~ (`bac2f62`), ~~D-005~~ (`4720179`), ~~D-006~~ (`0aee604`) — all merged.
-- **Branch / PR:** `task/d-007-index` — dispatched 2026-09-01, `design-coder`, worktree, effort high.
-- **Status:** cycle 1, in flight. **This is the M1 checkpoint** — the user picks Beamline / Bench /
-  Board from it, and that choice unblocks D-002.
+- **Branch / PR:** `task/d-007-index` — **#21**, `71c6022`. `design-coder`, worktree, effort high.
+- **Status:** **re-specification in flight (NOT cycle 2).** Cycle 1 = PR #21 `71c6022`, gate
+  reproduced all 6 (verify.py exit 1, 265 assertions, only `board-lane-fill` red). Reviewed
+  `0R / 1M / 3m`, scope pass. **M1 is my defect:** C4's second half — "names `docs/api.md` /
+  `POST /api/run` as what the shape commits" — shipped with *"quote the lines in the PR body"*
+  instead of a `Check:`, and that unfalsifiable half is the one that failed. §5.4 clause 2 →
+  re-specification, does not count against §5.7. The README argued Board's `{column, slotIndex}`
+  "is what `POST /api/run` actually carries"; `docs/api.md` marks `/api/run` **to be defined in
+  M3** with no request body. Re-dispatched with **C7**: any `docs/api.md` claim in
+  `## Recommendation` must also state the endpoint is unspecified, mutation-gated by restoring
+  the false sentence. **checks=6 → 7.** The coder may change the recommendation if the honest
+  argument no longer supports Board.
+- **Review:** m1/m2/m3 all **backlogged and named individually** (index.css top-rule tokens on the
+  wrong axis; the C2/C3 gate living only in the PR body; the unnamed `<section>` landmark).
+  Backlog 76 → 79.
+- **This is the M1 checkpoint** — the user picks Beamline / Bench / Board from it, and that choice
+  unblocks D-002. Preview worktree: `~/d007-preview` (detached, under `$HOME`, never `/tmp`).
 - **Enumerated 2026-09-01, not inherited:** `verify.py` registers **65** sections, **64** pass,
   `board-lane-fill` is the only red, `--all` exits 1. `grep -c 'all_results.append'` = **69** (4 are
   comment mentions), `grep -c 'results.append\|line('` = **233**. It hard-codes its four page

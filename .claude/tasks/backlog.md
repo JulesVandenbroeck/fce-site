@@ -505,3 +505,17 @@ and are historical now that #6 is merged.
   goes 2 rows → 1 between 768 and 1024/1440) and a `data-node-id=` count of 7 against a measured
   16. Corrected in cycle 3's body; noted here because both are the same decoration-instead-of-
   measurement habit that produced c1's 46/192. (D-005 c2 m7, m8.)
+
+- **D-007 m1 — index card top-rules reuse node-kind tokens for the wrong axis.**
+  `docs/design-explorations/index.css:76-81` colours each exploration card's top rule with a
+  node-kind token (`--node-*`), so the hue encodes *which exploration* rather than *which node
+  kind*. Every other surface in the project uses those tokens for node kind. Filed from PR #21
+  cycle 1, suggested-minor. Sweep with the D-002 token work, which owns that palette.
+- **D-007 m2 — the C2/C3 index gate exists only as PR-body output, not on disk.**
+  The mutation-gated checks that prove index.html's per-style claims match the pages were run
+  by hand and pasted; nothing re-runs them next time a style page changes. Filed from PR #21
+  cycle 1, suggested-minor. If the design-explorations set is ever revised, put the gate in a
+  small script beside `verify.py` rather than re-deriving it.
+- **D-007 m3 — unnamed `<section>` landmark.** `docs/design-explorations/index.html:81` is a
+  `<section>` with no accessible name, so it is an unlabelled landmark for screen-reader users.
+  Filed from PR #21 cycle 1, suggested-minor.
