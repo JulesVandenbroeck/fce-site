@@ -1,5 +1,7 @@
 # Wireframes — D-001
 
+> **Superseded 2026-08-16 by the node-graph pivot (`docs/design-brief.md` §4).** These recipe-card wireframes are no longer the plan; see `docs/design-explorations/` for the current build surface and its own comparison index.
+
 **Open [`index.html`](index.html) in a browser.** Everything else hangs off it. Double-click the
 file; it needs no server, no internet, and no build step.
 
