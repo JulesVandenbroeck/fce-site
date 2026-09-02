@@ -123,7 +123,14 @@ All counts below were enumerated by `scout` at `9495696`, not inherited from the
   fail on any `None` tab index) and C10 (`c_h > 0` precondition). **checks 8 -> 10.** m1
   (`_tab_order` docstring describes behaviour the function lacks) and m2 (PR body paraphrased
   the file scope instead of reproducing it verbatim) folded into cycle 2; **m3 backlogged**.
-- **Status (cycle 2):** dispatched 2026-09-02, own worktree.
+- **Status (cycle 2):** delivered `e6cb87a`, **§5.1 gate reproduced 2026-09-02** in
+  `~/fce-gate-d009` with the primary `.venv`: all four sections PASS / exit 0, flake8 0, diff
+  still exactly the four files (`interiors_verify.py` 267 -> 283 lines; `interiors.html` and
+  `interiors.css` byte-identical to cycle 1). **Cycle 2 in review.** R1/R2 closed at
+  `interiors_verify.py:186-215` and `:238-241` — `n_guided == 4`, `labelled == n_guided`, and a
+  `None` tab index now fail; M1 closed at `:112-129` by a `c_h > 0 and o_h > 0` precondition.
+  **M2 overruled in writing** — the seven-kind palette *is* the M1 ruling (brief §4), and
+  `bench.html`'s eighth button predates it. m1, m2 fixed. **checks=10.**
 - **Delivered:** two options — **flyout inspector (recommended)** and **inline grow**.
   The flyout argument is that the node's own footprint stays constant across open/closed,
   which is the fixed dimension **D-010** needs for palette width. That is the user's call.
