@@ -164,12 +164,30 @@ value — a decision the student cannot get wrong and therefore cannot learn fro
 
 | | What it holds |
 |---|---|
-| **The palette** — what the student places | **seven** kinds: `Multiplicity`, `Selection`, and the four `Obs*`, and `Histogram` |
-| **The run payload** — what the engine reads | those nodes, **plus a `DataSource` synthesised at submit** from the mission's declared dataset |
+| **The palette** — what the student places | **four** kinds: `Multiplicity`, `Selection`, `Observable`, `Histogram` |
+| **The run payload** — what the engine reads | those nodes with `Observable` resolved to its engine subtype, **plus a `DataSource` synthesised at submit** from the mission's declared dataset |
 
 The engine, and the allowlist below, are untouched: `DataSource` remains the root of every
 chain the engine sees. It is simply supplied rather than drawn. Future missions at other
 energies are separate missions, not a chooser inside one.
+
+**And the four `Obs*` subtypes are one palette node, not four.** Decided 2026-09-02, replacing
+the `seven` count above. `ObsGlobal`, `ObsObject`, `ObsVectorSum` and `ObsCustom` are **not four
+things a student chooses between at placement time** — they are four ways of answering one
+question, *what number am I plotting?*. The student places one **`Observable`** node and toggles
+its mode inside the node.
+
+This is a design decision that costs nothing structurally, because the four subtypes are
+already interchangeable everywhere the graph is concerned: **all four have identical legal
+connections** — `Observable* → Histogram`, and nothing else, which is why the allowlist below
+writes them as a single row rather than four. Nothing about which graphs are legal changes.
+What changes is that a 15-year-old picks a node by what it *does* rather than by a taxonomy
+they have not learned yet, and discovers the four modes by opening the node instead of by
+reading four palette labels.
+
+The mode is `config`, not identity: the run payload resolves it back to the engine's subtype at
+submit, exactly as `DataSource` is synthesised at submit. **The student's graph and the engine's
+graph are deliberately not the same object** — this is now true in two places, not one.
 
 **Which connections are legal is not a design choice.** The reference app defines an explicit
 allowlist (`ui/graph.py`, `_VALID_CONNECTIONS`), and the web version enforces the same one:
@@ -186,7 +204,8 @@ Two consequences worth designing *for* rather than around. `Selection → Select
 cuts with AND, so a chain of filters is a visible conjunction rather than an ordering
 accident. And `ObsVectorSum` is exactly the mission-2 lesson in node form — adding the
 photon's four-vector back to recover the Z mass — which makes it the most valuable unlock in
-the campaign.
+the campaign. Under the 2026-09-02 ruling it unlocks as a **mode** of the `Observable` node
+rather than as a palette entry, so the unlock has to read inside the node.
 
 **The three reasons the card stack was originally chosen are now requirements the graph must
 meet.** They were good reasons; dropping the stack does not drop them.
