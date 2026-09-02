@@ -118,7 +118,29 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   C1-C6 and open the PR from `task/d-002-tokens-work`** — not to redo the work. The dispatch
   carries the six criteria with `Check:`/`Expect:` pairs (they had none before), the enumerated
   facts, D-008's six floors with harvest-don't-search, and the `board-lane-fill` warning.
-  Still cycle 1.
+  **Delivered `6a874fd`, PR #24 opened. §5.1 gate reproduced 2026-09-02 in `~/fce-gate-d002`
+  with the primary `.venv`:** the four token sections PASS / exit 0, counts **71** / **260**
+  (floors 69 / 233), both greps exit 1, flake8 exit 0, `git diff main...HEAD --name-only` = the
+  8 scoped files. Six floors clean and above D-008's harvested values: 6.116 / 20.246 / 13.442 /
+  5.476:1 / 37.31 deg / +0.0000 — no palette search was run. `--ink-45` 2.596:1, present and
+  labelled NON-TEXT-SAFE, asserted below AA rather than fixed.
+  **C6 NOT MET, and it was unsatisfiable inside the file scope I gave — my defect, §2 question 3,
+  the B-005 shape.** `--all` exits 1 with **three** reds, not one: `board-lane-fill` (intended)
+  plus `git-diff-clean` and `bench-git-diff-clean`. `check_git_diff` (`verify.py:1885-1908`,
+  registered twice) asserts `git diff --stat main...HEAD -- src/ tests/ content/` is empty, and
+  D-002 is the first task that legitimately ships into `src/`. **Ruling 2026-09-02: narrow the
+  guard to exempt exactly `src/fce_web/static/css/tokens.css` and `src/fce_web/static/fonts/**`;
+  everything else under `src/`, `tests/` and `content/` stays guarded.** Re-spec'd and
+  re-dispatched: scope widened to permit editing that one section, C6 re-worded, and **C7 added
+  — the narrowed guard must still go red on a probe file under `src/fce_web/routes/` and under
+  `tests/`**, four transcripts. **checks 6 -> 7. Still cycle 1** (a re-specification, not a
+  cycle). Two declared deviations accepted: edits inside sections *this branch itself* added
+  (strictly additive, both counts rose), and one `tokens.css` rounding fix 4.63 -> 4.62:1 found
+  by the new check, no colour changed.
+  **Open for later:** nothing on this branch renders the shipped `tokens.css` — `base.html`
+  links no stylesheet (that is F-002) and the exploration pages read
+  `docs/design-explorations/tokens.css`. So there are no screenshots of the real file by
+  construction, and F-002 is what first exercises it.
 - **Was:** cycle 1, re-dispatched 2026-09-02, own worktree, Opus. The 2026-09-01 dispatch
   was LOST — reconciled against git: the branch was created at `9495696` and never written to, no
   handoff, no anchor. This is still cycle 1. The dispatch carries the re-spec'd C5 (four hues),
@@ -212,7 +234,13 @@ _none — both released tasks are in flight._
   `Check:`/`Expect:` pair (the reviewer's m4 says so explicitly), so this is a RE-SPECIFICATION,
   not a cycle.** Re-dispatched 2026-09-02 with C9 carrying the figure-selector mutation as its
   command, and the figcaption mutation kept alongside it — fix additively, never trade one gate
-  for the other. **Still cycle 2. checks stay 10.** m5 (footprint prose still says "exemplar")
+  for the other. **Still cycle 2. checks stay 10.**
+  **Re-spec delivered `94c7e25`; §5.1 gate reproduced 2026-09-02** in `~/fce-gate-d013` with the
+  primary `.venv`: all five sections PASS / exit 0, footprint still `ObsVectorSum` 328.0 x
+  300.0px, `flake8 docs/design-explorations/` exit 0, diff still exactly the three files.
+  `check_footprint` now asserts the node box is strictly shorter than its enclosing figure, so
+  the M1 selector regression goes red instead of re-certifying 348.5px. Reviewer re-dispatched
+  2026-09-02 and told to re-run that mutation itself rather than read the transcript. m5 (footprint prose still says "exemplar")
   and m6 (`figure_heights` None branch raises `TypeError` when formatted) folded into the same
   dispatch, both named. m4 stays open against my dispatch formatting, not the coder.
 - **checks=10**, C1-C4 and C9 mutation-gated.
