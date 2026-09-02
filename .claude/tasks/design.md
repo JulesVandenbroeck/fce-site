@@ -192,7 +192,9 @@ _none — both released tasks are in flight._
   **Status: cycle-2 review INTERRUPTED — the reviewer was killed 2026-09-02 before returning a
   verdict, and posted no PR comment. The branch head `c737905` is intact and pushed; the gate
   above stands. **Cycle-2 reviewer RE-DISPATCHED 2026-09-02** with PR #23 and the cycle-1
-  comment URL (`issuecomment-5506923899`), finding IDs R1/M1/M2/m1/m2/m3. Still cycle 2.**
+  comment URL (`issuecomment-5506923899`), finding IDs R1/M1/M2/m1/m2/m3 — and **STOPPED BY THE
+  USER the same day, no verdict, no PR comment.** Reconciled: branch head still `c737905`, the
+  last PR comment is still cycle 1's. **Still cycle 2. Do not re-dispatch without the user.**
 - **checks=10**, C1-C4 and C9 mutation-gated.
   Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
   `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
