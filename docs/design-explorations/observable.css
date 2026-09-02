@@ -160,13 +160,15 @@ label:has(input:focus-visible) {
 }
 
 /* ---- mode toggle ----------------------------------------------------------------
- * A native radiogroup, styled as a row of pill tabs. Each radio carries an
- * explicit tabindex="0" so every option is reachable in sequence with Tab,
- * rather than the browser's default roving-tabindex radiogroup behaviour
- * (Tab lands on the checked option only, arrow keys move within the group) —
- * a 15-year-old on a first visit should not have to discover arrow-key
- * navigation to find the other three modes. Space still checks the focused
- * option, exactly as a native radio does. */
+ * A native radiogroup, styled as a row of pill tabs, using the browser's own
+ * roving-tabindex behaviour: Tab reaches the group once, landing on whichever
+ * option is checked, and ArrowLeft/ArrowRight move between and select the
+ * other options. An author-set tabindex="0" on every radio was tried first
+ * and does not change this — Chromium enforces roving tabindex for a
+ * same-name radio group regardless (see observable_verify.py's check_modes
+ * docstring, and the PR body's cycle-1 deviation note) — so the markup keeps
+ * plain native radios rather than reinventing the pattern. Space still
+ * checks the focused option, exactly as a native radio does. */
 .mode-toggle {
   border: 0;
   margin: 0 0 var(--space-3);
