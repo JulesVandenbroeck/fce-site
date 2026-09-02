@@ -1484,3 +1484,61 @@ review is PR #21 comment `5499440100`, cycle 1 is `5498754050`.
 command (C8, quotation-verbatim); a cross-document *paraphrase* cannot, and both of this
 task's majors were paraphrases. The dispatch that works is C8 plus a required table of every
 characterising sentence with its supporting `file:line`, for the reviewer to check by hand.
+
+
+---
+
+### D-009 — Node interiors: how a cut and an observable are actually configured
+- **Scope:** `docs/design-explorations/interiors.html`, `interiors.css`, `interiors_verify.py`
+  (all NEW), plus <=3 insertions / 0 deletions at the top of `README.md`. Forbidden:
+  `tokens.css`, `verify.py`, and every existing page file.
+- **Accept:** C1 >=2 options, exactly one recommended; C2 all seven kinds per option, zero
+  `DataSource`; C3 collapsed AND opened per (option, kind), rendered heights strictly
+  ordered; C4 the `Selection` interior holds both a guided form and raw expression entry,
+  both keyboard-reachable, neither `disabled` nor `aria-hidden`; C5 no inline `style=`, no
+  network, no build step; C6 no colour defined outside `var(--…)`; C7 README note <=3/0;
+  C8 diff confined to the four files. **checks=8.** C1-C4 mutation-gated.
+- **A checkpoint task** — same shape as D-004-D-007. The user reads the page and rules.
+- **Enumerated:** `README.md` is 81 lines, `**Recommended:** Board` at line 14 — the note goes
+  above it. `bench.html` is 727 lines; `buildNodeEl` at :380-460; a node today holds exactly
+  ONE configurable property, `subtitle` at :410, value `"not configured yet"` — so this is the
+  first interior, not a refinement. `persistUI()` at :289-292 is what any interior must
+  eventually serialise into. `bench.html:64-71` still renders EIGHT palette buttons including
+  `DataSource`; that page is historical and out of scope, the new page ships seven.
+- **Depends on:** nothing. **Blocks D-010** — node size decides the palette width.
+- **Branch / PR:** `task/d-009-node-interiors` — **#22**, `8e4b76c`
+- **Status:** **cycle 1 in review.** §5.1 gate in `~/fce-gate-d009` with the primary
+  `.venv`: all four `interiors_verify.py` sections PASS — 2 options / 1 recommended,
+  both kind sets exactly the seven, 14 state rows all `opened>collapsed`, 4 labelled
+  guided controls + 1 raw expression field per option, none disabled or aria-hidden.
+  C5/C6 grep `exit=1`, C7 `3 0`, C8 exactly the four files. Reproduced, not accepted.
+  All four mutation gates present and each names what it caught.
+  **Cycle-1 reviewer dispatched 2026-09-01 never returned a verdict — no PR comment, session
+  died. Re-dispatched 2026-09-02; that was cycle 1.**
+  **Cycle 1 reviewed 2026-09-02: `2R / 2M / 3m`, scope pass, `verdict=rework`** — posted to
+  PR #22 (`issuecomment-5506219239`). Both Required are against the coder's *instrument*, not
+  the design: R1 `interiors_verify.py:201-203` prints the labelled-control count and only fails
+  at `< 1`, so stripping `for=` from 3 of 4 guided labels still certifies GREEN; R2 `:184-227`
+  computes Tab reachability and never asserts it, so `tabindex="-1"` on all four guided controls
+  certifies GREEN — the one accessibility property C4 exists to guard. M1 `:110-115` coerces a
+  `None` bounding box to `0`, so `display:none` on every collapsed exemplar satisfies
+  `opened > collapsed` vacuously. All three proven by mutation in the browser, no repo file
+  touched. M2 asks why `DataSource` is excluded — that is the user's M1 ruling (brief §4) and is
+  **overrulable in writing**; the coder was given the ruling as a fact, not told how to rule.
+  **§5.4 = clause 3, a real cycle:** C4 was dispatched mutation-gated and the gate does not
+  distinguish. **Cycle 2 dispatched 2026-09-02** with C9 (assert `labelled == n_guided == 4`,
+  fail on any `None` tab index) and C10 (`c_h > 0` precondition). **checks 8 -> 10.** m1
+  (`_tab_order` docstring describes behaviour the function lacks) and m2 (PR body paraphrased
+  the file scope instead of reproducing it verbatim) folded into cycle 2; **m3 backlogged**.
+- **Status (cycle 2):** delivered `e6cb87a`, **§5.1 gate reproduced 2026-09-02** in
+  `~/fce-gate-d009` with the primary `.venv`: all four sections PASS / exit 0, flake8 0, diff
+  still exactly the four files (`interiors_verify.py` 267 -> 283 lines; `interiors.html` and
+  `interiors.css` byte-identical to cycle 1). **Cycle 2 in review.** R1/R2 closed at
+  `interiors_verify.py:186-215` and `:238-241` — `n_guided == 4`, `labelled == n_guided`, and a
+  `None` tab index now fail; M1 closed at `:112-129` by a `c_h > 0 and o_h > 0` precondition.
+  **M2 overruled in writing** — the seven-kind palette *is* the M1 ruling (brief §4), and
+  `bench.html`'s eighth button predates it. m1, m2 fixed. **checks=10.**
+- **Delivered:** two options — **flyout inspector (recommended)** and **inline grow**.
+  The flyout argument is that the node's own footprint stays constant across open/closed,
+  which is the fixed dimension **D-010** needs for palette width. That is the user's call.
+- **History:** none yet — first cycle.

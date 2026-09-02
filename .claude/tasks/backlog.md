@@ -538,3 +538,7 @@ and are historical now that #6 is merged.
   reuses `flyout__mode-label`, `flyout__checks` and `flyout__field` inside a container that is
   explicitly not the flyout. Whichever option D-010 inherits, the class names will read as the
   wrong one. Deferred until the user rules which option survives. (D-009 cycle 1, 2026-09-02)
+- **D-009 m4** — PR #22 body: the cycle-2 verbatim "File scope" block lists three files while
+  C7/C8 assert a four-file diff including `docs/design-explorations/README.md` (legitimately, from
+  cycle 1). The two sections read as contradicting each other. Body-only; the tree is correct.
+  (D-009 cycle 2, 2026-09-02)
