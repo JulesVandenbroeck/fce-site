@@ -9,13 +9,23 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-**B-008 (#19), B-013 (#17) and B-014 (#18) are all PAUSED as of 2026-09-01** — the user
-dispatched D-002 + D-009 instead and left all three backend PRs held.
+**RELEASED BY THE USER 2026-09-02.** The hold placed on 2026-09-01 — pending the M1 style
+choice — is lifted for all three. **The user's instruction is explicit: DO NOT run them in
+parallel.** One at a time, each to completion before the next is dispatched, in the standing
+merge order **B-013 (#17), then B-008 (#19), then B-014 (#18)**. This overrides the
+2026-08-31 parallel dispatch pattern; the reason is the user's token budget, not a file
+conflict. Each still gets `isolation: "worktree"`.
 
-**B-013 (#17) and B-014 (#18) are HELD BY THE USER 2026-09-01** until the M1 design choice is
-made — neither is crucial to it, and the user's token budget is the binding constraint. Their
-cycle-1 reviews were dispatched 2026-08-31 and never returned a verdict; do not re-dispatch
-without the user. All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
+Where each one stands when it is picked up: **B-013 (#17)** cycle-1 review was dispatched
+2026-08-31 and never returned a verdict — re-dispatch the reviewer, still cycle 1, gate already
+reproduced. **B-014 (#18)** the same — reviewer re-dispatch, still cycle 1, gate reproduced.
+**B-008 (#19)** is at the §5.7 limit: cycle 2 came back `0R / 1M / 2m` with M3 open, the cycle-3
+dispatch was lost and never landed, and the branch head is still `fba2ad6`. Re-dispatching it is
+**cycle 3, not cycle 4**, and if it does not close at 0R/0M, stop and escalate rather than
+dispatch a fourth.
+
+Nothing dispatched yet — D-002 (#24) is in flight and the serial rule applies across the whole
+session, not just within the backend. All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
 `scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
