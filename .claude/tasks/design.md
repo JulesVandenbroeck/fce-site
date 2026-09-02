@@ -154,7 +154,25 @@ _none — both released tasks are in flight._
   the group, Arrow keys between options), arguing Chromium enforces roving tabindex on a
   same-`name` group regardless of explicit `tabindex`. The gate output nonetheless prints
   `tab_index=1..4`, none `None` — the reviewer was asked to rule on the merits.
-- **checks=8**, C1-C4 mutation-gated.
+  **Cycle 1 reviewed 2026-09-02: `1R / 2M / 4m`, scope pass, `verdict=rework`** — posted to
+  PR #23 (`issuecomment-5506923899`). **The C2 deviation was accepted on the merits and the
+  Chromium roving-tabindex premise reproduced independently:** with `tabindex="0"` forced onto all
+  four radios at runtime the real Tab walk is unchanged. The reviewer then broke the radiogroup
+  three further ways (unique `name` per radio; `disabled` on one option; `tabIndex=-1` on the
+  entry radio) and the check went red each time, so the accessibility property is genuinely
+  guarded. R1 is flake8 `E501` x2 — the directory was exit 0 before this PR and exit 1 after.
+  **M1 is the finding that matters: `_measure` boxes the `.exemplar` `<figure>`, so every reported
+  height carried 16.5px of `<figcaption>` plus its gap. The real node is `.inode` =
+  300.0 x 328.0px for `ObsVectorSum`, not 348.5px** — 20.5px of exploration-page furniture in the
+  number D-010 sizes the palette against. M2/m1/m2 are the page and docstrings still describing
+  the pre-deviation Tab-per-option method. §5.4 = clause 3, a real cycle: C5 shipped with a
+  command, it measured the wrong element.
+  **Cycle 2 dispatched 2026-09-02** with C9 (footprint measured on `.inode`; a caption change must
+  not move the reported number) and C10 (`flake8 docs/design-explorations/` exit 0, whole
+  directory). **checks 8 -> 10.** m4 was a finding against my dispatch formatting — the PR body's
+  criteria carried no `Check:`/`Expect:` pairs — fixed in the cycle-2 dispatch, not charged to the
+  coder.
+- **checks=10**, C1-C4 and C9 mutation-gated.
   Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
   `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
   seven, so appending there would have required reopening a passing check to add a page that
