@@ -144,8 +144,17 @@ _none — both released tasks are in flight._
   keyboard-operable; opened height measured and reported per mode, because that number is
   D-010's input. Mutation-gated, same shape as D-009's C9/C10.
 - **Depends on:** nothing. **Blocks D-010.**
-- **Branch / PR:** `task/d-013-observable-interior` — not yet opened
-- **Status:** cycle 1, dispatched 2026-09-02, own worktree. **checks=8**, C1-C4 mutation-gated.
+- **Branch / PR:** `task/d-013-observable-interior` — **#23**, `d98d7d4`
+- **Status:** **cycle 1 in review.** §5.1 gate reproduced 2026-09-02 in `~/fce-gate-d013` with
+  the primary `.venv`: all five sections PASS / exit 0, C6 and C7 grep `exit=1`, diff exactly the
+  three new files. Every control count matches the scout table it was dispatched with
+  (ObsGlobal 1 select; ObsObject 2; ObsVectorSum 3 checkboxes + 1 select; ObsCustom 1 text), all
+  labelled. **Declared deviation on C2's method:** the criterion asked for a printed tab index
+  per mode option failing on `None`; the coder implemented native radiogroup semantics (Tab into
+  the group, Arrow keys between options), arguing Chromium enforces roving tabindex on a
+  same-`name` group regardless of explicit `tabindex`. The gate output nonetheless prints
+  `tab_index=1..4`, none `None` — the reviewer was asked to rule on the merits.
+- **checks=8**, C1-C4 mutation-gated.
   Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
   `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
   seven, so appending there would have required reopening a passing check to add a page that
