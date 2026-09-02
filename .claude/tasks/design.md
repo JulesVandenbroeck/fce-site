@@ -103,7 +103,17 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   new palette search.
 - **Depends on:** ~~the M1 style choice~~ — settled 2026-09-01, Bench.
 - **Branch / PR:** `task/d-002-tokens` — **branch exists at `9495696` with ZERO commits, no PR.**
-- **Status:** **cycle 1, re-dispatched 2026-09-02**, own worktree, Opus. The 2026-09-01 dispatch
+- **Status:** **HANDED OFF (cycle 1) — agent killed mid-task 2026-09-02.** See
+  [`handoff/SESSION.md`](../handoff/SESSION.md).
+  **The work is NOT lost and NOT on the dispatched branch.** Reconciled against git: one commit
+  `edf82c9` sits on **`task/d-002-tokens-work`**, local only, never pushed, no PR. The dispatched
+  branch `task/d-002-tokens` is still at `9495696` with zero commits. Diff against `main` is
+  8 files, all in scope: `src/fce_web/static/css/tokens.css`, four `.woff2` (EB Garamond roman +
+  italic variable, Fira Mono 400 + 500), two OFL licence files, and `docs/design-explorations/
+  verify.py`. Completeness unverified — no gate was run, no PR body exists.
+  **First move next session: push that branch, then decide whether to open the PR from it or ask
+  the coder to move the commit onto `task/d-002-tokens`. Do not re-dispatch from scratch.**
+- **Was:** cycle 1, re-dispatched 2026-09-02, own worktree, Opus. The 2026-09-01 dispatch
   was LOST — reconciled against git: the branch was created at `9495696` and never written to, no
   handoff, no anchor. This is still cycle 1. The dispatch carries the re-spec'd C5 (four hues),
   the corrected nine-not-ten `--node-*` count, the harvest-don't-search instruction with D-008's
@@ -177,7 +187,10 @@ _none — both released tasks are in flight._
   diff still exactly the three files. **M1 closed and the corrected footprint confirmed
   independently: `ObsVectorSum` node = 328.0 x 300.0px** (figure 348.5px), ObsCustom 301.5,
   ObsObject 290.5, ObsGlobal 237.0 — the checker now prints node and figure side by side, so the
-  20.5px of caption furniture is visible rather than silently included. **Cycle 2 in review.**
+  20.5px of caption furniture is visible rather than silently included.
+  **Status: cycle-2 review INTERRUPTED — the reviewer was killed 2026-09-02 before returning a
+  verdict, and posted no PR comment. The branch head `c737905` is intact and pushed; the gate
+  above stands. Re-dispatch the reviewer; it is still cycle 2, not cycle 3.**
 - **checks=10**, C1-C4 and C9 mutation-gated.
   Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
   `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
