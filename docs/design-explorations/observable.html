@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-013 — the merged Observable node (design exploration)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="observable.css" />
+</head>
+<body>
+<main class="page">
+
+  <header class="ii-header">
+    <span class="ii-header__eyebrow">FCE-site design explorations</span>
+    <h1 class="ii-header__title">The merged Observable node</h1>
+    <p class="ii-header__lede">Ruled 2026-09-02 (<code>docs/design-brief.md</code> §4): the four
+      <code>Obs*</code> subtypes the reference engine defines —
+      <code>ObsGlobal</code>, <code>ObsObject</code>, <code>ObsVectorSum</code>,
+      <code>ObsCustom</code> — are <strong>one</strong> palette node, not four. A student places
+      a single <strong>Observable</strong> node and picks a <em>mode</em> inside it; the mode is
+      <code>config</code>, not identity, and resolves to the engine's subtype at submit, exactly
+      as <code>DataSource</code> is synthesised at submit. Nothing about which graphs are legal
+      changes — every mode shares the same legal connection,
+      <code>Observable* &rarr; Histogram</code>, which is why merging the node costs nothing
+      structurally.</p>
+    <p class="ii-header__lede">D-009 shipped the four subtypes as four separate node interiors,
+      in the <strong>inline-grow</strong> treatment among others — the node card itself grows in
+      place to hold its form, rather than opening a separate flyout panel. This page continues
+      that treatment for the merged node only: one node, a mode toggle inside it, and the four
+      control sets D-009 already designed, now switched rather than duplicated. Opened height per
+      mode is measured at the bottom — this is the widest node in the four-kind palette, so its
+      footprint is the number D-010 sizes the palette shell against.</p>
+  </header>
+
+  <section class="option" data-option="inline-grow">
+    <div class="kind-grid">
+
+      <!-- Observable — the one merged node kind -------------------------- -->
+      <article class="kind-demo" data-kind="Observable">
+        <h2 class="kind-demo__label">Observable</h2>
+        <div class="kind-demo__pair">
+
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--observable">
+              <p class="inode__title">Observable</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--observable inode--grown">
+              <p class="inode__title">Observable</p>
+              <p class="inode__subtitle">
+                <span class="obs-preview" data-mode="ObsGlobal">missing transverse energy</span>
+                <span class="obs-preview" data-mode="ObsObject">lepton 1 &mdash; pt</span>
+                <span class="obs-preview" data-mode="ObsVectorSum">mass of lepton 1 + lepton 2</span>
+                <span class="obs-preview" data-mode="ObsCustom">(l1.p4 + l2.p4).mass</span>
+              </p>
+
+              <div class="inline-form">
+                <fieldset class="mode-toggle">
+                  <legend class="mode-toggle__legend">Mode &mdash; what number am I plotting?</legend>
+
+                  <span class="mode-toggle__opt">
+                    <input type="radio" name="obs-mode" id="obs-mode-global"
+                           value="ObsGlobal" checked />
+                    <label for="obs-mode-global">Global</label>
+                  </span>
+
+                  <span class="mode-toggle__opt">
+                    <input type="radio" name="obs-mode" id="obs-mode-object"
+                           value="ObsObject" />
+                    <label for="obs-mode-object">Object</label>
+                  </span>
+
+                  <span class="mode-toggle__opt">
+                    <input type="radio" name="obs-mode" id="obs-mode-vecsum"
+                           value="ObsVectorSum" />
+                    <label for="obs-mode-vecsum">Vector sum
+                      <span class="mode-toggle__unlock-tag">mission 2</span></label>
+                  </span>
+
+                  <span class="mode-toggle__opt">
+                    <input type="radio" name="obs-mode" id="obs-mode-custom"
+                           value="ObsCustom" />
+                    <label for="obs-mode-custom">Custom</label>
+                  </span>
+                </fieldset>
+
+                <!-- ObsGlobal ---------------------------------------------- -->
+                <div class="mode-panel" data-mode="ObsGlobal">
+                  <div class="obs-field">
+                    <label for="obs-global-qty">Event quantity</label>
+                    <select id="obs-global-qty" name="obs-global-qty">
+                      <option>missing transverse energy</option>
+                      <option>number of leptons</option>
+                      <option>total visible energy</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- ObsObject ---------------------------------------------- -->
+                <div class="mode-panel" data-mode="ObsObject">
+                  <div class="obs-field">
+                    <label for="obs-object-object">Object</label>
+                    <select id="obs-object-object" name="obs-object-object">
+                      <option>lepton 1</option>
+                      <option>lepton 2</option>
+                      <option>jet 1</option>
+                    </select>
+                  </div>
+                  <div class="obs-field">
+                    <label for="obs-object-field">Quantity</label>
+                    <select id="obs-object-field" name="obs-object-field">
+                      <option>pt</option>
+                      <option>eta</option>
+                      <option>phi</option>
+                      <option>mass</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- ObsVectorSum — the mission-2 unlock --------------------- -->
+                <div class="mode-panel" data-mode="ObsVectorSum">
+                  <p class="obs-field__group-label">Add together</p>
+                  <div class="obs-check">
+                    <input type="checkbox" id="obs-vecsum-l1" name="obs-vecsum-l1" checked />
+                    <label for="obs-vecsum-l1">lepton 1</label>
+                  </div>
+                  <div class="obs-check">
+                    <input type="checkbox" id="obs-vecsum-l2" name="obs-vecsum-l2" checked />
+                    <label for="obs-vecsum-l2">lepton 2</label>
+                  </div>
+                  <div class="obs-check">
+                    <input type="checkbox" id="obs-vecsum-photon" name="obs-vecsum-photon" />
+                    <label for="obs-vecsum-photon">photon</label>
+                  </div>
+                  <div class="obs-field">
+                    <label for="obs-vecsum-field">Then read off</label>
+                    <select id="obs-vecsum-field" name="obs-vecsum-field">
+                      <option>mass</option>
+                      <option>pt</option>
+                      <option>eta</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- ObsCustom ------------------------------------------------ -->
+                <div class="mode-panel" data-mode="ObsCustom">
+                  <p class="obs-field__note">No guided form here &mdash; a custom observable is,
+                    by definition, something the other three modes cannot already say.</p>
+                  <div class="obs-field">
+                    <label for="obs-custom-expr">Expression</label>
+                    <input id="obs-custom-expr" name="obs-custom-expr" class="obs-field__mono"
+                           type="text" value="(l1.p4 + l2.p4).mass" spellcheck="false" />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </figure>
+
+        </div>
+        <p class="kind-demo__note">One node, one <code>config: {mode, ...mode's own fields}</code>
+          in the run payload — the mode names above (<code>ObsGlobal</code>,
+          <code>ObsObject</code>, <code>ObsVectorSum</code>, <code>ObsCustom</code>) are values of
+          that field, never a node kind a student chooses at placement time. Try the toggle above:
+          it is a native radio group — <kbd>Tab</kbd> once to reach it, landing on the checked
+          option, then <kbd>&larr;</kbd>/<kbd>&rarr;</kbd> to move between and select the other
+          options — and only the active mode's controls render — the switch is plain CSS
+          (<code>:has()</code> against the checked radio), no script.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section class="unlock-note">
+    <h2>How a locked mode reads</h2>
+    <p>Under the merged node, <code>ObsVectorSum</code> — the mission-2 unlock, adding the
+      photon's four-vector back to recover the Z mass — cannot read as a fifth palette button
+      that simply is not there yet, because it no longer is one; the unlock has to read
+      <strong>inside</strong> the node. The toggle option above is where it happens: before
+      mission 2 is reached, that option carries the same desaturated, visibly-inert treatment
+      <code>.claude/design/CLAUDE.md</code> §2 asks of every locked node kind — not a lighter
+      grey, a distinct flat fill — plus a small lock glyph in place of the mission tag, and it
+      drops out of the tab order rather than sitting in it disabled-and-silent, so a keyboard
+      student's Tab press skips straight past it to the next real option. This mock is
+      <code>aria-hidden</code> and inert; the live toggle above stays fully unlocked so every
+      mode is testable on this page.</p>
+    <div class="mode-toggle mode-toggle--mock" aria-hidden="true">
+      <span class="mode-toggle__legend">Mode &mdash; what number am I plotting?</span>
+      <span class="mode-toggle__opt">
+        <span class="mode-toggle__chip">Global</span>
+      </span>
+      <span class="mode-toggle__opt">
+        <span class="mode-toggle__chip">Object</span>
+      </span>
+      <span class="mode-toggle__opt mode-toggle__opt--locked">
+        <span class="mode-toggle__chip mode-toggle__chip--locked">
+          <span class="mode-toggle__lock">&#128274;</span> Vector sum
+          <span class="mode-toggle__unlock-tag">unlocks &mdash; mission 2</span>
+        </span>
+      </span>
+      <span class="mode-toggle__opt">
+        <span class="mode-toggle__chip">Custom</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section class="footprint-note">
+    <h2>Footprint</h2>
+    <p>The opened node's height changes with mode, because <code>ObsVectorSum</code> carries
+      more controls than the other three. <code>observable_verify.py --section footprint</code>
+      measures the rendered height of the opened node in every mode and names the tallest —
+      that number, not an estimate, is what D-010 has to size the palette shell's widest node
+      against. See the PR body for the measured values.</p>
+  </section>
+
+</main>
+</body>
+</html>
