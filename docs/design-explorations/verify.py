@@ -6687,6 +6687,34 @@ APP_BELOW_AA_BACKDROP = "--paper"
 APP_BELOW_AA_EXPECTED_RATIO = 2.60
 APP_BELOW_AA_LABEL = "NON-TEXT-SAFE"
 
+# Every ratio tokens.css writes down in its own prose, as (foreground token,
+# background token, the literal as written). A comment that quotes a number
+# is a claim, and a claim nothing recomputes rots the first time a hex moves
+# by one digit -- so each of these is recomputed from the shipped token
+# values and held to the literal, and the file is then swept for any
+# `N.NN:1` literal this table does not claim. Both halves matter: the table
+# catches a number that drifted, the sweep catches a number that was added
+# without being checked.
+APP_DOCUMENTED_RATIOS = [
+    ("--ink", "--paper", "12.75"),
+    ("--ink-70", "--paper", "5.18"),
+    ("--ink-45", "--paper", "2.60"),
+    ("--graphite-blue", "--paper", "6.20"),
+    ("--on-graphite-blue", "--graphite-blue", "7.29"),
+    ("--graphite-blue-strong", "--paper", "8.66"),
+    ("--vermillion", "--paper", "4.62"),
+    ("--node-label-on-fill", "--node-multiplicity", "5.48"),
+    ("--ink", "--locked-fill", "8.90"),
+    ("--ink-70", "--locked-fill", "4.30"),
+    ("--syst-grey", "--paper", "3.24"),
+]
+
+# Literals the sweep must not treat as a measurement: WCAG's own AA
+# threshold, which tokens.css quotes as a target rather than as a result.
+APP_RATIO_LITERALS_EXEMPT = {"4.5"}
+
+_CSS_RATIO_RE = re.compile(r"([0-9]+\.[0-9]+):1")
+
 # Type faces this project rules out by name (design manual section 2): the
 # defaults every generated site converges on.
 APP_BANNED_FACES = ["inter", "roboto", "system-ui", "space grotesk", "arial", "helvetica"]
@@ -6824,9 +6852,15 @@ def check_tokens_shape() -> bool:
                 n_custom += 1
             else:
                 # Point at the declaration's own line where it can be
-                # found, falling back to the block header's line if the
-                # property is written in some shape this search misses.
-                m = re.search(r"(?m)^[ \t]*" + re.escape(prop) + r"[ \t]*:", stripped)
+                # found. First the common shape, one declaration to a line;
+                # then the same property anywhere it is not part of a
+                # longer identifier, which is what catches a rule written
+                # inline on one line; and only then the block header.
+                esc = re.escape(prop)
+                m = (
+                    re.search(r"(?m)^[ \t]*" + esc + r"[ \t]*:", stripped)
+                    or re.search(r"(?<![\w-])" + esc + r"[ \t]*:", stripped)
+                )
                 where = stripped.count("\n", 0, m.start()) + 1 if m else ln
                 offenders.append(f"{prop} (in `{header.strip()}`, line {where}): {value[:40]}")
     ok = not offenders
@@ -6897,7 +6931,48 @@ def check_tokens_contrast() -> bool:
         labelled,
         "label found beside the token" if labelled else "no comment names both the token and the label",
     )
-    return not failures and not missing and present and ok_ratio and labelled
+
+    # Every ratio the file writes down, recomputed and held to what is
+    # written -- and then a sweep for any ratio literal no entry claims.
+    drifted: list[str] = []
+    claimed: list[str] = []
+    for fg, bg, written in APP_DOCUMENTED_RATIOS:
+        if fg not in tokens or bg not in tokens:
+            drifted.append(f"{fg} on {bg}: token absent")
+            continue
+        front, back = _composited(tokens[fg], tokens[bg])
+        ratio = contrast_ratio(front, back)
+        agrees = f"{ratio:.2f}" == written
+        in_file = f"{written}:1" in text
+        print(
+            f"       documented {written+':1':>9s}  computed {ratio:6.3f}:1  "
+            f"{fg} on {bg}  {'ok' if agrees and in_file else 'MISMATCH'}"
+        )
+        if not agrees:
+            drifted.append(f"{fg} on {bg}: file says {written}:1, computed {ratio:.3f}:1")
+        elif not in_file:
+            drifted.append(f"{fg} on {bg}: {written}:1 no longer written in the file")
+        else:
+            claimed.append(written)
+    line(
+        f"all {len(APP_DOCUMENTED_RATIOS)} ratios written into tokens.css agree with the value computed "
+        "from the shipped tokens",
+        not drifted,
+        "every documented ratio recomputed" if not drifted else f"{drifted}",
+    )
+    found = [m for m in _CSS_RATIO_RE.findall(text) if m not in APP_RATIO_LITERALS_EXEMPT]
+    unclaimed = sorted(set(found) - set(claimed))
+    line(
+        f"every ratio literal in the file is claimed by the table ({len(found)} found, "
+        f"{len(APP_RATIO_LITERALS_EXEMPT)} threshold literal(s) exempt)",
+        not unclaimed,
+        "no unchecked ratio is asserted in a comment" if not unclaimed
+        else f"asserted but never computed: {unclaimed}",
+    )
+    return (
+        not failures and not missing and present and ok_ratio and labelled
+        and not drifted and not unclaimed
+    )
 
 
 def check_tokens_fonts() -> bool:
@@ -7165,7 +7240,6 @@ def _dispatch_named_section(name: str) -> bool:
     if name not in TOKENS_SECTIONS:
         raise KeyError(f"unknown section {name!r}; known: {sorted(TOKENS_SECTIONS)}")
     return TOKENS_SECTIONS[name]()
-
 
 
 if __name__ == "__main__":
