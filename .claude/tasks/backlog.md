@@ -556,3 +556,7 @@ and are historical now that #6 is merged.
   *smaller* wrong box (an inner panel) still satisfies `h < fig_h` and re-certifies a too-small
   number to D-010. Tighter form: assert the measured element's own selector, or the known
   ~20.5px figure-minus-node gap. Filed 2026-09-02.
+
+- **D-002 tight non-text headroom** — `--frozen-x2` at 3.12:1 and `--syst-grey` at 3.24:1 on
+  `--paper` clear WCAG SC 1.4.11's 3:1 by under 0.25. Any future warming of `--paper` breaks
+  both. Raised by the coder 2026-09-02; note it whenever the ground colour is next touched.
