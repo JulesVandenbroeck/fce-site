@@ -542,3 +542,8 @@ and are historical now that #6 is merged.
   C7/C8 assert a four-file diff including `docs/design-explorations/README.md` (legitimately, from
   cycle 1). The two sections read as contradicting each other. Body-only; the tree is correct.
   (D-009 cycle 2, 2026-09-02)
+- **`--node-observable` token missing** — the merged `Observable` node has no identity hue of its
+  own. D-013's page borrows `--node-obs-global` as a stand-in, documented in `observable.css`.
+  **D-002 is choosing the Observable hue from the four existing `--node-obs-*` right now**, so
+  this closes itself if D-002 names the token `--node-observable`; check on merge and drop this
+  item if so. (D-013 cycle 1, 2026-09-02)

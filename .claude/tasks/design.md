@@ -103,9 +103,12 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   new palette search.
 - **Depends on:** ~~the M1 style choice~~ — settled 2026-09-01, Bench.
 - **Branch / PR:** `task/d-002-tokens` — **branch exists at `9495696` with ZERO commits, no PR.**
-- **Status:** **cycle-1 dispatch LOST.** Reconciled against git 2026-09-02: the branch was
-  created and never written to, no handoff and no anchor file exists. The agent died before its
-  first commit. **Re-dispatch is cycle 1, not cycle 2.**
+- **Status:** **cycle 1, re-dispatched 2026-09-02**, own worktree, Opus. The 2026-09-01 dispatch
+  was LOST — reconciled against git: the branch was created at `9495696` and never written to, no
+  handoff, no anchor. This is still cycle 1. The dispatch carries the re-spec'd C5 (four hues),
+  the corrected nine-not-ten `--node-*` count, the harvest-don't-search instruction with D-008's
+  six floors and their published values, and the warning that `verify.py --all` exits 1 on `main`
+  by design with `board-lane-fill` as the intended red.
 - **History:** [`archive/design.md`](archive/design.md)
 
 ## Ready
@@ -141,7 +144,21 @@ _none — both released tasks are in flight._
   keyboard-operable; opened height measured and reported per mode, because that number is
   D-010's input. Mutation-gated, same shape as D-009's C9/C10.
 - **Depends on:** nothing. **Blocks D-010.**
-- **Branch / PR:** not yet opened
+- **Branch / PR:** `task/d-013-observable-interior` — **#23**, `d98d7d4`
+- **Status:** **cycle 1 in review.** §5.1 gate reproduced 2026-09-02 in `~/fce-gate-d013` with
+  the primary `.venv`: all five sections PASS / exit 0, C6 and C7 grep `exit=1`, diff exactly the
+  three new files. Every control count matches the scout table it was dispatched with
+  (ObsGlobal 1 select; ObsObject 2; ObsVectorSum 3 checkboxes + 1 select; ObsCustom 1 text), all
+  labelled. **Declared deviation on C2's method:** the criterion asked for a printed tab index
+  per mode option failing on `None`; the coder implemented native radiogroup semantics (Tab into
+  the group, Arrow keys between options), arguing Chromium enforces roving tabindex on a
+  same-`name` group regardless of explicit `tabindex`. The gate output nonetheless prints
+  `tab_index=1..4`, none `None` — the reviewer was asked to rule on the merits.
+- **checks=8**, C1-C4 mutation-gated.
+  Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
+  `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
+  seven, so appending there would have required reopening a passing check to add a page that
+  contradicts it. C5 exists solely to hand D-010 the tallest opened mode height.
 
 ### D-011 — The completed-mission box on the canvas
 - **Scope:** the frozen-and-boxed treatment for a completed mission's graph.
