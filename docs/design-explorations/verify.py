@@ -1944,10 +1944,14 @@ def check_git_diff() -> bool:
         ok,
         f"offending paths: {detail}",
     )
-    line(
-        f"Exempt deliverable paths carried by this branch: {len(exempt)}",
-        True,
-        ", ".join(exempt) if exempt else "none",
+    # Review m2 (cycle 1): this was emitted through `line(..., True, ...)`,
+    # so it printed [PASS] while asserting nothing, and a [PASS] that cannot
+    # fail dilutes every other [PASS] in the summary. It is informational --
+    # the assertion above it is what does the work -- so it prints as
+    # information.
+    print(
+        f"       Exempt deliverable paths carried by this branch: {len(exempt)}"
+        f" -- {', '.join(exempt) if exempt else 'none'}"
     )
     return ok
 
@@ -6317,7 +6321,7 @@ def main() -> None:
         default=[],
         metavar="NAME",
         help="run only the named section(s) -- D-002: tokens-shape, tokens-contrast, "
-             "tokens-fonts, tokens-palette. Repeatable.",
+             "tokens-fonts, tokens-palette, tokens-nontext. Repeatable.",
     )
     args = parser.parse_args()
     if (not args.plot and not args.all and not args.beamline and not args.bench and not args.board
@@ -6751,6 +6755,15 @@ APP_DOCUMENTED_RATIOS = [
     ("--ink", "--locked-fill", "8.90"),
     ("--ink-70", "--locked-fill", "4.30"),
     ("--syst-grey", "--paper", "3.24"),
+    # D-002 cycle 2, closing review M1: the non-text ratios tokens.css now
+    # writes into its own prose. Same rule as the text ones above -- a
+    # number in a comment is a claim, and a claim nothing recomputes rots.
+    ("--chrome-border", "--hover-bg", "3.13"),
+    ("--locked-border", "--locked-fill", "3.11"),
+    ("--locked-fill", "--paper", "1.43"),
+    ("--frozen-x2", "--paper", "3.12"),
+    ("--frozen-x3", "--paper", "3.18"),
+    ("--tab10-x3", "--paper", "1.92"),
 ]
 
 # Literals the sweep must not treat as a measurement: WCAG's own AA
@@ -7267,6 +7280,247 @@ def check_tokens_palette() -> bool:
     return ok_count and ok1 and ok2 and ok3 and ok4 and ok5 and ok6
 
 
+# ---------------------------------------------------------------------
+# D-002 cycle 2 -- WCAG 2.2 SC 1.4.11, and completeness of the pair tables
+#
+# C8 and C9, closing review finding M1. Everything above measures text
+# contrast at 4.5:1; SC 1.4.11 governs the other half of the file -- the
+# edge of a control, the outline of a node, a histogram stroke -- at a 3:1
+# floor, and until this section existed that dimension was asserted by
+# nobody. A pair either clears the floor here or sits on an exemption
+# table that names it and says why it is not a boundary a student has to
+# perceive. C9 then closes the set: a colour token appearing in no table
+# at all is reported by name, so a token a later task adds cannot slip
+# through uncovered.
+# ---------------------------------------------------------------------
+
+# WCAG 2.2 SC 1.4.11 Non-text Contrast, Level AA.
+APP_NONTEXT_FLOOR = 3.0
+
+# The four surfaces a control can be drawn on. --hover-bg is the darkest,
+# so it is the binding ground for any border token.
+APP_UI_GROUNDS = ["--paper", "--panel", "--chrome-bg", "--hover-bg"]
+
+# The two surfaces the board canvas and the plot canvas are ever painted
+# on. Node fills, series colours and plot furniture are scoped to these
+# rather than to every ground, because a histogram is never drawn on the
+# fill of a button and a pair nothing can produce is not evidence.
+APP_CANVAS_GROUNDS = ["--paper", "--panel"]
+
+APP_NODE_FILLS = [
+    "--node-multiplicity",
+    "--node-selection",
+    "--node-observable",
+    "--node-histogram",
+    "--node-data",
+]
+
+
+def _nontext_pairs() -> list[tuple[str, str, str]]:
+    """Every non-text pair the shipped token file implies, as (foreground,
+    background, what it is on screen). Built rather than written out flat
+    so that a node hue or a ground added to the lists above cannot be
+    measured against a shorter set than its neighbours were."""
+    pairs: list[tuple[str, str, str]] = []
+    for g in APP_UI_GROUNDS:
+        pairs.append(("--chrome-border", g, "edge of a button, input or card"))
+    for g in ["--locked-fill", "--paper", "--panel"]:
+        pairs.append(("--locked-border", g, "outline of a locked node"))
+    for g in APP_CANVAS_GROUNDS:
+        pairs.append(("--legend-border", g, "the box round a plot legend"))
+    for g in APP_UI_GROUNDS:
+        pairs.append(("--focus-ring", g, "the focus ring on a stop sitting on a surface"))
+    for fill in APP_NODE_FILLS:
+        pairs.append(("--node-label-on-fill", fill, "the focus ring on a port inside a fill"))
+    for fill in APP_NODE_FILLS:
+        for g in APP_CANVAS_GROUNDS:
+            pairs.append((fill, g, "a node body on the board canvas"))
+    for furniture in ["--plot-frame", "--plot-edge", "--data-marker"]:
+        for g in APP_CANVAS_GROUNDS:
+            pairs.append((furniture, g, "axis frame, histogram edge or data marker"))
+    for g in APP_CANVAS_GROUNDS:
+        pairs.append(("--syst-grey", g, "the systematic-uncertainty band"))
+    for g in APP_CANVAS_GROUNDS:
+        pairs.append(("--vermillion", g, "a 3-sigma or 5-sigma threshold rule, drawn not written"))
+    for series in ["--frozen-x1", "--frozen-x2", "--frozen-x3"]:
+        for g in APP_CANVAS_GROUNDS:
+            pairs.append((series, g, "a sample's histogram fill and stroke"))
+    return pairs
+
+
+APP_NONTEXT_PAIRS = _nontext_pairs()
+
+# Pairs deliberately held to no floor, each with the reason it is not a
+# boundary SC 1.4.11 governs. An entry here is a decision on the record,
+# not an omission: the check prints the measured ratio for every one of
+# them beside the floor it is not being held to, so an exemption that
+# quietly stopped being true is still visible in the transcript.
+APP_NONTEXT_EXEMPT = [
+    ("--paper-line", "--paper",
+     "the ruled line of the notebook ground -- furniture, disclaimed as such where it "
+     "is declared; nothing is understood by seeing it"),
+    ("--paper-line", "--panel",
+     "the same ruled line where a card carries it"),
+    ("--ink-45", "--paper",
+     "hairline rules, a disabled glyph, the faint grid of a ruled page: the resting "
+     "state of a mark, never an edge that has to be found"),
+    ("--node-shadow", "--paper",
+     "a drop shadow -- depth, not an edge; the node's own fill draws the boundary and "
+     "is measured above"),
+    ("--panel", "--paper",
+     "a card laid on the page: two surfaces, not a boundary. The edge between them is "
+     "--chrome-border, which is measured against both"),
+    ("--chrome-bg", "--paper",
+     "a control's fill against the page, same reason: --chrome-border draws that edge"),
+    ("--hover-bg", "--chrome-bg",
+     "the hover state of one control against its own resting fill. SC 1.4.11 asks that "
+     "the control be perceivable, which its border already answers; hover is a "
+     "reinforcement and never the only cue"),
+    ("--locked-fill", "--paper",
+     "the inert body of a locked node. It sits low against the page on purpose -- a "
+     "not-yet-earned node that shouted would defeat the state it encodes -- and "
+     "--locked-border carries its boundary at 3:1, measured above"),
+    ("--locked-fill", "--panel",
+     "the same inert body where a card carries it"),
+    ("--tab10-x1", "--paper",
+     "the matplotlib draw-order map, kept to reproduce a static export. Moving a value "
+     "to clear a floor would stop it reproducing that export, and our own renderer "
+     "paints none of these"),
+    ("--tab10-x2", "--paper",
+     "the same map, sample 2"),
+    ("--tab10-x3", "--paper",
+     "the same map, sample 3 -- the low one, at 1.92:1 on paper, and the reason this "
+     "table has to name it rather than leave it out"),
+]
+
+
+def _covered_tokens() -> set[str]:
+    """Every token name that appears somewhere a ratio is computed or a
+    reason is recorded: the text pairs, the non-text pairs, the exemption
+    table, the documented-ratio table, and the below-AA token with its
+    backdrop. C9's denominator is the colour tokens the file declares;
+    this is its numerator."""
+    covered: set[str] = set()
+    for fg, bg in APP_TEXT_PAIRS:
+        covered.update((fg, bg))
+    for fg, bg, _why in APP_NONTEXT_PAIRS:
+        covered.update((fg, bg))
+    for fg, bg, _why in APP_NONTEXT_EXEMPT:
+        covered.update((fg, bg))
+    for fg, bg, _written in APP_DOCUMENTED_RATIOS:
+        covered.update((fg, bg))
+    covered.add(APP_BELOW_AA_TOKEN)
+    covered.add(APP_BELOW_AA_BACKDROP)
+    return covered
+
+
+def _declared_colour_tokens(tokens: dict[str, str]) -> list[str]:
+    """The custom properties whose value is a colour, one level of `var()`
+    already resolved by `_app_tokens`. A duration or a length is not a
+    contrast question, and a shadow shorthand is not a colour even though
+    it contains one -- what is wanted is the tokens something can actually
+    be painted in."""
+    return sorted(n for n, v in tokens.items() if _rgba_token(v) is not None)
+
+
+def check_tokens_nontext() -> bool:
+    """C8 and C9: WCAG 2.2 SC 1.4.11 computed over every non-text pair the
+    shipped tokens imply, and a completeness assertion over the colour
+    tokens themselves.
+
+    C8 -- each pair in `APP_NONTEXT_PAIRS` is composited against its
+    backdrop and held to `APP_NONTEXT_FLOOR`; each pair in
+    `APP_NONTEXT_EXEMPT` is measured too, printed with the reason
+    it is exempt, and held to nothing. A pair may not sit in both tables --
+    that would be a way to make a failure disappear by adding a line -- and
+    the check fails if one does.
+
+    C9 -- the colour tokens the file declares are diffed against the union
+    of everything the tables reach. A token in neither is reported by name
+    and fails the section, so a colour added by a later design task is
+    covered or it is loud."""
+    section("Tokens (shipped) -- WCAG 2.2 SC 1.4.11 non-text contrast, and table completeness")
+    tokens = _app_tokens()
+
+    both = sorted(
+        {(fg, bg) for fg, bg, _w in APP_NONTEXT_PAIRS}
+        & {(fg, bg) for fg, bg, _w in APP_NONTEXT_EXEMPT}
+    )
+    line(
+        "no pair is both measured and exempt",
+        not both,
+        "the two tables are disjoint" if not both else f"in both tables: {both}",
+    )
+
+    failures: list[str] = []
+    missing: list[str] = []
+    print(f"       floor {APP_NONTEXT_FLOOR:.1f}:1 (WCAG 2.2 SC 1.4.11 Non-text Contrast, AA)")
+    for fg, bg, what in APP_NONTEXT_PAIRS:
+        if fg not in tokens or bg not in tokens:
+            missing.append(f"{fg} on {bg}")
+            print(f"       {fg:22s} on {bg:18s}   ---     MISSING TOKEN   {what}")
+            continue
+        front, back = _composited(tokens[fg], tokens[bg])
+        ratio = contrast_ratio(front, back)
+        ok = ratio >= APP_NONTEXT_FLOOR
+        print(
+            f"       {fg:22s} on {bg:18s} {ratio:6.3f}:1 vs "
+            f"{APP_NONTEXT_FLOOR:.1f}:1  {'PASS' if ok else 'FAIL'}   {what}"
+        )
+        if not ok:
+            failures.append(f"{fg} on {bg} at {ratio:.3f}:1 (floor {APP_NONTEXT_FLOOR:.1f}:1)")
+    line(
+        f"all {len(APP_NONTEXT_PAIRS)} non-text pairs computed from the shipped values clear "
+        f"{APP_NONTEXT_FLOOR:.1f}:1",
+        not failures and not missing,
+        "every pair at or above the SC 1.4.11 floor" if not failures and not missing
+        else f"below the floor: {failures}; missing tokens: {missing}",
+    )
+
+    exempt_missing: list[str] = []
+    for fg, bg, why in APP_NONTEXT_EXEMPT:
+        if fg not in tokens or bg not in tokens:
+            exempt_missing.append(f"{fg} on {bg}")
+            print(f"       {fg:22s} on {bg:18s}   ---     MISSING TOKEN")
+            continue
+        front, back = _composited(tokens[fg], tokens[bg])
+        ratio = contrast_ratio(front, back)
+        print(
+            f"       {fg:22s} on {bg:18s} {ratio:6.3f}:1 vs "
+            f"{APP_NONTEXT_FLOOR:.1f}:1  EXEMPT  {why}"
+        )
+    line(
+        f"all {len(APP_NONTEXT_EXEMPT)} exempt pairs name both tokens and a reason, and both "
+        "tokens still exist",
+        not exempt_missing,
+        "every exemption is a live pair with a stated reason" if not exempt_missing
+        else f"exemption names a token the file no longer declares: {exempt_missing}",
+    )
+
+    declared = _declared_colour_tokens(tokens)
+    covered = _covered_tokens()
+    uncovered = [n for n in declared if n not in covered]
+    for n in uncovered:
+        print(f"       UNCOVERED  {n} = {tokens[n]}  (in no text pair, no non-text pair, no exemption)")
+    line(
+        f"every colour token the file declares appears in at least one table "
+        f"({len(declared)} declared, {len(declared) - len(uncovered)} covered)",
+        not uncovered,
+        "no colour token is uncovered" if not uncovered
+        else f"declared but in no table: {uncovered}",
+    )
+
+    stale = sorted(n for n in covered if n not in tokens)
+    line(
+        "no table names a token the shipped file no longer declares",
+        not stale,
+        "every token the tables reach for is declared" if not stale
+        else f"named by a table but absent from tokens.css: {stale}",
+    )
+
+    return not failures and not missing and not both and not exempt_missing and not uncovered and not stale
+
+
 # Named so `--section <name>` can address one of them without running the
 # whole sweep, which is what each D-002 acceptance criterion asks for.
 TOKENS_SECTIONS = {
@@ -7274,6 +7528,7 @@ TOKENS_SECTIONS = {
     "tokens-contrast": check_tokens_contrast,
     "tokens-fonts": check_tokens_fonts,
     "tokens-palette": check_tokens_palette,
+    "tokens-nontext": check_tokens_nontext,
     # Not a tokens section, but addressable here so the narrowed scope guard
     # can be exercised on its own — including with a deliberate out-of-scope
     # probe file committed — without running the whole sweep.

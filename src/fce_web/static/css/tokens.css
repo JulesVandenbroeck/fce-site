@@ -92,9 +92,24 @@
   --paper-line: #e6dcc3;
   --panel: #faf5e7;
 
-  /* ---- chrome: furniture, not physics -------------------------------- */
+  /* ---- chrome: furniture, not physics ---------------------------------
+   * --chrome-border is the boundary of a real control -- the edge of a
+   * button, an input, a card -- so it is a UI-component boundary under
+   * WCAG 2.2 SC 1.4.11 and owes 3:1 against every surface
+   * it can be drawn on. It was #d8cba8, which fell under the floor on all
+   * four -- worst of them a boundary at barely a fifth of what SC 1.4.11
+   * asks for, which is a boundary a student cannot see. Darkened to the
+   * value below,
+   * which clears the floor on all four grounds (worst case 3.13:1 on
+   * --hover-bg, the darkest of them). It is a warm grey rather than a
+   * neutral one, so the edge still reads as pencil on paper.
+   *
+   * --chrome-bg and --hover-bg are surfaces, not boundaries: what sets
+   * them apart from --paper is this border, and it is the border the
+   * non-text check measures. Every pair here is computed by
+   * `verify.py --section tokens-nontext`. */
   --chrome-bg: #efe6d2;
-  --chrome-border: #d8cba8;
+  --chrome-border: #847c66;
   --hover-bg: #e9dfc4;
 
   /* ---- ink: text ------------------------------------------------------
@@ -139,10 +154,18 @@
    * other one, and X1 changing colour between missions is a teaching bug.
    * X1 is the signal in missions 1 and 2 and therefore takes the reserved
    * accent — which is what "the signal sample" in §2 means. Ruled the
-   * default at the 2026-08-16 checkpoint. */
+   * default at the 2026-08-16 checkpoint.
+   *
+   * These are drawn by our own renderer, as histogram fills and strokes on
+   * --paper or --panel, so each is a graphical object the chart cannot be
+   * read without and each owes 3:1 under WCAG 2.2 SC 1.4.11. X3 was
+   * #b5883a, which came in under the floor on paper; darkened to the value
+   * below at 3.18:1, a move small enough that its separation from X1 and
+   * X2 stays above 19 delta-E. X1 (the reserved accent) is 4.62:1 on paper
+   * and X2 is 3.12:1, so both already cleared it. */
   --frozen-x1: var(--vermillion);
   --frozen-x2: #6b8f5e;
-  --frozen-x3: #b5883a;
+  --frozen-x3: #a67d36;
 
   /* ---- sample identity: tab10, the reference draw-order map -----------
    * `matplotlib.colormaps["tab10"].resampled(3)` — exactly what
@@ -150,7 +173,15 @@
    * because a static plot exported from matplotlib still comes out in
    * these colours, so anything reproducing that export needs them; not
    * the default for our own rendering. These are the resampled values,
-   * not raw tab10 indices 0/1/2. */
+   * not raw tab10 indices 0/1/2.
+   *
+   * Exempt from the 3:1 non-text floor, and the exemption is the point of
+   * the token: this map's whole job is to be identical to what matplotlib
+   * emits, so a value moved to clear a contrast floor would stop
+   * reproducing the export and the token would be a lie. Nothing our own
+   * renderer paints reads from here. --tab10-x3 measures 1.92:1 on paper
+   * and stays there. The exemption is listed and asserted by
+   * `verify.py --section tokens-nontext` rather than left implicit. */
   --tab10-x1: #1f77b4;
   --tab10-x2: #8c564b;
   --tab10-x3: #17becf;
@@ -201,9 +232,21 @@
    * own, sitting apart from every node hue, rather than one of them turned
    * down, so it reads as not-yet-earned instead of broken. Its label stays
    * on full --ink (8.90:1); --ink-70 over this fill measures 4.30:1 and
-   * would miss AA. */
+   * would miss AA.
+   *
+   * The border is what makes a locked node a visible shape: the fill sits
+   * at 1.43:1 on paper by design, because an inert slab that shouted would
+   * defeat the point, so the outline carries the boundary by itself.
+   * --locked-border was #b3a98c, well under the floor on its own fill -- an
+   * outline a student could not see, around a fill they could not see
+   * either. Darkened to the value below: 3.11:1 on --locked-fill, and
+   * higher against paper and panel, which are lighter. It lands darker
+   * than --chrome-border, which is not a hierarchy inversion: what a
+   * locked node is read against is a saturated node fill, and beside one
+   * of those a desaturated outline round a dead fill still says
+   * not-yet-earned. */
   --locked-fill: #cfc7b2;
-  --locked-border: #b3a98c;
+  --locked-border: #726c59;
 
   /* ---- plot furniture -------------------------------------------------
    * "Black" in a published physics plot — axis frame, ticks, histogram
@@ -290,7 +333,15 @@
    * Quick, slightly damped, settling — never bouncy. --duration-stamp is
    * the one deliberately slower moment: the mission stamp pressing down.
    * Every animation using these must still have a reduced-motion end
-   * state; the token does not excuse the media query. */
+   * state; the token does not excuse the media query.
+   *
+   * --timing and --duration-base carry the same 180ms and are an alias
+   * pair. NEW CODE USES --duration-base: it is the one on the scale, beside
+   * --duration-fast, --duration-slow and --duration-stamp. --timing is
+   * LEGACY, retained only because the D-003/D-004 exploration stylesheets
+   * under docs/design-explorations/ already resolve it by that name, and it
+   * is not to be reached for again. Should the two ever have to diverge,
+   * --duration-base is the one that moves. */
   --timing: 180ms;
   --duration-fast: 120ms;
   --duration-base: 180ms;
