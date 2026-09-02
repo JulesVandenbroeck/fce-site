@@ -31,7 +31,7 @@ scope means the orchestrator's decomposition was wrong, and it needs to know.
 Before reporting done, actually run `pytest tests/ -q` and `flake8 src/ tests/`, and paste
 the real output.
 
-**Context failsafe.** At 50% context, write the 25-line anchor; at 90%, or on `HANDOFF NOW`,
+**Usage failsafe.** At 50% of the 5-hour usage limit, write the 25-line anchor; at 90%, or on `HANDOFF NOW`,
 stop and hand off rather than trying to finish. Protocol, templates and paths:
 `.claude/shared/context-failsafe.md` — open it when the watchdog fires.
 

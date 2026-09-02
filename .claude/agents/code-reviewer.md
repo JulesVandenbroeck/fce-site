@@ -59,8 +59,8 @@ for arriving late — later cycles are where fix-induced regressions live. You w
 previous review's PR-comment URL and its finding IDs: read it there, report `R1 fixed` /
 `R2 still open` against those IDs, and do not restate it.
 
-**Context failsafe.** At 50% context, write the 25-line anchor
-(`.claude/shared/context-failsafe.md` §8.0). If your context reaches 90%, or the orchestrator
+**Usage failsafe.** At 50% of the 5-hour usage limit, write the 25-line anchor
+(`.claude/shared/context-failsafe.md` §8.0). If it reaches 90%, or the orchestrator
 sends you `HANDOFF NOW`, stop and hand the review over per that same file: write `.claude/handoff/<task-id>-review-<cycle>.md` in the primary checkout, listing every
 criterion you actually ran with its real output — so the successor does not pay for them
 twice — and every finding you have so far at its honest severity. End that file with

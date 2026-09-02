@@ -36,7 +36,7 @@ Before reporting done, open the page in a real browser via Playwright: check for
 errors, tab through the controls, and confirm it holds at 1440 / 1024 / 768 px. Paste real
 output.
 
-**Context failsafe.** At 50% context, write the 25-line anchor; at 90%, or on `HANDOFF NOW`,
+**Usage failsafe.** At 50% of the 5-hour usage limit, write the 25-line anchor; at 90%, or on `HANDOFF NOW`,
 stop and hand off rather than trying to finish. Protocol, templates and paths:
 `.claude/shared/context-failsafe.md` — open it when the watchdog fires.
 

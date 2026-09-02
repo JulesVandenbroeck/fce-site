@@ -267,9 +267,9 @@ before you report done — see .claude/shared/CLAUDE.md §6 for what the PR body
 contain. The reviewer will see the PR and nothing else, so the body has to stand alone.
 Do not merge. Do not rebase. Do not delete any branch.
 
-## Context failsafe
-At 50% context, take the token audit and write .claude/handoff/<id>-<role>.anchor.md per
-.claude/shared/context-failsafe.md §8.0 — 25 lines, then keep working. If your context reaches 90%, or
+## Usage failsafe
+At 50% of the 5-hour usage limit, take the token audit and write .claude/handoff/<id>-<role>.anchor.md per
+.claude/shared/context-failsafe.md §8.0 — 25 lines, then keep working. If it reaches 90%, or
 if I send you `HANDOFF NOW`, stop the task and hand it over per §8: commit and push what you
 have, promote the anchor into .claude/handoff/<id>-<role>-<cycle>.md in the primary checkout,
 and report the short form in §8.5. Do not try to finish. A described stop is worth more than
@@ -840,16 +840,21 @@ above are scope, not designs. For a milestone with more than ~6 tasks, follow it
 
 ---
 
-## 10. Context failsafe — handing over the session
+## 10. Usage failsafe — handing over the session
 
 You are the only role that can end a session cleanly, because you are the only one that
-knows what every other role is doing. If you run out of context without doing that, the task
+knows what every other role is doing. If you run out of budget without doing that, the task
 lists are stale, the sub-agents are cut off mid-edit, and the next session inherits a repo it
 has to reverse-engineer from `git log`.
 
 The per-agent protocol is `.claude/shared/context-failsafe.md` §8. This section is your half of it.
 
 ### Two thresholds
+
+The number is the account's **5-hour usage limit**, on your status line as
+`5h [########] 76% 21:15`. It is one pool shared with every sub-agent you have running, so a
+percentage is a fact about the whole session, and spending it four agents at a time is exactly
+why the soft threshold exists.
 
 **At ~75% — soft.** Stop opening new work. Finish the cycle in flight, do not dispatch a
 fresh batch, do not start a new milestone, and bring the task lists fully current now while
@@ -858,11 +863,18 @@ one agent's handoff is cheap to collect, four at once is not.
 
 **At 90% — hard.** Hand the session over. Below, in order.
 
-Both thresholds are also asserted by the context watchdog hook (context-failsafe §8.1): it
-measures your transcript after every tool call and injects the soft warning at 75% and the
-hard one at 90%. Your sub-agents get the same warning on their own transcripts, so an agent
-may hand off to you before you send it `HANDOFF NOW` — collect that handoff and record it the
-same way.
+Both thresholds are also asserted by the usage watchdog hook (context-failsafe §8.1): it
+reads the 5h figure after every tool call and injects the soft warning at 75% and the hard one
+at 90%. Because the limit is account-wide, your sub-agents see the same percentage at the same
+moment, so an agent may hand off to you before you send it `HANDOFF NOW` — collect that handoff
+and record it the same way. The watchdog is silent when the status line is not feeding it (a
+headless session, or a stale state file), so it is a backstop and not a substitute for watching
+the number yourself.
+
+It also no longer measures anyone's context window. A single long task can still be compacted
+mid-flight with the 5h budget barely touched, and nothing will warn you first — if a sub-agent
+goes quiet or comes back visibly amnesiac, that is what happened, and the fix is a fresh
+dispatch from its anchor file.
 
 ### The order, and it is not negotiable
 
@@ -873,7 +885,7 @@ same way.
    to each:
 
    ```
-   HANDOFF NOW — session context limit. Stop the task, follow .claude/shared/context-failsafe.md §8:
+   HANDOFF NOW — 5-hour usage limit. Stop the task, follow .claude/shared/context-failsafe.md §8:
    commit and push, write .claude/handoff/<id>-<role>-<cycle>.md in the primary checkout,
    reply with the §8.5 short form only. Do not try to finish the task.
    ```
@@ -896,7 +908,7 @@ same way.
 
 6. **Commit `.claude/` to `main`** under the §4 carve-out — the task lists, every sub-agent
    handoff file they wrote into the primary checkout, and `SESSION.md`:
-   `git add .claude && git commit -m "orchestrator: session handoff at context limit"`.
+   `git add .claude && git commit -m "orchestrator: session handoff at usage limit"`.
    Uncommitted bookkeeping is bookkeeping you are about to lose.
 
 7. **Tell the user, in about five lines:** why the session is ending, what is in flight, and
@@ -924,7 +936,7 @@ that already live in `docs/`, or narrative about how the session went.
 ```markdown
 # Session handoff — <YYYY-MM-DD HH:MM>
 
-**Why:** orchestrator context reached <n>%. <n> sub-agent(s) recalled and handed off.
+**Why:** 5-hour usage limit reached <n>% (resets <HH:MM>). <n> sub-agent(s) recalled and handed off.
 **Milestone:** M<n> — <one line on where it stands>
 
 ## Read first

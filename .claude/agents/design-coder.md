@@ -35,7 +35,7 @@ Before reporting done: screenshot with Playwright at 1440 / 1024 / 768 px and **
 them**. Report measured contrast ratios against the real paper background (AA minimum),
 confirm `prefers-reduced-motion` is handled, and confirm focus is visible everywhere.
 
-**Context failsafe.** At 50% context, write the 25-line anchor; at 90%, or on `HANDOFF NOW`,
+**Usage failsafe.** At 50% of the 5-hour usage limit, write the 25-line anchor; at 90%, or on `HANDOFF NOW`,
 stop and hand off rather than trying to finish. Protocol, templates and paths:
 `.claude/shared/context-failsafe.md` — open it when the watchdog fires.
 

@@ -433,12 +433,15 @@ The same rule governs your prose. No preamble, no recap of the dispatch you were
 narration of your approach. The orchestrator asked for the six headings above; give it those.
 
 ---
-## 8. Context failsafe — the anchor at 50%, the handoff at 90%
+## 8. Usage failsafe — the anchor at 50%, the handoff at 90%
 
 **Full protocol: [`.claude/shared/context-failsafe.md`](context-failsafe.md).** It is split out
 so you do not pay ~200 lines on every dispatch for a procedure most tasks never reach. Read it
 the moment the watchdog fires, and read it *before* starting anything you can see you lack the
 budget to finish.
+
+The percentages below are of the account's **5-hour usage limit**, which every role spends from
+at once — not of your own context window, which nothing measures.
 
 What you must know without opening it:
 

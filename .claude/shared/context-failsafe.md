@@ -1,4 +1,4 @@
-# Context failsafe — the anchor at 50%, the handoff at 90%
+# Usage failsafe — the anchor at 50%, the handoff at 90%
 
 *This is §8 of `.claude/shared/CLAUDE.md`, split out so that the ~200 lines only load when they
 are needed. Read it when the watchdog fires, or when you can see you are heading for a limit.
@@ -6,10 +6,16 @@ Section numbers (§8.0 … §8.6) are unchanged; everything that cites "shared �
 
 ---
 
-A sub-agent that runs out of context mid-task does not fail politely. It gets compacted or
-cut off, and what is lost is exactly the expensive part: the dead ends, the commands that
-actually ran, the reason the third approach was abandoned. The work then has to be re-done
-by a cold successor who repeats every one of those mistakes.
+A sub-agent that runs out of budget mid-task does not fail politely. It gets cut off, and
+what is lost is exactly the expensive part: the dead ends, the commands that actually ran,
+the reason the third approach was abandoned. The work then has to be re-done by a cold
+successor who repeats every one of those mistakes.
+
+**The budget being measured is the account's 5-hour usage limit**, not your own context
+window. It is shared: the orchestrator and every sub-agent it has running spend from the same
+pool, so a percentage is a fact about the whole session, and everyone crosses each threshold
+together. When it runs out, nothing is running any more — there is no "finish this one thing
+first" on the far side of it.
 
 So: **at 50% you write an anchor and keep going; at 90% you stop and hand off.** Every role.
 No exceptions except `scout`, which is covered at the end of this section.
@@ -17,7 +23,7 @@ No exceptions except `scout`, which is covered at the end of this section.
 ### 8.0 The anchor at 50%
 
 The handoff below is a *stop* procedure. Between "fine" and "stop" there was nothing, so a long
-task that got compacted at 100k lost its reasoning with no artefact to show for it. The anchor
+task that hit the wall halfway lost its reasoning with no artefact to show for it. The anchor
 fills that gap, and it costs one file write.
 
 **You cannot run `/compact`.** It is an interactive command; a sub-agent has no way to invoke it
@@ -59,25 +65,34 @@ file in place; the orchestrator archives both together.
 
 Trigger the handoff the moment **any** of these is true:
 
-- your context is at or past **90%** — a harness warning that context is low, that
-  auto-compaction is imminent, or your own honest estimate;
-- the orchestrator sends you the message `HANDOFF NOW` (it triggers this when *its* own
-  session crosses 90%, so that the whole session can be handed over at once);
+- the **5-hour usage limit** is at or past **90%** — the watchdog below will tell you, and
+  the figure is also on the status line as `5h [########] 91% 21:15`;
+- the orchestrator sends you the message `HANDOFF NOW` (it triggers this when it sees the same
+  90%, so that the whole session can be handed over at once);
 - you are about to start something you can see you do not have the budget to finish — a
   full-suite run plus its fixes, reading a 2000-line file, a fourth review cycle.
 
 **You are not the only thing watching.** A `PostToolUse` hook —
-`.claude/scripts/context-watchdog.sh`, registered in `.claude/settings.json` — reads your own
-transcript after every tool call, sums the tokens of your last turn, and injects a warning at
-50% (§8.0, the anchor), 75% (stop opening new work) and 90% (this section). It fires once per
-threshold per session, for every role, because each role has its own transcript. When it fires
-at 90% it is telling you to run this section now, and it is measuring rather than guessing, so
-it wins over your own estimate.
+`.claude/scripts/usage-watchdog.sh`, registered in `.claude/settings.json` — runs after every
+tool call and injects a warning at 50% (§8.0, the anchor), 75% (stop opening new work) and 90%
+(this section). It fires once per threshold per session per 5-hour window, for every role, and
+it re-arms by itself when the window rolls over. When it fires at 90% it is telling you to run
+this section now, and it is measuring rather than guessing, so it wins over your own estimate.
 
-It is a backstop, not a licence to stop paying attention. It cannot see a turn you are
-*about* to take — the 2000-line file, the fourth review cycle — so the third trigger above is
-still yours to judge. If your window is not 200k tokens, set `FCE_CONTEXT_LIMIT` in the
-environment; the script assumes 200k otherwise.
+Where the number comes from: the 5-hour figure is exposed only in the status-line payload, so
+`.claude/scripts/usage-probe.sh` runs as the `statusLine` command, tees
+`five_hour_pct`/`resets_at` to `~/.claude/fce-usage.json` every 60s, and hands the payload on
+to whatever status line was already configured. The watchdog reads that file. **If the file is
+missing or older than 15 minutes the watchdog stays silent** rather than act on a stale number
+— so in a headless session, or one where the status line is not running, there is no watchdog
+at all and every trigger above is yours alone to judge.
+
+It is a backstop, not a licence to stop paying attention, and this is the part it cannot do
+for you: **it does not measure your context window.** Nothing does any more. A single task that
+reads enough can still be compacted out from under you at 20% of the 5-hour budget, and no
+warning will fire before it happens. That is what the third trigger above is for, and it is not
+an afterthought — it is the only guard against that failure. Before a turn you can see is
+large, ask whether you would rather hand off cleanly than be truncated in the middle of it.
 
 **Do not gamble on finishing.** Being cut off two steps from done still loses the two steps
 *and* everything you learned getting there. Crossing the line and continuing is the failure
@@ -155,7 +170,7 @@ only copy if the PR was never opened.
 # Handoff: <task ID> — <title>
 
 - **Role:** backend-coder | frontend-coder | design-coder | code-reviewer
-- **Written:** <YYYY-MM-DD HH:MM>, at ~<n>% context
+- **Written:** <YYYY-MM-DD HH:MM>, at ~<n>% of the 5-hour limit
 - **Cycle:** <review cycle this belongs to, 1 if none yet>
 - **Continues:** <earlier handoff file, or "nothing — first handoff on this task">
 
@@ -213,7 +228,7 @@ Do not restate the file. The orchestrator may itself be near its limit.
 ```markdown
 ## Handoff: <task ID> — <title>
 
-- Reason: context at ~<n>% / orchestrator requested
+- Reason: 5h usage at ~<n>% / orchestrator requested
 - Handoff file: `.claude/handoff/<file>.md`
 - Branch: `task/<id>-<slug>` @ `<SHA>` — pushed, PR #<n> / no PR yet
 - Criteria: <n> met, <n> not met, <n> unrun

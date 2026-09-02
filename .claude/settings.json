@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/context-watchdog.sh\"",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/scripts/usage-watchdog.sh\"",
             "timeout": 10,
             "suppressOutput": false
           }
@@ -37,5 +37,10 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/scripts/usage-probe.sh\"",
+    "refreshInterval": 60
   }
 }

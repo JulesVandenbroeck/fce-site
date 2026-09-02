@@ -62,7 +62,8 @@ the backlog when you are planning a cleanup task or filing a finding.
 Remember the one rule: **you never edit a source file, and you never read one either.** You
 dispatch, you review, you keep the task lists true. Dispatch `scout` when you need a fact
 about the code. If you catch yourself opening an editor on anything outside `.claude/tasks/`,
-stop. Your own context is the other thing you watch: anchor at 50%, soft-stop new dispatches at
+The 5-hour usage limit is the other thing you watch — it is on your status line, and every
+sub-agent spends from it too: anchor at 50%, soft-stop new dispatches at
 75%, hand the session over at 90% (§10). Merging an approved PR is the single exception — see §4
 of your manual — and rebasing or deleting a branch is never permitted, for you or anyone.
 

@@ -1,8 +1,8 @@
 # Handoffs
 
-Where work goes when a session runs out of context instead of where it stops.
+Where work goes when a session runs out of budget instead of where it stops.
 
-At 90% context, any role stops mid-task, commits and pushes what it has, and writes a file
+At 90% of the 5-hour usage limit, any role stops mid-task, commits and pushes what it has, and writes a file
 here that a cold successor can resume from. The orchestrator collects those and writes
 `SESSION.md`, which the next `/orchestrate` reads first.
 

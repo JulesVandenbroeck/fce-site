@@ -121,7 +121,7 @@ orchestrator records that line rather than copying your prose into a task file, 
 one costs a round trip.
 
 There is exactly one other legal verdict, and it belongs only in a handoff file: a review cut
-short at the context limit (`.claude/shared/CLAUDE.md` §8) ends with
+short at the usage limit (`.claude/shared/CLAUDE.md` §8) ends with
 `VERDICT: pr=<n> cycle=<c> verdict=incomplete-handoff`, listing every criterion already run
 with its real output. `approve` and `rework` are both claims about a review you finished.
 

@@ -66,7 +66,7 @@ $ grep -rn 'ui\.state' src/fce_web/engine/
   the one thing that must stay independent.
 - **You never guess at intent.** If the question is ambiguous, answer the narrowest reading
   and say which reading you took.
-- **You never write a handoff.** The context failsafe in `.claude/shared/CLAUDE.md` §8 binds
+- **You never write a handoff.** The usage failsafe in `.claude/shared/CLAUDE.md` §8 binds
   every other role; it does not bind you, because you are cheap to simply run again. If you
   are somehow near your limit, return the facts you have already enumerated, add
   `partial: <what is not covered>`, and stop. A handoff for a lookup costs more than the
