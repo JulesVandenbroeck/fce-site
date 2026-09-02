@@ -165,89 +165,9 @@ _none — both released tasks are in flight._
   (**inline grow**, four-kind palette). Now depends on **D-013** — the merged `Observable`
   interior does not exist in any page yet, and it is the widest node, so it is what sets palette
   width. Design the shell against a node with two footprints; see `## Decisions in force` 6.
+  ~~D-013~~ **merged 2026-09-02 (#23, `309c409`). D-010 is now READY** — its input is settled:
+  opened node **328.0 x 300.0px**, collapsed **80.5px**, inline grow.
 - **Branch / PR:** not yet opened
-
-### D-013 — The merged `Observable` node interior
-- **Scope:** the single `Observable` node interior with a four-way mode toggle, in the
-  **inline-grow** treatment, as a new option on the D-009 exploration page. Raised 2026-09-02 out
-  of the interiors ruling (`## Decisions in force` 7).
-- **Why:** D-009 shipped four separate `Obs*` interiors and the ruling collapses them into one.
-  That merged node exists in no page, and it is the **widest** node in the palette —
-  `ObsVectorSum`'s mode alone carries three checkboxes and a select — so it is what D-010 must
-  size the palette against. The other three kinds (`Multiplicity`, `Selection`, `Histogram`) ship
-  as delivered and are not re-opened.
-- **Accept:** one `Observable` node, collapsed and opened, all four modes reachable, each mode's
-  controls as D-009 already designed them (`interiors.html`, inline-grow option: ObsGlobal
-  :498-527, ObsObject :530-568, ObsVectorSum :571-607, ObsCustom :610-636); the mode control
-  keyboard-operable; opened height measured and reported per mode, because that number is
-  D-010's input. Mutation-gated, same shape as D-009's C9/C10.
-- **Depends on:** nothing. **Blocks D-010.**
-- **Branch / PR:** `task/d-013-observable-interior` — **#23**, `d98d7d4`
-- **Status:** **cycle 1 in review.** §5.1 gate reproduced 2026-09-02 in `~/fce-gate-d013` with
-  the primary `.venv`: all five sections PASS / exit 0, C6 and C7 grep `exit=1`, diff exactly the
-  three new files. Every control count matches the scout table it was dispatched with
-  (ObsGlobal 1 select; ObsObject 2; ObsVectorSum 3 checkboxes + 1 select; ObsCustom 1 text), all
-  labelled. **Declared deviation on C2's method:** the criterion asked for a printed tab index
-  per mode option failing on `None`; the coder implemented native radiogroup semantics (Tab into
-  the group, Arrow keys between options), arguing Chromium enforces roving tabindex on a
-  same-`name` group regardless of explicit `tabindex`. The gate output nonetheless prints
-  `tab_index=1..4`, none `None` — the reviewer was asked to rule on the merits.
-  **Cycle 1 reviewed 2026-09-02: `1R / 2M / 4m`, scope pass, `verdict=rework`** — posted to
-  PR #23 (`issuecomment-5506923899`). **The C2 deviation was accepted on the merits and the
-  Chromium roving-tabindex premise reproduced independently:** with `tabindex="0"` forced onto all
-  four radios at runtime the real Tab walk is unchanged. The reviewer then broke the radiogroup
-  three further ways (unique `name` per radio; `disabled` on one option; `tabIndex=-1` on the
-  entry radio) and the check went red each time, so the accessibility property is genuinely
-  guarded. R1 is flake8 `E501` x2 — the directory was exit 0 before this PR and exit 1 after.
-  **M1 is the finding that matters: `_measure` boxes the `.exemplar` `<figure>`, so every reported
-  height carried 16.5px of `<figcaption>` plus its gap. The real node is `.inode` =
-  300.0 x 328.0px for `ObsVectorSum`, not 348.5px** — 20.5px of exploration-page furniture in the
-  number D-010 sizes the palette against. M2/m1/m2 are the page and docstrings still describing
-  the pre-deviation Tab-per-option method. §5.4 = clause 3, a real cycle: C5 shipped with a
-  command, it measured the wrong element.
-  **Cycle 2 dispatched 2026-09-02** with C9 (footprint measured on `.inode`; a caption change must
-  not move the reported number) and C10 (`flake8 docs/design-explorations/` exit 0, whole
-  directory). **checks 8 -> 10.** m4 was a finding against my dispatch formatting — the PR body's
-  criteria carried no `Check:`/`Expect:` pairs — fixed in the cycle-2 dispatch, not charged to the
-  coder.
-  **Cycle 2 delivered `c737905`; §5.1 gate reproduced 2026-09-02** in `~/fce-gate-d013` with the
-  primary `.venv`: all five sections PASS / exit 0, `flake8 docs/design-explorations/` exit 0,
-  diff still exactly the three files. **M1 closed and the corrected footprint confirmed
-  independently: `ObsVectorSum` node = 328.0 x 300.0px** (figure 348.5px), ObsCustom 301.5,
-  ObsObject 290.5, ObsGlobal 237.0 — the checker now prints node and figure side by side, so the
-  20.5px of caption furniture is visible rather than silently included.
-  **Status: cycle-2 review INTERRUPTED — the reviewer was killed 2026-09-02 before returning a
-  verdict, and posted no PR comment. The branch head `c737905` is intact and pushed; the gate
-  above stands. **Cycle-2 reviewer RE-DISPATCHED 2026-09-02** with PR #23 and the cycle-1
-  comment URL (`issuecomment-5506923899`), finding IDs R1/M1/M2/m1/m2/m3 — and **STOPPED BY THE
-  USER the same day, no verdict, no PR comment.** Reconciled: branch head still `c737905`, the
-  last PR comment is still cycle 1's. Cycle-2 reviewer re-dispatched on the user's instruction.
-  **Cycle 2 reviewed 2026-09-02: `1R / 0M / 2m`, scope pass, `verdict=rework`** — posted to
-  PR #23 (`issuecomment-5509508706`). R1, M1, M2, m1, m2, m3 all closed and verified
-  independently: 328.0 x 300.0px reproduced, flake8 exit 0, `tabindex` gone, prose corrected,
-  contrast recomputed (5.82:1 / 8.23:1). The reviewer also re-mutated all five unchanged checks
-  and every one went red, so nothing was softened to reach 10.
-  **R2, and it is my defect: C9 has no assertion.** `observable_verify.py:296-325` only *prints*
-  the node and figure boxes and asserts `h > 0`; monkeypatching `_measure` back to the
-  `.exemplar` `<figure>` — the exact M1 regression — re-certifies `348.5px` as `PASS: footprint`.
-  D-010 sizes the palette from that number. §5.4 clause 2: **C9 shipped without a
-  `Check:`/`Expect:` pair (the reviewer's m4 says so explicitly), so this is a RE-SPECIFICATION,
-  not a cycle.** Re-dispatched 2026-09-02 with C9 carrying the figure-selector mutation as its
-  command, and the figcaption mutation kept alongside it — fix additively, never trade one gate
-  for the other. **Still cycle 2. checks stay 10.**
-  **Re-spec delivered `94c7e25`; §5.1 gate reproduced 2026-09-02** in `~/fce-gate-d013` with the
-  primary `.venv`: all five sections PASS / exit 0, footprint still `ObsVectorSum` 328.0 x
-  300.0px, `flake8 docs/design-explorations/` exit 0, diff still exactly the three files.
-  `check_footprint` now asserts the node box is strictly shorter than its enclosing figure, so
-  the M1 selector regression goes red instead of re-certifying 348.5px. Reviewer re-dispatched
-  2026-09-02 and told to re-run that mutation itself rather than read the transcript. m5 (footprint prose still says "exemplar")
-  and m6 (`figure_heights` None branch raises `TypeError` when formatted) folded into the same
-  dispatch, both named. m4 stays open against my dispatch formatting, not the coder.
-- **checks=10**, C1-C4 and C9 mutation-gated.
-  Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
-  `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
-  seven, so appending there would have required reopening a passing check to add a page that
-  contradicts it. C5 exists solely to hand D-010 the tallest opened mode height.
 
 ### D-011 — The completed-mission box on the canvas
 - **Scope:** the frozen-and-boxed treatment for a completed mission's graph.
@@ -283,6 +203,12 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-013** — the merged `Observable` node interior, inline grow — #23, `309c409`, 2 cycles +
+  1 re-spec, clean gate `0R / 0M / 1m`. checks=10. **Hands D-010 its input: the opened node is
+  328.0 x 300.0px** (`ObsVectorSum`, tallest of the four modes; ObsCustom 301.5, ObsObject 290.5,
+  ObsGlobal 237.0), collapsed 80.5px, measured on `.inode` and now under an assertion that goes
+  red if the selector regresses to the `<figure>`. m4 (my dispatch formatting) and m7 (the
+  footprint gate is one-sided) backlogged.
 - **D-009** — node interiors: flyout inspector vs inline grow (**M1 checkpoint, awaiting the
   user's ruling**) — #22, `948e6ec`, 2 cycles, clean gate `0R / 0M / 1m`. checks=10. Both
   Required and M1 were against the *instrument*, not the design: three checks that structurally

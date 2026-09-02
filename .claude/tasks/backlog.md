@@ -547,3 +547,12 @@ and are historical now that #6 is merged.
   **D-002 is choosing the Observable hue from the four existing `--node-obs-*` right now**, so
   this closes itself if D-002 names the token `--node-observable`; check on merge and drop this
   item if so. (D-013 cycle 1, 2026-09-02)
+
+- **D-013 m4** — my dispatch formatting: C9 and C10 shipped with no `Check:`/`Expect:` pair, so
+  the reviewer had to map each to a `--section` or grep itself. Against the orchestrator, not the
+  coder. Filed 2026-09-02.
+- **D-013 m7** — `docs/design-explorations/observable_verify.py:320-337`: the footprint gate is
+  one-sided. It catches the node box widening to the enclosing figure's, but a regression to a
+  *smaller* wrong box (an inner panel) still satisfies `h < fig_h` and re-certifies a too-small
+  number to D-010. Tighter form: assert the measured element's own selector, or the known
+  ~20.5px figure-minus-node gap. Filed 2026-09-02.
