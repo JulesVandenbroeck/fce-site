@@ -111,8 +111,9 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   8 files, all in scope: `src/fce_web/static/css/tokens.css`, four `.woff2` (EB Garamond roman +
   italic variable, Fira Mono 400 + 500), two OFL licence files, and `docs/design-explorations/
   verify.py`. Completeness unverified — no gate was run, no PR body exists.
-  **First move next session: push that branch, then decide whether to open the PR from it or ask
-  the coder to move the commit onto `task/d-002-tokens`. Do not re-dispatch from scratch.**
+  **PUSHED to origin 2026-09-02 — `task/d-002-tokens-work` at `841a044`** (`edf82c9` plus a
+  merge of `main`); the work is no longer local-only. Still no PR and no gate run. Next move:
+  open the PR from that branch, then run the §5.1 gate. Do not re-dispatch from scratch.
 - **Was:** cycle 1, re-dispatched 2026-09-02, own worktree, Opus. The 2026-09-01 dispatch
   was LOST — reconciled against git: the branch was created at `9495696` and never written to, no
   handoff, no anchor. This is still cycle 1. The dispatch carries the re-spec'd C5 (four hues),
@@ -190,7 +191,8 @@ _none — both released tasks are in flight._
   20.5px of caption furniture is visible rather than silently included.
   **Status: cycle-2 review INTERRUPTED — the reviewer was killed 2026-09-02 before returning a
   verdict, and posted no PR comment. The branch head `c737905` is intact and pushed; the gate
-  above stands. Re-dispatch the reviewer; it is still cycle 2, not cycle 3.**
+  above stands. **Cycle-2 reviewer RE-DISPATCHED 2026-09-02** with PR #23 and the cycle-1
+  comment URL (`issuecomment-5506923899`), finding IDs R1/M1/M2/m1/m2/m3. Still cycle 2.**
 - **checks=10**, C1-C4 and C9 mutation-gated.
   Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
   `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
