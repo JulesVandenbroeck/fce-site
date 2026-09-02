@@ -1,26 +1,28 @@
-# Orchestrator anchor — 2026-09-01, ~75%
+# Orchestrator anchor — session 2026-09-02
 
-## The M1 ruling is IN. Bench.
-D-007 merged `5839027`. The user chose **Bench**, overruling the comparison's Board.
-Five further decisions came with it. All five are now written in **two** places:
-- `docs/design-brief.md` — §2 (never passive), §4 (four decisions), §9 Decided. **65 insertions,
-  0 deletions** — the engine allowlist quotation at §4 was not touched, deliberately.
-- `.claude/tasks/design.md` `## Decisions in force` — the block a dispatch is *given*.
+**Milestone:** M1. Style ruled Bench 2026-09-01. D-009 is the open checkpoint task.
 
-## What changed in the lists
-- **D-002 → Ready**, unblocked. Seven node hues now, not eight.
-- **D-009 → Ready** (node interiors; carries the ≤3-line ruling note for
-  `design-explorations/README.md`, which still says "Recommended: Board"). Parallel with D-002.
-- **D-010** (three-region shell) blocked on D-009. **D-011** (completed-mission box) on D-009+M5.
-  **D-012** (event displays) on **M6, by the user's ruling**.
-- `backend.md` `## Contracts in force` gained the **`DataSource` synthesised at submit** line.
+## Reconciled against git this session (list was wrong, git right)
+- **D-002** — branch `task/d-002-tokens` at `9495696`, ZERO commits, no PR, no anchor. The
+  2026-09-01 dispatch was lost before the coder's first write. **Re-dispatch is cycle 1.**
+- **D-009** — the 2026-09-01 cycle-1 reviewer never returned a verdict and posted no comment.
+  Re-dispatched 2026-09-02; that WAS cycle 1.
 
-## The consequence most likely to be rediscovered the hard way
-`DataSource` left the palette but is still the root of every chain the engine's
-`_VALID_CONNECTIONS` will accept. The run payload synthesises one at submit from the mission's
-dataset. **The student's graph and the engine's graph are not the same object.** M3 owns
-writing that into `docs/api.md:29-34`, still undefined.
+## Decisions this session
+- D-009 cycle 1 reviewed: `2R / 2M / 3m`, scope pass, `verdict=rework`. Posted verbatim to
+  PR #22 (`issuecomment-5506219239`). §5.4 diagnosis = **clause 3, a real cycle**: R1/R2 are
+  against the coder's instrument (C4 was dispatched mutation-gated and the gate does not
+  distinguish), not a criterion I dropped.
+- **Cycle 2 dispatched** with C9 (label + Tab assertions) and C10 (zero-height precondition).
+  **checks 8 -> 10.** m3 backlogged; m1/m2 folded in. M2 (`DataSource`) is overrulable — the
+  coder was given the brief §4 ruling as a fact, not told how to rule.
+
+## Held, unchanged
+B-008 #19 (cycle 3 dispatch also lost, head still `fba2ad6`), B-013 #17, B-014 #18 — all
+paused by the user 2026-09-01 on budget. The M1-choice reason for the hold is now spent.
 
 ## Next step
-Nothing is dispatched. D-002 and D-009 are Ready and can go in parallel (no shared files) when
-the user says. Still held: B-008 (#19, at the §5.7 limit), B-013 (#17), B-014 (#18).
+1. Collect D-009 cycle 2 -> gate -> review. It is a **checkpoint**: the user reads
+   `interiors.html` and rules flyout vs inline grow. D-010 is blocked on that.
+2. **D-002 re-dispatch is proposed and NOT yet approved by the user.** Do not send it
+   unasked — the user is managing spend deliberately.

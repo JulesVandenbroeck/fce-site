@@ -107,7 +107,23 @@ All counts below were enumerated by `scout` at `9495696`, not inherited from the
   C5/C6 grep `exit=1`, C7 `3 0`, C8 exactly the four files. Reproduced, not accepted.
   All four mutation gates present and each names what it caught.
   **Cycle-1 reviewer dispatched 2026-09-01 never returned a verdict — no PR comment, session
-  died. Re-dispatched 2026-09-02; still cycle 1.**
+  died. Re-dispatched 2026-09-02; that was cycle 1.**
+  **Cycle 1 reviewed 2026-09-02: `2R / 2M / 3m`, scope pass, `verdict=rework`** — posted to
+  PR #22 (`issuecomment-5506219239`). Both Required are against the coder's *instrument*, not
+  the design: R1 `interiors_verify.py:201-203` prints the labelled-control count and only fails
+  at `< 1`, so stripping `for=` from 3 of 4 guided labels still certifies GREEN; R2 `:184-227`
+  computes Tab reachability and never asserts it, so `tabindex="-1"` on all four guided controls
+  certifies GREEN — the one accessibility property C4 exists to guard. M1 `:110-115` coerces a
+  `None` bounding box to `0`, so `display:none` on every collapsed exemplar satisfies
+  `opened > collapsed` vacuously. All three proven by mutation in the browser, no repo file
+  touched. M2 asks why `DataSource` is excluded — that is the user's M1 ruling (brief §4) and is
+  **overrulable in writing**; the coder was given the ruling as a fact, not told how to rule.
+  **§5.4 = clause 3, a real cycle:** C4 was dispatched mutation-gated and the gate does not
+  distinguish. **Cycle 2 dispatched 2026-09-02** with C9 (assert `labelled == n_guided == 4`,
+  fail on any `None` tab index) and C10 (`c_h > 0` precondition). **checks 8 -> 10.** m1
+  (`_tab_order` docstring describes behaviour the function lacks) and m2 (PR body paraphrased
+  the file scope instead of reproducing it verbatim) folded into cycle 2; **m3 backlogged**.
+- **Status (cycle 2):** dispatched 2026-09-02, own worktree.
 - **Delivered:** two options — **flyout inspector (recommended)** and **inline grow**.
   The flyout argument is that the node's own footprint stays constant across open/closed,
   which is the fixed dimension **D-010** needs for palette width. That is the user's call.

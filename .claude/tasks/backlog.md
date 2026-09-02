@@ -533,3 +533,8 @@ and are historical now that #6 is merged.
   defined in M3._"` attributed to §4 rather than `section=None`); the quotation verdicts agreed,
   so it cost nothing this time. Same shape as m2: a check that cannot be re-run identically by
   the next reader is weaker than one in `verify.py`. Filed from PR #21 cycle 2, suggested-minor.
+
+- **D-009 m3** — `docs/design-explorations/interiors.html:586-594`: the inline-grow option
+  reuses `flyout__mode-label`, `flyout__checks` and `flyout__field` inside a container that is
+  explicitly not the flyout. Whichever option D-010 inherits, the class names will read as the
+  wrong one. Deferred until the user rules which option survives. (D-009 cycle 1, 2026-09-02)
