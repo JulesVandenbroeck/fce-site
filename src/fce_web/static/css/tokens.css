@@ -1,0 +1,301 @@
+/* tokens.css — the single source of every colour, type, spacing, radius,
+ * shadow and timing value the FCE app paints with.
+ *
+ * Read-only contract. Every other stylesheet, and the chart renderer via
+ * getComputedStyle, resolves its values from the custom properties below;
+ * no hard-coded hex, px type size, or duration lives anywhere else
+ * (`.claude/shared/CLAUDE.md` §6, `.claude/design/CLAUDE.md` §4).
+ *
+ * Two rules govern the file's *shape*, both checked rather than trusted:
+ *   1. Outside the @font-face blocks it declares custom properties and
+ *      nothing else — no selector paints anything here. Checked by
+ *      `verify.py --section tokens-shape`.
+ *   2. Every font is a self-hosted .woff2 next door in ../fonts/,
+ *      referenced by relative path. No CDN, no remote stylesheet
+ *      pulled in, no hosted-font link: the classroom network may be
+ *      entirely offline
+ *      (`.claude/shared/CLAUDE.md` §3). Checked by
+ *      `verify.py --section tokens-fonts`.
+ *
+ * Direction: `.claude/design/CLAUDE.md` §2 — lab notebook, warm paper,
+ * real ink, and a saturated node palette in which every hue is answerable.
+ * Values are harvested from the D-003/D-004/D-008 exploration palette
+ * (`docs/design-explorations/tokens.css`), which is where they were
+ * searched for and argued about; this file is where they ship.
+ */
+
+/* ---- fonts -----------------------------------------------------------
+ * EB Garamond (Georg Duffner & Octavio Pardo), SIL Open Font License 1.1,
+ * from google/fonts `ofl/ebgaramond` v1.003 — the licence text ships
+ * beside the files as ../fonts/OFL-EBGaramond.txt, as the OFL requires.
+ * A real old-style Garamond revival: a written voice rather than a UI
+ * face, which is the whole point of a notebook. Shipped as the variable
+ * font (wght 400–800) in roman and italic, so headings, body, bold and the
+ * italic of a margin note are four instances of one design, not four
+ * files.
+ *
+ * Fira Mono (Carrois Apostrophe / Erik Spiekermann), SIL Open Font
+ * License 1.1, from google/fonts `ofl/firamono` v3.206, licence text at
+ * ../fonts/OFL-FiraMono.txt. Humanist rather than terminal — it carries
+ * the same warmth as the serif at a fixed advance width, which is what the
+ * cutflow table and every physics number need. Chosen over IBM Plex Mono,
+ * which is the warmer face but ships no Greek in any build available here:
+ * μ and σ are the two most-printed symbols in this app and a mono that
+ * falls back mid-number is not a mono.
+ *
+ * Both faces are subset to Latin + Latin-1 + Latin Extended-A + Greek +
+ * general punctuation + arrows + mathematical operators, so ±, ×, ≥, √,
+ * →, μ and σ all render from the shipped file. 233 KB for the four files
+ * together.
+ */
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("../fonts/eb-garamond-roman-var.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  src: url("../fonts/eb-garamond-italic-var.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fira Mono";
+  src: url("../fonts/fira-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fira Mono";
+  src: url("../fonts/fira-mono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---- ground: warm paper --------------------------------------------
+   * Not #fff. A cream cast with the panel a shade lighter than the page,
+   * so a card reads as paper laid on paper rather than as a box drawn on
+   * it. --paper-line is the ruled line of the notebook, deliberately far
+   * below text contrast: it is furniture, never a border that carries
+   * meaning on its own. */
+  --paper: #f4ecda;
+  --paper-line: #e6dcc3;
+  --panel: #faf5e7;
+
+  /* ---- chrome: furniture, not physics -------------------------------- */
+  --chrome-bg: #efe6d2;
+  --chrome-border: #d8cba8;
+  --hover-bg: #e9dfc4;
+
+  /* ---- ink: text ------------------------------------------------------
+   * Near-black with a warm cast, at three opacities rather than three
+   * greys, so secondary text reads as the same ink written lighter.
+   * Measured against --paper by `verify.py --section tokens-contrast`,
+   * which composites each alpha over its backdrop rather than taking a
+   * comment's word for it:
+   *   --ink     12.75:1   AA and AAA, body text
+   *   --ink-70   5.18:1   AA, secondary text and captions
+   *   --ink-45   2.60:1   NON-TEXT-SAFE — fails AA at every size
+   * --ink-45 is a real token with a real use: hairline rules, a disabled
+   * glyph, the faint grid of a ruled page, the resting state of a mark
+   * that is about to be drawn. It must never carry text a student is
+   * expected to read, and the contrast check asserts exactly that rather
+   * than deleting the token or "fixing" it to a value nothing wanted. */
+  --ink: #2b2620;
+  --ink-70: rgba(43, 38, 32, 0.7);
+  --ink-45: rgba(43, 38, 32, 0.45);
+
+  /* ---- everyday chrome ------------------------------------------------
+   * A muted graphite-blue does the ordinary clickable work — links, the
+   * run button, focus rings — so neither vermillion nor a node hue has to
+   * do chrome duty. 6.20:1 on paper as link text; white on it is 7.29:1.
+   * --graphite-blue-strong is its pressed/active state (8.66:1). */
+  --graphite-blue: #3c5a6e;
+  --graphite-blue-strong: #2c4454;
+  --on-graphite-blue: #ffffff;
+
+  /* ---- accent: still rationed ----------------------------------------
+   * Significance thresholds (3σ, 5σ), mission completion, and the signal
+   * sample. Nowhere else — not buttons, not links, not headings. In a
+   * palette that is loud everywhere else, the one colour held back is the
+   * loudest thing on the page (`.claude/design/CLAUDE.md` §2).
+   * 4.63:1 on paper, so it is legible as text where it is used as text. */
+  --vermillion: #c0392b;
+
+  /* ---- sample identity: frozen per-sample map (default) ---------------
+   * A sample's colour is the same in the graph, the legend and the plot.
+   * Frozen rather than assigned by draw order: the reference engine hands
+   * out tab10 by sample *order*, so adding a sample would repaint every
+   * other one, and X1 changing colour between missions is a teaching bug.
+   * X1 is the signal in missions 1 and 2 and therefore takes the reserved
+   * accent — which is what "the signal sample" in §2 means. Ruled the
+   * default at the 2026-08-16 checkpoint. */
+  --frozen-x1: var(--vermillion);
+  --frozen-x2: #6b8f5e;
+  --frozen-x3: #b5883a;
+
+  /* ---- sample identity: tab10, the reference draw-order map -----------
+   * `matplotlib.colormaps["tab10"].resampled(3)` — exactly what
+   * engine/plotter.py assigns when three MC samples are drawn. Kept
+   * because a static plot exported from matplotlib still comes out in
+   * these colours, so anything reproducing that export needs them; not
+   * the default for our own rendering. These are the resampled values,
+   * not raw tab10 indices 0/1/2. */
+  --tab10-x1: #1f77b4;
+  --tab10-x2: #8c564b;
+  --tab10-x3: #17becf;
+
+  /* ---- node type identity — four hues, one per node the student places
+   * The 2026-09-02 ruling on what a node holds (`docs/design-brief.md` §4) sets
+   * the palette at four: the student places Multiplicity, Selection,
+   * Observable and Histogram, the four Obs* subtypes having collapsed into
+   * one Observable node with a mode toggle inside it.
+   *
+   * --node-observable takes the teal of the former ObsGlobal, chosen from
+   * the four searched Obs hues on separation *and* on what the other three
+   * would collide with: #306baf is the blue already spoken for twice over
+   * (--graphite-blue's chrome duty and --tab10-x1's sample identity),
+   * #6a387c sits in --node-histogram's own violet family, and #993a5a is a
+   * wine red neighbouring the one colour this palette holds in reserve.
+   * Teal collides with none of them, and it gives the widest
+   * normal-vision node-node separation of the four (20.246 ΔE).
+   *
+   * These are D-008's searched and committed values, unchanged. Its six
+   * floors — CVD separation, normal-vision separation, separation from the
+   * reserved colours, white-on-fill contrast, hue distance from the
+   * reserved colours, and the CAM02-UCS clamping bound — were measured
+   * over eight fills and are recomputed over these four by
+   * `verify.py --section tokens-palette` on every run. Dropping members
+   * from a set can only raise a pairwise minimum, so every floor still
+   * holds, but the check computes it rather than arguing it. */
+  --node-multiplicity: #706b30;
+  --node-selection: #1c5611;
+  --node-observable: #2a6b64;
+  --node-histogram: #4846a5;
+
+  /* Not in the palette. `DataSource` is synthesised at submit, never
+   * placed by a student, so this hue paints a node that appears in the
+   * graph but never in the picker. Kept because that node still has to be
+   * drawn, and drawn consistently; excluded from the four-hue count the
+   * palette check asserts. */
+  --node-data: #966746;
+
+  /* Label text set on a saturated node fill. White clears 4.5:1 on every
+   * fill above (worst case 5.48:1 on --node-multiplicity), and doubles as
+   * the focus-ring colour for a port that sits inside a fill, where a
+   * graphite-blue ring would be invisible. */
+  --node-label-on-fill: #ffffff;
+
+  /* ---- lock state -----------------------------------------------------
+   * A gated node type is desaturated *and* visibly inert — a colour of its
+   * own, sitting apart from every node hue, rather than one of them turned
+   * down, so it reads as not-yet-earned instead of broken. Its label stays
+   * on full --ink (8.90:1); --ink-70 over this fill measures 4.30:1 and
+   * would miss AA. */
+  --locked-fill: #cfc7b2;
+  --locked-border: #b3a98c;
+
+  /* ---- plot furniture -------------------------------------------------
+   * "Black" in a published physics plot — axis frame, ticks, histogram
+   * edges, data markers — is drawn in --ink here rather than a true #000,
+   * so the plot sits on the paper instead of punching through it.
+   * --syst-grey is the systematic-uncertainty band: a fill, never text,
+   * and at 3.24:1 on paper it must not be used as one. */
+  --plot-frame: var(--ink);
+  --plot-edge: var(--ink);
+  --data-marker: var(--ink);
+  --legend-border: var(--ink);
+  --syst-grey: #8a8272;
+
+  /* ---- focus ----------------------------------------------------------
+   * Focus is redesigned, never removed. Graphite-blue rings every stop
+   * sitting on paper or panel; a stop inside a saturated fill rings with
+   * --node-label-on-fill instead, the same white already proven against
+   * every fill. */
+  --focus-ring: var(--graphite-blue);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* ---- type -----------------------------------------------------------
+   * A serif for everything written, a mono for everything measured. The
+   * fallbacks are a courtesy for the first paint before the woff2 lands;
+   * the shipped files are the design, and none of the default UI faces
+   * the design manual rules out by name appears in either stack. */
+  --font-body: "EB Garamond", Georgia, "Palatino Linotype", serif;
+  --font-mono: "Fira Mono", "DejaVu Sans Mono", monospace;
+
+  /* Type scale, a 1.25 fourth off a 17px body — the serif runs small, so
+   * the body size is set a notch above the usual 16. */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1.0625rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5rem;
+  --text-xl: 1.9375rem;
+  --text-2xl: 2.4375rem;
+
+  --leading-tight: 1.15;
+  --leading-body: 1.55;
+  --leading-loose: 1.7;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Numerals: the mono is set slightly open so a cutflow column reads as
+   * a column. Used as a letter-spacing value on numeric cells. */
+  --tracking-numeric: 0.01em;
+  --tracking-caps: 0.06em;
+
+  /* ---- spacing --------------------------------------------------------
+   * A 4px base, doubling loosely. --space-rule is the ruled-line pitch of
+   * the notebook ground and is deliberately a separate name from the
+   * layout scale, because changing one must not silently change the
+   * other. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+  --space-7: 64px;
+  --space-rule: 28px;
+
+  /* ---- radius and edges ----------------------------------------------- */
+  --radius-sm: 3px;
+  --radius: 6px;
+  --radius-lg: 12px;
+  --border-hairline: 1px;
+  --border-heavy: 2px;
+
+  /* ---- shadow ---------------------------------------------------------
+   * One resting shadow, one lifted. Paper on paper casts very little, so
+   * these stay shallow; depth comes from the warm ground, not from a halo. */
+  --node-shadow: rgba(0, 0, 0, 0.15);
+  --shadow-resting: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-lifted: 0 4px 10px rgba(0, 0, 0, 0.16);
+
+  /* ---- motion ---------------------------------------------------------
+   * Quick, slightly damped, settling — never bouncy. --duration-stamp is
+   * the one deliberately slower moment: the mission stamp pressing down.
+   * Every animation using these must still have a reduced-motion end
+   * state; the token does not excuse the media query. */
+  --timing: 180ms;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 320ms;
+  --duration-stamp: 420ms;
+  --ease-settle: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}

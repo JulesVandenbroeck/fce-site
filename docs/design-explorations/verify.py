@@ -6267,11 +6267,43 @@ def main() -> None:
     parser.add_argument("--beamline", action="store_true", help="D-004 Beamline section only")
     parser.add_argument("--bench", action="store_true", help="D-005 Bench section only")
     parser.add_argument("--board", action="store_true", help="D-006 Board section only")
+    parser.add_argument(
+        "--section",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="run only the named section(s) -- D-002: tokens-shape, tokens-contrast, "
+             "tokens-fonts, tokens-palette. Repeatable.",
+    )
     args = parser.parse_args()
-    if not args.plot and not args.all and not args.beamline and not args.bench and not args.board:
+    if (not args.plot and not args.all and not args.beamline and not args.bench and not args.board
+            and not args.section):
         args.all = True
 
     all_results = []
+
+    # D-002: the shipped-token sections need no browser, so `--section
+    # <name>` answers one acceptance criterion without opening Chromium
+    # or touching the exploration pages. An unknown name raises inside
+    # `run_section` and comes back as a named FAIL, never a silent pass.
+    if args.section:
+        for name in args.section:
+            all_results.append((name, run_section(name, _dispatch_named_section, name)))
+        section("Summary")
+        for name, ok in all_results:
+            line(name, ok)
+        failed = [n for n, ok in all_results if not ok]
+        print()
+        if failed:
+            print(f"FAILED sections: {failed}")
+            sys.exit(1)
+        print("All sections passed.")
+        return
+
+    if args.all:
+        for name in TOKENS_SECTIONS:
+            all_results.append((name, run_section(name, _dispatch_named_section, name)))
+
     with sync_playwright() as pw:
         browser, context, page, *_ = load_page(pw, 1024)
         all_results.append(
@@ -6570,6 +6602,570 @@ def main() -> None:
         sys.exit(1)
     else:
         print("All sections passed.")
+
+
+# ---------------------------------------------------------------------
+# D-002 -- the shipped token contract: src/fce_web/static/css/tokens.css
+#
+# Everything above this line measures an exploration artefact in this
+# directory. The four sections below measure the file the app actually
+# ships, because that is the one three later tasks consume read-only. They
+# need no browser: every value they judge is parsed out of the stylesheet
+# itself, and the fonts are stat'd on disk.
+# ---------------------------------------------------------------------
+
+APP_TOKENS_CSS = REPO_ROOT / "src" / "fce_web" / "static" / "css" / "tokens.css"
+
+# The four hues the interiors ruling of 2026-09-02 (docs/design-brief.md
+# section 4) leaves in the palette: the node kinds a student places. The
+# four Obs* subtypes collapsed into one Observable node with a mode toggle,
+# so a fifth hue here would be a hue encoding nothing.
+APP_PALETTE_TOKENS = [
+    "--node-multiplicity",
+    "--node-selection",
+    "--node-observable",
+    "--node-histogram",
+]
+
+# Declared with a --node- prefix but deliberately outside the palette:
+# `DataSource` is synthesised at submit and never placed, so its fill is
+# drawn but never offered; the label colour and the shadow are not hues at
+# all. Listed so the palette check can assert the palette is exactly four
+# without tripping over them, and so a fifth *fill* sneaking in still fails.
+APP_NON_PALETTE_NODE_TOKENS = ["--node-data", "--node-label-on-fill", "--node-shadow"]
+
+APP_RESERVED_TOKENS = ["--vermillion", "--graphite-blue"]
+
+# D-008's own floors, restated here as module-level constants because the
+# two the palette check needs from the exploration sweep -- the 4.0
+# CAM02-UCS delta-E floor and the 4.5:1 white-on-fill floor -- are declared
+# *inside* the functions that use them there, and a floor a later task
+# reads off a different copy is a floor that can drift. The other four come
+# straight from the existing module-level names
+# (NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR, RESERVED_HUE_GAP_FLOOR_DEG,
+# CLAMPING_EXCESS_EPSILON), so those cannot drift by construction.
+APP_DELTA_E_FLOOR = 4.0
+APP_WHITE_FLOOR = 4.5
+
+# Every text-on-background pair the shipped tokens are meant to support, as
+# (foreground token, background token). Each is *computed* below, alpha
+# composited over its stated backdrop -- the ratios written into
+# tokens.css's own comments are documentation, and this list is what
+# decides. Deliberately excluded, each for a stated reason the check prints:
+# --ink-45 (below AA by design, checked separately), --syst-grey (a
+# histogram band, never text), and --ink-70 over --locked-fill (4.30:1 --
+# which is why a locked node's label is full --ink).
+APP_TEXT_PAIRS = [
+    ("--ink", "--paper"),
+    ("--ink", "--panel"),
+    ("--ink", "--chrome-bg"),
+    ("--ink", "--hover-bg"),
+    ("--ink", "--locked-fill"),
+    ("--ink-70", "--paper"),
+    ("--ink-70", "--panel"),
+    ("--ink-70", "--chrome-bg"),
+    ("--graphite-blue", "--paper"),
+    ("--graphite-blue", "--panel"),
+    ("--graphite-blue-strong", "--paper"),
+    ("--vermillion", "--paper"),
+    ("--vermillion", "--panel"),
+    ("--on-graphite-blue", "--graphite-blue"),
+    ("--on-graphite-blue", "--graphite-blue-strong"),
+    ("--node-label-on-fill", "--node-multiplicity"),
+    ("--node-label-on-fill", "--node-selection"),
+    ("--node-label-on-fill", "--node-observable"),
+    ("--node-label-on-fill", "--node-histogram"),
+    ("--node-label-on-fill", "--node-data"),
+]
+
+# The token that is allowed to fail AA, the backdrop its published ratio is
+# quoted against, that ratio, and the label tokens.css must carry beside it.
+# A token below AA is not a bug as long as it is named as one where a
+# designer will read it; an unlabelled one is.
+APP_BELOW_AA_TOKEN = "--ink-45"
+APP_BELOW_AA_BACKDROP = "--paper"
+APP_BELOW_AA_EXPECTED_RATIO = 2.60
+APP_BELOW_AA_LABEL = "NON-TEXT-SAFE"
+
+# Type faces this project rules out by name (design manual section 2): the
+# defaults every generated site converges on.
+APP_BANNED_FACES = ["inter", "roboto", "system-ui", "space grotesk", "arial", "helvetica"]
+
+_CSS_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
+_CSS_URL_RE = re.compile(r"url\(\s*['\"]?([^'\"()]+)['\"]?\s*\)")
+
+
+def _strip_css_comments(text: str) -> str:
+    """CSS with every /* ... */ comment blanked out, so a property named
+    inside prose ('no hard-coded color: value here') can never be mistaken
+    for a declaration. Blanked rather than deleted, and blanked to the same
+    length with newlines kept, so every byte offset and line number in the
+    result still points at the same place in the file on disk -- a check
+    that names a bad declaration is only useful if the line it names is the
+    line a reader will find it on."""
+    return _CSS_COMMENT_RE.sub(lambda m: "".join("\n" if c == "\n" else " " for c in m.group(0)), text)
+
+
+def _css_blocks(text: str) -> list[tuple[str, str, int]]:
+    """Every brace-delimited block in a stylesheet as (header, body, line
+    number of the header), comments already stripped. Nested blocks (a rule
+    inside an @media) are yielded too, so a declaration cannot hide one
+    level down from the shape check."""
+    blocks: list[tuple[str, str, int]] = []
+    stack: list[tuple[str, int, int]] = []
+    header_start = 0
+    for i, ch in enumerate(text):
+        if ch == "{":
+            header = text[header_start:i].strip()
+            stack.append((header, i + 1, text.count("\n", 0, header_start) + 1))
+            header_start = i + 1
+        elif ch == "}":
+            if stack:
+                header, body_start, ln = stack.pop()
+                blocks.append((header, text[body_start:i], ln))
+            header_start = i + 1
+    return blocks
+
+
+def _declarations(body: str) -> list[tuple[str, str]]:
+    """(property, value) for each `prop: value;` in a block body, skipping
+    anything that is itself a nested block."""
+    depth = 0
+    buf = []
+    out = []
+    for ch in body:
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            buf = []
+            continue
+        if depth > 0:
+            continue
+        if ch == ";":
+            chunk = "".join(buf).strip()
+            buf = []
+            if ":" in chunk:
+                prop, _, value = chunk.partition(":")
+                out.append((prop.strip(), value.strip()))
+        else:
+            buf.append(ch)
+    chunk = "".join(buf).strip()
+    if ":" in chunk and depth == 0:
+        prop, _, value = chunk.partition(":")
+        out.append((prop.strip(), value.strip()))
+    return out
+
+
+def _app_tokens(text: Optional[str] = None) -> dict[str, str]:
+    """Every custom property declared in the shipped tokens file, with one
+    level of `var(--x)` indirection resolved, so `--frozen-x1: var(--
+    vermillion)` is comparable to a literal hex."""
+    src = text if text is not None else APP_TOKENS_CSS.read_text()
+    stripped = _strip_css_comments(src)
+    tokens: dict[str, str] = {}
+    for header, body, _ln in _css_blocks(stripped):
+        if header.lstrip().startswith("@font-face"):
+            continue
+        for prop, value in _declarations(body):
+            if prop.startswith("--"):
+                tokens[prop] = value
+    for name, value in list(tokens.items()):
+        m = re.fullmatch(r"var\(\s*(--[\w-]+)\s*\)", value)
+        if m and m.group(1) in tokens:
+            tokens[name] = tokens[m.group(1)]
+    return tokens
+
+
+def _rgba_token(value: str) -> Optional[tuple[int, int, int, float]]:
+    """A token value as (r, g, b, alpha), whether it was written as #rrggbb
+    or as rgba(...)."""
+    rgb = hex_to_rgb(value)
+    if rgb is not None:
+        return (rgb[0], rgb[1], rgb[2], 1.0)
+    return parse_rgba(value)
+
+
+def _composited(fg: str, bg: str) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    """The two opaque triples a contrast ratio is actually taken between:
+    the foreground token composited over its backdrop, and the backdrop
+    itself (which this file requires to be opaque)."""
+    f = _rgba_token(fg)
+    b = _rgba_token(bg)
+    if f is None or b is None:
+        raise ValueError(f"unparseable colour: fg={fg!r} bg={bg!r}")
+    back = (float(b[0]), float(b[1]), float(b[2]))
+    front = tuple(f[3] * f[i] + (1 - f[3]) * back[i] for i in range(3))
+    return front, back
+
+
+def check_tokens_shape() -> bool:
+    """C1: the shipped tokens file declares custom properties and nothing
+    else. Comments are stripped first, every brace-delimited block is
+    parsed (nested ones included), and any declaration outside an
+    @font-face block whose property does not start with `--` is named and
+    fails the section. That is the whole contract this file is: a stylesheet
+    that paints something is a stylesheet whose load order starts to
+    matter, and three later tasks import this one blind."""
+    section("Tokens (shipped) -- custom properties only, outside @font-face")
+    text = APP_TOKENS_CSS.read_text()
+    line(f"{APP_TOKENS_CSS.relative_to(REPO_ROOT)} exists", APP_TOKENS_CSS.is_file(), f"{len(text)} bytes")
+    stripped = _strip_css_comments(text)
+    blocks = _css_blocks(stripped)
+    offenders: list[str] = []
+    n_custom = 0
+    n_font_face_decls = 0
+    for header, body, ln in blocks:
+        if header.lstrip().startswith("@font-face"):
+            n_font_face_decls += len(_declarations(body))
+            continue
+        for prop, value in _declarations(body):
+            if prop.startswith("--"):
+                n_custom += 1
+            else:
+                # Point at the declaration's own line where it can be
+                # found, falling back to the block header's line if the
+                # property is written in some shape this search misses.
+                m = re.search(r"(?m)^[ \t]*" + re.escape(prop) + r"[ \t]*:", stripped)
+                where = stripped.count("\n", 0, m.start()) + 1 if m else ln
+                offenders.append(f"{prop} (in `{header.strip()}`, line {where}): {value[:40]}")
+    ok = not offenders
+    line(
+        f"{len(blocks)} block(s) parsed; {n_custom} custom properties and {n_font_face_decls} "
+        "@font-face declarations found",
+        ok,
+        "no non-custom-property declaration outside @font-face"
+        if ok
+        else f"{len(offenders)} found",
+    )
+    for o in offenders[:10]:
+        print(f"       non-custom-property declaration: {o}")
+    line("at least one custom property is declared", n_custom > 0, f"{n_custom} declared")
+    return ok and n_custom > 0
+
+
+def check_tokens_contrast() -> bool:
+    """C2: every documented AA ratio is computed here, from the shipped
+    token values, rather than asserted in a comment beside them. Each pair
+    in `APP_TEXT_PAIRS` is composited (an `--ink-70` is 70% ink over
+    whatever it sits on, not a grey) and held to 4.5:1. `--ink-45` is
+    checked the other way round: it must still exist, still measure the
+    2.60:1 its own comment quotes, and still carry the non-text-safe label
+    where a designer reaching for it will read it."""
+    section("Tokens (shipped) -- computed AA contrast on every text pair")
+    text = APP_TOKENS_CSS.read_text()
+    tokens = _app_tokens(text)
+    failures: list[str] = []
+    missing: list[str] = []
+    for fg, bg in APP_TEXT_PAIRS:
+        if fg not in tokens or bg not in tokens:
+            missing.append(f"{fg} on {bg}")
+            continue
+        front, back = _composited(tokens[fg], tokens[bg])
+        ratio = contrast_ratio(front, back)
+        mark = "ok" if ratio >= 4.5 else "BELOW AA"
+        print(f"       {fg:24s} on {bg:22s} {ratio:6.3f}:1  {mark}")
+        if ratio < 4.5:
+            failures.append(f"{fg} on {bg} at {ratio:.3f}:1")
+    line(
+        f"all {len(APP_TEXT_PAIRS)} text-on-background pairs computed from the shipped values clear 4.5:1",
+        not failures and not missing,
+        "every pair at or above AA" if not failures and not missing
+        else f"below AA: {failures}; missing tokens: {missing}",
+    )
+
+    present = APP_BELOW_AA_TOKEN in tokens
+    line(f"{APP_BELOW_AA_TOKEN} is present (a real token with a real use, not removed)", present)
+    ok_ratio = False
+    if present:
+        front, back = _composited(tokens[APP_BELOW_AA_TOKEN], tokens[APP_BELOW_AA_BACKDROP])
+        ratio = contrast_ratio(front, back)
+        ok_ratio = abs(round(ratio, 2) - APP_BELOW_AA_EXPECTED_RATIO) < 0.005
+        line(
+            f"{APP_BELOW_AA_TOKEN} composited over {APP_BELOW_AA_BACKDROP} measures "
+            f"{APP_BELOW_AA_EXPECTED_RATIO}:1 (below AA, deliberately)",
+            ok_ratio,
+            f"measured {ratio:.3f}:1",
+        )
+    labelled = False
+    for comment in _CSS_COMMENT_RE.findall(text):
+        if APP_BELOW_AA_TOKEN in comment and APP_BELOW_AA_LABEL in comment:
+            labelled = True
+            break
+    line(
+        f"{APP_BELOW_AA_TOKEN} is labelled {APP_BELOW_AA_LABEL} in a comment that names the token itself",
+        labelled,
+        "label found beside the token" if labelled else "no comment names both the token and the label",
+    )
+    return not failures and not missing and present and ok_ratio and labelled
+
+
+def check_tokens_fonts() -> bool:
+    """C3 and C4: every `src: url(...)` in every @font-face resolves to a
+    file that exists next to the stylesheet, nothing is fetched over the
+    network, and the type system is one serif plus one mono, neither of them
+    a face this project rules out by name. A font that 404s in a classroom
+    with no internet does not degrade -- it silently becomes the browser's
+    default serif, which is the look this whole direction exists to avoid."""
+    section("Tokens (shipped) -- self-hosted fonts resolve on disk; serif + mono, no banned face")
+    text = APP_TOKENS_CSS.read_text()
+    stripped = _strip_css_comments(text)
+    faces: list[tuple[str, list[str]]] = []
+    for header, body, _ln in _css_blocks(stripped):
+        if not header.lstrip().startswith("@font-face"):
+            continue
+        decls = dict(_declarations(body))
+        family = decls.get("font-family", "").strip().strip('"').strip("'")
+        urls = _CSS_URL_RE.findall(decls.get("src", ""))
+        faces.append((family, urls))
+        weight = decls.get("font-weight", "(unset)")
+        style = decls.get("font-style", "(unset)")
+        print(f"       @font-face {family!r:22s} weight={weight:10s} style={style:8s} src={urls}")
+
+    line("at least one @font-face is declared", bool(faces), f"{len(faces)} declared")
+
+    missing: list[str] = []
+    for family, urls in faces:
+        if not urls:
+            missing.append(f"{family}: no url() in src")
+        for url in urls:
+            path = (APP_TOKENS_CSS.parent / url).resolve()
+            if path.is_file():
+                print(f"       resolved {url}  ->  {path.relative_to(REPO_ROOT)}  {path.stat().st_size} bytes")
+            else:
+                missing.append(f"{family}: {url} -> {path} (not on disk)")
+    line(
+        f"every src: url(...) across {len(faces)} @font-face block(s) resolves to a file on disk",
+        not missing,
+        "all resolved" if not missing else f"unresolved: {missing}",
+    )
+
+    remote = [u for _f, urls in faces for u in urls if u.startswith(("http:", "https:", "//"))]
+    remote += re.findall(r"@import[^;]*;", stripped)
+    line(
+        "no font is fetched over the network (no absolute URL, no @import)",
+        not remote,
+        "every src is a relative path" if not remote else f"remote reference(s): {remote}",
+    )
+
+    tokens = _app_tokens(text)
+    stacks = {n: v for n, v in tokens.items() if n.startswith("--font-")}
+    for name, value in stacks.items():
+        print(f"       {name}: {value}")
+    declared_families = {f.lower() for f, _u in faces}
+    serif_stacks = [n for n, v in stacks.items() if v.rstrip(" ;").lower().endswith("serif")]
+    mono_stacks = [n for n, v in stacks.items() if v.rstrip(" ;").lower().endswith(("monospace", "mono"))]
+    serif_self_hosted = [
+        n for n in serif_stacks if any(fam in stacks[n].lower() for fam in declared_families)
+    ]
+    mono_self_hosted = [
+        n for n in mono_stacks if any(fam in stacks[n].lower() for fam in declared_families)
+    ]
+    line(
+        "a serif stack is declared and its first family is one of the self-hosted @font-face families",
+        bool(serif_self_hosted),
+        f"serif: {serif_self_hosted}, generic-serif stacks: {serif_stacks}",
+    )
+    line(
+        "a mono stack is declared and its first family is one of the self-hosted @font-face families",
+        bool(mono_self_hosted),
+        f"mono: {mono_self_hosted}, generic-mono stacks: {mono_stacks}",
+    )
+    lowered = text.lower()
+    banned_found = [b for b in APP_BANNED_FACES if b in lowered]
+    line(
+        f"none of the {len(APP_BANNED_FACES)} ruled-out faces appears anywhere in the file",
+        not banned_found,
+        "none found" if not banned_found else f"found: {banned_found}",
+    )
+    return (
+        bool(faces)
+        and not missing
+        and not remote
+        and bool(serif_self_hosted)
+        and bool(mono_self_hosted)
+        and not banned_found
+    )
+
+
+def check_tokens_palette() -> bool:
+    """C5: the shipped palette is exactly four node hues plus sample
+    identity plus lock state, and D-008's six floors still hold -- each one
+    recomputed here from the shipped token values, not carried forward as a
+    number in a comment.
+
+    Why recomputing is enough, and no new search is: D-008 measured those
+    floors over eight fills, and the interiors ruling keeps four of them.
+    Every floor is a minimum (or, for the clamping bound, a maximum) over a
+    set of pairs, and dropping members from a set can only move a minimum
+    up. So the floors are reachable by harvesting D-008's committed values
+    -- but reachable is not measured, which is what this section is for."""
+    section("Tokens (shipped) -- four node hues, and D-008's six floors recomputed on them")
+    tokens = _app_tokens()
+
+    palette: dict[str, tuple[int, int, int]] = {}
+    absent = []
+    for name in APP_PALETTE_TOKENS:
+        rgb = hex_to_rgb(tokens.get(name, ""))
+        if rgb is None:
+            absent.append(name)
+        else:
+            palette[name] = rgb
+    reserved = {n: hex_to_rgb(tokens.get(n, "")) for n in APP_RESERVED_TOKENS}
+    white = hex_to_rgb(tokens.get("--node-label-on-fill", ""))
+
+    declared_node_fills = sorted(
+        n for n, v in tokens.items()
+        if n.startswith("--node-") and hex_to_rgb(v) is not None and n not in APP_NON_PALETTE_NODE_TOKENS
+    )
+    ok_count = declared_node_fills == sorted(APP_PALETTE_TOKENS) and not absent
+    line(
+        "the palette is exactly four node hues (the kinds a student places)",
+        ok_count,
+        f"found {declared_node_fills}" if ok_count else f"found {declared_node_fills}, missing {absent}",
+    )
+    for name in APP_NON_PALETTE_NODE_TOKENS:
+        print(f"       not in the palette, by design: {name} = {tokens.get(name, '(absent)')}")
+    line(
+        "sample identity and lock state are declared alongside the palette",
+        all(t in tokens for t in ("--frozen-x1", "--frozen-x2", "--frozen-x3",
+                                  "--tab10-x1", "--tab10-x2", "--tab10-x3",
+                                  "--locked-fill", "--locked-border")),
+        "frozen x1-x3, tab10 x1-x3, locked fill and border all present",
+    )
+    if not ok_count or white is None or any(v is None for v in reserved.values()):
+        line("palette floors recomputed", False, "palette or reserved tokens unreadable; floors not computed")
+        return False
+
+    names = list(palette.keys())
+    everything = dict(palette)
+    everything.update(reserved)
+
+    # Floor 1 -- CVD separation, 4.0 CAM02-UCS delta-E, over every
+    # node-node and node-vs-reserved pair under each of the 3 dichromacies.
+    worst_cvd = (1e9, "", "", "")
+    for i, a in enumerate(names):
+        for b in names[i + 1:] + list(reserved.keys()):
+            for cvd in ("protanopia", "deuteranopia", "tritanopia"):
+                de = cam02ucs_deltaE(
+                    simulate_cvd_cam02ucs(everything[a], cvd), simulate_cvd_cam02ucs(everything[b], cvd)
+                )
+                if de < worst_cvd[0]:
+                    worst_cvd = (de, a, b, cvd)
+    ok1 = worst_cvd[0] >= APP_DELTA_E_FLOOR
+    line(
+        f"floor 1  min CVD-simulated CAM02-UCS delta-E >= {APP_DELTA_E_FLOOR}",
+        ok1,
+        f"measured {worst_cvd[0]:.3f} ({worst_cvd[1]} vs {worst_cvd[2]}, {worst_cvd[3]})",
+    )
+
+    # Floor 2 -- normal-vision node-node separation, the swept T=14 floor.
+    worst_nn = (1e9, "", "")
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            de = cam02ucs_deltaE(srgb_to_cam02ucs(palette[a]), srgb_to_cam02ucs(palette[b]))
+            if de < worst_nn[0]:
+                worst_nn = (de, a, b)
+    ok2 = worst_nn[0] >= NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR
+    line(
+        f"floor 2  min normal-vision node-node CAM02-UCS delta-E >= {NORMAL_VISION_NODE_NODE_DELTA_E_FLOOR}",
+        ok2,
+        f"measured {worst_nn[0]:.3f} ({worst_nn[1]} vs {worst_nn[2]})",
+    )
+
+    # Floor 3 -- normal-vision separation from the two reserved colours.
+    worst_nr = (1e9, "", "")
+    for a in names:
+        for r, rgb in reserved.items():
+            de = cam02ucs_deltaE(srgb_to_cam02ucs(palette[a]), srgb_to_cam02ucs(rgb))
+            if de < worst_nr[0]:
+                worst_nr = (de, a, r)
+    ok3 = worst_nr[0] >= APP_DELTA_E_FLOOR
+    line(
+        f"floor 3  min node-vs-reserved normal-vision CAM02-UCS delta-E >= {APP_DELTA_E_FLOOR}",
+        ok3,
+        f"measured {worst_nr[0]:.3f} ({worst_nr[1]} vs {worst_nr[2]})",
+    )
+
+    # Floor 4 -- the label on the fill. Every node title is white on a
+    # saturated body, so this is a text floor, not a decoration floor.
+    worst_w = (1e9, "")
+    for a in names:
+        ratio = contrast_ratio(white, palette[a])
+        if ratio < worst_w[0]:
+            worst_w = (ratio, a)
+    ok4 = worst_w[0] >= APP_WHITE_FLOOR
+    line(
+        f"floor 4  min --node-label-on-fill contrast on a fill >= {APP_WHITE_FLOOR}:1",
+        ok4,
+        f"measured {worst_w[0]:.3f}:1 (on {worst_w[1]})",
+    )
+
+    # Floor 5 -- hue distance from the reserved colours. Delta-E alone
+    # passes a fill that reads as a desaturated vermillion; hue angle is
+    # what that complaint is actually about.
+    def _hue(rgb: tuple[int, int, int]) -> float:
+        jab = srgb_to_cam02ucs(rgb)
+        return float(np.degrees(np.arctan2(jab[2], jab[1])) % 360)
+
+    worst_hue = (1e9, "", "")
+    for a in names:
+        for r, rgb in reserved.items():
+            gap = min((_hue(palette[a]) - _hue(rgb)) % 360, (_hue(rgb) - _hue(palette[a])) % 360)
+            if gap < worst_hue[0]:
+                worst_hue = (gap, a, r)
+    ok5 = worst_hue[0] >= RESERVED_HUE_GAP_FLOOR_DEG
+    line(
+        f"floor 5  min fill-vs-reserved CAM02-UCS hue gap >= {RESERVED_HUE_GAP_FLOOR_DEG} deg",
+        ok5,
+        f"measured {worst_hue[0]:.2f} deg ({worst_hue[1]} vs {worst_hue[2]})",
+    )
+
+    # Floor 6 -- the clamping bound: clamping the Machado output before the
+    # CAM02-UCS conversion must never read more separated than the
+    # unclamped chain, beyond a measured epsilon. Without this, floor 1
+    # could be passing on an artefact of the clamp.
+    worst_excess = (-1e9, "", "", "")
+    for i, a in enumerate(names):
+        for b in names[i + 1:] + list(reserved.keys()):
+            for cvd in ("protanopia", "deuteranopia", "tritanopia"):
+                clamped = cam02ucs_deltaE(
+                    simulate_cvd_cam02ucs(everything[a], cvd), simulate_cvd_cam02ucs(everything[b], cvd)
+                )
+                unclamped = cam02ucs_deltaE(
+                    _simulate_cvd_cam02ucs_unclamped(everything[a], cvd),
+                    _simulate_cvd_cam02ucs_unclamped(everything[b], cvd),
+                )
+                if clamped - unclamped > worst_excess[0]:
+                    worst_excess = (clamped - unclamped, a, b, cvd)
+    ok6 = worst_excess[0] <= CLAMPING_EXCESS_EPSILON
+    line(
+        f"floor 6  max CAM02-UCS clamping excess <= {CLAMPING_EXCESS_EPSILON} delta-E",
+        ok6,
+        f"measured {worst_excess[0]:+.4f} ({worst_excess[1]} vs {worst_excess[2]}, {worst_excess[3]})",
+    )
+
+    return ok_count and ok1 and ok2 and ok3 and ok4 and ok5 and ok6
+
+
+# Named so `--section <name>` can address one of them without running the
+# whole sweep, which is what each D-002 acceptance criterion asks for.
+TOKENS_SECTIONS = {
+    "tokens-shape": check_tokens_shape,
+    "tokens-contrast": check_tokens_contrast,
+    "tokens-fonts": check_tokens_fonts,
+    "tokens-palette": check_tokens_palette,
+}
+
+
+def _dispatch_named_section(name: str) -> bool:
+    """Run one section by name. An unknown name raises, which `run_section`
+    turns into a named FAIL line and a non-zero exit rather than a silent
+    pass on a typo'd section."""
+    if name not in TOKENS_SECTIONS:
+        raise KeyError(f"unknown section {name!r}; known: {sorted(TOKENS_SECTIONS)}")
+    return TOKENS_SECTIONS[name]()
+
 
 
 if __name__ == "__main__":
