@@ -75,8 +75,10 @@ All counts below were enumerated by `scout` at `9495696`, not inherited from the
   pairwise minimum, so all six stay reachable by harvesting D-008's committed values. The
   dispatch forbids a new palette search.
 - **Depends on:** ~~the M1 style choice~~ — settled 2026-09-01, Bench.
-- **Branch / PR:** `task/d-002-tokens` — not yet opened
-- **Status:** cycle 1, dispatched 2026-09-01
+- **Branch / PR:** `task/d-002-tokens` — **branch exists at `9495696` with ZERO commits, no PR.**
+- **Status:** **cycle-1 dispatch LOST.** Reconciled against git 2026-09-02: the branch was
+  created and never written to, no handoff and no anchor file exists. The agent died before its
+  first commit. **Re-dispatch is cycle 1, not cycle 2.**
 - **History:** [`archive/design.md`](archive/design.md)
 
 ### D-009 — Node interiors: how a cut and an observable are actually configured
@@ -104,6 +106,8 @@ All counts below were enumerated by `scout` at `9495696`, not inherited from the
   guided controls + 1 raw expression field per option, none disabled or aria-hidden.
   C5/C6 grep `exit=1`, C7 `3 0`, C8 exactly the four files. Reproduced, not accepted.
   All four mutation gates present and each names what it caught.
+  **Cycle-1 reviewer dispatched 2026-09-01 never returned a verdict — no PR comment, session
+  died. Re-dispatched 2026-09-02; still cycle 1.**
 - **Delivered:** two options — **flyout inspector (recommended)** and **inline grow**.
   The flyout argument is that the node's own footprint stays constant across open/closed,
   which is the fixed dimension **D-010** needs for palette width. That is the user's call.
