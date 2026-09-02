@@ -65,26 +65,26 @@
 
                   <span class="mode-toggle__opt">
                     <input type="radio" name="obs-mode" id="obs-mode-global"
-                           value="ObsGlobal" checked tabindex="0" />
+                           value="ObsGlobal" checked />
                     <label for="obs-mode-global">Global</label>
                   </span>
 
                   <span class="mode-toggle__opt">
                     <input type="radio" name="obs-mode" id="obs-mode-object"
-                           value="ObsObject" tabindex="0" />
+                           value="ObsObject" />
                     <label for="obs-mode-object">Object</label>
                   </span>
 
                   <span class="mode-toggle__opt">
                     <input type="radio" name="obs-mode" id="obs-mode-vecsum"
-                           value="ObsVectorSum" tabindex="0" />
+                           value="ObsVectorSum" />
                     <label for="obs-mode-vecsum">Vector sum
                       <span class="mode-toggle__unlock-tag">mission 2</span></label>
                   </span>
 
                   <span class="mode-toggle__opt">
                     <input type="radio" name="obs-mode" id="obs-mode-custom"
-                           value="ObsCustom" tabindex="0" />
+                           value="ObsCustom" />
                     <label for="obs-mode-custom">Custom</label>
                   </span>
                 </fieldset>
@@ -167,10 +167,10 @@
           in the run payload — the mode names above (<code>ObsGlobal</code>,
           <code>ObsObject</code>, <code>ObsVectorSum</code>, <code>ObsCustom</code>) are values of
           that field, never a node kind a student chooses at placement time. Try the toggle above:
-          it is a native radio group, each option individually reachable by
-          <kbd>Tab</kbd> and activated with <kbd>Space</kbd>, and only the active mode's controls
-          render — the switch is plain CSS (<code>:has()</code> against the checked radio), no
-          script.</p>
+          it is a native radio group — <kbd>Tab</kbd> once to reach it, landing on the checked
+          option, then <kbd>&larr;</kbd>/<kbd>&rarr;</kbd> to move between and select the other
+          options — and only the active mode's controls render — the switch is plain CSS
+          (<code>:has()</code> against the checked radio), no script.</p>
       </article>
 
     </div>

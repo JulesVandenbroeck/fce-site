@@ -15,10 +15,13 @@ Each section is a real measurement, not a label check:
   - kind        C1: the set of [data-kind] values on the page is exactly
                 {'Observable'}; the set of [data-mode] values is exactly the
                 four canonical mode names.
-  - modes       C2: every one of the four modes is reachable by real Tab
-                presses from the mode toggle, and activating one by keyboard
-                (Tab to it, then Space) changes which mode's control panel is
-                rendered.
+  - modes       C2: every one of the four modes is reachable by keyboard from
+                the mode toggle — a native radiogroup, so Tab enters the
+                group once (landing on whichever option is checked) and
+                ArrowRight/ArrowLeft move between and select the other
+                options, per the WCAG radiogroup pattern — and activating a
+                mode this way changes which mode's control panel is
+                rendered. See check_modes's own docstring for the walk.
   - states      C3: for every mode, the collapsed and opened exemplars are
                 both rendered and opened is strictly taller than collapsed,
                 with both strictly greater than zero.
@@ -170,7 +173,10 @@ def check_modes(page):
         )
         if idx is None:
             all_ok = False
-            print(f"  MISMATCH: mode={mode} control_id={MODE_RADIO_ID[mode]} is unreachable by keyboard (tab_index=None)")
+            print(
+                f"  MISMATCH: mode={mode} control_id={MODE_RADIO_ID[mode]} "
+                "is unreachable by keyboard (tab_index=None)"
+            )
         if active != mode:
             all_ok = False
             print(f"  MISMATCH: activating mode={mode} rendered panel(s) {visible}, expected exactly ['{mode}']")
@@ -198,28 +204,35 @@ def _activate_mode(page, mode):
 
 
 def _measure(page, mode):
+    """Return (collapsed, opened) heights of the exemplar .inode node itself —
+    not its enclosing .exemplar <figure>, which also carries the figcaption
+    label and the gap above it. C3's opened-vs-collapsed comparison is
+    unaffected either way, since both sides carry the same figure furniture;
+    C5's reported footprint is D-010's palette-shell sizing input, so it has
+    to be the node's own box, not the exploration page's."""
     scope = '.kind-demo[data-kind="Observable"]'
-    collapsed = page.locator(f'{scope} .exemplar[data-state="collapsed"]')
-    opened = page.locator(f'{scope} .exemplar[data-state="opened"]')
+    collapsed = page.locator(f'{scope} .exemplar[data-state="collapsed"] .inode')
+    opened = page.locator(f'{scope} .exemplar[data-state="opened"] .inode')
     if collapsed.count() != 1 or opened.count() != 1:
         fail(
-            f"expected exactly one collapsed and one opened exemplar, "
+            f"expected exactly one collapsed and one opened .inode, "
             f"found {collapsed.count()}/{opened.count()}"
         )
     _activate_mode(page, mode)
     c_box = collapsed.bounding_box()
     o_box = opened.bounding_box()
     if c_box is None:
-        fail(f"mode={mode}: collapsed exemplar has no bounding box (None)")
+        fail(f"mode={mode}: collapsed .inode has no bounding box (None)")
     if o_box is None:
-        fail(f"mode={mode}: opened exemplar has no bounding box (None)")
-    return c_box["height"], o_box["height"]
+        fail(f"mode={mode}: opened .inode has no bounding box (None)")
+    return c_box, o_box
 
 
 def check_states(page):
     all_ok = True
     for mode in sorted(CANONICAL_MODES):
-        c_h, o_h = _measure(page, mode)
+        c_box, o_box = _measure(page, mode)
+        c_h, o_h = c_box["height"], o_box["height"]
         ok = o_h > c_h > 0
         print(f"mode={mode}: collapsed={c_h:.1f}px opened={o_h:.1f}px opened>collapsed>0={ok}")
         if not ok:
@@ -229,7 +242,10 @@ def check_states(page):
             if o_h <= 0:
                 print(f"  MISMATCH: opened exemplar renders at zero height (mode={mode})")
             if not (o_h > c_h):
-                print(f"  MISMATCH: opened ({o_h:.1f}px) is not strictly taller than collapsed ({c_h:.1f}px) (mode={mode})")
+                print(
+                    f"  MISMATCH: opened ({o_h:.1f}px) is not strictly taller "
+                    f"than collapsed ({c_h:.1f}px) (mode={mode})"
+                )
     if not all_ok:
         fail("at least one mode did not have opened > collapsed > 0")
     print("PASS: states")
@@ -277,18 +293,36 @@ def check_controls(page):
 
 
 def check_footprint(page):
+    """The reported footprint is the .inode node's own box (C9) — not the
+    enclosing .exemplar <figure>, which also carries the figcaption label and
+    the gap above it. Print both readings so the difference the figcaption
+    contributes is visible, but only the node's own height is the reported,
+    named number."""
     heights = {}
+    widths = {}
+    figure_heights = {}
     for mode in sorted(CANONICAL_MODES):
-        _, o_h = _measure(page, mode)
-        heights[mode] = o_h
-        print(f"mode={mode}: opened height = {o_h:.1f}px")
+        o_box = _measure(page, mode)[1]
+        heights[mode] = o_box["height"]
+        widths[mode] = o_box["width"]
+        scope = '.kind-demo[data-kind="Observable"]'
+        fig_box = page.locator(f'{scope} .exemplar[data-state="opened"]').bounding_box()
+        figure_heights[mode] = fig_box["height"] if fig_box else None
+        print(
+            f"mode={mode}: node height = {heights[mode]:.1f}px, "
+            f"node width = {widths[mode]:.1f}px "
+            f"(figure height = {figure_heights[mode]:.1f}px)"
+        )
 
     for mode, h in heights.items():
         if not (h > 0):
-            fail(f"mode={mode}: opened height {h:.1f}px is not > 0")
+            fail(f"mode={mode}: node height {h:.1f}px is not > 0")
 
     tallest_mode = max(heights, key=heights.get)
-    print(f"widest/tallest mode: {tallest_mode} at {heights[tallest_mode]:.1f}px")
+    print(
+        f"widest/tallest mode (node, not figure): {tallest_mode} at "
+        f"{heights[tallest_mode]:.1f}px x {widths[tallest_mode]:.1f}px"
+    )
     print("PASS: footprint")
 
 
