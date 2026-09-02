@@ -153,6 +153,33 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   `git-diff-clean` was added to `TOKENS_SECTIONS` so C7's `--section` command resolves; that
   dict is this branch's own addition, not a pre-existing section. **Cycle 1 reviewer dispatched**
   with the effort raised, as a contract task. **checks=7.**
+  **Cycle 1 reviewed 2026-09-02: `0R / 2M / 3m`, scope pass, `verdict=rework`** — posted to
+  PR #24 (`issuecomment-5510102458`). Everything claimed reproduced, and the reviewer re-derived
+  all 23 WCAG ratios and three of the four CVD floors independently, decoded the four woff2 with
+  `fontTools` (EB Garamond carries an `fvar wght 400-800` axis; all four cmaps hold the physics
+  glyph set; 233,224 bytes total), and ran 18 mutations of which every one bit — including
+  `--section no-such-section`, which fails rather than silently passing.
+  **M1, and it is why this is a real cycle (§5.4 clause 3 — no criterion of mine ever gated it):
+  no NON-TEXT contrast is computed anywhere, and `APP_TEXT_PAIRS` has no completeness
+  assertion.** Measured by the reviewer: `--chrome-border` on `--chrome-bg` **1.30:1**,
+  `--locked-border` on `--locked-fill` **1.39:1**, `--frozen-x3` on paper **2.73:1**,
+  `--tab10-x3` on paper **1.92:1**, against WCAG 2.2 SC 1.4.11's 3:1. `--chrome-border` is what
+  D-010 and F-002 will reach for as a control boundary. **A contract task does not merge with an
+  open finding against the token set — D-004 did and it cost D-008.**
+  **Cycle 2 dispatched 2026-09-02** with C8 (every non-text pair computed against 3:1, or on a
+  named exemption list stating why it is not a UI boundary; mutation-gated) and C9 (every
+  declared colour token appears in some computed pair or exemption list, so a later token cannot
+  be silently uncovered; mutation-gated by adding an uncovered probe token). **checks 7 -> 9.**
+  The dispatch states the feasibility per pair: the two border tokens can be darkened freely
+  because neither is a node hue and neither enters D-008's six floors; the series colours are
+  legitimately exemptible if the use is stated. **If a fix would move a node hue, stop — do not
+  trade one floor for another.**
+  **M2 RATIFIED BY ME, not a defect:** `verify.py:6324`'s `main()` condition gained
+  `and not args.section`, outside the append-only scope, but it is behaviour-preserving and my
+  own `Check:` commands forced it. The coder adds it to Deviations; no code change.
+  m1 (`--timing` / `--duration-base` alias pair undocumented) and m2 (`verify.py:1948` prints
+  `[PASS]` while asserting nothing) folded into cycle 2; m3 is a stale `260` in the PR body next
+  to the correct `262`.
   **Uncollected:** the coder's 50%% anchor is untracked inside its worktree at
   `.claude/worktrees/agent-aa484a2374583ffaa/.claude/handoff/d-002-design.anchor.md` — committing
   it would have failed C6's own diff check. Collect it only if a handoff is needed.
