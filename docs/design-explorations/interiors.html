@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-009 — node interiors (design exploration)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="interiors.css" />
+</head>
+<body>
+<main class="page">
+
+  <header class="ii-header">
+    <span class="ii-header__eyebrow">FCE-site design explorations</span>
+    <h1 class="ii-header__title">What is inside a node</h1>
+    <p class="ii-header__lede">A node today has exactly one configurable property —
+      <code>subtitle</code>, whose value is the literal string
+      <code>"not configured yet"</code>. This page is the checkpoint that settles what
+      replaces it: what a student sees when a node sits closed on the canvas, and what
+      they see once they open it, for each of the seven kinds the palette will ever place.
+      <code>docs/design-brief.md</code> §4 is explicit that this is <em>not</em> inherited
+      from the reference desktop tool's dense fixed property grid — this is the design
+      question that grid answered, asked fresh for a 15–18-year-old who has never opened a
+      physics tool before.</p>
+    <p class="ii-header__lede">Two complete interiors follow, each rendering all seven
+      kinds in both states side by side. Read both, then <a href="#recommendation">the
+      recommendation</a> at the bottom.</p>
+  </header>
+
+  <!-- ================================================================= -->
+  <!-- OPTION 1 — Flyout inspector (recommended)                         -->
+  <!-- ================================================================= -->
+  <section class="option" data-option="flyout" data-recommended="true">
+    <header class="option__head">
+      <span class="option__tag">Recommended</span>
+      <h2 class="option__title">Flyout inspector</h2>
+      <p class="option__desc">The node itself never changes size. Opening a node
+        raises a panel attached to it — visually hinged off its bottom edge, like a card
+        flipped open on the bench — that holds the guided form. Closing it collapses the
+        panel again; the node's own footprint, and every port and edge attached to it, are
+        untouched by opening or closing.</p>
+      <p class="option__payload"><strong>What this adds to the run payload:</strong> nothing
+        to the node's position or size — <code>{id, x, y}</code> (<code>bench.html:289-292</code>)
+        is unaffected by open/closed state, because the flyout is drawn as an overlay, not a
+        resize. Each node instead gains one <code>config</code> object (the guided field
+        values, or the raw expression string) and one <code>open</code> boolean, and the
+        latter is exactly the kind of layout fact <code>docs/design-brief.md</code> §4 already
+        assigns to the <code>ui</code> object the engine never reads, alongside coordinates.</p>
+    </header>
+
+    <div class="kind-grid">
+
+      <!-- Multiplicity ------------------------------------------------- -->
+      <article class="kind-demo" data-kind="Multiplicity">
+        <h3 class="kind-demo__label">Multiplicity</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--multiplicity">
+              <p class="inode__title">Multiplicity</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode-shell">
+              <div class="inode inode--multiplicity">
+                <p class="inode__title">Multiplicity</p>
+                <p class="inode__subtitle">≥ 2 leptons</p>
+              </div>
+              <div class="flyout">
+                <div class="flyout__field">
+                  <label for="fly-mult-object">Count how many</label>
+                  <select id="fly-mult-object">
+                    <option>leptons</option>
+                    <option>jets</option>
+                    <option>photons</option>
+                  </select>
+                </div>
+                <div class="flyout__field">
+                  <label for="fly-mult-cmp">Comparison</label>
+                  <select id="fly-mult-cmp">
+                    <option>at least (≥)</option>
+                    <option>exactly (=)</option>
+                    <option>at most (≤)</option>
+                  </select>
+                </div>
+                <div class="flyout__field">
+                  <label for="fly-mult-count">How many</label>
+                  <input id="fly-mult-count" type="number" min="0" value="2" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {object, comparator, count}</code> to
+          this node's payload entry.</p>
+      </article>
+
+      <!-- Selection ------------------------------------------------------ -->
+      <article class="kind-demo" data-kind="Selection">
+        <h3 class="kind-demo__label">Selection</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--selection">
+              <p class="inode__title">Selection</p>
+              <p class="inode__subtitle">lepton pt &gt; 20 GeV</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode-shell">
+              <div class="inode inode--selection">
+                <p class="inode__title">Selection</p>
+                <p class="inode__subtitle">lepton pt &gt; 20 GeV</p>
+              </div>
+              <div class="flyout">
+                <p class="flyout__mode-label">Build it</p>
+                <div class="io-guided">
+                  <div class="flyout__field">
+                    <label for="fly-sel-object">Object</label>
+                    <select id="fly-sel-object">
+                      <option>lepton 1</option>
+                      <option>lepton 2</option>
+                      <option>jet 1</option>
+                    </select>
+                  </div>
+                  <div class="flyout__field">
+                    <label for="fly-sel-field">Quantity</label>
+                    <select id="fly-sel-field">
+                      <option>pt</option>
+                      <option>eta</option>
+                      <option>phi</option>
+                      <option>charge</option>
+                    </select>
+                  </div>
+                  <div class="flyout__field">
+                    <label for="fly-sel-cmp">Is</label>
+                    <select id="fly-sel-cmp">
+                      <option>greater than</option>
+                      <option>less than</option>
+                      <option>at least</option>
+                      <option>at most</option>
+                    </select>
+                  </div>
+                  <div class="flyout__field">
+                    <label for="fly-sel-value">Value (GeV)</label>
+                    <input id="fly-sel-value" type="number" value="20" />
+                  </div>
+                </div>
+                <p class="flyout__mode-label flyout__mode-label--raw">Or type it directly</p>
+                <div class="io-raw">
+                  <label for="fly-sel-raw">Expression</label>
+                  <input id="fly-sel-raw" class="io-raw__input" type="text"
+                         value="l1.pt > 20" spellcheck="false" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {mode: "guided"|"raw", object, field,
+          comparator, value, expression}</code> — both representations are kept, so
+          switching modes never silently discards what a student already typed.</p>
+      </article>
+
+      <!-- ObsGlobal -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsGlobal">
+        <h3 class="kind-demo__label">Obs: Global</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-global">
+              <p class="inode__title">Obs: Global</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode-shell">
+              <div class="inode inode--obs-global">
+                <p class="inode__title">Obs: Global</p>
+                <p class="inode__subtitle">missing transverse energy</p>
+              </div>
+              <div class="flyout">
+                <div class="flyout__field">
+                  <label for="fly-global-qty">Event quantity</label>
+                  <select id="fly-global-qty">
+                    <option>missing transverse energy</option>
+                    <option>number of leptons</option>
+                    <option>total visible energy</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {quantity}</code>.</p>
+      </article>
+
+      <!-- ObsObject -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsObject">
+        <h3 class="kind-demo__label">Obs: Object</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-object">
+              <p class="inode__title">Obs: Object</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode-shell">
+              <div class="inode inode--obs-object">
+                <p class="inode__title">Obs: Object</p>
+                <p class="inode__subtitle">lepton 1 — pt</p>
+              </div>
+              <div class="flyout">
+                <div class="flyout__field">
+                  <label for="fly-obsobj-object">Object</label>
+                  <select id="fly-obsobj-object">
+                    <option>lepton 1</option>
+                    <option>lepton 2</option>
+                    <option>jet 1</option>
+                  </select>
+                </div>
+                <div class="flyout__field">
+                  <label for="fly-obsobj-field">Quantity</label>
+                  <select id="fly-obsobj-field">
+                    <option>pt</option>
+                    <option>eta</option>
+                    <option>phi</option>
+                    <option>mass</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {object, field}</code>.</p>
+      </article>
+
+      <!-- ObsVectorSum ------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsVectorSum">
+        <h3 class="kind-demo__label">Obs: Vec Sum</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-vecsum">
+              <p class="inode__title">Obs: Vec Sum</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode-shell">
+              <div class="inode inode--obs-vecsum">
+                <p class="inode__title">Obs: Vec Sum</p>
+                <p class="inode__subtitle">mass of lepton 1 + lepton 2</p>
+              </div>
+              <div class="flyout">
+                <p class="flyout__mode-label">Add together</p>
+                <fieldset class="flyout__checks">
+                  <legend class="sr-only">Objects to add together</legend>
+                  <label><input type="checkbox" checked /> lepton 1</label>
+                  <label><input type="checkbox" checked /> lepton 2</label>
+                  <label><input type="checkbox" /> photon</label>
+                </fieldset>
+                <div class="flyout__field">
+                  <label for="fly-vecsum-field">Then read off</label>
+                  <select id="fly-vecsum-field">
+                    <option>mass</option>
+                    <option>pt</option>
+                    <option>eta</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {objects: [...], field}</code> — this
+          is the mission-2 lesson (<code>docs/design-brief.md</code>, the X3 note) in node
+          form, so the checkbox list is the whole point: adding the photon back in is one
+          click, not a retyped expression.</p>
+      </article>
+
+      <!-- ObsCustom -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsCustom">
+        <h3 class="kind-demo__label">Obs: Custom</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-custom">
+              <p class="inode__title">Obs: Custom</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode-shell">
+              <div class="inode inode--obs-custom">
+                <p class="inode__title">Obs: Custom</p>
+                <p class="inode__subtitle">(l1.p4 + l2.p4).mass</p>
+              </div>
+              <div class="flyout">
+                <p class="flyout__mode-label">No guided form here — a custom observable
+                  is, by definition, something the guided fields above cannot already say.</p>
+                <div class="io-raw">
+                  <label for="fly-custom-raw">Expression</label>
+                  <input id="fly-custom-raw" class="io-raw__input" type="text"
+                         value="(l1.p4 + l2.p4).mass" spellcheck="false" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {expression}</code> — evaluated
+          through the AST whitelist, never <code>eval</code>
+          (<code>docs/design-brief.md</code> §4).</p>
+      </article>
+
+      <!-- Histogram -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="Histogram">
+        <h3 class="kind-demo__label">Histogram</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--histogram">
+              <p class="inode__title">Histogram</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode-shell">
+              <div class="inode inode--histogram">
+                <p class="inode__title">Histogram</p>
+                <p class="inode__subtitle">40 bins, 0–120 GeV</p>
+              </div>
+              <div class="flyout">
+                <p class="flyout__readonly">x-axis: mass of lepton 1 + lepton 2 <span
+                  class="flyout__readonly-tag">from the node feeding this one</span></p>
+                <div class="flyout__field">
+                  <label for="fly-hist-bins">Bins</label>
+                  <input id="fly-hist-bins" type="number" min="1" value="40" />
+                </div>
+                <div class="flyout__field">
+                  <label for="fly-hist-min">From (GeV)</label>
+                  <input id="fly-hist-min" type="number" value="0" />
+                </div>
+                <div class="flyout__field">
+                  <label for="fly-hist-max">To (GeV)</label>
+                  <input id="fly-hist-max" type="number" value="120" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {bins, min, max}</code>; the axis
+          label is read off the connected Obs node rather than typed, so it cannot drift
+          from what actually feeds it.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- OPTION 2 — Inline grow                                            -->
+  <!-- ================================================================= -->
+  <section class="option" data-option="inline-grow">
+    <header class="option__head">
+      <span class="option__tag option__tag--alt">Alternative</span>
+      <h2 class="option__title">Inline grow</h2>
+      <p class="option__desc">Opening a node grows the node card itself, in place, to
+        hold the guided form directly beneath its title bar. There is no separate panel —
+        what you see is the whole node, just taller. Closing it shrinks the card back down.</p>
+      <p class="option__payload"><strong>What this adds to the run payload:</strong> the
+        same <code>config</code> object and <code>open</code> flag as the flyout, but here
+        <code>open</code> also has to move whatever sits below the node in Bench's free
+        canvas — a taller node lengthens the edges leaving it and can now overlap a node
+        placed close underneath, which the flyout does not do because its panel never
+        displaces a neighbour node's own <code>{x, y}</code>.</p>
+    </header>
+
+    <div class="kind-grid">
+
+      <!-- Multiplicity ------------------------------------------------- -->
+      <article class="kind-demo" data-kind="Multiplicity">
+        <h3 class="kind-demo__label">Multiplicity</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--multiplicity">
+              <p class="inode__title">Multiplicity</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--multiplicity inode--grown">
+              <p class="inode__title">Multiplicity</p>
+              <p class="inode__subtitle">≥ 2 leptons</p>
+              <div class="inline-form">
+                <div class="flyout__field">
+                  <label for="inl-mult-object">Count how many</label>
+                  <select id="inl-mult-object">
+                    <option>leptons</option>
+                    <option>jets</option>
+                    <option>photons</option>
+                  </select>
+                </div>
+                <div class="flyout__field">
+                  <label for="inl-mult-cmp">Comparison</label>
+                  <select id="inl-mult-cmp">
+                    <option>at least (≥)</option>
+                    <option>exactly (=)</option>
+                    <option>at most (≤)</option>
+                  </select>
+                </div>
+                <div class="flyout__field">
+                  <label for="inl-mult-count">How many</label>
+                  <input id="inl-mult-count" type="number" min="0" value="2" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {object, comparator, count}</code> —
+          identical fields to the flyout; only the container differs.</p>
+      </article>
+
+      <!-- Selection ------------------------------------------------------ -->
+      <article class="kind-demo" data-kind="Selection">
+        <h3 class="kind-demo__label">Selection</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--selection">
+              <p class="inode__title">Selection</p>
+              <p class="inode__subtitle">lepton pt &gt; 20 GeV</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--selection inode--grown">
+              <p class="inode__title">Selection</p>
+              <p class="inode__subtitle">lepton pt &gt; 20 GeV</p>
+              <div class="inline-form">
+                <p class="flyout__mode-label">Build it</p>
+                <div class="io-guided">
+                  <div class="flyout__field">
+                    <label for="inl-sel-object">Object</label>
+                    <select id="inl-sel-object">
+                      <option>lepton 1</option>
+                      <option>lepton 2</option>
+                      <option>jet 1</option>
+                    </select>
+                  </div>
+                  <div class="flyout__field">
+                    <label for="inl-sel-field">Quantity</label>
+                    <select id="inl-sel-field">
+                      <option>pt</option>
+                      <option>eta</option>
+                      <option>phi</option>
+                      <option>charge</option>
+                    </select>
+                  </div>
+                  <div class="flyout__field">
+                    <label for="inl-sel-cmp">Is</label>
+                    <select id="inl-sel-cmp">
+                      <option>greater than</option>
+                      <option>less than</option>
+                      <option>at least</option>
+                      <option>at most</option>
+                    </select>
+                  </div>
+                  <div class="flyout__field">
+                    <label for="inl-sel-value">Value (GeV)</label>
+                    <input id="inl-sel-value" type="number" value="20" />
+                  </div>
+                </div>
+                <p class="flyout__mode-label flyout__mode-label--raw">Or type it directly</p>
+                <div class="io-raw">
+                  <label for="inl-sel-raw">Expression</label>
+                  <input id="inl-sel-raw" class="io-raw__input" type="text"
+                         value="l1.pt > 20" spellcheck="false" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {mode: "guided"|"raw", object, field,
+          comparator, value, expression}</code> — same shape as the flyout.</p>
+      </article>
+
+      <!-- ObsGlobal -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsGlobal">
+        <h3 class="kind-demo__label">Obs: Global</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-global">
+              <p class="inode__title">Obs: Global</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--obs-global inode--grown">
+              <p class="inode__title">Obs: Global</p>
+              <p class="inode__subtitle">missing transverse energy</p>
+              <div class="inline-form">
+                <div class="flyout__field">
+                  <label for="inl-global-qty">Event quantity</label>
+                  <select id="inl-global-qty">
+                    <option>missing transverse energy</option>
+                    <option>number of leptons</option>
+                    <option>total visible energy</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {quantity}</code>.</p>
+      </article>
+
+      <!-- ObsObject -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsObject">
+        <h3 class="kind-demo__label">Obs: Object</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-object">
+              <p class="inode__title">Obs: Object</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--obs-object inode--grown">
+              <p class="inode__title">Obs: Object</p>
+              <p class="inode__subtitle">lepton 1 — pt</p>
+              <div class="inline-form">
+                <div class="flyout__field">
+                  <label for="inl-obsobj-object">Object</label>
+                  <select id="inl-obsobj-object">
+                    <option>lepton 1</option>
+                    <option>lepton 2</option>
+                    <option>jet 1</option>
+                  </select>
+                </div>
+                <div class="flyout__field">
+                  <label for="inl-obsobj-field">Quantity</label>
+                  <select id="inl-obsobj-field">
+                    <option>pt</option>
+                    <option>eta</option>
+                    <option>phi</option>
+                    <option>mass</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {object, field}</code>.</p>
+      </article>
+
+      <!-- ObsVectorSum ------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsVectorSum">
+        <h3 class="kind-demo__label">Obs: Vec Sum</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-vecsum">
+              <p class="inode__title">Obs: Vec Sum</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--obs-vecsum inode--grown">
+              <p class="inode__title">Obs: Vec Sum</p>
+              <p class="inode__subtitle">mass of lepton 1 + lepton 2</p>
+              <div class="inline-form">
+                <p class="flyout__mode-label">Add together</p>
+                <fieldset class="flyout__checks">
+                  <legend class="sr-only">Objects to add together</legend>
+                  <label><input type="checkbox" checked /> lepton 1</label>
+                  <label><input type="checkbox" checked /> lepton 2</label>
+                  <label><input type="checkbox" /> photon</label>
+                </fieldset>
+                <div class="flyout__field">
+                  <label for="inl-vecsum-field">Then read off</label>
+                  <select id="inl-vecsum-field">
+                    <option>mass</option>
+                    <option>pt</option>
+                    <option>eta</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {objects: [...], field}</code>.</p>
+      </article>
+
+      <!-- ObsCustom -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="ObsCustom">
+        <h3 class="kind-demo__label">Obs: Custom</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--obs-custom">
+              <p class="inode__title">Obs: Custom</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--obs-custom inode--grown">
+              <p class="inode__title">Obs: Custom</p>
+              <p class="inode__subtitle">(l1.p4 + l2.p4).mass</p>
+              <div class="inline-form">
+                <div class="io-raw">
+                  <label for="inl-custom-raw">Expression</label>
+                  <input id="inl-custom-raw" class="io-raw__input" type="text"
+                         value="(l1.p4 + l2.p4).mass" spellcheck="false" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {expression}</code>.</p>
+      </article>
+
+      <!-- Histogram -------------------------------------------------------- -->
+      <article class="kind-demo" data-kind="Histogram">
+        <h3 class="kind-demo__label">Histogram</h3>
+        <div class="kind-demo__pair">
+          <figure class="exemplar" data-state="collapsed">
+            <figcaption>Collapsed</figcaption>
+            <div class="inode inode--histogram">
+              <p class="inode__title">Histogram</p>
+              <p class="inode__subtitle">not configured yet</p>
+            </div>
+          </figure>
+          <figure class="exemplar" data-state="opened">
+            <figcaption>Opened</figcaption>
+            <div class="inode inode--histogram inode--grown">
+              <p class="inode__title">Histogram</p>
+              <p class="inode__subtitle">40 bins, 0–120 GeV</p>
+              <div class="inline-form">
+                <p class="flyout__readonly">x-axis: mass of lepton 1 + lepton 2</p>
+                <div class="flyout__field">
+                  <label for="inl-hist-bins">Bins</label>
+                  <input id="inl-hist-bins" type="number" min="1" value="40" />
+                </div>
+                <div class="flyout__field">
+                  <label for="inl-hist-min">From (GeV)</label>
+                  <input id="inl-hist-min" type="number" value="0" />
+                </div>
+                <div class="flyout__field">
+                  <label for="inl-hist-max">To (GeV)</label>
+                  <input id="inl-hist-max" type="number" value="120" />
+                </div>
+              </div>
+            </div>
+          </figure>
+        </div>
+        <p class="kind-demo__note">Adds <code>config: {bins, min, max}</code>.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <section class="recommendation" id="recommendation">
+    <h2>Recommendation</h2>
+    <p><strong>Flyout inspector.</strong> Both options carry the same guided fields, the
+      same dual guided/raw form for <code>Selection</code>, and the same payload shape —
+      the actual research question this checkpoint answers is <em>where the interior
+      lives</em>, not what it asks for, and on that question the two options diverge in a
+      way that matters for D-010. D-010 (the three-region shell) is blocked on node size
+      deciding how wide the palette has to be; a node whose own footprint never changes
+      between closed and open gives that task one fixed number to design against. Inline
+      grow gives it two, and a taller open node on Bench's free canvas
+      (<code>bench.html:157-186</code>) can now overlap whatever a student already placed
+      underneath it, which a canvas that persists free <code>{x, y}</code> positions has no
+      mechanism to prevent or resolve. The flyout's panel is layered on top of the canvas
+      instead of displacing anything on it, so opening a node to configure it is never the
+      action that breaks a layout a student already built.</p>
+    <p>The cost accepted: a flyout is one more visual layer than a card that simply grows,
+      and it needs its own hinge affordance to read as attached to the node it belongs to
+      rather than a floating popover. That cost is a rendering detail for whichever role
+      builds the shipping version; the node-size question it protects is not.</p>
+  </section>
+
+</main>
+</body>
+</html>
