@@ -112,16 +112,20 @@ def check_states(page):
             c_h = c_box["height"] if c_box else 0
             o_h = o_box["height"] if o_box else 0
             rows += 1
-            ok = o_h > c_h
+            ok = o_h > c_h and c_h > 0 and o_h > 0
             print(
                 f"option={opt} kind={kind}: collapsed={c_h:.1f}px "
                 f"opened={o_h:.1f}px opened>collapsed={ok}"
             )
             if not ok:
                 all_ok = False
+                if c_h <= 0:
+                    print(f"  MISMATCH: collapsed exemplar renders at zero height (option={opt} kind={kind})")
+                if o_h <= 0:
+                    print(f"  MISMATCH: opened exemplar renders at zero height (option={opt} kind={kind})")
     print(f"rows measured: {rows}")
     if not all_ok:
-        fail("at least one (option, kind) pair did not have opened > collapsed")
+        fail("at least one (option, kind) pair did not have opened > collapsed > 0")
     print("PASS: states")
 
 
@@ -129,11 +133,14 @@ def _tab_order(page):
     """Return the page's focusable elements, in the order Tab reaches them, as
     a list of element ids, by walking with real Tab presses from a stable
     start (document body) rather than trusting DOM order alone — this is what
-    a keyboard user actually experiences, including any focusable element the
-    browser itself would skip (disabled, aria-hidden, etc). An element with
-    no id is given a temporary one so it can still be matched positionally;
-    every control this check actually cares about (the guided fields, the
-    raw expression field) already has a real id."""
+    a keyboard user actually experiences. Real Tab presses land only on
+    elements the browser itself treats as focusable, so anything disabled,
+    aria-hidden, or removed from the tab order (e.g. tabindex="-1") is
+    excluded from the walk — which is exactly why such a control's
+    tab_index_of() lookup below comes back None. An element with no id is
+    given a temporary one so it can still be matched positionally; every
+    control this check actually cares about (the guided fields, the raw
+    expression field) already has a real id."""
     page.evaluate("document.body.setAttribute('tabindex', '-1'); document.body.focus();")
     order_ids = []
     for _ in range(400):
@@ -196,11 +203,17 @@ def check_selection_dual(page):
             )
             if aria_hidden or disabled:
                 all_ok = False
+            if idx is None:
+                all_ok = False
+                print(f"  MISMATCH: guided[{i}] id={ctrl_id} is unreachable by Tab (tab_index=None)")
 
         print(f"option={opt}: labelled guided controls = {labelled} (of {n_guided} total)")
-        if labelled < 1:
+        if n_guided != 4:
             all_ok = False
-            print(f"  MISMATCH: expected >= 1 labelled guided control, found {labelled}")
+            print(f"  MISMATCH: expected exactly 4 guided controls, found {n_guided}")
+        if labelled != n_guided:
+            all_ok = False
+            print(f"  MISMATCH: expected all {n_guided} guided controls labelled, found {labelled}")
 
         raw_fields = page.locator(f"{scope} .io-raw .io-raw__input")
         n_raw = raw_fields.count()
@@ -225,6 +238,9 @@ def check_selection_dual(page):
             )
             if aria_hidden or disabled:
                 all_ok = False
+            if idx is None:
+                all_ok = False
+                print(f"  MISMATCH: raw field id={raw_id} is unreachable by Tab (tab_index=None)")
 
     if not all_ok:
         fail("selection-dual check failed — see MISMATCH / aria_hidden / disabled lines above")
