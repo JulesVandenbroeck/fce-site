@@ -7274,6 +7274,10 @@ TOKENS_SECTIONS = {
     "tokens-contrast": check_tokens_contrast,
     "tokens-fonts": check_tokens_fonts,
     "tokens-palette": check_tokens_palette,
+    # Not a tokens section, but addressable here so the narrowed scope guard
+    # can be exercised on its own — including with a deliberate out-of-scope
+    # probe file committed — without running the whole sweep.
+    "git-diff-clean": check_git_diff,
 }
 
 
