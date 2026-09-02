@@ -1882,29 +1882,73 @@ def check_network_and_errors(pw: Playwright) -> bool:
     return all_ok
 
 
+# The D-002 design-token deliverables. These are the ONLY paths under
+# src/, tests/ or content/ that a branch is allowed to carry past
+# check_git_diff. Everything else under those three trees still fails.
+# Kept deliberately narrow: two exact-or-prefix rules, no globs that
+# could widen by accident as new directories appear.
+SHIPPED_DELIVERABLE_FILE = "src/fce_web/static/css/tokens.css"
+SHIPPED_DELIVERABLE_DIR = "src/fce_web/static/fonts/"
+
+
+def _is_shipped_deliverable(path: str) -> bool:
+    """True for the two D-002 deliverable paths and nothing else.
+
+    `src/fce_web/static/css/anything-else.css` is NOT a deliverable, and
+    neither is any other file under `src/fce_web/static/`.
+    """
+    return path == SHIPPED_DELIVERABLE_FILE or path.startswith(SHIPPED_DELIVERABLE_DIR)
+
+
 def check_git_diff() -> bool:
-    """Confirm this branch has not touched src/, tests/, or content/, by
-    diffing against main's merge-base rather than the index (see comment
-    below for why that distinction matters)."""
-    section("git diff --stat main...HEAD -- src/ tests/ content/ (this exploration ships nothing)")
-    # A bare `git diff --stat -- <paths>` compares the working tree to the
-    # index — it would read clean the moment everything is committed,
-    # regardless of what the branch actually committed under those paths.
+    """Confirm this branch has touched nothing under src/, tests/ or content/
+    except the two shipped D-002 deliverables, by diffing against main's
+    merge-base rather than the index (see comment below for why that
+    distinction matters)."""
+    section(
+        "git diff main...HEAD -- src/ tests/ content/ "
+        "(ships nothing but the D-002 token + font deliverables)"
+    )
+    # A bare `git diff -- <paths>` compares the working tree to the index —
+    # it would read clean the moment everything is committed, regardless of
+    # what the branch actually committed under those paths.
     # `main...HEAD` (triple-dot, symmetric to the merge-base) is what
     # actually answers "did this branch touch src/tests/content", which is
-    # criterion 5's real question.
+    # the real question here.
+    #
+    # `--name-only` rather than `--stat`, because the property being
+    # asserted is now per-path ("which files") rather than "is the diff
+    # empty": tokens.css and static/fonts/** are shipped deliverables as of
+    # D-002, so an empty diff is no longer the right expectation. Every
+    # other path under the three guarded trees still fails, by name.
     result = subprocess.run(
-        ["git", "diff", "--stat", "main...HEAD", "--", "src/", "tests/", "content/"],
+        ["git", "diff", "--name-only", "main...HEAD", "--", "src/", "tests/", "content/"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
     )
     output = result.stdout.strip()
-    ok = output == "" and result.returncode == 0
-    detail = f"output: {output!r}" if output else "clean"
-    if result.returncode != 0:
-        detail += f"; stderr: {result.stderr.strip()!r}"
-    line("No changes under src/, tests/, or content/ since branching from main", ok, detail)
+    changed = [p for p in output.splitlines() if p.strip()]
+    exempt = [p for p in changed if _is_shipped_deliverable(p)]
+    offenders = [p for p in changed if not _is_shipped_deliverable(p)]
+
+    git_ok = result.returncode == 0
+    if not git_ok:
+        line("git diff main...HEAD exits 0", False, f"stderr: {result.stderr.strip()!r}")
+        return False
+
+    ok = not offenders
+    detail = ", ".join(offenders) if offenders else "none"
+    line(
+        "No changes under src/, tests/ or content/ beyond the D-002 deliverables",
+        ok,
+        f"offending paths: {detail}",
+    )
+    line(
+        f"Exempt deliverable paths carried by this branch: {len(exempt)}",
+        True,
+        ", ".join(exempt) if exempt else "none",
+    )
     return ok
 
 
