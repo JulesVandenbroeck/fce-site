@@ -19,9 +19,9 @@ told about. All five are also written into `docs/design-brief.md` §2 and §4, w
 version a coder reads.
 
 1. **No `DataSource` in the palette.** V1 is 91 GeV only and each mission declares its dataset,
-   so the node would have exactly one legal value. The palette is **seven** kinds:
-   `Multiplicity`, `Selection`, the four `Obs*`, `Histogram`. Future energies are future
-   missions, not a chooser. → brief §4.
+   so the node would have exactly one legal value. Future energies are future missions, not a
+   chooser. → brief §4. **Its "seven kinds" is superseded by ruling 7 below — the palette is
+   four.**
 2. **Node interiors are re-thought from scratch.** The reference tool's fixed property grid is
    the one part of its UI not inherited. How a cut is expressed, how an observable is
    configured, must be designed for a 15–18-year-old. Legible beats complete. → **D-009**.
@@ -36,6 +36,27 @@ version a coder reads.
 5. **Three regions, one permanent.** The graph canvas is always present; "Add a Node" is on the
    **left** and **collapses**; the mission panel is on the **right**, **expands**, and pages
    back to previous missions. → **D-010**.
+
+**The interiors ruling, 2026-09-02.** Two decisions off the D-009 checkpoint.
+
+6. **Inline grow, not the flyout inspector.** The node card itself grows in place when opened;
+   there is no separate hinged panel. D-009's page recommended the flyout and the user overruled
+   it, the same shape as the D-007/Bench overrule. **Consequence D-010 must design around, and it
+   is the flyout's argument turned live:** a node now has **two** footprints, not one, so palette
+   width is sized against the *opened* card; and on Bench's free canvas an opened node can overlap
+   whatever is placed beneath it, which a canvas persisting free `{id, x, y}` has no mechanism to
+   prevent. That overlap is now D-010's problem to solve, not a reason to have picked differently.
+
+7. **One `Observable` node with a mode toggle, not four `Obs*` nodes.** The palette is **four**
+   kinds: `Multiplicity`, `Selection`, `Observable`, `Histogram`. `ObsGlobal` / `ObsObject` /
+   `ObsVectorSum` / `ObsCustom` become a mode *inside* the node. → brief §4, written 2026-09-02.
+   **Why it is structurally free, enumerated not assumed** (`scout`, 2026-09-02): all four
+   subtypes have identical legal connections — `Observable* → Histogram` and nothing else, which
+   is why the brief's allowlist already writes them as one row. No legal graph changes.
+   The mode is `config`, not identity: **the run payload resolves it to the engine subtype at
+   submit**, exactly as `DataSource` is synthesised at submit. The student's graph and the
+   engine's graph are now deliberately different in two places, not one. `ObsVectorSum` is the
+   mission-2 unlock, so **an unlock must now read inside a node**, not as a new palette entry.
 
 **Consequence for M3, recorded so it is not rediscovered:** the engine's allowlist still makes
 `DataSource` the root of every chain. With it out of the palette, the **run payload synthesises
@@ -57,22 +78,29 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 - **Accept:** C1 token declarations only, zero non-custom-property declarations outside
   `@font-face`; C2 documented AA ratios computed not asserted, text pairs >=4.5:1, `--ink-45`
   labelled non-text-safe; C3 self-hosted woff2, every `src:` resolves on disk, no network
-  reference; C4 a serif and a mono, none of Inter/Roboto/system-ui/Space Grotesk; C5 seven
+  reference; C4 a serif and a mono, none of Inter/Roboto/system-ui/Space Grotesk; C5 **FOUR**
   node hues + sample identity + lock state, D-008's six floors re-verified; C6 `verify.py`
   counts rise, `board-lane-fill` still the only red, diff confined. **checks=6.** C2 and C5
   are mutation-gated.
 - **CONTRACT TASK** — `tokens.css` is consumed read-only by D-010, F-002 and every later
   design task. Raise the reviewer's *effort*, not its model (§3). Do not merge with an open
   finding against the token set; D-004 did and it cost D-008.
-- **Enumerated:** input `docs/design-explorations/tokens.css` is 308 lines / 46 properties;
+- **Enumerated** (`scout`, re-run 2026-09-02 after the interiors ruling): input
+  `docs/design-explorations/tokens.css` is 308 lines / 46 properties;
   `--tab10-x1/2/3` = `#1f77b4`/`#8c564b`/`#17becf` at :74-76 (the CORRECTED pair, not
-  `#ff7f0e`/`#2ca02c`); `--ink-45: rgba(43,38,32,0.45)` at :42, composites 2.60:1, fails AA;
-  ten `--node-*` tokens exist but only **seven** are palette hues now. `verify.py` floors
-  **69** / **233**. Neither target file exists yet — this creates them.
-- **Feasibility (§2), stated so it is not re-derived:** D-008's six floors were measured over
-  EIGHT fills; seven are retained. Removing a member from a set can only raise or hold a
-  pairwise minimum, so all six stay reachable by harvesting D-008's committed values. The
-  dispatch forbids a new palette search.
+  `#ff7f0e`/`#2ca02c`); `--ink-45: rgba(43,38,32,0.45)` at :42, composites 2.60:1, fails AA.
+  **`--node-*` is NINE properties at :277-285, not ten** — eight fills plus
+  `--node-label-on-fill: #ffffff` at :285. The entry's earlier "ten" was a count nobody
+  enumerated. Under ruling 7 only **four** are palette hues: `--node-multiplicity` `#706b30`
+  (:278), `--node-selection` `#1c5611` (:279), `--node-histogram` `#4846a5` (:284), and **one**
+  Observable hue to be chosen from the four existing `--node-obs-*` at :280-283 (`#2a6b64` /
+  `#306baf` / `#6a387c` / `#993a5a`). `--node-data` `#966746` (:277) styles a node the student
+  never places. `verify.py` floors **69** / **233**. Neither target file exists yet.
+- **Feasibility of the NEW C5, stated so it is not re-derived:** D-008's six floors were measured
+  over EIGHT fills; **four** are retained. Removing a member from a set can only raise or hold a
+  pairwise minimum, so every one of the six floors stays reachable by harvesting D-008's
+  committed values — the same argument that held at seven, only stronger. The dispatch forbids a
+  new palette search.
 - **Depends on:** ~~the M1 style choice~~ — settled 2026-09-01, Bench.
 - **Branch / PR:** `task/d-002-tokens` — **branch exists at `9495696` with ZERO commits, no PR.**
 - **Status:** **cycle-1 dispatch LOST.** Reconciled against git 2026-09-02: the branch was
@@ -92,11 +120,27 @@ _none — both released tasks are in flight._
 - **Accept:** the graph canvas is always present and never covered; "Add a Node" sits left and
   collapses; the mission panel sits right, expands, and pages back to previous missions.
   Collapse/expand state is `ui` state (brief §4) — it never enters the run payload.
-- **Depends on:** ~~D-009~~ merged 2026-09-02 — **but still blocked on the user's ruling**
-  between the two interiors. The recommendation is the **flyout inspector**, whose argument is
-  precisely that the node's own footprint is constant across open/closed, giving D-010 one
-  palette-width number instead of two. Inline grow gives two, and on Bench's free canvas a
-  taller open node can overlap what is placed under it.
+- **Depends on:** ~~D-009~~ merged 2026-09-02, ~~the user's interiors ruling~~ made 2026-09-02
+  (**inline grow**, four-kind palette). Now depends on **D-013** — the merged `Observable`
+  interior does not exist in any page yet, and it is the widest node, so it is what sets palette
+  width. Design the shell against a node with two footprints; see `## Decisions in force` 6.
+- **Branch / PR:** not yet opened
+
+### D-013 — The merged `Observable` node interior
+- **Scope:** the single `Observable` node interior with a four-way mode toggle, in the
+  **inline-grow** treatment, as a new option on the D-009 exploration page. Raised 2026-09-02 out
+  of the interiors ruling (`## Decisions in force` 7).
+- **Why:** D-009 shipped four separate `Obs*` interiors and the ruling collapses them into one.
+  That merged node exists in no page, and it is the **widest** node in the palette —
+  `ObsVectorSum`'s mode alone carries three checkboxes and a select — so it is what D-010 must
+  size the palette against. The other three kinds (`Multiplicity`, `Selection`, `Histogram`) ship
+  as delivered and are not re-opened.
+- **Accept:** one `Observable` node, collapsed and opened, all four modes reachable, each mode's
+  controls as D-009 already designed them (`interiors.html`, inline-grow option: ObsGlobal
+  :498-527, ObsObject :530-568, ObsVectorSum :571-607, ObsCustom :610-636); the mode control
+  keyboard-operable; opened height measured and reported per mode, because that number is
+  D-010's input. Mutation-gated, same shape as D-009's C9/C10.
+- **Depends on:** nothing. **Blocks D-010.**
 - **Branch / PR:** not yet opened
 
 ### D-011 — The completed-mission box on the canvas
