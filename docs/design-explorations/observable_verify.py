@@ -308,15 +308,35 @@ def check_footprint(page):
         scope = '.kind-demo[data-kind="Observable"]'
         fig_box = page.locator(f'{scope} .exemplar[data-state="opened"]').bounding_box()
         figure_heights[mode] = fig_box["height"] if fig_box else None
+        fig_h_str = (
+            f"{figure_heights[mode]:.1f}px" if figure_heights[mode] is not None else "None"
+        )
         print(
             f"mode={mode}: node height = {heights[mode]:.1f}px, "
             f"node width = {widths[mode]:.1f}px "
-            f"(figure height = {figure_heights[mode]:.1f}px)"
+            f"(figure height = {fig_h_str})"
         )
 
     for mode, h in heights.items():
         if not (h > 0):
             fail(f"mode={mode}: node height {h:.1f}px is not > 0")
+
+    # C9: the reported footprint must be the .inode node's own box, not the
+    # enclosing .exemplar <figure> (which also carries the figcaption label
+    # and the gap above it). If _measure ever regresses to boxing the figure
+    # again (the exact M1 regression), the node height read back here would
+    # equal the figure height instead of being strictly smaller than it —
+    # catch that under an assertion, not merely by printing both numbers.
+    for mode, h in heights.items():
+        fig_h = figure_heights[mode]
+        if fig_h is None:
+            fail(f"mode={mode}: enclosing .exemplar figure has no bounding box (None)")
+        if not (h < fig_h):
+            fail(
+                f"mode={mode}: node height {h:.1f}px is not strictly shorter than "
+                f"its enclosing figure's height {fig_h:.1f}px — footprint may be "
+                f"measuring the .exemplar figure instead of the .inode node"
+            )
 
     tallest_mode = max(heights, key=heights.get)
     print(
