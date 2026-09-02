@@ -199,8 +199,22 @@ _none — both released tasks are in flight._
   above stands. **Cycle-2 reviewer RE-DISPATCHED 2026-09-02** with PR #23 and the cycle-1
   comment URL (`issuecomment-5506923899`), finding IDs R1/M1/M2/m1/m2/m3 — and **STOPPED BY THE
   USER the same day, no verdict, no PR comment.** Reconciled: branch head still `c737905`, the
-  last PR comment is still cycle 1's. **Cycle-2 reviewer re-dispatched on the user's instruction
-  2026-09-02; still cycle 2.**
+  last PR comment is still cycle 1's. Cycle-2 reviewer re-dispatched on the user's instruction.
+  **Cycle 2 reviewed 2026-09-02: `1R / 0M / 2m`, scope pass, `verdict=rework`** — posted to
+  PR #23 (`issuecomment-5509508706`). R1, M1, M2, m1, m2, m3 all closed and verified
+  independently: 328.0 x 300.0px reproduced, flake8 exit 0, `tabindex` gone, prose corrected,
+  contrast recomputed (5.82:1 / 8.23:1). The reviewer also re-mutated all five unchanged checks
+  and every one went red, so nothing was softened to reach 10.
+  **R2, and it is my defect: C9 has no assertion.** `observable_verify.py:296-325` only *prints*
+  the node and figure boxes and asserts `h > 0`; monkeypatching `_measure` back to the
+  `.exemplar` `<figure>` — the exact M1 regression — re-certifies `348.5px` as `PASS: footprint`.
+  D-010 sizes the palette from that number. §5.4 clause 2: **C9 shipped without a
+  `Check:`/`Expect:` pair (the reviewer's m4 says so explicitly), so this is a RE-SPECIFICATION,
+  not a cycle.** Re-dispatched 2026-09-02 with C9 carrying the figure-selector mutation as its
+  command, and the figcaption mutation kept alongside it — fix additively, never trade one gate
+  for the other. **Still cycle 2. checks stay 10.** m5 (footprint prose still says "exemplar")
+  and m6 (`figure_heights` None branch raises `TypeError` when formatted) folded into the same
+  dispatch, both named. m4 stays open against my dispatch formatting, not the coder.
 - **checks=10**, C1-C4 and C9 mutation-gated.
   Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
   `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
