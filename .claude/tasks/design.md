@@ -172,6 +172,12 @@ _none — both released tasks are in flight._
   directory). **checks 8 -> 10.** m4 was a finding against my dispatch formatting — the PR body's
   criteria carried no `Check:`/`Expect:` pairs — fixed in the cycle-2 dispatch, not charged to the
   coder.
+  **Cycle 2 delivered `c737905`; §5.1 gate reproduced 2026-09-02** in `~/fce-gate-d013` with the
+  primary `.venv`: all five sections PASS / exit 0, `flake8 docs/design-explorations/` exit 0,
+  diff still exactly the three files. **M1 closed and the corrected footprint confirmed
+  independently: `ObsVectorSum` node = 328.0 x 300.0px** (figure 348.5px), ObsCustom 301.5,
+  ObsObject 290.5, ObsGlobal 237.0 — the checker now prints node and figure side by side, so the
+  20.5px of caption furniture is visible rather than silently included. **Cycle 2 in review.**
 - **checks=10**, C1-C4 and C9 mutation-gated.
   Ships as a NEW page (`observable.html/.css/_verify.py`) rather than a third option on
   `interiors.html` — D-009 is merged and its C2 asserts both options' kind sets are exactly the
