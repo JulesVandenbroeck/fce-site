@@ -141,6 +141,21 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   links no stylesheet (that is F-002) and the exploration pages read
   `docs/design-explorations/tokens.css`. So there are no screenshots of the real file by
   construction, and F-002 is what first exercises it.
+  **C6 re-spec delivered `93c4b14`; §5.1 gate reproduced 2026-09-02 in `~/fce-gate-d002`:**
+  `verify.py --all` exits 1 with `FAILED sections: ['board-lane-fill']` — the intended red and
+  the ONLY one; counts **71 / 262**; flake8 exit 0; `git diff main...HEAD --name-only` = the
+  8 scoped files. C7's four probe transcripts are commit-based (the guard diffs commit to
+  commit, so a working-tree probe is invisible to it) and net out of the branch diff.
+  `check_git_diff` is now `--name-only` against a two-entry allowlist —
+  `SHIPPED_DELIVERABLE_FILE` / `SHIPPED_DELIVERABLE_DIR` at `verify.py:1885-1900`. **Any future
+  task shipping under `src/`, `tests/` or `content/` will trip it and needs an orchestrator
+  ruling to widen it — that is intended, not a defect.** Declared deviation accepted:
+  `git-diff-clean` was added to `TOKENS_SECTIONS` so C7's `--section` command resolves; that
+  dict is this branch's own addition, not a pre-existing section. **Cycle 1 reviewer dispatched**
+  with the effort raised, as a contract task. **checks=7.**
+  **Uncollected:** the coder's 50%% anchor is untracked inside its worktree at
+  `.claude/worktrees/agent-aa484a2374583ffaa/.claude/handoff/d-002-design.anchor.md` — committing
+  it would have failed C6's own diff check. Collect it only if a handoff is needed.
 - **Was:** cycle 1, re-dispatched 2026-09-02, own worktree, Opus. The 2026-09-01 dispatch
   was LOST — reconciled against git: the branch was created at `9495696` and never written to, no
   handoff, no anchor. This is still cycle 1. The dispatch carries the re-spec'd C5 (four hues),
