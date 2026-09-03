@@ -94,6 +94,10 @@ BENCH_HTML = HERE / "bench.html"
 # ---- D-006 (Board) -----------------------------------------------------
 BOARD_HTML = HERE / "board.html"
 
+# ---- D-010 (Shell) -------------------------------------------------------
+SHELL_HTML = HERE / "shell.html"
+SHELL_CSS = HERE / "shell.css"
+
 
 def _primary_checkout_root() -> Optional[Path]:
     """Return the *primary* checkout's root directory, even when this file is
@@ -422,6 +426,35 @@ def load_board_page(
     page.on("request", lambda req: requests.append(req.url))
     page.goto((html_path or BOARD_HTML).as_uri())
     page.wait_for_timeout(400)  # let the node-entrance stagger animation finish
+    return browser, context, page, console_errors, page_errors, requests
+
+
+def load_shell_page(
+    pw: Playwright,
+    width: int,
+    height: int = 900,
+    reduced_motion: Optional[str] = None,
+    html_path: Optional[Path] = None,
+) -> tuple[Browser, BrowserContext, Page, list[str], list[str], list[str]]:
+    """Same contract as `load_board_page`, but for `shell.html` (D-010).
+    Its own inline `<script type="module">` is, like Bench's and Board's,
+    the only copy of its script on disk, for the same file:// module-script
+    CORS reason those pages' own docstrings give, so this launches Chromium
+    with no launch arguments at all."""
+    browser = pw.chromium.launch()
+    context_kwargs = {"viewport": {"width": width, "height": height}}
+    if reduced_motion:
+        context_kwargs["reduced_motion"] = reduced_motion
+    context = browser.new_context(**context_kwargs)
+    page = context.new_page()
+    console_errors = []
+    page_errors = []
+    requests = []
+    page.on("console", lambda m: console_errors.append(m.text) if m.type == "error" else None)
+    page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+    page.on("request", lambda req: requests.append(req.url))
+    page.goto((html_path or SHELL_HTML).as_uri())
+    page.wait_for_timeout(200)
     return browser, context, page, console_errors, page_errors, requests
 
 
@@ -6142,6 +6175,561 @@ def check_board_unflagged_file_url(pw: Playwright) -> bool:
     return ok
 
 
+# =========================================================================
+# D-010 -- the three-region page shell (shell.html / shell.css)
+#
+# Nine sections, one per acceptance criterion (C1-C9), each named
+# `shell-<slug>` and independently addressable with `--section shell-<slug>`
+# (see `_dispatch_shell_section` and `SHELL_SECTIONS` near the bottom of
+# this file). Registered in `main()`'s `--all`/`--shell` block below.
+# =========================================================================
+
+SHELL_PALETTE_TOGGLE = "#palette-toggle"
+SHELL_PANEL_TOGGLE = "#panel-toggle"
+SHELL_PAGER_BACK = "#pager-back"
+SHELL_PAGER_FORWARD = "#pager-forward"
+SHELL_CANVAS_WRAP = "#canvas-wrap"
+
+
+def _shell_set_palette_state(page: Page, want: str) -> None:
+    cur = page.eval_on_selector("#palette", "el => el.dataset.state")
+    if cur != want:
+        page.click(SHELL_PALETTE_TOGGLE)
+        page.wait_for_timeout(250)  # let the width transition (--duration-base, 180ms) settle
+
+
+def _shell_set_panel_state(page: Page, want: str) -> None:
+    cur = page.eval_on_selector("#mission-panel", "el => el.dataset.state")
+    if cur != want:
+        page.click(SHELL_PANEL_TOGGLE)
+        page.wait_for_timeout(250)  # let the width transition (--duration-base, 180ms) settle
+
+
+def check_shell_canvas_always_visible(pw: Playwright) -> bool:
+    """Criterion 1: in every one of the 4 (palette collapsed/expanded) x
+    (mission panel collapsed/expanded) combinations, `#canvas-region` --
+    the always-present middle region design-brief.md §4 requires -- is
+    never covered. Probed with a real `document.elementFromPoint` at the
+    region's own centre plus 5 points inset 8px from its own
+    `getBoundingClientRect()` (the four corners and the top-edge midpoint):
+    6 probes per state, 4 states, 24 probes total, each required to resolve
+    to `#canvas-region` itself or one of its descendants (the wrap, the svg,
+    a node card) -- never the palette or the mission panel painting over
+    it, which a free-canvas overlap (C4's own concern) could not cause here
+    since palette and panel are ordinary flex siblings, never positioned
+    over the canvas."""
+    section("Shell C1 -- canvas region always present, never covered, all 4 states")
+    browser, context, page, *_ = load_shell_page(pw, 1440)
+
+    states = [
+        ("collapsed", "collapsed"),
+        ("collapsed", "expanded"),
+        ("expanded", "collapsed"),
+        ("expanded", "expanded"),
+    ]
+    total_probes = 0
+    total_hits = 0
+    failures = []
+    for palette_state, panel_state in states:
+        _shell_set_palette_state(page, palette_state)
+        _shell_set_panel_state(page, panel_state)
+        result = page.evaluate(
+            """() => {
+                const region = document.getElementById('canvas-region');
+                const r = region.getBoundingClientRect();
+                const inset = 8;
+                const pts = [
+                    [r.left + r.width / 2, r.top + r.height / 2],           // centre
+                    [r.left + inset, r.top + inset],                        // top-left
+                    [r.right - inset, r.top + inset],                       // top-right
+                    [r.left + inset, r.bottom - inset],                     // bottom-left
+                    [r.right - inset, r.bottom - inset],                    // bottom-right
+                    [r.left + r.width / 2, r.top + inset],                  // top-edge midpoint
+                ];
+                return pts.map(([x, y]) => {
+                    const el = document.elementFromPoint(x, y);
+                    const hit = !!(el && (el === region || region.contains(el)));
+                    return { x, y, tag: el ? el.tagName : null, cls: el ? el.getAttribute('class') : null, hit };
+                });
+            }"""
+        )
+        for probe in result:
+            total_probes += 1
+            if probe["hit"]:
+                total_hits += 1
+            else:
+                failures.append({"state": f"palette={palette_state},panel={panel_state}", **probe})
+
+    ok = total_probes == 24 and total_hits == 24
+    line(
+        f"{total_probes} probes across 4 states (6 each: centre + 4 corners + top-edge midpoint, "
+        "each inset 8px from #canvas-region's own rect)",
+        ok,
+        f"{total_hits}/{total_probes} hit #canvas-region or a descendant",
+    )
+    for f in failures[:10]:
+        print(f"       miss at {f['state']}: ({f['x']:.1f},{f['y']:.1f}) -> <{f['tag']} class={f['cls']!r}>")
+    browser.close()
+    return ok
+
+
+def check_shell_palette_collapse_gives_canvas(pw: Playwright) -> bool:
+    """Criterion 2: collapsing the palette gives its width back to the
+    canvas region and takes nothing from the mission panel. Measures all
+    three regions' `getBoundingClientRect().width` with the palette
+    expanded, then again collapsed (mission panel left at its default,
+    expanded, state throughout), and checks
+    `canvas_collapsed - canvas_expanded == palette_expanded -
+    palette_collapsed` to within 1.0px, and the mission panel's own width
+    unchanged to within 1.0px."""
+    section("Shell C2 -- palette collapse hands its width to the canvas, not the panel")
+    browser, context, page, *_ = load_shell_page(pw, 1440)
+
+    def widths():
+        return page.evaluate(
+            """() => ({
+                palette: document.getElementById('palette').getBoundingClientRect().width,
+                canvas: document.getElementById('canvas-region').getBoundingClientRect().width,
+                panel: document.getElementById('mission-panel').getBoundingClientRect().width,
+            })"""
+        )
+
+    _shell_set_palette_state(page, "expanded")
+    _shell_set_panel_state(page, "expanded")
+    w_expanded = widths()
+
+    _shell_set_palette_state(page, "collapsed")
+    w_collapsed = widths()
+
+    canvas_delta = w_collapsed["canvas"] - w_expanded["canvas"]
+    palette_delta = w_expanded["palette"] - w_collapsed["palette"]
+    panel_delta = abs(w_collapsed["panel"] - w_expanded["panel"])
+
+    deltas_match = abs(canvas_delta - palette_delta) <= 1.0
+    panel_unchanged = panel_delta <= 1.0
+    ok = deltas_match and panel_unchanged
+    line(
+        f"palette_expanded={w_expanded['palette']:.2f} palette_collapsed={w_collapsed['palette']:.2f} "
+        f"canvas_expanded={w_expanded['canvas']:.2f} canvas_collapsed={w_collapsed['canvas']:.2f} "
+        f"panel_expanded={w_expanded['panel']:.2f} panel_collapsed={w_collapsed['panel']:.2f}",
+        ok,
+        f"canvas gained {canvas_delta:.2f}px, palette gave up {palette_delta:.2f}px "
+        f"(match within 1.0px: {deltas_match}); panel changed by {panel_delta:.2f}px "
+        f"(unchanged within 1.0px: {panel_unchanged})",
+    )
+    browser.close()
+    return ok
+
+
+def check_shell_palette_sized_to_opened_node(pw: Playwright) -> bool:
+    """Criterion 3: the expanded palette's own inner content box --
+    `clientWidth` minus its computed left and right padding -- is at least
+    328.0px, the opened node's own width (D-013, `ObsVectorSum`), not the
+    80.5px collapsed one. `#palette` itself carries no left/right padding
+    in shell.css (that lives one level in, on `.palette__list`), so this is
+    exactly its `clientWidth`, but the check reads the computed padding
+    rather than assuming that stays true."""
+    section("Shell C3 -- expanded palette sized against the opened node (>= 328.0px)")
+    browser, context, page, *_ = load_shell_page(pw, 1440)
+    _shell_set_palette_state(page, "expanded")
+    measured = page.evaluate(
+        """() => {
+            const el = document.getElementById('palette');
+            const cs = getComputedStyle(el);
+            const padLeft = parseFloat(cs.paddingLeft) || 0;
+            const padRight = parseFloat(cs.paddingRight) || 0;
+            return { clientWidth: el.clientWidth, padLeft, padRight, inner: el.clientWidth - padLeft - padRight };
+        }"""
+    )
+    ok = measured["inner"] >= 328.0
+    line(
+        f"palette clientWidth={measured['clientWidth']:.2f}, padding L/R="
+        f"{measured['padLeft']:.2f}/{measured['padRight']:.2f}, inner content box="
+        f"{measured['inner']:.2f}px",
+        ok,
+        f"margin over 328.0: {measured['inner'] - 328.0:.2f}px",
+    )
+    browser.close()
+    return ok
+
+
+def check_shell_grown_node_visible_above(pw: Playwright) -> bool:
+    """Criterion 4: an opened node on the free canvas is fully visible and
+    paints above whatever it overlaps. shell.html places two exemplar
+    nodes: n1 (Observable) sits 20px off the canvas's own bottom-right
+    corner, so its 328.0x300.0 grown footprint, unclamped, would run past
+    both the right and bottom visible edges; n2 (Histogram) sits at
+    (550, 300), inside the rectangle that unclamped growth would cover.
+    Opening n1 (shell.html's `toggleNode`) clamps its position to stay
+    inside the canvas's own bounds and raises it by moving it to the end of
+    its SVG sibling list (paint order is DOM order in SVG; there is no
+    z-index) -- both named here, per this criterion's own instruction,
+    rather than left to be inferred from the diff. Checks (a) the grown
+    card's rect is contained in `#canvas-wrap`'s own visible rect, and (b)
+    a 5x5 grid of 25 points inside the grown card's rect all resolve to it
+    or a descendant -- including the points that land inside n2's own
+    original footprint, proving the overlap is real and n1 still paints on
+    top of it."""
+    section("Shell C4 -- opened node stays fully visible and paints above what it overlaps")
+    browser, context, page, *_ = load_shell_page(pw, 1440)
+    # Maximise the canvas region's own on-screen room so the fixed-size
+    # canvas-wrap (768x512) never needs its own scroll to hold the grown
+    # 328.0x300.0 card -- not load-bearing for the mechanism itself (clamp
+    # + raise), only for keeping this section's own probes simple.
+    _shell_set_palette_state(page, "collapsed")
+    _shell_set_panel_state(page, "collapsed")
+
+    page.click('.node-card[data-node-id="n1"] .node-card__toggle')
+    page.wait_for_timeout(50)
+
+    geo = page.evaluate(
+        """() => {
+            const wrap = document.getElementById('canvas-wrap').getBoundingClientRect();
+            const card = document.querySelector('.node-card--open').getBoundingClientRect();
+            return {
+                wrap: { left: wrap.left, top: wrap.top, right: wrap.right, bottom: wrap.bottom },
+                card: { left: card.left, top: card.top, right: card.right, bottom: card.bottom,
+                        width: card.width, height: card.height },
+            };
+        }"""
+    )
+    wrap, card = geo["wrap"], geo["card"]
+    contained = (
+        card["left"] >= wrap["left"] - 0.5
+        and card["top"] >= wrap["top"] - 0.5
+        and card["right"] <= wrap["right"] + 0.5
+        and card["bottom"] <= wrap["bottom"] + 0.5
+    )
+    line(
+        "grown card's rect is contained in #canvas-wrap's own visible rect",
+        contained,
+        f"card={card}, wrap={wrap}",
+    )
+
+    grid = page.evaluate(
+        """() => {
+            const card = document.querySelector('.node-card--open');
+            const r = card.getBoundingClientRect();
+            const pad = 2;
+            const xs = [0, 1, 2, 3, 4].map(i => r.left + pad + (r.width - 2 * pad) * i / 4);
+            const ys = [0, 1, 2, 3, 4].map(i => r.top + pad + (r.height - 2 * pad) * i / 4);
+            const pts = [];
+            for (const y of ys) for (const x of xs) pts.push([x, y]);
+            return pts.map(([x, y]) => {
+                const el = document.elementFromPoint(x, y);
+                const hit = !!(el && (el === card || card.contains(el)));
+                return { x, y, tag: el ? el.tagName : null, cls: el ? el.getAttribute('class') : null, hit };
+            });
+        }"""
+    )
+    hits = sum(1 for p in grid if p["hit"])
+    grid_ok = len(grid) == 25 and hits == 25
+    line(
+        "5x5 grid (25 points) inside the grown card's rect resolves to it or a descendant",
+        grid_ok,
+        f"{hits}/{len(grid)} hits",
+    )
+    for p in grid:
+        if not p["hit"]:
+            print(f"       miss at ({p['x']:.1f},{p['y']:.1f}) -> <{p['tag']} class={p['cls']!r}>")
+
+    browser.close()
+    return contained and grid_ok
+
+
+def check_shell_mission_panel_pager(pw: Playwright) -> bool:
+    """Criterion 5: the mission panel expands (its width strictly greater
+    than collapsed), and pages back and forward through 3 exemplar
+    missions (m1, m2, m3 -- the missions array in shell.html's own script), reading
+    `#mission-label`'s `data-mission-id` at each step. Starts on m3 (the
+    panel's default -- "opened to read the mission in full" reads as the
+    current, furthest-along mission), backs up twice to m1, then forwards
+    twice back to m3: the exact sequence this criterion names."""
+    section("Shell C5 -- mission panel expands; pager reads m3,m2,m1,m2,m3")
+    browser, context, page, *_ = load_shell_page(pw, 1440)
+
+    _shell_set_panel_state(page, "collapsed")
+    panel_collapsed = page.eval_on_selector(
+        "#mission-panel", "el => el.getBoundingClientRect().width"
+    )
+    _shell_set_panel_state(page, "expanded")
+    panel_expanded = page.eval_on_selector(
+        "#mission-panel", "el => el.getBoundingClientRect().width"
+    )
+    width_ok = panel_expanded > panel_collapsed
+    line(
+        f"panel_expanded={panel_expanded:.2f}px, panel_collapsed={panel_collapsed:.2f}px",
+        width_ok,
+        "expanded is strictly greater" if width_ok else "expanded did NOT exceed collapsed",
+    )
+
+    def current_mission():
+        return page.eval_on_selector("#mission-label", "el => el.dataset.missionId")
+
+    sequence = [current_mission()]
+    page.click(SHELL_PAGER_BACK)
+    sequence.append(current_mission())
+    page.click(SHELL_PAGER_BACK)
+    sequence.append(current_mission())
+    page.click(SHELL_PAGER_FORWARD)
+    sequence.append(current_mission())
+    page.click(SHELL_PAGER_FORWARD)
+    sequence.append(current_mission())
+
+    expected = ["m3", "m2", "m1", "m2", "m3"]
+    sequence_ok = sequence == expected
+    line(
+        f"pager sequence (initial, back, back, forward, forward) = {sequence}",
+        sequence_ok,
+        f"expected {expected}",
+    )
+
+    browser.close()
+    return width_ok and sequence_ok
+
+
+def check_shell_ui_state_not_in_payload(pw: Playwright) -> bool:
+    """Criterion 6: collapse/expand is `ui` state (design-brief.md §4) and
+    never enters the run payload. `window.buildRunPayload()` (shell.html's
+    own script) serialises only `graphState` -- nodes and edges, no
+    coordinates, no collapse flags, a wholly separate object from the
+    palette/panel/pager toggles this file drives. Serialises before
+    touching anything, toggles the palette and the mission panel each
+    twice, serialises again, and requires byte-identical output; also
+    regexes the (before) serialisation for `/collaps|expand|panelOpen|open|
+    ui/i` and requires no match."""
+    section("Shell C6 -- collapse/expand never enters the run payload")
+    browser, context, page, *_ = load_shell_page(pw, 1440)
+
+    def payload_json():
+        return page.evaluate("() => JSON.stringify(window.buildRunPayload())")
+
+    before = payload_json()
+    for _ in range(2):
+        page.click(SHELL_PALETTE_TOGGLE)
+    for _ in range(2):
+        page.click(SHELL_PANEL_TOGGLE)
+    after = payload_json()
+
+    identical = before == after
+    line("payload before toggling == payload after 2x palette + 2x panel toggles", identical, f"before={before}, after={after}")
+
+    pattern = re.compile(r"collaps|expand|panelOpen|open|ui", re.IGNORECASE)
+    match = pattern.search(before)
+    no_match = match is None
+    line(
+        "payload text matches /collaps|expand|panelOpen|open|ui/i",
+        no_match,
+        "no match" if no_match else f"matched {match.group()!r} at index {match.start()}",
+    )
+
+    browser.close()
+    return identical and no_match
+
+
+def check_shell_shipped_tokens(pw: Playwright) -> bool:
+    """Criterion 7: shell.html consumes the shipped token set
+    (`src/fce_web/static/css/tokens.css`), not this directory's own
+    diverged copy, and shell.css's own literal values are all `var(...)`
+    references bar 0, 100%, 1px hairlines, and the three geometric
+    constants this task names (328.0, 300.0, 80.5). No browser needed for
+    either half, but this takes `pw` for signature consistency with every
+    other `shell-*` section and `run_section`'s dispatch."""
+    section("Shell C7 -- consumes the shipped tokens.css; shell.css carries no stray literals")
+
+    html_text = SHELL_HTML.read_text()
+    stylesheet_lines = [l for l in html_text.splitlines() if 'rel="stylesheet"' in l]
+    href_matches = [m.group(1) for l in stylesheet_lines for m in [re.search(r'href="([^"]+)"', l)] if m]
+    tokens_href = next((h for h in href_matches if h.endswith("tokens.css")), None)
+    resolved = (SHELL_HTML.parent / tokens_href).resolve() if tokens_href else None
+    link_ok = resolved == APP_TOKENS_CSS.resolve()
+    line(
+        f"<link rel=\"stylesheet\"> hrefs found: {href_matches}",
+        link_ok,
+        f"tokens href {tokens_href!r} resolves to {resolved}, expected {APP_TOKENS_CSS.resolve()}",
+    )
+
+    css_text = SHELL_CSS.read_text()
+    css_no_comments = re.sub(r"/\*.*?\*/", "", css_text, flags=re.S)
+
+    exempt_lengths = {("0", None), ("100", "%"), ("1", "px"), ("328.0", "px"), ("300.0", "px"), ("80.5", "px")}
+
+    def is_exempt_number(value: float, unit: str) -> bool:
+        if value == 0:
+            return True
+        if unit == "%" and value == 100:
+            return True
+        if unit == "px" and abs(value) == 1:
+            return True
+        if unit == "px" and value in (328.0, 300.0, 80.5):
+            return True
+        return False
+
+    length_re = re.compile(r"(?<![\w.#-])(-?\d+(?:\.\d+)?)(px|em|rem|%|vh|vw|vmin|vmax|deg|s|ms|ch|ex|fr)\b")
+    color_re = re.compile(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{1}|[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?\b")
+
+    offenders = []
+    for m in length_re.finditer(css_no_comments):
+        value = float(m.group(1))
+        unit = m.group(2)
+        if not is_exempt_number(value, unit):
+            line_no = css_no_comments.count("\n", 0, m.start()) + 1
+            offenders.append(f"line {line_no}: literal length {m.group(0)!r}")
+    for m in color_re.finditer(css_no_comments):
+        line_no = css_no_comments.count("\n", 0, m.start()) + 1
+        offenders.append(f"line {line_no}: literal colour {m.group(0)!r}")
+
+    sweep_ok = len(offenders) == 0
+    line(
+        f"literal-value sweep of shell.css's own source ({len(css_no_comments.splitlines())} lines, "
+        "comments stripped)",
+        sweep_ok,
+        "zero offenders" if sweep_ok else f"{len(offenders)} offender(s)",
+    )
+    for o in offenders[:20]:
+        print(f"       {o}")
+
+    return link_ok and sweep_ok
+
+
+def check_shell_reduced_motion_and_focus(pw: Playwright) -> bool:
+    """Criterion 8, both halves in one section. (a) Every element's
+    computed `transition-duration` and `animation-duration` is `0s` under
+    an emulated `prefers-reduced-motion: reduce` -- checked directly on
+    computed style, which does not depend on a transition actually being
+    mid-flight, so this holds regardless of which toggle a reader happens
+    to click. (b) A real keyboard Tab walk from `document.body` reaches
+    the palette toggle, both pager controls, and the canvas
+    (`#canvas-wrap`, given `tabindex="0"` in shell.html for exactly this),
+    each with a `:focus-visible` match and a painted (non-`none`,
+    non-zero-width) outline."""
+    section("Shell C8 -- reduced motion is inert; focus walk reaches palette/pager/canvas")
+
+    browser, context, page, *_ = load_shell_page(pw, 1440, reduced_motion="reduce")
+    durations = page.evaluate(
+        """() => {
+            const bad = [];
+            let n = 0;
+            document.querySelectorAll('*').forEach(el => {
+                const cs = getComputedStyle(el);
+                n++;
+                cs.transitionDuration.split(',').map(s => s.trim()).forEach(d => {
+                    if (d && d !== '0s') bad.push({ cls: el.getAttribute('class'), prop: 'transitionDuration', d });
+                });
+                cs.animationDuration.split(',').map(s => s.trim()).forEach(d => {
+                    if (d && d !== '0s') bad.push({ cls: el.getAttribute('class'), prop: 'animationDuration', d });
+                });
+            });
+            return { n, bad };
+        }"""
+    )
+    motion_ok = len(durations["bad"]) == 0
+    line(
+        f"{durations['n']} elements checked under prefers-reduced-motion: reduce",
+        motion_ok,
+        f"{len(durations['bad'])} non-zero transition/animation durations found",
+    )
+    for b in durations["bad"][:10]:
+        print(f"       still animating: {b}")
+    browser.close()
+
+    browser2, context2, page2, *_ = load_shell_page(pw, 1440)
+    page2.evaluate("""() => { window.__shellWalk = { map: new WeakMap(), next: 1 }; }""")
+    page2.keyboard.press("Tab")
+    stops = []
+    seen: set = set()
+    for _ in range(100):
+        info = page2.evaluate(
+            """() => {
+                const el = document.activeElement;
+                if (!el || el === document.body) return null;
+                const w = window.__shellWalk;
+                let wid = w.map.get(el);
+                if (wid === undefined) { wid = w.next++; w.map.set(el, wid); }
+                const cs = getComputedStyle(el);
+                const present = (
+                    el.matches(':focus-visible') &&
+                    cs.outlineStyle !== 'none' &&
+                    parseFloat(cs.outlineWidth) > 0
+                );
+                return { wid, id: el.id || null, tag: el.tagName, cls: el.getAttribute('class'), present };
+            }"""
+        )
+        if info is None:
+            break
+        if info["wid"] in seen:
+            break
+        seen.add(info["wid"])
+        stops.append(info)
+        page2.keyboard.press("Tab")
+
+    stop_ids = {s["id"]: s["present"] for s in stops if s["id"]}
+    targets = {
+        "palette-toggle": stop_ids.get("palette-toggle"),
+        "pager-back": stop_ids.get("pager-back"),
+        "pager-forward": stop_ids.get("pager-forward"),
+        "canvas-wrap": stop_ids.get("canvas-wrap"),
+    }
+    focus_ok = all(v is True for v in targets.values())
+    line(
+        f"{len(stops)} focusable stops reached by real Tab presses",
+        focus_ok,
+        f"named targets present+visible: {targets}",
+    )
+    for s in stops:
+        mark = "ok " if s["present"] else "-- "
+        print(f"       [{mark}] id={s['id']!r} <{s['tag']} class={s['cls']!r}>")
+    browser2.close()
+
+    return motion_ok and focus_ok
+
+
+def check_shell_verify_floors(pw: Playwright) -> bool:
+    """Criterion 9: this file's own existing verification floors do not
+    fall, checked the same static way `check_all_sections_wrapped_in_run_
+    section` already checks a different floor in this file -- by reading
+    this file's own source, not by re-running the whole suite recursively
+    (which `--all` already does, and which the task's own "Verification"
+    instructions run separately from outside this process). Two counts,
+    matching `grep -c`'s own line-counting semantics exactly (a line counts
+    once even if the pattern matches it twice): lines containing
+    `all_results.append` (floor 71 + 9 new shell-* sections = 80), and
+    lines containing `results.append` or `line(` (floor 269). Also
+    confirms `board-lane-fill` -- D-006's overruled C10, left red on
+    purpose -- is still registered and still named, neither deleted nor
+    relabelled."""
+    section("Shell C9 -- this file's own verification floors, and the one intended red")
+    text = Path(__file__).read_text()
+    lines = text.splitlines()
+
+    appends = sum(1 for l in lines if "all_results.append" in l)
+    reports = sum(1 for l in lines if "results.append" in l or "line(" in l)
+
+    appends_ok = appends >= 71 + 9
+    reports_ok = reports >= 269
+    line(
+        f"lines containing 'all_results.append': {appends}",
+        appends_ok,
+        "floor is 71 (main, at 72d2950) + 9 (this task's own shell-* sections) = 80",
+    )
+    line(
+        f"lines containing 'results.append' or 'line(': {reports}",
+        reports_ok,
+        "floor is 269 (main, at 72d2950)",
+    )
+
+    board_fn_present = "def check_board_lane_fill" in text
+    board_registered = bool(re.search(r'"board-lane-fill"\s*,\s*run_section\(\s*"board-lane-fill"', text))
+    board_ok = board_fn_present and board_registered
+    line(
+        "board-lane-fill (D-006's overruled C10) still defined and still registered, untouched",
+        board_ok,
+        f"function present={board_fn_present}, registered in main()={board_registered}",
+    )
+
+    return appends_ok and reports_ok and board_ok
+
+
 # Criterion 8's own banned-flag set: a file:// CORS workaround for the
 # module-script load, or a sandbox/security bypass, none of which a student
 # who double-clicks board.html/beamline.html/bench.html from a file manager
@@ -6315,28 +6903,41 @@ def main() -> None:
     parser.add_argument("--beamline", action="store_true", help="D-004 Beamline section only")
     parser.add_argument("--bench", action="store_true", help="D-005 Bench section only")
     parser.add_argument("--board", action="store_true", help="D-006 Board section only")
+    parser.add_argument("--shell", action="store_true", help="D-010 Shell section only")
     parser.add_argument(
         "--section",
         action="append",
         default=[],
         metavar="NAME",
         help="run only the named section(s) -- D-002: tokens-shape, tokens-contrast, "
-             "tokens-fonts, tokens-palette, tokens-nontext. Repeatable.",
+             "tokens-fonts, tokens-palette, tokens-nontext; D-010: shell-*. Repeatable.",
     )
     args = parser.parse_args()
     if (not args.plot and not args.all and not args.beamline and not args.bench and not args.board
-            and not args.section):
+            and not args.shell and not args.section):
         args.all = True
 
     all_results = []
 
-    # D-002: the shipped-token sections need no browser, so `--section
-    # <name>` answers one acceptance criterion without opening Chromium
-    # or touching the exploration pages. An unknown name raises inside
-    # `run_section` and comes back as a named FAIL, never a silent pass.
+    # D-002's tokens-* sections need no browser; D-010's shell-* sections do
+    # (they drive real Playwright pages). `--section <name>` answers one
+    # acceptance criterion at a time either way -- a browser-needing name
+    # opens exactly one Chromium instance, shared across every such name
+    # given in one invocation, rather than one per name. An unknown name
+    # raises inside `run_section` and comes back as a named FAIL, never a
+    # silent pass.
     if args.section:
-        for name in args.section:
-            all_results.append((name, run_section(name, _dispatch_named_section, name)))
+        browser_needed = any(name not in TOKENS_SECTIONS for name in args.section)
+        if browser_needed:
+            with sync_playwright() as pw:
+                for name in args.section:
+                    if name in TOKENS_SECTIONS:
+                        all_results.append((name, run_section(name, _dispatch_named_section, name)))
+                    else:
+                        all_results.append((name, run_section(name, _dispatch_shell_section, name, pw)))
+        else:
+            for name in args.section:
+                all_results.append((name, run_section(name, _dispatch_named_section, name)))
         section("Summary")
         for name, ok in all_results:
             line(name, ok)
@@ -6638,6 +7239,38 @@ def main() -> None:
                     "board-unflagged-file-url",
                     run_section("board-unflagged-file-url", check_board_unflagged_file_url, pw),
                 )
+            )
+
+        if args.all or args.shell:
+            # One `all_results.append(...)` per D-010 acceptance criterion
+            # (C1-C9), each already wrapped in `run_section` by construction
+            # -- see each `check_shell_*` function's own docstring.
+            all_results.append(
+                ("shell-canvas-always-visible", run_section("shell-canvas-always-visible", check_shell_canvas_always_visible, pw))
+            )
+            all_results.append(
+                ("shell-palette-collapse-gives-canvas", run_section("shell-palette-collapse-gives-canvas", check_shell_palette_collapse_gives_canvas, pw))
+            )
+            all_results.append(
+                ("shell-palette-sized-to-opened-node", run_section("shell-palette-sized-to-opened-node", check_shell_palette_sized_to_opened_node, pw))
+            )
+            all_results.append(
+                ("shell-grown-node-visible-above", run_section("shell-grown-node-visible-above", check_shell_grown_node_visible_above, pw))
+            )
+            all_results.append(
+                ("shell-mission-panel-pager", run_section("shell-mission-panel-pager", check_shell_mission_panel_pager, pw))
+            )
+            all_results.append(
+                ("shell-ui-state-not-in-payload", run_section("shell-ui-state-not-in-payload", check_shell_ui_state_not_in_payload, pw))
+            )
+            all_results.append(
+                ("shell-shipped-tokens", run_section("shell-shipped-tokens", check_shell_shipped_tokens, pw))
+            )
+            all_results.append(
+                ("shell-reduced-motion-and-focus", run_section("shell-reduced-motion-and-focus", check_shell_reduced_motion_and_focus, pw))
+            )
+            all_results.append(
+                ("shell-verify-floors", run_section("shell-verify-floors", check_shell_verify_floors, pw))
             )
 
     section("Summary")
@@ -7698,6 +8331,34 @@ def _dispatch_named_section(name: str) -> bool:
     if name not in TOKENS_SECTIONS:
         raise KeyError(f"unknown section {name!r}; known: {sorted(TOKENS_SECTIONS)}")
     return TOKENS_SECTIONS[name]()
+
+
+# D-010's own `--section shell-<name>` registry. Unlike TOKENS_SECTIONS
+# these all need a live Playwright instance, so main()'s `--section`
+# handling opens one `with sync_playwright()` block and dispatches through
+# `_dispatch_shell_section` (below) rather than `_dispatch_named_section`
+# whenever a requested name is not one of TOKENS_SECTIONS' own zero-arg
+# sections.
+SHELL_SECTIONS = {
+    "shell-canvas-always-visible": check_shell_canvas_always_visible,
+    "shell-palette-collapse-gives-canvas": check_shell_palette_collapse_gives_canvas,
+    "shell-palette-sized-to-opened-node": check_shell_palette_sized_to_opened_node,
+    "shell-grown-node-visible-above": check_shell_grown_node_visible_above,
+    "shell-mission-panel-pager": check_shell_mission_panel_pager,
+    "shell-ui-state-not-in-payload": check_shell_ui_state_not_in_payload,
+    "shell-shipped-tokens": check_shell_shipped_tokens,
+    "shell-reduced-motion-and-focus": check_shell_reduced_motion_and_focus,
+    "shell-verify-floors": check_shell_verify_floors,
+}
+
+
+def _dispatch_shell_section(name: str, pw: Playwright) -> bool:
+    """Run one D-010 shell-* section by name. Same unknown-name contract as
+    `_dispatch_named_section`: raises, which `run_section` turns into a
+    named FAIL rather than a silent pass."""
+    if name not in SHELL_SECTIONS:
+        raise KeyError(f"unknown section {name!r}; known: {sorted(SHELL_SECTIONS)}")
+    return SHELL_SECTIONS[name](pw)
 
 
 if __name__ == "__main__":

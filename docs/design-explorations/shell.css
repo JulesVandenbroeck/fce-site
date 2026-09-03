@@ -1,0 +1,303 @@
+/* shell.css — D-010, the three-region page shell around the Bench canvas.
+ * Every colour, spacing, radius and border value here is a var() into
+ * ../../src/fce_web/static/css/tokens.css — the SHIPPED token set, not this
+ * directory's own diverged copy (D-002 froze that split; C7 asserts the
+ * <link> in shell.html resolves there). The only bare numeric literals in
+ * this file are 0, 100%, 1px hairlines, and the three geometric constants
+ * D-013 settled and this task's own criteria name: 328.0 (the opened node's
+ * width), 300.0 (its height) and, where it appears, 80.5 (the collapsed
+ * node's width) — verify.py's `shell-shipped-tokens` section sweeps this
+ * file's own source text for anything outside that list.
+ *
+ * Node CARD sizing itself is never expressed here at all: `.node-card` is
+ * width:100%/height:100% of whatever box shell.html's script gives its
+ * foreignObject (80.5x48 collapsed, 328.0x300.0 opened), the same division
+ * of labour bench.css uses for its own freely-positioned nodes.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--space-rule) - var(--border-hairline)),
+    var(--paper-line) calc(var(--space-rule) - var(--border-hairline)),
+    var(--paper-line) var(--space-rule)
+  );
+}
+
+button { font: inherit; color: inherit; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- focus — visible everywhere, never removed -------------------------- */
+button:focus-visible,
+.canvas-wrap:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+/* The node-card toggle sits inside a saturated --node-* fill, the same
+ * reasoning bench.css's own port/handle focus rule gives: a graphite-blue
+ * ring can under-contrast against a fill it is painted on, so this rings
+ * with --node-label-on-fill instead — already proven >= 4.5:1 against every
+ * node fill for label text (tokens.css's own node-identity comment). */
+.node-card__toggle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--node-label-on-fill);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---- shell: three regions, one flex row ---------------------------------- */
+.shell {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- palette (left, collapses) ------------------------------------------- */
+.palette {
+  flex: 0 0 auto;
+  width: var(--space-7);
+  border-right: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-settle);
+}
+/* Sized against the OPENED node (328.0px), not the collapsed one — C3. The
+ * extra var(--space-2) beyond the two var(--space-3) side paddings is
+ * headroom, not decoration: it is what keeps the measured inner content box
+ * strictly above the 328.0 floor rather than landing exactly on it. */
+.palette[data-state="expanded"] {
+  width: calc(328.0px + var(--space-3) * 2 + var(--space-2));
+}
+.palette__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: var(--border-hairline) solid var(--paper-line);
+}
+.palette__title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--ink-70);
+  white-space: nowrap;
+}
+.palette[data-state="collapsed"] .palette__title { opacity: 0; }
+.palette__toggle {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.palette__toggle:hover { background: var(--hover-bg); }
+
+.palette__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.palette[data-state="collapsed"] .palette__list { display: none; }
+
+.palette__add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.palette__add:hover { border-color: var(--graphite-blue); }
+.palette__add-swatch {
+  flex: 0 0 auto;
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+/* One hue per placeable kind, the same everywhere it appears (design manual
+ * §2): the four the 2026-09-02 ruling leaves in the palette. No fifth swatch
+ * for the four Observable modes — they are one node, one hue, a toggle
+ * inside it, not four palette entries. */
+.palette__add--multiplicity .palette__add-swatch { background: var(--node-multiplicity); }
+.palette__add--selection .palette__add-swatch { background: var(--node-selection); }
+.palette__add--observable .palette__add-swatch { background: var(--node-observable); }
+.palette__add--histogram .palette__add-swatch { background: var(--node-histogram); }
+
+/* ---- canvas region (middle, always present, never covered) -------------- */
+.canvas-region {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  overflow: auto;
+  background: var(--paper);
+}
+.canvas-wrap {
+  flex: 0 0 auto;
+  width: calc(var(--space-7) * 11);
+  height: calc(var(--space-7) * 8);
+  border: var(--border-hairline) solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.canvas-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.canvas-bg { fill: var(--panel); }
+
+/* ---- node card (HTML content painted inside a foreignObject) ------------ */
+.node-card {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  color: var(--node-label-on-fill);
+  box-shadow: 0 var(--border-hairline) 0 var(--node-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.node-card--observable { background: var(--node-observable); }
+.node-card--histogram { background: var(--node-histogram); }
+.node-card--multiplicity { background: var(--node-multiplicity); }
+.node-card--selection { background: var(--node-selection); }
+
+.node-card__title {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Grows inline, in place, per the M1-checkpoint ruling this task cites —
+ * this body copy is what a real interior's guided form would occupy; here
+ * it is enough to demonstrate the footprint growing, since D-010's own
+ * question is where the card paints, not what it asks. */
+.node-card__body {
+  margin: 0;
+  font-size: var(--text-xs);
+  display: none;
+}
+.node-card--open .node-card__body { display: block; }
+.node-card__toggle {
+  margin-top: auto;
+  align-self: flex-start;
+  border: var(--border-hairline) solid var(--node-label-on-fill);
+  background: transparent;
+  color: var(--node-label-on-fill);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+/* ---- mission panel (right, expands + pages back through missions) ------- */
+.mission-panel {
+  flex: 0 0 auto;
+  width: var(--space-7);
+  border-left: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-settle);
+}
+.mission-panel[data-state="expanded"] {
+  width: calc(var(--space-7) * 5);
+}
+.mission-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: var(--border-hairline) solid var(--paper-line);
+}
+.mission-panel__pager {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.mission-panel__pager:hover { background: var(--hover-bg); }
+.mission-panel__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mission-panel__toggle {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.mission-panel__toggle:hover { background: var(--hover-bg); }
+
+.mission-panel__body {
+  padding: var(--space-3);
+}
+.mission-panel[data-state="collapsed"] .mission-panel__body { display: none; }
+.mission-panel__brief {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-70);
+}
+
+/* ---- reduced motion — end state appears, no transit ---------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .palette,
+  .mission-panel {
+    transition: none;
+  }
+}

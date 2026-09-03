@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-010 — the three-region page shell (design exploration)</title>
+<link rel="stylesheet" href="../../src/fce_web/static/css/tokens.css" />
+<link rel="stylesheet" href="shell.css" />
+</head>
+<body>
+
+<div class="shell" id="shell">
+
+  <!-- ============================================================= -->
+  <!-- LEFT — "Add a node" palette. Collapses; sized against the      -->
+  <!-- OPENED node's footprint (328.0 x 300.0px, D-013), not the      -->
+  <!-- collapsed one, so a grown card never clips against it.         -->
+  <!-- ============================================================= -->
+  <aside class="palette" id="palette" data-state="expanded">
+    <div class="palette__head">
+      <span class="palette__title">Add a node</span>
+      <button class="palette__toggle" id="palette-toggle" type="button"
+              aria-expanded="true" aria-controls="palette-list">
+        <span class="palette__toggle-glyph" id="palette-toggle-glyph" aria-hidden="true">&#8249;</span>
+        <span class="sr-only" id="palette-toggle-sr">Collapse the node palette</span>
+      </button>
+    </div>
+    <ul class="palette__list" id="palette-list">
+      <li><button class="palette__add palette__add--multiplicity" type="button" data-add-kind="Multiplicity">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Multiplicity</span>
+          </button></li>
+      <li><button class="palette__add palette__add--selection" type="button" data-add-kind="Selection">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Selection</span>
+          </button></li>
+      <li><button class="palette__add palette__add--observable" type="button" data-add-kind="Observable">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Observable</span>
+          </button></li>
+      <li><button class="palette__add palette__add--histogram" type="button" data-add-kind="Histogram">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Histogram</span>
+          </button></li>
+    </ul>
+  </aside>
+
+  <!-- ============================================================= -->
+  <!-- CENTRE — the graph canvas. Always present, never covered.      -->
+  <!-- Two exemplar nodes demonstrate an opened (grown) card staying  -->
+  <!-- fully visible and painting above whatever it overlaps.         -->
+  <!-- ============================================================= -->
+  <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
+    <div class="canvas-wrap" id="canvas-wrap" tabindex="0" role="group"
+         aria-label="Analysis canvas — open the Observable node to see it stay fully visible above the Histogram node it overlaps">
+      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512">
+        <rect x="0" y="0" width="704" height="512" class="canvas-bg"></rect>
+        <g id="nodes-layer"></g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- RIGHT — the mission panel. Expands, and pages back and forward -->
+  <!-- through previous missions.                                     -->
+  <!-- ============================================================= -->
+  <aside class="mission-panel" id="mission-panel" data-state="expanded">
+    <div class="mission-panel__head">
+      <button class="mission-panel__pager" id="pager-back" type="button" aria-label="Previous mission">&#8249;</button>
+      <span class="mission-panel__label" id="mission-label" data-mission-id="m3">M-3 · The Unknown</span>
+      <button class="mission-panel__pager" id="pager-forward" type="button" aria-label="Next mission">&#8250;</button>
+      <button class="mission-panel__toggle" id="panel-toggle" type="button"
+              aria-expanded="true" aria-controls="mission-panel-body">
+        <span class="mission-panel__toggle-glyph" id="panel-toggle-glyph" aria-hidden="true">&#8250;</span>
+        <span class="sr-only" id="panel-toggle-sr">Collapse the mission panel</span>
+      </button>
+    </div>
+    <div class="mission-panel__body" id="mission-panel-body">
+      <p class="mission-panel__brief" id="mission-brief">A signal sample is hiding in the data. Find
+        cuts that expose it and run a fit.</p>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Inlined, not fetched by src=, for the same file:// module-script CORS
+     reason bench.html's own comment gives: a plain, unflagged Chromium
+     refuses to load a cross-origin type="module" src= over file://. This
+     inline block is the only copy of this script. -->
+<script type="module">
+/* D-010 exploration: the three-region shell around the Bench canvas.
+ *
+ * Not part of the shipping app. Two independent pieces of state, kept
+ * deliberately apart:
+ *
+ *   graphState  — nodes + edges. What buildRunPayload() serialises. The
+ *                 engine's business, per design-brief.md §4.
+ *   ui toggles  — palette/panel collapsed-or-expanded, the pager index,
+ *                 which node is open. Never read by buildRunPayload().
+ *                 design-brief.md §4 calls this the "ui object" the
+ *                 engine never reads; here it is not even the same
+ *                 object, so there is no field to forget to strip.
+ */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// The opened-node footprint D-013 settled on (ObsVectorSum, the widest of
+// the four Observable modes) and the collapsed footprint beside it. Used
+// only to size and clamp the two exemplar canvas nodes below — never
+// written into shell.css, which sizes a grown node card at 100%/100% of
+// whatever box these numbers give its foreignObject.
+const NODE_OPEN_W = 328.0;
+const NODE_OPEN_H = 300.0;
+const NODE_COLLAPSED_W = 80.5;
+const NODE_COLLAPSED_H = 68;
+
+const CANVAS_W = 704;
+const CANVAS_H = 512;
+
+// ---- the run payload's own state — untouched by any ui toggle below -----
+const graphState = {
+  nodes: [
+    { id: "n1", kind: "Observable" },
+    { id: "n2", kind: "Histogram" },
+  ],
+  edges: [["n1", "n2"]],
+};
+
+function buildRunPayload() {
+  return {
+    nodes: graphState.nodes.map((n) => ({ id: n.id, kind: n.kind })),
+    edges: graphState.edges.map(([a, b]) => [a, b]),
+  };
+}
+window.buildRunPayload = buildRunPayload;
+
+// ---- exemplar canvas nodes -----------------------------------------------
+// n1 sits near the canvas's own bottom-right corner: opening it to its full
+// 328x300 footprint, unclamped, would run past both the right and the
+// bottom visible edge. n2 sits where that unclamped footprint would land,
+// so opening n1 is also the overlap case.
+const nodePositions = {
+  n1: {
+    x: CANVAS_W - NODE_COLLAPSED_W - 20,
+    y: CANVAS_H - NODE_COLLAPSED_H - 20,
+    kind: "Observable",
+    cls: "observable",
+    title: "Observable — vector sum",
+    body: "Add lepton 1 + lepton 2, then read off mass.",
+  },
+  n2: {
+    x: 550,
+    y: 300,
+    kind: "Histogram",
+    cls: "histogram",
+    title: "Histogram",
+    body: "40 bins, 0–120 GeV.",
+  },
+};
+
+let nodesLayer = null;
+const nodeEls = {};
+
+function makeNodeCard(id, pos) {
+  const fo = document.createElementNS(SVG_NS, "foreignObject");
+  fo.setAttribute("data-node-id", id);
+  fo.setAttribute("data-open", "false");
+  fo.setAttribute("x", pos.x);
+  fo.setAttribute("y", pos.y);
+  fo.setAttribute("width", NODE_COLLAPSED_W);
+  fo.setAttribute("height", NODE_COLLAPSED_H);
+
+  const div = document.createElement("div");
+  div.className = `node-card node-card--${pos.cls}`;
+  div.dataset.nodeId = id;
+  div.dataset.nodeKind = pos.kind;
+
+  const title = document.createElement("p");
+  title.className = "node-card__title";
+  title.textContent = pos.title;
+
+  const body = document.createElement("p");
+  body.className = "node-card__body";
+  body.textContent = pos.body;
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "node-card__toggle";
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.setAttribute("aria-label", `Open ${pos.title}`);
+  toggle.textContent = "open";
+  toggle.addEventListener("click", () => toggleNode(id));
+
+  div.append(title, body, toggle);
+  fo.appendChild(div);
+  return { fo, div, toggle };
+}
+
+function toggleNode(id) {
+  const pos = nodePositions[id];
+  const { fo, div, toggle } = nodeEls[id];
+  const isOpen = fo.getAttribute("data-open") === "true";
+
+  if (isOpen) {
+    fo.setAttribute("width", NODE_COLLAPSED_W);
+    fo.setAttribute("height", NODE_COLLAPSED_H);
+    fo.setAttribute("x", pos.x);
+    fo.setAttribute("y", pos.y);
+    fo.setAttribute("data-open", "false");
+    div.classList.remove("node-card--open");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.textContent = "open";
+  } else {
+    // Grow to the opened footprint, then CLAMP so it stays inside the
+    // canvas's own bounds — never past the right or bottom visible edge —
+    // and RAISE it by moving it to the end of the sibling list: SVG has
+    // no z-index, paint order is DOM order, so "last child" is "on top".
+    const clampedX = Math.max(0, Math.min(pos.x, CANVAS_W - NODE_OPEN_W));
+    const clampedY = Math.max(0, Math.min(pos.y, CANVAS_H - NODE_OPEN_H));
+    fo.setAttribute("width", NODE_OPEN_W);
+    fo.setAttribute("height", NODE_OPEN_H);
+    fo.setAttribute("x", clampedX);
+    fo.setAttribute("y", clampedY);
+    fo.setAttribute("data-open", "true");
+    div.classList.add("node-card--open");
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.textContent = "close";
+    nodesLayer.appendChild(fo);
+  }
+}
+
+function buildExemplarNodes() {
+  nodesLayer = document.getElementById("nodes-layer");
+  Object.entries(nodePositions).forEach(([id, pos]) => {
+    const built = makeNodeCard(id, pos);
+    nodesLayer.appendChild(built.fo);
+    nodeEls[id] = built;
+  });
+}
+
+// ---- palette collapse ----------------------------------------------------
+function wirePaletteToggle() {
+  const palette = document.getElementById("palette");
+  const btn = document.getElementById("palette-toggle");
+  const glyph = document.getElementById("palette-toggle-glyph");
+  const sr = document.getElementById("palette-toggle-sr");
+  btn.addEventListener("click", () => {
+    const collapsed = palette.dataset.state === "collapsed";
+    palette.dataset.state = collapsed ? "expanded" : "collapsed";
+    btn.setAttribute("aria-expanded", String(collapsed));
+    glyph.textContent = collapsed ? "‹" : "›";
+    sr.textContent = collapsed ? "Collapse the node palette" : "Expand the node palette";
+  });
+}
+
+// ---- mission panel: collapse + pager -------------------------------------
+const MISSIONS = [
+  { id: "m1", title: "M-1 · First Light", brief: "Find the peak in the invariant mass of the two leading leptons." },
+  { id: "m2", title: "M-2 · Cleaning the Signal", brief: "Cut the backgrounds without cutting too much signal." },
+  { id: "m3", title: "M-3 · The Unknown", brief: "A signal sample is hiding in the data. Find cuts that expose it and run a fit." },
+];
+let missionIndex = 2;
+
+function renderMission() {
+  const m = MISSIONS[missionIndex];
+  const label = document.getElementById("mission-label");
+  label.textContent = m.title;
+  label.dataset.missionId = m.id;
+  document.getElementById("mission-brief").textContent = m.brief;
+}
+
+function wirePager() {
+  document.getElementById("pager-back").addEventListener("click", () => {
+    missionIndex = Math.max(0, missionIndex - 1);
+    renderMission();
+  });
+  document.getElementById("pager-forward").addEventListener("click", () => {
+    missionIndex = Math.min(MISSIONS.length - 1, missionIndex + 1);
+    renderMission();
+  });
+}
+
+function writePanelToggle() {
+  const panel = document.getElementById("mission-panel");
+  const btn = document.getElementById("panel-toggle");
+  const glyph = document.getElementById("panel-toggle-glyph");
+  const sr = document.getElementById("panel-toggle-sr");
+  btn.addEventListener("click", () => {
+    const collapsed = panel.dataset.state === "collapsed";
+    panel.dataset.state = collapsed ? "expanded" : "collapsed";
+    btn.setAttribute("aria-expanded", String(collapsed));
+    glyph.textContent = collapsed ? "›" : "‹";
+    sr.textContent = collapsed ? "Collapse the mission panel" : "Expand the mission panel";
+  });
+}
+
+function init() {
+  buildExemplarNodes();
+  wirePaletteToggle();
+  writePanelToggle();
+  wirePager();
+  renderMission();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
