@@ -24,8 +24,8 @@ dispatch was lost and never landed, and the branch head is still `fba2ad6`. Re-d
 **cycle 3, not cycle 4**, and if it does not close at 0R/0M, stop and escalate rather than
 dispatch a fourth.
 
-Nothing dispatched yet — D-002 (#24) is in flight and the serial rule applies across the whole
-session, not just within the backend. All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
+**2026-09-03:** D-002 (#24) merged, so the queue is unblocked. B-013's cycle-1 reviewer is
+dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
 `scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
 
 ### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
@@ -103,7 +103,8 @@ session, not just within the backend. All three dispatched in parallel 2026-08-3
 
 ### B-013 — Close B-006's two open findings
 - **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `4d5f374`
-- **Status:** cycle 1 in review. §5.1 gate in `~/fce-gate-b013`: **118** cases, **413 passed**,
+- **Status:** cycle-1 reviewer **re-dispatched 2026-09-03** (the 2026-08-31 dispatch never
+  returned a verdict; still cycle 1). §5.1 gate in `~/fce-gate-b013`: **118** cases, **413 passed**,
   flake8 0, `grep unforgeable` exit 1 — reproduced exactly. C3 resolved by renaming the two
   forgery tests `..._is_a_known_limitation_not_a_guarantee`. **C4's mutation gate does not
   distinguish** — the child script no longer uses a bare `assert`, so `PYTHONOPTIMIZE` cannot
