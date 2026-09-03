@@ -180,6 +180,16 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   m1 (`--timing` / `--duration-base` alias pair undocumented) and m2 (`verify.py:1948` prints
   `[PASS]` while asserting nothing) folded into cycle 2; m3 is a stale `260` in the PR body next
   to the correct `262`.
+  **Cycle 2 delivered `d869d7e`; §5.1 gate reproduced 2026-09-03 in `~/fce-gate-d002` with the
+  primary `.venv`:** `--section tokens-nontext` all PASS / exit 0 (44 non-text pairs computed
+  above 3:1, 12 exemptions each naming both tokens and a reason, 34 of 34 declared colour tokens
+  covered); counts **71 / 267** (floors 71 / 262); flake8 exit 0; `--all` exits 1 with
+  `FAILED sections: ['board-lane-fill']` — the intended red and the only one; `git diff
+  main...HEAD --name-only` = the 8 scoped files. Three colour values moved to clear SC 1.4.11 —
+  `--chrome-border` `#d8cba8`->`#847c66`, `--locked-border` `#b3a98c`->`#726c59`, `--frozen-x3`
+  `#b5883a`->`#a67d36` — **no node hue and neither reserved colour moved, so D-008's six floors
+  are byte-identical to cycle 1's.** m1/m2 fixed, m3 noted (the live count is 267).
+  **Cycle 2 reviewer dispatched 2026-09-03**, effort raised, contract task. **checks=9.**
   **Uncollected:** the coder's 50%% anchor is untracked inside its worktree at
   `.claude/worktrees/agent-aa484a2374583ffaa/.claude/handoff/d-002-design.anchor.md` — committing
   it would have failed C6's own diff check. Collect it only if a handoff is needed.
