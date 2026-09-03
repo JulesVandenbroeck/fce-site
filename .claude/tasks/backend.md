@@ -109,15 +109,23 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
   pinned by observation; C6 the `CompiledExpr` docstring asserted against that mechanism; C7 that
   assertion gated by paraphrase mutations, not by a verbatim restore. Verbatim in PR #17's body.
 - **Depends on:** nothing (B-006 merged).
-- **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `5782fa8`
-- **Status:** **AT THE §5.7 LIMIT — STOPPED, ESCALATED TO THE USER 2026-09-03.** Three cycles,
-  three Requireds, all three against the *instrument* and none against the shipped behaviour.
-  Do not dispatch a fourth without the user's ruling.
-- **Review:** cycle 1 `1R/1M/1m`, cycle 2 `1R/0M/1m`, cycle 3 `1R/1M/1m`. Open: **R3** (the
-  docstring meta-test's cue list still passes two false wordings and now also fails one *true*
-  one) and **M2** (the same defect's other direction — a correct, clearer docstring goes red).
-  m1, m3 backlogged; m2 fixed.
-- **Gate:** `5782fa8` reproduced — 415 passed (floor 413), flake8 0, diff = the two scoped files.
+- **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `ae1efcf`
+- **Status:** **cycle 4 delivered, NOT YET REVIEWED — session ended at the 82% usage threshold.**
+  The user ruled at the §5.7 limit (2026-09-03) to spend a fourth cycle on a **golden-string pin**
+  rather than merge with the instrument open. **C6 and C7 are RETIRED and replaced by C8 — my
+  substitution, on that ruling, and the one deliberate one in this task's history.** The property
+  is gated more strongly, not abandoned: the two route clauses of `CompiledExpr.__doc__` are now
+  literal goldens compared after whitespace normalisation, so prose-parsing is gone entirely
+  (`grep '_polarity\|_NEGATION_CUES'` exits 1). **checks=6** — C1-C5, C8.
+  **Next move: dispatch the cycle-4 reviewer on #17.** Tell it two things: (i) under a golden pin
+  a *truer* wording going red is CORRECT behaviour, not a finding — that was M2 and it is resolved
+  by design, not by evasion; (ii) the coder reports mutations (a)-(d) failing by "naming the
+  missing route-clause marker" — check the golden comparison itself can fail, not only the marker
+  lookup, or C8 is a marker-presence check wearing a golden's hat.
+- **Review:** cycle 1 `1R/1M/1m`, cycle 2 `1R/0M/1m`, cycle 3 `1R/1M/1m`, cycle 4 not yet run.
+  R3 and M2 are what cycle 4 answers. m1 backlogged; m2, m3 fixed.
+- **Gate:** `ae1efcf` reproduced 2026-09-03 — 415 passed / 0 failed (floor 413), flake8 0,
+  `-k docstring` 1 passed, `grep` exit 1, diff = the two scoped files. Earlier: `5782fa8` reproduced — 415 passed (floor 413), flake8 0, diff = the two scoped files.
 - **History:** [`archive/backend.md`](archive/backend.md)
 
 ### B-014 — Close B-004's two open findings
