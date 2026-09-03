@@ -103,7 +103,14 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
 
 ### B-013 — Close B-006's two open findings
 - **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `4d5f374`
-- **Status:** **cycle 2 in flight (dispatched 2026-09-03).** Cycle 1 reviewed 2026-09-03:
+- **Status:** **cycle 2 in review.** Delivered `e9f69c4`; §5.1 gate reproduced 2026-09-03 in
+  `~/fce-gate-b013c2`: **415 passed / 0 failed** (floor 413, +2 new tests), flake8 0, diff still
+  the same two files, C2 `grep-exit=1`, C3 `2`/`0`, C5+C6 `2 passed`. Push landed on the right
+  branch — the coder's worktree was on a stale ref and it pushed by explicit refspec from a local
+  branch; no second PR, no force-push, PR head matches `e9f69c4`. Reviewer told to verify C5/C6 by
+  **re-instrumenting**, and to check C5 is genuinely sensitive after the coder fixed a
+  counter-clearing bug in it mid-cycle.
+  Cycle 2 dispatched 2026-09-03. Cycle 1 reviewed 2026-09-03:
   `1R / 1M / 1m`, `verdict=rework`, scope pass, review at PR #17 comment `5523968646`.
   **R1 is against my dispatch** — none of C1–C4 carried a `Check:`/`Expect:` pair, so the reviewer
   synthesised all four; I have written them and the coder pastes them into the PR body.
