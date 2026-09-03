@@ -209,6 +209,27 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   true at 19.212) folded into cycle 3; m5 (the exploration `docs/design-explorations/tokens.css`
   still holds the three pre-fix values, divergence unrecorded) **backlogged** — that file is
   outside D-002's scope.
+  **Cycle 3 delivered `8b16126`; §5.1 gate reproduced 2026-09-03 in `~/fce-gate-d002`:**
+  `--section tokens-nontext` exit 0 (34 declared / 34 covered, 44 pairs PASS, 12 EXEMPT, the
+  three frozen-sample separations 42.501 / 26.063 / 19.210 dE above a 19.0 floor); counts
+  **71 / 269**; flake8 exit 0; `--all` exit 1 with `FAILED sections: ['board-lane-fill']` and
+  nothing else; `git diff main...HEAD --name-only` = the 8 scoped files. M3 fixed at
+  `verify.py:7420-7525` (`_looks_like_colour`: hex 3/4/6/8, eleven functional notations, the
+  CSS named-colour set plus `transparent`/`currentcolor`, whole-value matches) — six per-syntax
+  probes each exit 1 naming their own token, six non-colour probes each exit 0 at 34. m4 fixed:
+  the "19 delta-E" claim is now recomputed inside a registered assertion, `tokens.css:159-168`
+  comment only, no declaration value changed. **The PR body hit GitHub's 65,536-character
+  limit** — C1-C10 and the check count are in the body, the cycle-3 transcripts in a linked
+  comment (`issuecomment-5523071669`). Both are on the PR, so §4 rule 3 holds; a future task on
+  this PR must append to the comment, not the body. Declared deviation accepted: two pair-loop
+  guards inside this branch's own cycle-2 section were widened from absent-token to
+  absent-or-unmeasurable, so a covered unmeasurable colour is named rather than raising a
+  `ValueError` out of `_composited`. **Cycle 3 reviewer dispatched 2026-09-03**, effort raised.
+  **checks=10. This is the §5.7 limit.**
+  **Stale ref warning from the coder:** local `task/d-002-tokens-work` in worktree
+  `agent-a93cc19d487486041` sits at `841a044`, which is **not** an ancestor of the PR head and
+  would revert cycle 2 and 3. Nothing may be committed from that worktree. The remote branch is
+  authoritative.
   **Uncollected:** the coder's 50%% anchor is untracked inside its worktree at
   `.claude/worktrees/agent-aa484a2374583ffaa/.claude/handoff/d-002-design.anchor.md` — committing
   it would have failed C6's own diff check. Collect it only if a handoff is needed.
