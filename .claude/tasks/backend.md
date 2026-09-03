@@ -102,62 +102,23 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
 - **Regression net:** B-012's golden file. A routing change that moves any bin fails parity.
 
 ### B-013 — Close B-006's two open findings
-- **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `4d5f374`
-- **Status:** **cycle 3 in flight — this is the §5.7 limit.** If it does not close at 0R/0M, STOP
-  and escalate; do not dispatch a fourth. Cycle 2 reviewed 2026-09-03: `1R / 0M / 1m`,
-  `verdict=rework`, scope pass, review at PR #17 comment `5524250868`. **R1 and M1 both confirmed
-  fixed** — M1 by the reviewer running C6's own assertion against `git show 4d5f374`'s wording
-  (RED) and HEAD (green); C5 re-instrumented, not read, and shown genuinely sensitive (monkeypatching
-  `dataclasses.replace` to an `object.__new__` implementation drives it RED).
-  **R2, new, and it is the §2 "instrument that cannot observe what it certifies" shape:** C6's
-  `replace_window` arm is a keyword-presence check, and the negation contains the same keywords —
-  the reviewer restated M1's false claim in different words and got `1 passed`. Two compounding
-  causes: the literal guard at `:778` matches only cycle 1's exact phrase, and the two 400-char
-  windows overlap (`replace_at=1124`, `new_at=1396`), so the `replace` arm can be satisfied by the
-  other route's text. **My Expect for C6 named only the verbatim-restore mutation — the weakest
-  one — so the coder met it exactly.** checks 6 -> 7: C7 gates three mutations (the reviewer's
-  paraphrase, a third wording, the routes swapped), each required to fail *naming the replace arm*,
-  plus proof the arms cannot borrow each other's text. m2 folded into C7 (the `object.__new__`
-  control arm pins a CPython invariant and cannot fail; the comment must say so).
-  **Cycle 3 delivered `5782fa8`; §5.1 gate reproduced 2026-09-03 in `~/fce-gate-b013c3`:
-  415 passed / 0 failed, flake8 0, `-k docstring` 1 passed, 120 in the file, diff still the same
-  two files.** R2 closed by bounding each route's window at the *other* route's mention offset
-  (`replace_at=1124`, `new_at=1396`, `replace_end=1396`) and deciding each arm by **negation
-  polarity** rather than keyword presence; all three required mutations fail naming the `replace`
-  arm. m2 folded in. **Cycle 3 in review** — reviewer told to attack the polarity scan in both
-  directions with wordings neither the coder nor I used, since a polarity scan is a new instrument
-  that can be fooled into a false green *and* a false red.
-- **Cycle 2 record:** Delivered `e9f69c4`; §5.1 gate reproduced 2026-09-03 in
-  `~/fce-gate-b013c2`: **415 passed / 0 failed** (floor 413, +2 new tests), flake8 0, diff still
-  the same two files, C2 `grep-exit=1`, C3 `2`/`0`, C5+C6 `2 passed`. Push landed on the right
-  branch — the coder's worktree was on a stale ref and it pushed by explicit refspec from a local
-  branch; no second PR, no force-push, PR head matches `e9f69c4`. Reviewer told to verify C5/C6 by
-  **re-instrumenting**, and to check C5 is genuinely sensitive after the coder fixed a
-  counter-clearing bug in it mid-cycle.
-  Cycle 2 dispatched 2026-09-03. Cycle 1 reviewed 2026-09-03:
-  `1R / 1M / 1m`, `verdict=rework`, scope pass, review at PR #17 comment `5523968646`.
-  **R1 is against my dispatch** — none of C1–C4 carried a `Check:`/`Expect:` pair, so the reviewer
-  synthesised all four; I have written them and the coder pastes them into the PR body.
-  **M1 is a §5.4 clause-3 finding — a property no criterion gated, so this IS a cycle:** cycle 1
-  fixed the "unforgeable token" claim and introduced a second false claim in the same paragraph
-  (`safe_eval.py:222-227`, propagated to `181-184`) — it says both forgery routes never call
-  `__init__`/`__post_init__`, but the reviewer established by instrumentation that
-  `dataclasses.replace()` **does** call both and the identity check **does** run, with nothing to
-  catch because the legitimate `proof` is carried over. Only `object.__new__` skips them. The
-  module now contradicts its own test at `tests/test_safe_eval.py:673-678`.
-  **checks 4 -> 6:** C5 pins each route's mechanism by observation; C6 asserts the docstring
-  against that mechanism, mutation-gated on cycle 1's wording. m1 (move the `-O` warning into a
-  suite-wide `conftest.py` `__debug__` guard) **backlogged**.
-  Cycle-1 §5.1 gate in `~/fce-gate-b013`: **118** cases, **413 passed**,
-  flake8 0, `grep unforgeable` exit 1 — reproduced exactly. C3 resolved by renaming the two
-  forgery tests `..._is_a_known_limitation_not_a_guarantee`. **C4's mutation gate does not
-  distinguish** — the child script no longer uses a bare `assert`, so `PYTHONOPTIMIZE` cannot
-  make the proof vacuous. The coder reported that plainly instead of hiding it; my criterion was
-  the defective half. The reviewer decides whether the tuple is now dead code. **checks=4.** C1 length cap isolated from the node cap in both
-  directions; C2 the "unforgeable token" claim dropped; C3 the bypass tests stop blessing the
-  weakness; C4 `_ASSERT_STRIPPING_ENV_VARS` says what breaks without it.
-- **Enumerated:** `MAX_EXPR_LENGTH=500`, `MAX_AST_NODES=200`, 118 cases. Today's C1 payload trips
-  both caps, so raising `MAX_EXPR_LENGTH` alone leaves it green — that is the finding.
+- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
+- **Accept:** **checks=7.** C1 length cap isolated from the node cap in both directions; C2 the
+  "unforgeable token" claim dropped; C3 the bypass tests stop blessing the weakness;
+  C4 `_ASSERT_STRIPPING_ENV_VARS` says what breaks without it; C5 each forgery route's mechanism
+  pinned by observation; C6 the `CompiledExpr` docstring asserted against that mechanism; C7 that
+  assertion gated by paraphrase mutations, not by a verbatim restore. Verbatim in PR #17's body.
+- **Depends on:** nothing (B-006 merged).
+- **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `5782fa8`
+- **Status:** **AT THE §5.7 LIMIT — STOPPED, ESCALATED TO THE USER 2026-09-03.** Three cycles,
+  three Requireds, all three against the *instrument* and none against the shipped behaviour.
+  Do not dispatch a fourth without the user's ruling.
+- **Review:** cycle 1 `1R/1M/1m`, cycle 2 `1R/0M/1m`, cycle 3 `1R/1M/1m`. Open: **R3** (the
+  docstring meta-test's cue list still passes two false wordings and now also fails one *true*
+  one) and **M2** (the same defect's other direction — a correct, clearer docstring goes red).
+  m1, m3 backlogged; m2 fixed.
+- **Gate:** `5782fa8` reproduced — 415 passed (floor 413), flake8 0, diff = the two scoped files.
+- **History:** [`archive/backend.md`](archive/backend.md)
 
 ### B-014 — Close B-004's two open findings
 - **Branch / PR:** `task/b-014-api-contract-findings` — **#18**, `3e3550f`

@@ -1569,3 +1569,37 @@ Beamline, Bench and Board persist structurally different things. Backlogged: a p
 3. **Mutation-gate the instrument, not only the assertion.** Cycle 3's reviewer mutated the size
    walk itself. That is the §2 lesson — "an instrument that structurally cannot observe the
    property it certifies" — applied one level deeper than the task asked for.
+
+
+---
+
+## B-013 — post-mortem, three cycles, stopped at the §5.7 limit 2026-09-03
+
+**The shape: every Required was against the instrument, never against the shipped behaviour.**
+The production change — correcting `_ValidationProof` and `CompiledExpr`'s account of the two
+forgery routes — has been correct since cycle 2 and is independently pinned by C5, which the
+cycle-3 reviewer confirmed is genuinely sensitive (it swapped `dataclasses.replace` for a shim
+bypassing `__init__` and the test went red). What has cycled three times is the *meta-test* that
+tries to stop a false account being written into that docstring again.
+
+| cycle | Required | the instrument at the time | how the reviewer defeated it |
+|---|---|---|---|
+| 1 | R1 (my dispatch: no `Check:`/`Expect:` pairs) + M1 | the docstring itself | instrumented `dataclasses.replace` and showed it *does* call `__init__`/`__post_init__` — only `object.__new__` skips them, so cycle 1's "both routes never call them" was false |
+| 2 | R2 | keyword presence in a 400-char window | restated M1's false claim in different words → `1 passed`. The windows also overlapped (`replace_at=1124`, `new_at=1396`), so one arm could be satisfied by the other route's text |
+| 3 | R3 + M2 | negation-polarity scan over a six-cue substring list, windows bounded at the other route's offset | "at no point invokes `__init__`" and "elides the constructor entirely … are sidestepped" both pass (false green); and a *true* clearer wording — "**does** call `__init__` … the identity check simply does not fire" — goes red (false red) |
+
+**My defect, stated plainly, because it is the same one three times.** Each cycle I wrote an
+`Expect:` that enumerated *specific mutations* rather than requiring a *decidable instrument*.
+Cycle 2's Expect named one mutation — restore cycle 1's verbatim wording — which is the weakest
+gate available. Cycle 3's Expect named three wordings; the reviewer defeated it with a fourth. An
+enumeration of adversarial examples is a floor, never a proof, and against a prose-parsing check
+the enumeration can always be extended by one. §2 already says *ask what the check prints if the
+property is false* — but the missing question was **"is this property decidable by this
+instrument at all?"** A regex over English is not, in either direction, and R3 and M2 are the two
+directions of that one fact.
+
+**The recommendation put to the user:** replace prose-parsing with an exact-string pin — hold the
+two route clauses as a golden literal in the test and compare. Any edit to that paragraph then
+fails until someone deliberately updates the golden, which is the drift guard actually wanted,
+and it is decidable. It also dissolves M2: a better wording is no longer a red suite, it is a
+deliberate golden update.
