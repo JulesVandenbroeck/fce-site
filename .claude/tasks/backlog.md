@@ -560,3 +560,10 @@ and are historical now that #6 is merged.
 - **D-002 tight non-text headroom** — `--frozen-x2` at 3.12:1 and `--syst-grey` at 3.24:1 on
   `--paper` clear WCAG SC 1.4.11's 3:1 by under 0.25. Any future warming of `--paper` breaks
   both. Raised by the coder 2026-09-02; note it whenever the ground colour is next touched.
+
+- **D-002 m5 — the exploration `tokens.css` diverged from the shipped one.** 2026-09-03, D-002
+  cycle-2 review. `docs/design-explorations/tokens.css:34,87,307` still hold the pre-SC-1.4.11
+  values `--chrome-border: #d8cba8`, `--locked-border: #b3a98c`, `--frozen-x3: #b5883a`, which
+  `src/fce_web/static/css/tokens.css` moved to `#847c66` / `#726c59` / `#a67d36`. The divergence
+  is unrecorded anywhere. Either sync the exploration copy or write a note in it saying the
+  shipped file is now authoritative. Out of D-002's file scope, which is why it is here.

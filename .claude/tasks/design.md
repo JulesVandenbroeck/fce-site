@@ -190,6 +190,25 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   `#b5883a`->`#a67d36` — **no node hue and neither reserved colour moved, so D-008's six floors
   are byte-identical to cycle 1's.** m1/m2 fixed, m3 noted (the live count is 267).
   **Cycle 2 reviewer dispatched 2026-09-03**, effort raised, contract task. **checks=9.**
+  **Cycle 2 reviewed 2026-09-03: `0R / 1M / 2m`, scope pass, `verdict=rework`** — posted to
+  PR #24 (`issuecomment-5522877398`). M1, M2, m1, m2, m3 all closed and verified: the reviewer
+  re-derived all nine new non-text ratios independently to 3 dp, and ran mutations against C1,
+  C2, C5, C7 and C8 (all monkeypatched, no repo file edited) — every one bit. `--all` 70 PASS /
+  1 FAIL, section count 70 -> 71, `pytest tests/ -q` 413 passed.
+  **M3, and it is a real cycle (§5.4 clause 3 — C9 shipped with a command; the command is
+  blind):** `verify.py:7418-7424`'s C9 denominator counts a custom property as a *colour* only
+  if its value parses as hex or `rgb()/rgba()`. The reviewer probed it: `#123456` and
+  `rgb(18, 52, 86)` both FAIL and name the offender, but `hsl(...)`, `teal`, `oklch(...)` and
+  `color-mix(...)` all **PASS silently** at "34 declared, 34 covered". Nothing shipped is
+  mismeasured — C9's stated property simply does not hold in a contract file that later tasks
+  extend. **Cycle 3 dispatched 2026-09-03** with C10: the recogniser must accept every CSS
+  colour syntax, gated one probe per syntax (six transcripts), plus the negative that a
+  probe-free run still exits 0 at 34/34 so widening cannot misclassify a length or a font stack.
+  **checks 9 -> 10. This is the §5.7 limit — if it does not close at 0R/0M, escalate rather
+  than dispatch a fourth.** m4 (`tokens.css:163-164`'s uncomputed "stays above 19 delta-E",
+  true at 19.212) folded into cycle 3; m5 (the exploration `docs/design-explorations/tokens.css`
+  still holds the three pre-fix values, divergence unrecorded) **backlogged** — that file is
+  outside D-002's scope.
   **Uncollected:** the coder's 50%% anchor is untracked inside its worktree at
   `.claude/worktrees/agent-aa484a2374583ffaa/.claude/handoff/d-002-design.anchor.md` — committing
   it would have failed C6's own diff check. Collect it only if a handoff is needed.
