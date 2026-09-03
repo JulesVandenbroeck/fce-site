@@ -575,3 +575,11 @@ and are historical now that #6 is merged.
   against a token nudge but not against a prose nudge. Fix: a `N delta-E` literal sweep
   mirroring the existing `N.NN:1` ratio sweep, so every separation literal in the file is
   recomputed from the shipped tokens.
+
+- **B-013 m1 — the `-O` warning belongs in a suite-wide `conftest.py` guard, not in a comment.**
+  `tests/test_safe_eval.py:414-437` carries 24 lines of comment guarding
+  `_ASSERT_STRIPPING_ENV_VARS`, a filter that both the coder and the cycle-1 reviewer showed has
+  no observable effect on any current code path (`returncode=0 sentinel=True` in both states).
+  The substance — do not trust a green suite under `PYTHONOPTIMIZE` — should be a `__debug__`
+  guard in `conftest.py`, where it is enforced rather than narrated. Raised from B-013 cycle 1,
+  2026-09-03.

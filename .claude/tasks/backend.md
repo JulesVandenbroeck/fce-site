@@ -103,8 +103,21 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
 
 ### B-013 — Close B-006's two open findings
 - **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `4d5f374`
-- **Status:** cycle-1 reviewer **re-dispatched 2026-09-03** (the 2026-08-31 dispatch never
-  returned a verdict; still cycle 1). §5.1 gate in `~/fce-gate-b013`: **118** cases, **413 passed**,
+- **Status:** **cycle 2 in flight (dispatched 2026-09-03).** Cycle 1 reviewed 2026-09-03:
+  `1R / 1M / 1m`, `verdict=rework`, scope pass, review at PR #17 comment `5523968646`.
+  **R1 is against my dispatch** — none of C1–C4 carried a `Check:`/`Expect:` pair, so the reviewer
+  synthesised all four; I have written them and the coder pastes them into the PR body.
+  **M1 is a §5.4 clause-3 finding — a property no criterion gated, so this IS a cycle:** cycle 1
+  fixed the "unforgeable token" claim and introduced a second false claim in the same paragraph
+  (`safe_eval.py:222-227`, propagated to `181-184`) — it says both forgery routes never call
+  `__init__`/`__post_init__`, but the reviewer established by instrumentation that
+  `dataclasses.replace()` **does** call both and the identity check **does** run, with nothing to
+  catch because the legitimate `proof` is carried over. Only `object.__new__` skips them. The
+  module now contradicts its own test at `tests/test_safe_eval.py:673-678`.
+  **checks 4 -> 6:** C5 pins each route's mechanism by observation; C6 asserts the docstring
+  against that mechanism, mutation-gated on cycle 1's wording. m1 (move the `-O` warning into a
+  suite-wide `conftest.py` `__debug__` guard) **backlogged**.
+  Cycle-1 §5.1 gate in `~/fce-gate-b013`: **118** cases, **413 passed**,
   flake8 0, `grep unforgeable` exit 1 — reproduced exactly. C3 resolved by renaming the two
   forgery tests `..._is_a_known_limitation_not_a_guarantee`. **C4's mutation gate does not
   distinguish** — the child script no longer uses a bare `assert`, so `PYTHONOPTIMIZE` cannot
