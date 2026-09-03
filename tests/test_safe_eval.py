@@ -604,6 +604,100 @@ def test_reference_checkout_does_not_leak_into_this_process():
 # ---------------------------------------------------------------------------
 # 2. General compile-time enforcement (not escape-specific).
 # ---------------------------------------------------------------------------
+
+#: B-013 cycle 3, C7 (R2 of PR #17's cycle-2 review). Words whose presence
+#: in a route's docstring window means that route is being described as
+#: *not* calling __init__/__post_init__, in any of the wordings a reviewer
+#: (or a future editor) might reach for -- "does not call", "never runs",
+#: "skips", "bypassed" -- rather than a single fixed phrase. Substring
+#: match, case-insensitive; "not " and "n't" both need the trailing
+#: boundary so "note" or "isn't" still register as prose containing a
+#: negation, which is the behaviour wanted here.
+_NEGATION_CUES = (
+    "not ", "n't", "never", "skip", "bypass", "no longer call", "avoids calling",
+)
+
+
+def _polarity(window: str) -> str:
+    """"negated" if `window` describes a route as skipping the call,
+    "affirmed" if it describes the route as making it."""
+    lowered = window.lower()
+    return "negated" if any(cue in lowered for cue in _NEGATION_CUES) else "affirmed"
+
+
+def _docstring_route_windows(doc: str) -> dict:
+    """Bounded text windows for each forgery route's description in
+    `CompiledExpr.__doc__`, plus the offsets used to build them.
+
+    B-013 cycle 3, C7: cycle 2's windows were a fixed 400 characters from
+    each route's mention, and 400 > (new_at - replace_at) for the real
+    docstring, so the replace-route window ran *past* the object.__new__
+    mention and could be satisfied by text belonging to the other route
+    (R2 of PR #17's cycle-2 review, reproduced with a monkeypatched
+    docstring that got "1 passed" despite stating M1's false claim in
+    different words). Each window here is capped at a fixed length *and*
+    at the other route's mention, whichever comes first, so neither route's
+    arm can be decided by text belonging to the other.
+    """
+    replace_at = doc.index("dataclasses.replace")
+    new_at = doc.index("object.__new__")
+    cap = 300
+    replace_end = min(replace_at + cap, new_at) if new_at > replace_at else replace_at + cap
+    new_end = new_at + cap
+    return {
+        "replace_at": replace_at,
+        "new_at": new_at,
+        "replace_end": replace_end,
+        "new_end": new_end,
+        "replace_window": doc[replace_at:replace_end],
+        "new_window": doc[new_at:new_end],
+    }
+
+
+def _assert_docstring_matches_forgery_mechanism(doc: str) -> dict:
+    """Fail if `doc` (CompiledExpr's docstring) states a false relationship
+    between either forgery route and __init__/__post_init__, in any
+    wording. See test_forgery_routes_differ_in_post_init_call_mechanism for
+    the mechanism this is checked against: dataclasses.replace() DOES call
+    __init__/__post_init__ (harmlessly, because the legitimate proof is
+    reused); object.__new__() does NOT, ever. Returns the windows used, for
+    callers that want to show their bounds (B-013 cycle 3, C7's Expect).
+    """
+    assert "never call ``__init__``/``__post_init__`` at all" not in doc, (
+        "CompiledExpr's docstring claims both forgery routes skip "
+        "__init__/__post_init__ -- false for dataclasses.replace(), "
+        "see test_forgery_routes_differ_in_post_init_call_mechanism"
+    )
+    windows = _docstring_route_windows(doc)
+    replace_window = windows["replace_window"]
+    new_window = windows["new_window"]
+
+    assert "__init__" in replace_window, (
+        "CompiledExpr's docstring must mention __init__ near its "
+        "description of the dataclasses.replace route "
+        f"(window examined: {replace_window!r})"
+    )
+    assert _polarity(replace_window) == "affirmed", (
+        "CompiledExpr's docstring describes the dataclasses.replace route "
+        "as NOT calling __init__/__post_init__ -- that is false, it DOES "
+        "call them, see test_forgery_routes_differ_in_post_init_call_mechanism "
+        f"(window examined: {replace_window!r})"
+    )
+
+    assert "__init__" in new_window, (
+        "CompiledExpr's docstring must mention __init__ near its "
+        "description of the object.__new__ route "
+        f"(window examined: {new_window!r})"
+    )
+    assert _polarity(new_window) == "negated", (
+        "CompiledExpr's docstring describes the object.__new__ route as "
+        "calling __init__/__post_init__ -- that is false, it SKIPS them "
+        "entirely, see test_forgery_routes_differ_in_post_init_call_mechanism "
+        f"(window examined: {new_window!r})"
+    )
+    return windows
+
+
 class TestCompileTimeGeneral:
     def test_compile_expr_returns_compiled_expr(self):
         assert isinstance(compile_expr("l1.pt > 20"), CompiledExpr)
@@ -763,39 +857,31 @@ class TestCompileTimeGeneral:
         object.__setattr__(forged_by_new, "source", "x")
         object.__setattr__(forged_by_new, "code", evil_code)
         object.__setattr__(forged_by_new, "proof", object())
+        # This assertion pins a CPython invariant -- object.__new__() never
+        # calls __init__ (and therefore never __post_init__) for *any*
+        # class, by language definition, not by anything safe_eval.py does.
+        # It cannot fail from a change to this module; it is the control
+        # arm against which the replace-route assertion above (which *can*
+        # fail, and did, in the cycle-1 review) is contrasted. Only that
+        # assertion is falsifiable from a change to safe_eval.py.
         assert len(calls) == 0, (
             "object.__new__() must never call __init__/__post_init__ -- it "
             "did, contradicting the cycle-1 review's finding"
         )
 
-    def test_compiled_expr_docstring_matches_the_forgery_mechanism(self, monkeypatch):
-        # B-013 cycle 2, C6: the docstring's account of the two routes is
-        # asserted against the mechanism pinned above, not merely corrected
-        # by hand -- a future edit that reintroduces the blanket "neither
-        # route calls __init__/__post_init__" claim fails this test by
-        # name, rather than silently drifting from the truth again.
-        doc = CompiledExpr.__doc__
-        assert "never call ``__init__``/``__post_init__`` at all" not in doc, (
-            "CompiledExpr's docstring claims both forgery routes skip "
-            "__init__/__post_init__ -- false for dataclasses.replace(), "
-            "see test_forgery_routes_differ_in_post_init_call_mechanism"
-        )
-        replace_at = doc.index("dataclasses.replace")
-        new_at = doc.index("object.__new__")
-        replace_window = doc[replace_at:replace_at + 400]
-        new_window = doc[new_at:new_at + 400]
-        assert "__init__" in replace_window and "does" in replace_window and (
-            "call" in replace_window
-        ), (
-            "CompiledExpr's docstring must state, near its mention of "
-            "dataclasses.replace(), that it DOES call __init__/__post_init__"
-        )
-        assert "__init__" in new_window and (
-            "skip" in new_window or "never" in new_window
-        ), (
-            "CompiledExpr's docstring must state, near its mention of "
-            "object.__new__(), that it skips __init__/__post_init__ entirely"
-        )
+    def test_compiled_expr_docstring_matches_the_forgery_mechanism(self):
+        # B-013 cycle 2, C6 / cycle 3, C7: the docstring's account of the
+        # two routes is asserted against the mechanism pinned above by
+        # *polarity*, not by matching a fixed set of keywords or a single
+        # literal phrase. See _assert_docstring_matches_forgery_mechanism
+        # and R2 of PR #17's cycle-2 review: a monkeypatched paraphrase of
+        # the same false claim, in wording the old keyword-presence check
+        # had never seen, passed "1 passed" because its two 400-char
+        # windows overlapped and each arm's keywords were satisfiable by
+        # text belonging to the *other* route. The windows here are bounded
+        # so that cannot happen (see _docstring_route_windows), and each
+        # arm is decided by negation polarity, not keyword presence.
+        _assert_docstring_matches_forgery_mechanism(CompiledExpr.__doc__)
 
 
 # ---------------------------------------------------------------------------
