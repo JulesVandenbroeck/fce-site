@@ -119,7 +119,14 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
   paraphrase, a third wording, the routes swapped), each required to fail *naming the replace arm*,
   plus proof the arms cannot borrow each other's text. m2 folded into C7 (the `object.__new__`
   control arm pins a CPython invariant and cannot fail; the comment must say so).
-  Cycle 3 dispatched 2026-09-03.
+  **Cycle 3 delivered `5782fa8`; §5.1 gate reproduced 2026-09-03 in `~/fce-gate-b013c3`:
+  415 passed / 0 failed, flake8 0, `-k docstring` 1 passed, 120 in the file, diff still the same
+  two files.** R2 closed by bounding each route's window at the *other* route's mention offset
+  (`replace_at=1124`, `new_at=1396`, `replace_end=1396`) and deciding each arm by **negation
+  polarity** rather than keyword presence; all three required mutations fail naming the `replace`
+  arm. m2 folded in. **Cycle 3 in review** — reviewer told to attack the polarity scan in both
+  directions with wordings neither the coder nor I used, since a polarity scan is a new instrument
+  that can be fooled into a false green *and* a false red.
 - **Cycle 2 record:** Delivered `e9f69c4`; §5.1 gate reproduced 2026-09-03 in
   `~/fce-gate-b013c2`: **415 passed / 0 failed** (floor 413, +2 new tests), flake8 0, diff still
   the same two files, C2 `grep-exit=1`, C3 `2`/`0`, C5+C6 `2 passed`. Push landed on the right

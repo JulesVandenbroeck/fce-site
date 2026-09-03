@@ -82,8 +82,14 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   backlogged m5 for one page); C8 reduced-motion durations all `0s` + focus walk; C9 the verify.py
   floors hold (**71** / **269** at `72d2950`) and `board-lane-fill` stays the only red.
 - **Depends on:** ~~D-009~~, ~~D-013~~ (#23, `309c409`), ~~D-002~~ (#24, `72d2950`) — all merged.
-- **Branch / PR:** `task/d-010-page-shell` — dispatched 2026-09-03, PR not yet opened
-- **Status:** cycle 1 in flight
+- **Branch / PR:** `task/d-010-page-shell` — **#25**, `6d91a96`
+- **Status:** **cycle 1 in review.** Delivered `6d91a96`, **PR #25**. §5.1 gate reproduced
+  2026-09-03 in `~/fce-gate-d010`: all **9** `shell-*` sections PASS inside `--all`;
+  `FAILED sections: ['board-lane-fill']` — the one intended red, untouched; counts **86** /
+  **303** (floors 71+9=80 / 269); diff confined to `shell.html`, `shell.css`, `verify.py`;
+  `shell.html:7` links `../../src/fce_web/static/css/tokens.css`, the **shipped** token set, not
+  the diverged exploration copy. Reviewer told to re-measure the geometry itself rather than read
+  the page's own output, and to confirm `board-lane-fill` was not made green.
 - **History:** [`archive/design.md`](archive/design.md)
 
 
