@@ -68,24 +68,28 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none. D-002 merged 2026-09-03 (#24, `72d2950`) — `tokens.css` now ships and D-010 and F-002
-are released._
+### D-010 — The three-region page shell
+- **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`. Must not touch
+  `bench.*`, `board.*`, `beamline.*`, `interiors.*`, or the exploration's own `tokens.css`.
+- **Accept:** **checks=9.** C1 canvas never covered, 24 `elementFromPoint` probes across 4
+  region states; C2 collapsing the palette gives its width to the canvas and none to the mission
+  panel (+/-1.0px); C3 expanded palette inner width >= **328.0px**, D-013's opened node; C4 an
+  opened node is contained in the canvas visible rect and wins 25/25 probes over what it overlaps
+  — mechanism is the coder's choice, the check gates the property; C5 the pager reads
+  `m3, m2, m1, m2, m3`; C6 `JSON.stringify(payload)` byte-identical across four toggles and no
+  `/collaps|expand|panelOpen|open|ui/i` match; C7 the page links the **shipped**
+  `src/fce_web/static/css/tokens.css`, not the diverged exploration copy (this also closes D-002's
+  backlogged m5 for one page); C8 reduced-motion durations all `0s` + focus walk; C9 the verify.py
+  floors hold (**71** / **269** at `72d2950`) and `board-lane-fill` stays the only red.
+- **Depends on:** ~~D-009~~, ~~D-013~~ (#23, `309c409`), ~~D-002~~ (#24, `72d2950`) — all merged.
+- **Branch / PR:** `task/d-010-page-shell` — dispatched 2026-09-03, PR not yet opened
+- **Status:** cycle 1 in flight
+- **History:** [`archive/design.md`](archive/design.md)
+
 
 ## Ready
 
-### D-010 — The three-region page shell
-- **Scope:** the shell layout for the Bench canvas — CSS only; the markup it needs is a frontend
-  task raised off the back of this one.
-- **Accept:** the graph canvas is always present and never covered; "Add a Node" sits left and
-  collapses; the mission panel sits right, expands, and pages back to previous missions.
-  Collapse/expand state is `ui` state (brief §4) — it never enters the run payload.
-- **Depends on:** ~~D-009~~ merged 2026-09-02, ~~the user's interiors ruling~~ made 2026-09-02
-  (**inline grow**, four-kind palette). Now depends on **D-013** — the merged `Observable`
-  interior does not exist in any page yet, and it is the widest node, so it is what sets palette
-  width. Design the shell against a node with two footprints; see `## Decisions in force` 6.
-  ~~D-013~~ **merged 2026-09-02 (#23, `309c409`). D-010 is now READY** — its input is settled:
-  opened node **328.0 x 300.0px**, collapsed **80.5px**, inline grow.
-- **Branch / PR:** not yet opened
+_none._
 
 
 ## Blocked
