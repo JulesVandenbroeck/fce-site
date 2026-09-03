@@ -605,97 +605,72 @@ def test_reference_checkout_does_not_leak_into_this_process():
 # 2. General compile-time enforcement (not escape-specific).
 # ---------------------------------------------------------------------------
 
-#: B-013 cycle 3, C7 (R2 of PR #17's cycle-2 review). Words whose presence
-#: in a route's docstring window means that route is being described as
-#: *not* calling __init__/__post_init__, in any of the wordings a reviewer
-#: (or a future editor) might reach for -- "does not call", "never runs",
-#: "skips", "bypassed" -- rather than a single fixed phrase. Substring
-#: match, case-insensitive; "not " and "n't" both need the trailing
-#: boundary so "note" or "isn't" still register as prose containing a
-#: negation, which is the behaviour wanted here.
-_NEGATION_CUES = (
-    "not ", "n't", "never", "skip", "bypass", "no longer call", "avoids calling",
+#: B-013 cycle 4, C8 (R3/M2 of PR #17's cycle-3 review, retired C6/C7): the
+#: prose-parsing meta-test above was defeated in both directions -- a false
+#: docstring ("at no point invokes __init__", "elides the constructor
+#: entirely") could be worded around the cue list (R3), and a *true*
+#: rewording of the very same paragraph ("does call __init__ again and
+#: __post_init__ does run; the identity check simply does not fire")
+#: tripped the negation cues and went red for stating the correct fact
+#: (M2). No cue list closes both directions at once, because "is this
+#: wording a negation" is not decidable from a fixed vocabulary. What is
+#: decidable is whether the paragraph is *the one already reviewed* --
+#: hence an exact-string pin instead of a polarity classifier. These are
+#: the two route clauses of CompiledExpr.__doc__, held here as golden
+#: literals and compared after whitespace normalisation only.
+_REPLACE_ROUTE_START = "``dataclasses.replace(good, code=evil)``"
+_REPLACE_ROUTE_END = "is substituted;"
+_REPLACE_ROUTE_GOLDEN = (
+    "``dataclasses.replace(good, code=evil)`` **does** call ``__init__`` "
+    "again, and ``__post_init__`` **does** run, but its identity check has "
+    "nothing to catch because the legitimately-earned ``proof`` field is "
+    "reused verbatim and only ``code`` is substituted;"
+)
+
+_NEW_ROUTE_START = "``object.__new__(CompiledExpr)``"
+_NEW_ROUTE_END = "entirely."
+_NEW_ROUTE_GOLDEN = (
+    "``object.__new__(CompiledExpr)`` followed by ``object.__setattr__`` on "
+    "each field is the route that actually **skips** ``__init__`` (and "
+    "therefore ``__post_init__``) entirely."
+)
+
+#: One sentence, repeated in every failure message below, so a red here is
+#: never mistaken for a finding: a golden pin cannot tell a truer wording
+#: from a false one, so any edit to this paragraph -- including a correction
+#: -- fails until the golden is updated deliberately to match it.
+_DRIFT_GUARD_NOTE = (
+    "this is an exact-string pin, not a truth check: a red here means the "
+    "docstring paragraph changed, not that it is wrong -- if the new wording "
+    "is accurate, update the golden constant in this test to match it"
 )
 
 
-def _polarity(window: str) -> str:
-    """"negated" if `window` describes a route as skipping the call,
-    "affirmed" if it describes the route as making it."""
-    lowered = window.lower()
-    return "negated" if any(cue in lowered for cue in _NEGATION_CUES) else "affirmed"
+def _normalise_whitespace(text: str) -> str:
+    """Collapse all whitespace runs (including newlines) to single spaces
+    and strip the ends, so a golden literal need not reproduce the
+    docstring's line-wrapping column."""
+    return " ".join(text.split())
 
 
-def _docstring_route_windows(doc: str) -> dict:
-    """Bounded text windows for each forgery route's description in
-    `CompiledExpr.__doc__`, plus the offsets used to build them.
-
-    B-013 cycle 3, C7: cycle 2's windows were a fixed 400 characters from
-    each route's mention, and 400 > (new_at - replace_at) for the real
-    docstring, so the replace-route window ran *past* the object.__new__
-    mention and could be satisfied by text belonging to the other route
-    (R2 of PR #17's cycle-2 review, reproduced with a monkeypatched
-    docstring that got "1 passed" despite stating M1's false claim in
-    different words). Each window here is capped at a fixed length *and*
-    at the other route's mention, whichever comes first, so neither route's
-    arm can be decided by text belonging to the other.
-    """
-    replace_at = doc.index("dataclasses.replace")
-    new_at = doc.index("object.__new__")
-    cap = 300
-    replace_end = min(replace_at + cap, new_at) if new_at > replace_at else replace_at + cap
-    new_end = new_at + cap
-    return {
-        "replace_at": replace_at,
-        "new_at": new_at,
-        "replace_end": replace_end,
-        "new_end": new_end,
-        "replace_window": doc[replace_at:replace_end],
-        "new_window": doc[new_at:new_end],
-    }
-
-
-def _assert_docstring_matches_forgery_mechanism(doc: str) -> dict:
-    """Fail if `doc` (CompiledExpr's docstring) states a false relationship
-    between either forgery route and __init__/__post_init__, in any
-    wording. See test_forgery_routes_differ_in_post_init_call_mechanism for
-    the mechanism this is checked against: dataclasses.replace() DOES call
-    __init__/__post_init__ (harmlessly, because the legitimate proof is
-    reused); object.__new__() does NOT, ever. Returns the windows used, for
-    callers that want to show their bounds (B-013 cycle 3, C7's Expect).
-    """
-    assert "never call ``__init__``/``__post_init__`` at all" not in doc, (
-        "CompiledExpr's docstring claims both forgery routes skip "
-        "__init__/__post_init__ -- false for dataclasses.replace(), "
-        "see test_forgery_routes_differ_in_post_init_call_mechanism"
-    )
-    windows = _docstring_route_windows(doc)
-    replace_window = windows["replace_window"]
-    new_window = windows["new_window"]
-
-    assert "__init__" in replace_window, (
-        "CompiledExpr's docstring must mention __init__ near its "
-        "description of the dataclasses.replace route "
-        f"(window examined: {replace_window!r})"
-    )
-    assert _polarity(replace_window) == "affirmed", (
-        "CompiledExpr's docstring describes the dataclasses.replace route "
-        "as NOT calling __init__/__post_init__ -- that is false, it DOES "
-        "call them, see test_forgery_routes_differ_in_post_init_call_mechanism "
-        f"(window examined: {replace_window!r})"
-    )
-
-    assert "__init__" in new_window, (
-        "CompiledExpr's docstring must mention __init__ near its "
-        "description of the object.__new__ route "
-        f"(window examined: {new_window!r})"
-    )
-    assert _polarity(new_window) == "negated", (
-        "CompiledExpr's docstring describes the object.__new__ route as "
-        "calling __init__/__post_init__ -- that is false, it SKIPS them "
-        "entirely, see test_forgery_routes_differ_in_post_init_call_mechanism "
-        f"(window examined: {new_window!r})"
-    )
-    return windows
+def _extract_route_clause(doc: str, start_marker: str, end_marker: str, label: str) -> str:
+    """The whitespace-normalised text of one route clause in `doc`, bounded
+    by two fixed markers. Fails via `pytest.fail` (carrying the drift-guard
+    note) rather than letting `ValueError` from a missing marker propagate,
+    so every red -- marker gone or golden mismatch -- explains itself."""
+    if start_marker not in doc:
+        pytest.fail(
+            f"{label}: docstring no longer contains {start_marker!r} -- "
+            f"{_DRIFT_GUARD_NOTE}"
+        )
+    start = doc.index(start_marker)
+    if end_marker not in doc[start:]:
+        pytest.fail(
+            f"{label}: docstring contains {start_marker!r} but not a "
+            f"following {end_marker!r} -- {_DRIFT_GUARD_NOTE}"
+        )
+    end = doc.index(end_marker, start) + len(end_marker)
+    return _normalise_whitespace(doc[start:end])
 
 
 class TestCompileTimeGeneral:
@@ -869,19 +844,40 @@ class TestCompileTimeGeneral:
             "did, contradicting the cycle-1 review's finding"
         )
 
-    def test_compiled_expr_docstring_matches_the_forgery_mechanism(self):
-        # B-013 cycle 2, C6 / cycle 3, C7: the docstring's account of the
-        # two routes is asserted against the mechanism pinned above by
-        # *polarity*, not by matching a fixed set of keywords or a single
-        # literal phrase. See _assert_docstring_matches_forgery_mechanism
-        # and R2 of PR #17's cycle-2 review: a monkeypatched paraphrase of
-        # the same false claim, in wording the old keyword-presence check
-        # had never seen, passed "1 passed" because its two 400-char
-        # windows overlapped and each arm's keywords were satisfiable by
-        # text belonging to the *other* route. The windows here are bounded
-        # so that cannot happen (see _docstring_route_windows), and each
-        # arm is decided by negation polarity, not keyword presence.
-        _assert_docstring_matches_forgery_mechanism(CompiledExpr.__doc__)
+    def test_compiled_expr_docstring_route_clauses_are_pinned_exactly(self):
+        # B-013 cycle 4, C8 (retires C6/C7): cycles 2 and 3 both tried to
+        # *classify* the docstring's wording (keyword presence, then
+        # negation polarity) and both were defeated -- R3 found a false
+        # docstring that passed by dodging the cue list, M2 found a *true*
+        # rewording of the same fact that failed by tripping it. Classifying
+        # prose for truth is not decidable from a fixed vocabulary in either
+        # direction. Comparing it to a known-good literal is: this pins the
+        # two route clauses of CompiledExpr.__doc__ exactly (whitespace
+        # normalised only) against the mechanism pinned by observation in
+        # test_forgery_routes_differ_in_post_init_call_mechanism above. A
+        # red here is a drift guard, not a truth check -- see
+        # _DRIFT_GUARD_NOTE and each assertion's message.
+        doc = CompiledExpr.__doc__
+
+        replace_clause = _extract_route_clause(
+            doc, _REPLACE_ROUTE_START, _REPLACE_ROUTE_END, "dataclasses.replace route"
+        )
+        assert replace_clause == _REPLACE_ROUTE_GOLDEN, (
+            "CompiledExpr's docstring wording for the dataclasses.replace "
+            f"route no longer matches the pinned golden -- {_DRIFT_GUARD_NOTE}"
+            f"\n  actual: {replace_clause!r}"
+            f"\n  golden: {_REPLACE_ROUTE_GOLDEN!r}"
+        )
+
+        new_clause = _extract_route_clause(
+            doc, _NEW_ROUTE_START, _NEW_ROUTE_END, "object.__new__ route"
+        )
+        assert new_clause == _NEW_ROUTE_GOLDEN, (
+            "CompiledExpr's docstring wording for the object.__new__ route "
+            f"no longer matches the pinned golden -- {_DRIFT_GUARD_NOTE}"
+            f"\n  actual: {new_clause!r}"
+            f"\n  golden: {_NEW_ROUTE_GOLDEN!r}"
+        )
 
 
 # ---------------------------------------------------------------------------
