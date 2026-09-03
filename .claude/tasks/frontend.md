@@ -13,17 +13,23 @@ _none_
 
 ## Ready
 
-_none_
-
-## Blocked
-
 ### F-002 — Link the stylesheets into `base.html`
 - **Scope:** `src/fce_web/templates/base.html`
 - **Accept:** `<link rel="stylesheet">` for the design role's tokens and main stylesheet,
   in cascade order; page still renders with zero console errors and zero 404s
-- **Depends on:** D-002 (the CSS files must exist first — a link to a missing file 404s and
-  breaks B-003's zero-console-errors assertion, which is why F-001 ships without it)
+- **Depends on:** ~~D-002~~ **merged 2026-09-03 (#24, `72d2950`) — RELEASED.**
+  `src/fce_web/static/css/tokens.css` exists and is the tokens file to link. There is **no
+  main stylesheet yet** — D-010 is the first task that writes one — so this task links tokens
+  only, unless it is dispatched after D-010. **F-002 is what first renders the shipped
+  `tokens.css`**: nothing on the D-002 branch consumed it, by construction, so the four
+  self-hosted woff2 under `src/fce_web/static/fonts/` are exercised for the first time here.
+  Their `src:` URLs must resolve at the served path, not just on disk — a 404 on a font is
+  exactly what this task's zero-404 assertion exists to catch.
 - **Branch / PR:** not yet opened
+
+## Blocked
+
+_none_
 
 ## Done
 

@@ -567,3 +567,11 @@ and are historical now that #6 is merged.
   `src/fce_web/static/css/tokens.css` moved to `#847c66` / `#726c59` / `#a67d36`. The divergence
   is unrecorded anywhere. Either sync the exploration copy or write a note in it saying the
   shipped file is now authoritative. Out of D-002's file scope, which is why it is here.
+
+- **D-002 m6 — the frozen-separation floor is a constant, not a reading of the sentence it
+  certifies.** 2026-09-03, D-002 cycle-3 review. `docs/design-explorations/verify.py:7524`
+  hard-codes `APP_FROZEN_SEPARATION_FLOOR = 19.0`. Rewriting `tokens.css`'s "at least 19" prose
+  to "at least 25" leaves both `tokens-nontext` and `tokens-contrast` green, so m4 is closed
+  against a token nudge but not against a prose nudge. Fix: a `N delta-E` literal sweep
+  mirroring the existing `N.NN:1` ratio sweep, so every separation literal in the file is
+  recomputed from the shipped tokens.
