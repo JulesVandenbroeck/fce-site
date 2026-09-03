@@ -181,8 +181,9 @@ class _ValidationProof:
     It stops *accidental* construction of a :class:`CompiledExpr` by code
     outside this module that goes through the ordinary constructor -- it is
     not a defence against code already running in this process, which can
-    reach a working ``CompiledExpr`` anyway without ever calling ``__init__``
-    (see :class:`CompiledExpr`'s docstring for the two documented routes).
+    reach a working ``CompiledExpr`` anyway (see :class:`CompiledExpr`'s
+    docstring for the two documented routes, which do not have the same
+    relationship to ``__init__``/``__post_init__``).
 
     A private class with no public instances: the only object of this type
     ever created is :data:`_PROOF`, held by this module alone. Passed to
@@ -219,14 +220,18 @@ class CompiledExpr:
     **What this does not defend against**, stated explicitly because B-008
     is expected to treat this type as a safety certificate: a caller
     already executing arbitrary Python *in this process* can still produce
-    a ``CompiledExpr`` wrapping an arbitrary code object, by two routes
-    that never call ``__init__``/``__post_init__`` at all --
-    ``dataclasses.replace(good, code=evil)`` (reuses a legitimately-earned
-    ``proof`` field with a substituted ``code``) and
+    a ``CompiledExpr`` wrapping an arbitrary code object, by two routes with
+    *different* relationships to ``__init__``/``__post_init__`` --
+    ``dataclasses.replace(good, code=evil)`` **does** call ``__init__``
+    again, and ``__post_init__`` **does** run, but its identity check has
+    nothing to catch because the legitimately-earned ``proof`` field is
+    reused verbatim and only ``code`` is substituted;
     ``object.__new__(CompiledExpr)`` followed by ``object.__setattr__`` on
-    each field. Both were demonstrated in the B-006 re-specification
-    review. Neither is reachable from a student's typed expression, or
-    from anything that only calls :func:`compile_expr` and :func:`evaluate`
+    each field is the route that actually **skips** ``__init__`` (and
+    therefore ``__post_init__``) entirely. Both were demonstrated in the B-006
+    re-specification review. Neither is reachable from a student's typed
+    expression, or from anything that only calls :func:`compile_expr` and
+    :func:`evaluate`
     -- reaching them requires the caller to already be running arbitrary
     code in this interpreter, at which point it has no need of
     ``CompiledExpr`` to do so. So: **a ``CompiledExpr`` obtained from

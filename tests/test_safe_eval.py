@@ -725,6 +725,78 @@ class TestCompileTimeGeneral:
             with pytest.raises(UnsafeExpression):
                 CompiledExpr(source="1 + 1", code=code, proof=object())
 
+    def test_forgery_routes_differ_in_post_init_call_mechanism(self, monkeypatch):
+        # B-013 cycle 2, C5: pins the *mechanism* of the two forgery routes
+        # above by observation, not by prose -- the cycle-1 review
+        # established that dataclasses.replace() DOES call __init__ (and
+        # therefore __post_init__), and that the identity check inside it
+        # runs and simply has nothing to catch because the legitimately-
+        # earned `proof` field is carried over unchanged; object.__new__()
+        # is the route that skips __init__/__post_init__ entirely. A
+        # counter wrapped around the real __post_init__ (monkeypatch, not a
+        # tracked-file edit) makes that difference observable rather than
+        # asserted.
+        calls = []
+        real_post_init = CompiledExpr.__post_init__
+
+        def counting_post_init(self):
+            calls.append(self)
+            real_post_init(self)
+
+        monkeypatch.setattr(CompiledExpr, "__post_init__", counting_post_init)
+
+        good = compile_expr("1 + 1")
+        evil_code = compile("1 + 1", "<evil>", "eval")
+
+        calls.clear()  # compile_expr("1 + 1") above already called it once
+        forged_by_replace = dataclasses.replace(good, code=evil_code)
+        assert len(calls) == 1, (
+            "dataclasses.replace() must call __init__/__post_init__ exactly "
+            "once -- it did not, contradicting the cycle-1 review's finding"
+        )
+        # The identity check passed silently: it has nothing to catch,
+        # because the legitimate proof was carried over verbatim.
+        assert forged_by_replace.proof is good.proof
+
+        calls.clear()
+        forged_by_new = object.__new__(CompiledExpr)
+        object.__setattr__(forged_by_new, "source", "x")
+        object.__setattr__(forged_by_new, "code", evil_code)
+        object.__setattr__(forged_by_new, "proof", object())
+        assert len(calls) == 0, (
+            "object.__new__() must never call __init__/__post_init__ -- it "
+            "did, contradicting the cycle-1 review's finding"
+        )
+
+    def test_compiled_expr_docstring_matches_the_forgery_mechanism(self, monkeypatch):
+        # B-013 cycle 2, C6: the docstring's account of the two routes is
+        # asserted against the mechanism pinned above, not merely corrected
+        # by hand -- a future edit that reintroduces the blanket "neither
+        # route calls __init__/__post_init__" claim fails this test by
+        # name, rather than silently drifting from the truth again.
+        doc = CompiledExpr.__doc__
+        assert "never call ``__init__``/``__post_init__`` at all" not in doc, (
+            "CompiledExpr's docstring claims both forgery routes skip "
+            "__init__/__post_init__ -- false for dataclasses.replace(), "
+            "see test_forgery_routes_differ_in_post_init_call_mechanism"
+        )
+        replace_at = doc.index("dataclasses.replace")
+        new_at = doc.index("object.__new__")
+        replace_window = doc[replace_at:replace_at + 400]
+        new_window = doc[new_at:new_at + 400]
+        assert "__init__" in replace_window and "does" in replace_window and (
+            "call" in replace_window
+        ), (
+            "CompiledExpr's docstring must state, near its mention of "
+            "dataclasses.replace(), that it DOES call __init__/__post_init__"
+        )
+        assert "__init__" in new_window and (
+            "skip" in new_window or "never" in new_window
+        ), (
+            "CompiledExpr's docstring must state, near its mention of "
+            "object.__new__(), that it skips __init__/__post_init__ entirely"
+        )
+
 
 # ---------------------------------------------------------------------------
 # 3. HEP syntax preprocessing (&&, ||, !, applied to both selections and
