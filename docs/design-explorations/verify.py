@@ -7414,13 +7414,115 @@ def _covered_tokens() -> set[str]:
     return covered
 
 
+# ---- C10: recognising a colour, as distinct from being able to measure one --
+#
+# Cycle 2 answered "is this token a colour?" with "does `_rgba_token` parse
+# it?", which is true only of `#rrggbb` and `rgb()/rgba()`. Every other CSS
+# colour syntax fell out of C9's denominator, so the one guard against an
+# uncovered colour was blind in exactly the direction a later task extending
+# this contract file would add one. Recognition and measurement are separated
+# here: `_looks_like_colour` decides membership of the denominator,
+# `_rgba_token` decides whether a ratio can be computed from it, and a token
+# that is the first but not the second is named and fails the section instead
+# of vanishing out of it.
+#
+# Every match is against the WHOLE trimmed value, never a substring, because
+# `--shadow-resting: 0 1px 2px rgba(0, 0, 0, 0.12)` is a shadow and not a
+# colour, `--ease-out: cubic-bezier(...)` is an easing curve, and
+# `--font-body: "EB Garamond", Georgia, ..., serif` must not become a colour
+# because one of its family names could also be a keyword.
+
+# CSS Color Module Level 4 functional notations. `color-mix` is listed before
+# `color` for readability; the alternation would backtrack into it anyway.
+_COLOUR_FUNCTION_RE = re.compile(
+    r"(?:color-mix|rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(.*\)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# 3-, 4-, 6- and 8-digit hex. The 4- and 8-digit forms carry alpha.
+_HEX_COLOUR_RE = re.compile(r"#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})")
+
+# The CSS Color Module Level 4 named colours, plus the two colour keywords a
+# custom property can legally hold. Matched only as a whole value, so a font
+# stack cannot trip it.
+_CSS_COLOUR_KEYWORDS = frozenset("""
+    transparent currentcolor
+    aliceblue antiquewhite aqua aquamarine azure beige bisque black
+    blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse
+    chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan
+    darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta
+    darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen
+    darkslateblue darkslategray darkslategrey darkturquoise darkviolet
+    deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite
+    forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green
+    greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender
+    lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan
+    lightgoldenrodyellow lightgray lightgreen lightgrey lightpink
+    lightsalmon lightseagreen lightskyblue lightslategray lightslategrey
+    lightsteelblue lightyellow lime limegreen linen magenta maroon
+    mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen
+    mediumslateblue mediumspringgreen mediumturquoise mediumvioletred
+    midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive
+    olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise
+    palevioletred papayawhip peachpuff peru pink plum powderblue purple
+    rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown
+    seagreen seashell sienna silver skyblue slateblue slategray slategrey
+    snow springgreen steelblue tan teal thistle tomato turquoise violet
+    wheat white whitesmoke yellow yellowgreen
+""".split())
+
+
+def _looks_like_colour(value: str) -> bool:
+    """True when the whole value is written in any CSS colour syntax: hex in
+    3/4/6/8 digits, one of the functional notations (`rgb()`, `rgba()`,
+    `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`,
+    `color()`, `color-mix()`), or a named colour. Deliberately independent of
+    whether we can compute a ratio from it -- see the comment above."""
+    v = value.strip()
+    if _HEX_COLOUR_RE.fullmatch(v):
+        return True
+    if _COLOUR_FUNCTION_RE.fullmatch(v):
+        return True
+    return v.lower() in _CSS_COLOUR_KEYWORDS
+
+
 def _declared_colour_tokens(tokens: dict[str, str]) -> list[str]:
     """The custom properties whose value is a colour, one level of `var()`
     already resolved by `_app_tokens`. A duration or a length is not a
     contrast question, and a shadow shorthand is not a colour even though
     it contains one -- what is wanted is the tokens something can actually
     be painted in."""
-    return sorted(n for n, v in tokens.items() if _rgba_token(v) is not None)
+    return sorted(n for n, v in tokens.items() if _looks_like_colour(v))
+
+
+def _unmeasurable_colour_tokens(tokens: dict[str, str]) -> list[str]:
+    """Tokens `_looks_like_colour` recognises but `_rgba_token` cannot turn
+    into an (r, g, b, a) quadruple -- an `oklch()` or a named colour, say.
+    They belong in the denominator (a later task must still cover them) but
+    no ratio can be taken from them, so the section says so by name rather
+    than raising out of a pair loop."""
+    return sorted(
+        n for n, v in tokens.items()
+        if _looks_like_colour(v) and _rgba_token(v) is None
+    )
+
+
+def _unmeasurable(tokens: dict[str, str], name: str) -> bool:
+    """One token, declared but not reducible to sRGB -- the per-pair form of
+    `_unmeasurable_colour_tokens`, used to skip a pair rather than crash on
+    it."""
+    return name in tokens and _rgba_token(tokens[name]) is None
+
+
+# ---- m4: the frozen sample series owes a colour *separation*, not only a
+# contrast ratio. `tokens.css` states that the three sample colours stay
+# above 19 CAM02-UCS delta-E of one another; nothing recomputed that, and the
+# X1/X2 margin is thin enough that a later nudge to either would falsify the
+# sentence in silence -- the exact failure mode the ratio sweep exists to
+# prevent, one metric over. Computed here, beside the other claims the same
+# tokens make.
+APP_FROZEN_SEPARATION_FLOOR = 19.0
+APP_FROZEN_SERIES = ["--frozen-x1", "--frozen-x2", "--frozen-x3"]
 
 
 def check_tokens_nontext() -> bool:
@@ -7438,7 +7540,15 @@ def check_tokens_nontext() -> bool:
     C9 -- the colour tokens the file declares are diffed against the union
     of everything the tables reach. A token in neither is reported by name
     and fails the section, so a colour added by a later design task is
-    covered or it is loud."""
+    covered or it is loud.
+
+    C10 -- that denominator is `_looks_like_colour`, which sees every CSS
+    colour syntax rather than only the two `_rgba_token` can parse, and a
+    token it recognises but cannot reduce to sRGB fails by name too.
+
+    Also, closing cycle 2's m4: the CAM02-UCS separation `tokens.css` claims
+    for the frozen sample map is recomputed here, so the sentence stating it
+    cannot go stale under a later nudge to any of the three values."""
     section("Tokens (shipped) -- WCAG 2.2 SC 1.4.11 non-text contrast, and table completeness")
     tokens = _app_tokens()
 
@@ -7456,9 +7566,10 @@ def check_tokens_nontext() -> bool:
     missing: list[str] = []
     print(f"       floor {APP_NONTEXT_FLOOR:.1f}:1 (WCAG 2.2 SC 1.4.11 Non-text Contrast, AA)")
     for fg, bg, what in APP_NONTEXT_PAIRS:
-        if fg not in tokens or bg not in tokens:
+        if (fg not in tokens or bg not in tokens
+                or _unmeasurable(tokens, fg) or _unmeasurable(tokens, bg)):
             missing.append(f"{fg} on {bg}")
-            print(f"       {fg:22s} on {bg:18s}   ---     MISSING TOKEN   {what}")
+            print(f"       {fg:22s} on {bg:18s}   ---     MISSING OR UNMEASURABLE TOKEN   {what}")
             continue
         front, back = _composited(tokens[fg], tokens[bg])
         ratio = contrast_ratio(front, back)
@@ -7479,9 +7590,10 @@ def check_tokens_nontext() -> bool:
 
     exempt_missing: list[str] = []
     for fg, bg, why in APP_NONTEXT_EXEMPT:
-        if fg not in tokens or bg not in tokens:
+        if (fg not in tokens or bg not in tokens
+                or _unmeasurable(tokens, fg) or _unmeasurable(tokens, bg)):
             exempt_missing.append(f"{fg} on {bg}")
-            print(f"       {fg:22s} on {bg:18s}   ---     MISSING TOKEN")
+            print(f"       {fg:22s} on {bg:18s}   ---     MISSING OR UNMEASURABLE TOKEN")
             continue
         front, back = _composited(tokens[fg], tokens[bg])
         ratio = contrast_ratio(front, back)
@@ -7518,7 +7630,50 @@ def check_tokens_nontext() -> bool:
         else f"named by a table but absent from tokens.css: {stale}",
     )
 
-    return not failures and not missing and not both and not exempt_missing and not uncovered and not stale
+    unmeasurable = _unmeasurable_colour_tokens(tokens)
+    for n in unmeasurable:
+        print(f"       UNMEASURABLE  {n} = {tokens[n]}  (a colour, but no ratio can be computed from it)")
+    line(
+        "every colour token the file declares is in a syntax a ratio can be computed from "
+        "(hex, rgb() or rgba())",
+        not unmeasurable,
+        "every declared colour reduces to sRGB" if not unmeasurable
+        else f"recognised as a colour but not measurable: {unmeasurable}",
+    )
+
+    # m4: the numeric separation claim tokens.css makes about the sample map.
+    separation_failures: list[str] = []
+    jab = {}
+    for n in APP_FROZEN_SERIES:
+        rgba = _rgba_token(tokens[n]) if n in tokens else None
+        if rgba is not None:
+            jab[n] = srgb_to_cam02ucs((rgba[0], rgba[1], rgba[2]))
+    print(f"       floor {APP_FROZEN_SEPARATION_FLOOR:.1f} CAM02-UCS delta-E "
+          f"(the separation tokens.css claims for the frozen sample map)")
+    for i, a in enumerate(APP_FROZEN_SERIES):
+        for b in APP_FROZEN_SERIES[i + 1:]:
+            if a not in jab or b not in jab:
+                separation_failures.append(f"{a} vs {b} (unmeasurable)")
+                print(f"       {a:22s} vs {b:18s}   ---     MISSING OR UNMEASURABLE TOKEN")
+                continue
+            de = cam02ucs_deltaE(jab[a], jab[b])
+            ok = de >= APP_FROZEN_SEPARATION_FLOOR
+            print(f"       {a:22s} vs {b:18s} {de:6.3f} dE vs "
+                  f"{APP_FROZEN_SEPARATION_FLOOR:.1f}  {'PASS' if ok else 'FAIL'}   "
+                  "two sample colours a student has to tell apart")
+            if not ok:
+                separation_failures.append(f"{a} vs {b} at {de:.3f} dE")
+    line(
+        f"the frozen sample colours stay at least {APP_FROZEN_SEPARATION_FLOOR:.0f} CAM02-UCS "
+        "delta-E apart, as tokens.css states",
+        not separation_failures,
+        "every sample pair clears the separation floor" if not separation_failures
+        else f"below the separation floor: {separation_failures}",
+    )
+
+    return (not failures and not missing and not both and not exempt_missing
+            and not uncovered and not stale and not unmeasurable
+            and not separation_failures)
 
 
 # Named so `--section <name>` can address one of them without running the

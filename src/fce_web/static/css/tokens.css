@@ -160,9 +160,12 @@
    * --paper or --panel, so each is a graphical object the chart cannot be
    * read without and each owes 3:1 under WCAG 2.2 SC 1.4.11. X3 was
    * #b5883a, which came in under the floor on paper; darkened to the value
-   * below at 3.18:1, a move small enough that its separation from X1 and
-   * X2 stays above 19 delta-E. X1 (the reserved accent) is 4.62:1 on paper
-   * and X2 is 3.12:1, so both already cleared it. */
+   * below at 3.18:1, a move small enough that all three stay at least 19
+   * CAM02-UCS delta-E apart — a floor the `tokens-nontext` section of
+   * docs/design-explorations/verify.py recomputes from these three values
+   * on every run, so this sentence cannot outlive the numbers it describes.
+   * X1 (the reserved accent) is 4.62:1 on paper and X2 is 3.12:1, so both
+   * already cleared the contrast floor. */
   --frozen-x1: var(--vermillion);
   --frozen-x2: #6b8f5e;
   --frozen-x3: #a67d36;
