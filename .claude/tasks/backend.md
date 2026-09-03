@@ -103,7 +103,24 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
 
 ### B-013 — Close B-006's two open findings
 - **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `4d5f374`
-- **Status:** **cycle 2 in review.** Delivered `e9f69c4`; §5.1 gate reproduced 2026-09-03 in
+- **Status:** **cycle 3 in flight — this is the §5.7 limit.** If it does not close at 0R/0M, STOP
+  and escalate; do not dispatch a fourth. Cycle 2 reviewed 2026-09-03: `1R / 0M / 1m`,
+  `verdict=rework`, scope pass, review at PR #17 comment `5524250868`. **R1 and M1 both confirmed
+  fixed** — M1 by the reviewer running C6's own assertion against `git show 4d5f374`'s wording
+  (RED) and HEAD (green); C5 re-instrumented, not read, and shown genuinely sensitive (monkeypatching
+  `dataclasses.replace` to an `object.__new__` implementation drives it RED).
+  **R2, new, and it is the §2 "instrument that cannot observe what it certifies" shape:** C6's
+  `replace_window` arm is a keyword-presence check, and the negation contains the same keywords —
+  the reviewer restated M1's false claim in different words and got `1 passed`. Two compounding
+  causes: the literal guard at `:778` matches only cycle 1's exact phrase, and the two 400-char
+  windows overlap (`replace_at=1124`, `new_at=1396`), so the `replace` arm can be satisfied by the
+  other route's text. **My Expect for C6 named only the verbatim-restore mutation — the weakest
+  one — so the coder met it exactly.** checks 6 -> 7: C7 gates three mutations (the reviewer's
+  paraphrase, a third wording, the routes swapped), each required to fail *naming the replace arm*,
+  plus proof the arms cannot borrow each other's text. m2 folded into C7 (the `object.__new__`
+  control arm pins a CPython invariant and cannot fail; the comment must say so).
+  Cycle 3 dispatched 2026-09-03.
+- **Cycle 2 record:** Delivered `e9f69c4`; §5.1 gate reproduced 2026-09-03 in
   `~/fce-gate-b013c2`: **415 passed / 0 failed** (floor 413, +2 new tests), flake8 0, diff still
   the same two files, C2 `grep-exit=1`, C3 `2`/`0`, C5+C6 `2 passed`. Push landed on the right
   branch — the coder's worktree was on a stale ref and it pushed by explicit refspec from a local
