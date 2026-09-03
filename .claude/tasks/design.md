@@ -69,29 +69,35 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-010 — The three-region page shell
-- **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`. Must not touch
-  `bench.*`, `board.*`, `beamline.*`, `interiors.*`, or the exploration's own `tokens.css`.
-- **Accept:** **checks=9.** C1 canvas never covered, 24 `elementFromPoint` probes across 4
-  region states; C2 collapsing the palette gives its width to the canvas and none to the mission
-  panel (+/-1.0px); C3 expanded palette inner width >= **328.0px**, D-013's opened node; C4 an
-  opened node is contained in the canvas visible rect and wins 25/25 probes over what it overlaps
-  — mechanism is the coder's choice, the check gates the property; C5 the pager reads
-  `m3, m2, m1, m2, m3`; C6 `JSON.stringify(payload)` byte-identical across four toggles and no
-  `/collaps|expand|panelOpen|open|ui/i` match; C7 the page links the **shipped**
-  `src/fce_web/static/css/tokens.css`, not the diverged exploration copy (this also closes D-002's
-  backlogged m5 for one page); C8 reduced-motion durations all `0s` + focus walk; C9 the verify.py
-  floors hold (**71** / **269** at `72d2950`) and `board-lane-fill` stays the only red.
-- **Depends on:** ~~D-009~~, ~~D-013~~ (#23, `309c409`), ~~D-002~~ (#24, `72d2950`) — all merged.
+- **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`
+- **Accept:** **checks=9** — verbatim in PR #25's body. C1 canvas never covered; C2 palette
+  collapse gives its width to the canvas only; C3 palette inner width >= 328.0px; C4 an opened
+  node is contained and paints above what it overlaps; C5 the pager reads `m3,m2,m1,m2,m3`;
+  C6 ui state never enters the run payload; C7 only the shipped `tokens.css`; C8 reduced motion +
+  focus walk; C9 the verify.py floors hold and `board-lane-fill` stays the only red.
+- **Depends on:** ~~D-009~~, ~~D-013~~, ~~D-002~~ — all merged.
 - **Branch / PR:** `task/d-010-page-shell` — **#25**, `6d91a96`
-- **Status:** **cycle 1 in review.** Delivered `6d91a96`, **PR #25**. §5.1 gate reproduced
-  2026-09-03 in `~/fce-gate-d010`: all **9** `shell-*` sections PASS inside `--all`;
-  `FAILED sections: ['board-lane-fill']` — the one intended red, untouched; counts **86** /
-  **303** (floors 71+9=80 / 269); diff confined to `shell.html`, `shell.css`, `verify.py`;
-  `shell.html:7` links `../../src/fce_web/static/css/tokens.css`, the **shipped** token set, not
-  the diverged exploration copy. Reviewer told to re-measure the geometry itself rather than read
-  the page's own output, and to confirm `board-lane-fill` was not made green.
+- **Status:** **cycle 1 reviewed, rework NOT YET DISPATCHED — stopped at the 75% soft threshold
+  2026-09-03.** Next session dispatches cycle 2. Gate had reproduced (9/9 shell sections PASS,
+  `FAILED sections: ['board-lane-fill']`, counts 86/303, diff = the 3 scoped files).
+- **Review:** cycle 1 `2R / 4M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5524842859`.
+  **Both Requireds are instruments that cannot fail, and both were mutation-proven, not argued.**
+  R1 `verify.py:6568-6580` — C7's literal sweep matches hex only, so `white`, `rebeccapurple`,
+  `rgb()`, `hsl()` all pass, and `length_re`'s trailing `\b` after `%` can never match, so every
+  percentage is invisible; `.palette { width: 42% }` leaves it at "zero offenders". Same class as
+  D-002 cycle 3's M3, reintroduced in a new sweep. R2 `verify.py:6236-6263` — C1's 24 probes are
+  derived from the canvas region's **own** rect, so they shrink with it: `max-width: 3px` still
+  reports 24/24 PASS; and it only ever runs at 1440.
+  M1 focus ring asserts presence not perceivability (the `verify.py:2405` pattern; real rings
+  measure 6.20-6.69:1, so the page is fine and the check is not). **M2 is the only finding against
+  the design itself:** the canvas surface is a fixed 704x512 in a region free to collapse — at
+  1024 both exemplar nodes sit at x=733-866, outside a 336px region; at 768 the region is 80px and
+  shows nothing. M3 13 new flake8 violations in a file flake8-clean on `main` (the F841 is a dead
+  duplicate of the exemption list). **M4 is my defect:** C9's `grep -c 'all_results.append'` counts
+  lines that merely *mention* the string, including the counting lines themselves — 86 reported
+  against 78 real registrations by AST. The property holds (67 -> 78, nothing lost) but the floor
+  is self-inflating. m1/m2/m3 backlogged.
 - **History:** [`archive/design.md`](archive/design.md)
-
 
 ## Ready
 

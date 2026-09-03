@@ -583,3 +583,15 @@ and are historical now that #6 is merged.
   The substance — do not trust a green suite under `PYTHONOPTIMIZE` — should be a `__debug__`
   guard in `conftest.py`, where it is enforced rather than narrated. Raised from B-013 cycle 1,
   2026-09-03.
+
+- **D-010 m1 — `shell-verify-floors`' name implies more than it asserts.** `verify.py:6721-6728`
+  only checks `board-lane-fill` is defined and registered, not that it is still red; C9's Expect
+  covers redness via the external `--all` run. Say so in the docstring. Raised 2026-09-03.
+- **D-010 m2 — C6's payload regex includes `open`,** which a legitimate future payload field would
+  match; and `buildRunPayload` (`shell.html:129-134`) reads only `graphState`, so the check is
+  near-tautological. Its real failure mode is someone putting ui state *into* `graphState`, which
+  is what a later revision should gate. Raised 2026-09-03.
+- **D-010 m3 — the mission pager needs disabled end states and an announcement.**
+  `shell.html:69-71`: `#pager-forward` is not disabled at m3 nor `#pager-back` at m1, and
+  `#mission-label` has no `aria-live`, so the change is silent to a screen reader. Out of scope
+  for D-010's criteria — belongs to whoever ships the real panel markup. Raised 2026-09-03.
