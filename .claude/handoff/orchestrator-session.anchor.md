@@ -1,29 +1,30 @@
-# Orchestrator anchor — 2026-09-02
+# Orchestrator anchor — 2026-09-03
 
-**Budget:** 5h usage at 76% (soft). Window resets 18:50. No new work opened past this point.
+**Budget:** session opened at 51% of the 5h limit (resets 12:00). Soft stop at 75%, hand over at 90%.
+Expect room for roughly one review cycle plus bookkeeping. Serial dispatch only.
 
-## Decisions made this session, and why
-- D-002's work was rescued: the only copy was one unpushed local commit on
-  `task/d-002-tokens-work`. Pushed first thing. The dispatched branch `task/d-002-tokens` is
-  empty and stays that way — do not try to move commits onto it.
-- **Ruling on `check_git_diff`** (`verify.py:1885-1950`): narrowed from "ships nothing under
-  src/tests/content" to a two-entry allowlist (`tokens.css`, `static/fonts/`). Any future task
-  shipping into those trees trips it and needs a fresh ruling. Intended, not a defect.
-- **M2 ratified**: `verify.py:6324`'s `main()` edit is behaviour-preserving and my own `Check:`
-  commands forced it. Declared, not charged.
-- Backend trio released by the user but **strictly serial** — B-013 (#17), B-008 (#19),
-  B-014 (#18), in that order, one at a time. This overrides the old parallel pattern.
+## State, reconciled against git 2026-09-03
+- SESSION.md (2026-09-02b) fully consumed and archived to `handoff/archive/session-2026-09-02b.md`,
+  along with the two D-002 handoffs. D-002 merged #24 `72d2950`; PR #24 is closed.
+- Open PRs: **#17 B-013**, **#18 B-014**, **#19 B-008**. No sub-agent running.
+- M1 design work is done. M2 wave 6 is the whole remaining backend queue.
 
-## Dead ends — do not repeat
-- `git pull --ff-only` on `main` fails whenever bookkeeping is unpushed and a PR merged
-  remotely. Correct move is `git merge origin/main` then push. Never rebase.
-- `verify.py --all` takes >2 minutes; a 120s Bash timeout kills it. Use `timeout 540`.
-- `git worktree add` fails on a registered-but-missing path — `git worktree prune` first.
+## The standing plan (user's ruling — do not parallelise)
+Strictly serial, one task to completion before the next: **B-013 (#17) → B-008 (#19) → B-014 (#18)**.
+Each dispatch gets `isolation: "worktree"`.
+- **B-013 #17** — cycle 1, §5.1 gate already reproduced (118 cases / 413 passed / flake8 0 /
+  `grep unforgeable` exit 1). Cycle-1 reviewer was dispatched 2026-08-31 and never returned.
+  Next step: re-dispatch the reviewer on **#17 and nothing else**. checks=4.
+- **B-008 #19** — head `fba2ad6`, at the §5.7 limit. Re-dispatch is **cycle 3, not 4**; M3 open
+  (the coarse-bin assertion replaced cycle 1's per-value comparison — fix additively).
+  If it does not close 0R/0M, **escalate, do not dispatch a fourth**.
+- **B-014 #18** — cycle 1, gate reproduced (286 collected / 565 passed / 13 headings).
+  Reviewer re-dispatch, still cycle 1. checks=4.
 
-## In flight
-- **D-002 cycle 2** (PR #24, head `93c4b14`), design-coder, own worktree. C8/C9 close M1's two
-  halves. checks 7 -> 9. Contract task: do not merge with an open finding against the tokens.
+## Then
+D-010 (three-region shell, CSS) and F-002 (link `tokens.css` into `base.html`) are both READY.
+F-002 first renders the shipped fonts — its zero-404 assertion is the point.
 
-## Next step, exactly
-Collect the D-002 cycle-2 report, run the §5.1 gate in `~/fce-gate-d002`, dispatch the reviewer.
-Then D-010 (ready, input 328.0 x 300.0px opened / 80.5px collapsed) or B-013 — serial, one only.
+## Dead ends
+- Do not re-run the D-002 gate; that task is closed.
+- A bare `pytest` in a fresh worktree collects nothing — use the worktree's `./.venv/bin/python -m pytest`.
