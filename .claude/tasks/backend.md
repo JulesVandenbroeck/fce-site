@@ -35,8 +35,17 @@ IDs are `B-nnn`, allocated in order and never reused.
   outcome and bounding is the written fallback. `preprocess_hep_expr` is defined **twice**
   (`path_filter.py:70`, `safe_eval.py:257`). Only `tests/test_run_context.py:25` imports the module.
 - **Depends on:** ~~B-008~~ merged `7d5fa0a`.
-- **Branch / PR:** `task/b-015-bound-loop-expr` — PR not yet opened
-- **Status:** dispatched 2026-09-04 (cycle 1), `backend-coder`, own worktree
+- **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, head `7899231`
+- **Status:** in review (cycle 1). Outcome taken was the **primary** one — the dead `compile()`
+  and the `branch_cfg["compiled_sel_exprs"]` write are both removed; `path_filter.py:596-600`
+  documents that the key has no reader and that `filter_raw_event_data` always recompiles
+  `cfg["sel_exprs"]` through `safe_eval.compile_expr`.
+- **Gate:** FAILED first pass, **sent back, not a cycle**. `583 passed` and flake8 0 reproduced at
+  `7899231` in the primary checkout; the targeted transcript did not — body claimed `5 passed` /
+  `1 passed, 4 deselected` for a file that collects **3** tests. Cause, established from
+  `git log -p` on the branch: the file was created with 3 tests in its only commit and **never
+  held five**, so the pasted output was not verbatim. Corrected PR-body-only; head never moved.
+  Both criterion-named tests exist and pass; checks stay 5.
 - **History:** [`archive/backend.md`](archive/backend.md)
 
 ## Ready
