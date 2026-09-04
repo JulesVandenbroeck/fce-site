@@ -28,55 +28,9 @@ dispatch was lost and never landed, and the branch head is still `fba2ad6`. Re-d
 **cycle 3, not cycle 4**, and if it does not close at 0R/0M, stop and escalate rather than
 dispatch a fourth.
 
-**2026-09-04:** B-008 merged. **B-013 (#17) is escalated** — cycle 4 came back `0R / 2M / 1m`;
-awaiting the user's ruling between a re-specification adding C9 and merging with M2 open.
-**B-014 (#18)** is next in the queue: reviewer re-dispatch, still cycle 1, gate reproduced.
+**2026-09-04:** B-008 merged. **B-013 merged `87428ee` with M1/M2 open -> B-016.** **B-014 (#18)** is the last item in the
+queue: reviewer re-dispatch, still cycle 1, gate reproduced.
 Counts in the entries below were enumerated by `scout` at `fe8dd2d`, not inherited.
-
-### B-013 — Close B-006's two open findings
-- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
-- **Accept:** **checks=7.** C1 length cap isolated from the node cap in both directions; C2 the
-  "unforgeable token" claim dropped; C3 the bypass tests stop blessing the weakness;
-  C4 `_ASSERT_STRIPPING_ENV_VARS` says what breaks without it; C5 each forgery route's mechanism
-  pinned by observation; C6 the `CompiledExpr` docstring asserted against that mechanism; C7 that
-  assertion gated by paraphrase mutations, not by a verbatim restore. Verbatim in PR #17's body.
-- **Depends on:** nothing (B-006 merged).
-- **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `ae1efcf`
-- **Status:** **cycle 4 reviewed 2026-09-04: `0R / 2M / 1m`, `verdict=rework`, scope pass.
-  ESCALATED to the user — past the §5.7 limit, awaiting a ruling.** Comment `5537939571`.
-  R3 **fixed** and proven not to be a marker-presence check: the reviewer built its own mutation
-  with all four markers preserved and the golden equality still went red on both arms, plus a
-  whitespace-only positive control that passed. M2 (cycle 3) **resolved by design** — the truer
-  wording fails on the golden, which is correct under a pin. m3 fixed.
-  **M1 is PR-body-only.** The pasted (a)-(c) failure messages are start-marker lookups and do not
-  reproduce; (c)'s names the wrong arm entirely. The instrument is sound — the reviewer
-  established that independently — but the *recorded evidence* never exercises
-  `tests/test_safe_eval.py:865,875`, the assertions C8 exists for. No code change; re-run the gate
-  with a marker-preserving mutation and paste it.
-  **M2 is a §5.3 substitution and it is my act, not the coder's.** The golden pins two bounded
-  clauses, so a contradicting sentence *elsewhere* in `CompiledExpr.__doc__` passes silently —
-  verified: appending a blanket "neither route ever executes `__init__`" gives `1 passed`. That is
-  cycle 1's M1 error re-entering undetected. Cycle 2's meta-test rejected a blanket phrase;
-  retiring C6/C7 for the golden dropped that guard. The user's ruling was to replace the
-  *instrument*, not to stop guarding the property. **So the fix is a RE-SPECIFICATION under §5.4
-  clause 1 — adding C9 (the blanket-claim shape absent from the whole docstring, or the golden
-  anchored to the enclosing paragraph) — and it does NOT count as cycle 5.** checks 6 -> 7.
-  The user ruled at the §5.7 limit (2026-09-03) to spend a fourth cycle on a **golden-string pin**
-  rather than merge with the instrument open. **C6 and C7 are RETIRED and replaced by C8 — my
-  substitution, on that ruling, and the one deliberate one in this task's history.** The property
-  is gated more strongly, not abandoned: the two route clauses of `CompiledExpr.__doc__` are now
-  literal goldens compared after whitespace normalisation, so prose-parsing is gone entirely
-  (`grep '_polarity\|_NEGATION_CUES'` exits 1). **checks=6** — C1-C5, C8.
-  **Next move: dispatch the cycle-4 reviewer on #17.** Tell it two things: (i) under a golden pin
-  a *truer* wording going red is CORRECT behaviour, not a finding — that was M2 and it is resolved
-  by design, not by evasion; (ii) the coder reports mutations (a)-(d) failing by "naming the
-  missing route-clause marker" — check the golden comparison itself can fail, not only the marker
-  lookup, or C8 is a marker-presence check wearing a golden's hat.
-- **Review:** cycle 1 `1R/1M/1m`, cycle 2 `1R/0M/1m`, cycle 3 `1R/1M/1m`, cycle 4 not yet run.
-  R3 and M2 are what cycle 4 answers. m1 backlogged; m2, m3 fixed.
-- **Gate:** `ae1efcf` reproduced 2026-09-03 — 415 passed / 0 failed (floor 413), flake8 0,
-  `-k docstring` 1 passed, `grep` exit 1, diff = the two scoped files. Earlier: `5782fa8` reproduced — 415 passed (floor 413), flake8 0, diff = the two scoped files.
-- **History:** [`archive/backend.md`](archive/backend.md)
 
 ### B-014 — Close B-004's two open findings
 - **Branch / PR:** `task/b-014-api-contract-findings` — **#18**, `3e3550f`
@@ -117,20 +71,27 @@ merge `main` into the branch. Never rebase.
 - **History:** [`archive/backend.md`](archive/backend.md) — the two findings stated so they are
   not re-litigated, and the standing invitation to overrule C2 in writing.
 
-### B-013 — Close B-006's two open findings: isolate the length cap, end the docstring contradiction
+### B-016 — Close B-013's two open findings: anchor the docstring golden, correct the C8 record
 - **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
-- **Accept:** C1 `test_expression_over_length_cap_is_rejected` fails when `MAX_EXPR_LENGTH` is
-  raised — payload over the length cap but **under** `MAX_AST_NODES`, plus the isolation assertion
-  the node-cap sibling carries at `:316`; C2 `_ValidationProof`'s docstring drops "An unforgeable
-  token"; C3 the two bypass tests stop pinning the weakness; C4 the `_ASSERT_STRIPPING_ENV_VARS`
-  note recorded so a later cleanup does not read it as dead code. Each is an
-  assertion-that-cannot-fail, so each is gated by break → named test red → restore → green; paste
-  all four transcript pairs. checks=4.
-- **Depends on:** nothing (B-006 merged). **Deferred behind B-012.** Then parallel with B-007, B-010.
+- **Why:** B-013 merged `87428ee` on the user's ruling with both open. Neither is a live defect —
+  the page of code is correct and C8's instrument was independently proven sound — but the guard
+  has a hole and the record has a false transcript.
+- **Accept:**
+  - [ ] C1 A contradicting statement placed **anywhere** in `CompiledExpr.__doc__` makes the
+        docstring meta-test fail — not only inside the two pinned route clauses. Today appending
+        a blanket "neither route ever executes `__init__`" gives `1 passed`; that must go red.
+        Anchor the golden to the enclosing paragraph, or assert the blanket claim's shape absent
+        from the whole docstring. Cycle 2's meta-test had this and retiring C6/C7 dropped it.
+        Check:  the mutation above, applied by a pytest plugin, not by editing the repo.
+        Expect: the named test FAILS, and passes again with the plugin removed.
+  - [ ] C2 The PR body's C8 evidence is re-run and replaced with a transcript in which at least
+        one mutation **preserves all four route markers**, so the golden equality itself is shown
+        failing rather than a marker lookup.
+        Check:  the pasted transcript names the golden-mismatch assertion, not a marker lookup.
+        Expect: `AssertionError: ... no longer matches the pinned golden`.
+- **Depends on:** ~~B-013~~ merged. Nothing else. Parallel with anything not editing `safe_eval.py`.
 - **Branch / PR:** not yet opened
-- **History:** [`archive/backend.md`](archive/backend.md) — why the length cap guards a surface the
-  node cap structurally cannot (the 5.6 MB / 1.68 s measurement, the 501-digit 3-node payload), and
-  why the docstring contradiction matters to B-008.
+- **History:** [`archive/backend.md`](archive/backend.md)
 
 ### B-015 — Bound and validate the expression reaching `analytical_loop.py:290`
 - **Scope:** `src/fce_web/engine/analytical_loop.py`, plus tests. Opened 2026-09-01 out of
@@ -163,7 +124,7 @@ wave 3   B-009  RunContext + analytical_loop                    DONE, merged 168
 wave 4   B-011  headless driver                                 DONE, merged 82ef336
 wave 5   B-012  parity proof            <- M2 CHECKPOINT     DONE, merged 928c1ba
 wave 6   B-008  path_filter -> safe_eval        -+ DONE, merged 7d5fa0a
-         B-013  close B-006's open findings     -+
+         B-013  close B-006's open findings     -+ DONE, merged 87428ee
          B-014  close B-004's open findings     -+
 ```
 Wave 6 is deferred behind the checkpoint by the user's ruling 2026-08-22 — nothing depends on
@@ -178,6 +139,10 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-013** — closed B-006's two open findings on `safe_eval` — #17, `87428ee`, 4 cycles + 1
+  re-spec, **merged on the user's ruling with M1 and M2 open** (PR #17 comment `5539...`).
+  checks=6 (C6/C7 retired for C8, the one deliberate substitution in the task's history, on the
+  user's §5.7 ruling). Suite floor → **415** on its own; **426** after B-008. 2 open → **B-016**.
 - **B-008** — `path_filter.py` routed through `safe_eval` — #19, `7d5fa0a`, 3 cycles + 1 re-spec,
   clean gate (0R/0M/0m). checks=5. Suite floor → **426**. C1 **deviated in writing and accepted**:
   `analytical_loop.py:290`'s live `compile()` is out of scope and is now **B-015**. **B-015 is

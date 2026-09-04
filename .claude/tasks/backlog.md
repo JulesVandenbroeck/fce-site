@@ -612,3 +612,5 @@ and are historical now that #6 is merged.
   what it measures.
 - **D-010 m9** — no on-screen affordance that the canvas continues past the region at 1024/768.
   Reachability is measured; discoverability is unchecked.
+- **D-005 m7** — the "chips render identically" body claim on PR #16, three cycles uncorrected.
+  Still open; recorded here so it is not lost now that D-010 has closed.

@@ -1804,3 +1804,106 @@ The full active-list entry as it stood at merge, 2026-09-03. checks=10, final ga
   six floors and their published values, and the warning that `verify.py --all` exits 1 on `main`
   by design with `board-lane-fill` as the intended red.
 - **History:** [`archive/design.md`](archive/design.md)
+
+
+---
+
+## D-010 — The three-region page shell (merged #25, `a059f34`)
+
+### D-010 — The three-region page shell
+- **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`
+- **Accept:** **checks=10** (was 9; C10 added by cycle 3's M6 fix) — verbatim in PR #25's body. C1 canvas never covered; C2 palette
+  collapse gives its width to the canvas only; C3 palette inner width >= 328.0px; C4 an opened
+  node is contained and paints above what it overlaps; C5 the pager reads `m3,m2,m1,m2,m3`;
+  C6 ui state never enters the run payload; C7 only the shipped `tokens.css`; C8 reduced motion +
+  focus walk; C9 the verify.py floors hold and `board-lane-fill` stays the only red; C10 canvas type stays legible (scale >= 0.95, rendered label >= 11.0px) across 4 states x 3 widths.
+- **Depends on:** ~~D-009~~, ~~D-013~~, ~~D-002~~ — all merged.
+- **Branch / PR:** `task/d-010-page-shell` — **#25**, `6d91a96`
+- **Status:** **cycle 2 delivered `cfd2a1d`; §5.1 gate reproduced 2026-09-04 in `~/fce-gate-d010c2`
+  — all 9 shell sections PASS, `FAILED sections: ['board-lane-fill']` and nothing else, flake8 0
+  across `src/ tests/ scripts/` + `verify.py`, AST floors 78 / 213, diff vs merge base = the 3
+  scoped files. Cycle-2 reviewer dispatched.** All six findings reported fixed, none overruled.
+  M2 fixed in CSS only — `shell.html` untouched, so no markup or JS moved this cycle: the canvas
+  region gets `flex: 1 1 0` + a 384px `min-width` floor, the two side regions yield instead, the
+  canvas SVG scales by viewBox rather than cropping, and two breakpoints step the panel down at
+  1024 and both regions at 768. **M4's grep floor is retired for an AST count — 78 registrations
+  and 213 reporting calls, superseding the self-inflating 86 / 303.** One deviation declared and
+  handed to the reviewer to rule on: at <=768 the expanded palette is 192px, below C3's 328px, on
+  the argument that no 768 row holds a 368px palette + 320px panel + a canvas above its 384px
+  floor. checks stay 9.
+  Cycle-1 gate had reproduced (9/9 shell sections PASS,
+  `FAILED sections: ['board-lane-fill']`, counts 86/303, diff = the 3 scoped files).
+- **Review:** cycle 2 `0R / 2M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5538399914`.
+  **Cycle 3 delivered `04849a1`; §5.1 gate reproduced 2026-09-04 — 413 passed, flake8 0, AST
+  floors risen 78/213 -> 79/215, all 10 shell sections PASS, `FAILED sections: ['board-lane-fill']`,
+  diff = the 3 scoped files. Cycle-3 reviewer dispatched — the §5.7 limit. If it does not close at
+  0R/0M, stop and escalate.**
+  **M6 was FIXED, not overruled.** `.canvas-wrap` becomes a fixed 704x512 surface with
+  `.canvas-region` scrolling, minimum scale 1.0, so no downscaled type — and the fix ships **the
+  observer that was the actual finding**: new section `shell-canvas-text-legible` = **C10**,
+  measuring the SVG's screen CTM scale and every label's rendered px over 4 states x 3 widths,
+  with `SHELL_CANVAS_MIN_SCALE = 0.95` and `SHELL_CANVAS_MIN_TEXT_PX = 11.0`. **checks 9 -> 10.**
+  The coder verified the reviewer's numbers before acting rather than accepting them: the fluid
+  wrap did render at x0.5199 at 1024, putting a 14px title at 7.28px. M5 fixed by matching the
+  unit generically and exempting by value; m4, m5, m6 all folded in.
+  Deviation: the worktree ran detached and pushed a fast-forward to the branch, because
+  `task/d-010-page-shell` is checked out in two stale agent worktrees. No new branch, no
+  force-push — confirmed from git at the gate. All six cycle-1 findings verified fixed by the reviewer's own mutations, not by the
+  coder's transcripts. **C3's <=768 deviation is SETTLED and accepted** — the reviewer did the
+  arithmetic: 368 + 64 + 384 = 816 > 768, so no 768 row holds the palette at 328px+ with the
+  canvas above its floor. C3 is met; do not reopen it.
+  **M5** is R1's blind spot one layer down — C7's `length_re` still enumerates units in a fixed
+  alternation, so `90dvh` / `12pt` / `2cm` / `0.25turn` report zero offenders. Match units
+  generically, exempt by value.
+  **M6 is a fix-induced regression and the clearest instance of §5.5 on this project yet:** the M2
+  fix keeps the canvas on screen by scaling the SVG viewBox, which scales the text with it — 0.52
+  at 1024, 0.497 at 768, so a 14px node title renders near 7px. Cycle 1's defect was traded for a
+  new one **and no check observes it**, which is the actual finding. Overrulable in writing as
+  belonging to the real Bench implementation; if fixed, it must add a check on rendered text size.
+  m4 (the C9 docstring misrecords 2 registrations as pre-existing when AST shows this PR added
+  them), m5 (the 768 gap is exactly 384.0px against a 0.5 tolerance — zero headroom, document it),
+  m6 (the deviation note never addresses the reflow alternative) — all three folded into cycle 3
+  and backlogged.
+  **Cycle 3 reviewed 2026-09-04: `1R / 0M / 3m`, `verdict=rework`, scope pass, comment
+  `5538847938`. ESCALATED — Required > 0 at the §5.7 limit.**
+  M5, M6, m4, m5, m6 all **fixed and independently mutation-verified**, not accepted on the
+  coder's transcripts: the reviewer broke C7's sweep with four units the coder never used, and
+  broke C10 three ways the coder never used (`font-size: 6px`, `font-size: 0`, a CSS
+  `transform: scale(0.4)` — the last failing *both* C10 lines, which proves C10 measures rendered
+  and not authored size). C10's thresholds ruled defensible: 11.0 sits ~8% below the smallest
+  declared 12px and still trips on a 12->11px token drop. Cycle 1's M2 confirmed **not**
+  reintroduced, measured not inferred — `scrollLeft` 336 at 1024 / 352 at 768, 5/5 hit-tests,
+  keyboard focus scrolls the far node into view at both widths. The fast-forward deviation
+  confirmed from git.
+  **R3 is a false-claim defect, and the property it falsely claims actually holds.**
+  `shell.css:193` and `verify.py:6928` both cite a horizontal-scroll guard
+  `shell-page-no-h-scroll` that **exists nowhere in `verify.py`**; C8 asserts only durations, ring
+  contrast and the focus walk. The reviewer measured no h-scroll at all three widths, so the page
+  is fine and the record is not. It is load-bearing: the fixed 704px surface is exactly what would
+  push the page into horizontal scroll, and the three sibling explorations all guard it
+  (`verify.py:2603`, `:4403`, `:5544`) while the shell does not.
+  **§5.4 diagnosis — this is A CYCLE, not a re-specification** (clause 3): no criterion of this
+  task ever gated horizontal scroll, so nothing was dropped and no unmet criterion shipped without
+  a command. Same shape as D-001 cycle 4's false `font-family` claim, which was also introduced by
+  the previous cycle's own fix.
+  m7 (C10's hard-coded selector list), m8 (C4's containment target drifted to `#canvas-wrap`),
+  m9 (no on-screen affordance that the canvas continues) — all backlogged.
+  Cycle 1 `2R / 4M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5524842859`.
+  **Both Requireds are instruments that cannot fail, and both were mutation-proven, not argued.**
+  R1 `verify.py:6568-6580` — C7's literal sweep matches hex only, so `white`, `rebeccapurple`,
+  `rgb()`, `hsl()` all pass, and `length_re`'s trailing `\b` after `%` can never match, so every
+  percentage is invisible; `.palette { width: 42% }` leaves it at "zero offenders". Same class as
+  D-002 cycle 3's M3, reintroduced in a new sweep. R2 `verify.py:6236-6263` — C1's 24 probes are
+  derived from the canvas region's **own** rect, so they shrink with it: `max-width: 3px` still
+  reports 24/24 PASS; and it only ever runs at 1440.
+  M1 focus ring asserts presence not perceivability (the `verify.py:2405` pattern; real rings
+  measure 6.20-6.69:1, so the page is fine and the check is not). **M2 is the only finding against
+  the design itself:** the canvas surface is a fixed 704x512 in a region free to collapse — at
+  1024 both exemplar nodes sit at x=733-866, outside a 336px region; at 768 the region is 80px and
+  shows nothing. M3 13 new flake8 violations in a file flake8-clean on `main` (the F841 is a dead
+  duplicate of the exemption list). **M4 is my defect:** C9's `grep -c 'all_results.append'` counts
+  lines that merely *mention* the string, including the counting lines themselves — 86 reported
+  against 78 real registrations by AST. The property holds (67 -> 78, nothing lost) but the floor
+  is self-inflating. m1/m2/m3 backlogged.
+- **History:** [`archive/design.md`](archive/design.md)
+

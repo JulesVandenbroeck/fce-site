@@ -1717,3 +1717,72 @@ deliberate golden update.
 - **History:** [`archive/backend.md`](archive/backend.md) — the seven-vs-eight `eval` count settled,
   the `ast.Pow` resolution and what is given up by it, and the superseded open question.
 
+
+
+---
+
+## B-013 — Close B-006's two open findings (merged #17, `87428ee`)
+
+### B-013 — Close B-006's two open findings
+- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
+- **Accept:** **checks=7.** C1 length cap isolated from the node cap in both directions; C2 the
+  "unforgeable token" claim dropped; C3 the bypass tests stop blessing the weakness;
+  C4 `_ASSERT_STRIPPING_ENV_VARS` says what breaks without it; C5 each forgery route's mechanism
+  pinned by observation; C6 the `CompiledExpr` docstring asserted against that mechanism; C7 that
+  assertion gated by paraphrase mutations, not by a verbatim restore. Verbatim in PR #17's body.
+- **Depends on:** nothing (B-006 merged).
+- **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `ae1efcf`
+- **Status:** **cycle 4 reviewed 2026-09-04: `0R / 2M / 1m`, `verdict=rework`, scope pass.
+  ESCALATED to the user — past the §5.7 limit, awaiting a ruling.** Comment `5537939571`.
+  R3 **fixed** and proven not to be a marker-presence check: the reviewer built its own mutation
+  with all four markers preserved and the golden equality still went red on both arms, plus a
+  whitespace-only positive control that passed. M2 (cycle 3) **resolved by design** — the truer
+  wording fails on the golden, which is correct under a pin. m3 fixed.
+  **M1 is PR-body-only.** The pasted (a)-(c) failure messages are start-marker lookups and do not
+  reproduce; (c)'s names the wrong arm entirely. The instrument is sound — the reviewer
+  established that independently — but the *recorded evidence* never exercises
+  `tests/test_safe_eval.py:865,875`, the assertions C8 exists for. No code change; re-run the gate
+  with a marker-preserving mutation and paste it.
+  **M2 is a §5.3 substitution and it is my act, not the coder's.** The golden pins two bounded
+  clauses, so a contradicting sentence *elsewhere* in `CompiledExpr.__doc__` passes silently —
+  verified: appending a blanket "neither route ever executes `__init__`" gives `1 passed`. That is
+  cycle 1's M1 error re-entering undetected. Cycle 2's meta-test rejected a blanket phrase;
+  retiring C6/C7 for the golden dropped that guard. The user's ruling was to replace the
+  *instrument*, not to stop guarding the property. **So the fix is a RE-SPECIFICATION under §5.4
+  clause 1 — adding C9 (the blanket-claim shape absent from the whole docstring, or the golden
+  anchored to the enclosing paragraph) — and it does NOT count as cycle 5.** checks 6 -> 7.
+  The user ruled at the §5.7 limit (2026-09-03) to spend a fourth cycle on a **golden-string pin**
+  rather than merge with the instrument open. **C6 and C7 are RETIRED and replaced by C8 — my
+  substitution, on that ruling, and the one deliberate one in this task's history.** The property
+  is gated more strongly, not abandoned: the two route clauses of `CompiledExpr.__doc__` are now
+  literal goldens compared after whitespace normalisation, so prose-parsing is gone entirely
+  (`grep '_polarity\|_NEGATION_CUES'` exits 1). **checks=6** — C1-C5, C8.
+  **Next move: dispatch the cycle-4 reviewer on #17.** Tell it two things: (i) under a golden pin
+  a *truer* wording going red is CORRECT behaviour, not a finding — that was M2 and it is resolved
+  by design, not by evasion; (ii) the coder reports mutations (a)-(d) failing by "naming the
+  missing route-clause marker" — check the golden comparison itself can fail, not only the marker
+  lookup, or C8 is a marker-presence check wearing a golden's hat.
+- **Review:** cycle 1 `1R/1M/1m`, cycle 2 `1R/0M/1m`, cycle 3 `1R/1M/1m`, cycle 4 not yet run.
+  R3 and M2 are what cycle 4 answers. m1 backlogged; m2, m3 fixed.
+- **Gate:** `ae1efcf` reproduced 2026-09-03 — 415 passed / 0 failed (floor 413), flake8 0,
+  `-k docstring` 1 passed, `grep` exit 1, diff = the two scoped files. Earlier: `5782fa8` reproduced — 415 passed (floor 413), flake8 0, diff = the two scoped files.
+- **History:** [`archive/backend.md`](archive/backend.md)
+
+
+### The original Ready entry
+
+### B-013 — Close B-006's two open findings: isolate the length cap, end the docstring contradiction
+- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
+- **Accept:** C1 `test_expression_over_length_cap_is_rejected` fails when `MAX_EXPR_LENGTH` is
+  raised — payload over the length cap but **under** `MAX_AST_NODES`, plus the isolation assertion
+  the node-cap sibling carries at `:316`; C2 `_ValidationProof`'s docstring drops "An unforgeable
+  token"; C3 the two bypass tests stop pinning the weakness; C4 the `_ASSERT_STRIPPING_ENV_VARS`
+  note recorded so a later cleanup does not read it as dead code. Each is an
+  assertion-that-cannot-fail, so each is gated by break → named test red → restore → green; paste
+  all four transcript pairs. checks=4.
+- **Depends on:** nothing (B-006 merged). **Deferred behind B-012.** Then parallel with B-007, B-010.
+- **Branch / PR:** not yet opened
+- **History:** [`archive/backend.md`](archive/backend.md) — why the length cap guards a surface the
+  node cap structurally cannot (the 5.6 MB / 1.68 s measurement, the 501-digit 3-node payload), and
+  why the docstring contradiction matters to B-008.
+
