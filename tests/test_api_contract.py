@@ -90,49 +90,56 @@ NULLABLE = (False, True)
 OPTIONAL = (True, False)
 OPTIONAL_NULLABLE = (True, True)
 
+# Each tuple is (python type(s), presence, doc-type label). The third element
+# is the exact string docs/api.md's Type column spells for that field -- kept
+# alongside the Python type rather than derived from it, because a bare
+# `list` cannot say whether the field-reference table should read
+# "string[]", "number[]" or "object[]". B-014 (closing B-004's presence and
+# nullability findings): row-parity tests below hold this label and the
+# Nullable column to the same tuple.
 HISTOGRAM_SCHEMA = {
-    "meta": (dict, REQUIRED),
-    "meta.mission": (str, REQUIRED),
-    "meta.detector": (str, REQUIRED),
-    "meta.energy": (str, REQUIRED),
-    "meta.xLabel": (str, REQUIRED),
-    "meta.processNames": (dict, REQUIRED),
-    "edges": (list, REQUIRED),
-    "lumiUnc": ((int, float), REQUIRED),
-    "systSources": (list, REQUIRED),
-    "samples": (list, REQUIRED),
-    "samples[].name": (str, REQUIRED),
-    "samples[].counts": (list, REQUIRED),
-    "samples[].weightsSquared": (list, NULLABLE),
-    "samples[].systUp": (dict, REQUIRED),
+    "meta": (dict, REQUIRED, "object"),
+    "meta.mission": (str, REQUIRED, "string"),
+    "meta.detector": (str, REQUIRED, "string"),
+    "meta.energy": (str, REQUIRED, "string"),
+    "meta.xLabel": (str, REQUIRED, "string"),
+    "meta.processNames": (dict, REQUIRED, "object"),
+    "edges": (list, REQUIRED, "number[]"),
+    "lumiUnc": ((int, float), REQUIRED, "number"),
+    "systSources": (list, REQUIRED, "string[]"),
+    "samples": (list, REQUIRED, "object[]"),
+    "samples[].name": (str, REQUIRED, "string"),
+    "samples[].counts": (list, REQUIRED, "number[]"),
+    "samples[].weightsSquared": (list, NULLABLE, "number[]"),
+    "samples[].systUp": (dict, REQUIRED, "object"),
     # Present only for the sources that sample actually produced a variation
     # template for (docs/api.md semantics 1 and 2) -- never null when present,
     # but its absence is not a contract violation.
-    "samples[].systUp.jec": (list, OPTIONAL),
-    "samples[].systUp.lep": (list, OPTIONAL),
-    "samples[].systUp.btag": (list, OPTIONAL),
-    "data": (list, REQUIRED),
+    "samples[].systUp.jec": (list, OPTIONAL, "number[]"),
+    "samples[].systUp.lep": (list, OPTIONAL, "number[]"),
+    "samples[].systUp.btag": (list, OPTIONAL, "number[]"),
+    "data": (list, REQUIRED, "number[]"),
 }
 
 CUTFLOW_SCHEMA = {
-    "cutflow.stages": (list, REQUIRED),
-    "cutflow.samples": (list, REQUIRED),
-    "cutflow.counts": (dict, REQUIRED),
-    "cutflow.totalRaw": (int, REQUIRED),
-    "cutflow.efficiencyPct": (list, REQUIRED),
+    "cutflow.stages": (list, REQUIRED, "string[]"),
+    "cutflow.samples": (list, REQUIRED, "string[]"),
+    "cutflow.counts": (dict, REQUIRED, "object"),
+    "cutflow.totalRaw": (int, REQUIRED, "integer"),
+    "cutflow.efficiencyPct": (list, REQUIRED, "number[]"),
 }
 
 FIT_SCHEMA = {
-    "fit.mu": ((int, float), NULLABLE),
-    "fit.muErr": ((int, float), NULLABLE),
-    "fit.significanceZ": ((int, float), NULLABLE),
+    "fit.mu": ((int, float), NULLABLE, "number"),
+    "fit.muErr": ((int, float), NULLABLE, "number"),
+    "fit.significanceZ": ((int, float), NULLABLE, "number"),
     # Absent entirely from docs/design-explorations/payload.json today (a
     # backlog item is filed to add a producer) -- must tolerate both a
     # missing key and an explicit null once a producer exists.
-    "fit.method": (str, OPTIONAL_NULLABLE),
-    "fit.thresholds": (dict, REQUIRED),
-    "fit.thresholds.evidence": ((int, float), REQUIRED),
-    "fit.thresholds.discovery": ((int, float), REQUIRED),
+    "fit.method": (str, OPTIONAL_NULLABLE, "string"),
+    "fit.thresholds": (dict, REQUIRED, "object"),
+    "fit.thresholds.evidence": ((int, float), REQUIRED, "number"),
+    "fit.thresholds.discovery": ((int, float), REQUIRED, "number"),
 }
 
 ALL_SCHEMA = {**HISTOGRAM_SCHEMA, **CUTFLOW_SCHEMA, **FIT_SCHEMA}
@@ -189,6 +196,60 @@ def _check_no_orphan_documented_paths():
 
 
 # ---------------------------------------------------------------------------
+# Doc row-parity: the Type and Nullable columns of a schema-table row must
+# agree with the schema tuple for that path. B-014, closing the second of
+# B-004's two open findings.
+# ---------------------------------------------------------------------------
+
+_SCHEMA_TABLE_FULL_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|([^|]*)\|([^|]*)\|", re.MULTILINE)
+
+
+def _documented_field_rows(doc_text):
+    """``{path: (type_cell, nullable_cell)}`` for every schema-table row in
+    ``doc_text``, both cells stripped of surrounding whitespace."""
+    rows = {}
+    for block in _SCHEMA_TABLE_BLOCK_RE.findall(doc_text):
+        for path, type_cell, nullable_cell in _SCHEMA_TABLE_FULL_ROW_RE.findall(block):
+            rows[path] = (type_cell.strip(), nullable_cell.strip())
+    return rows
+
+
+def _replace_row_cell(doc_text, path, cell_index, new_text):
+    """``doc_text`` with the schema-table row for ``path``'s Type
+    (``cell_index=0``) or Nullable (``cell_index=1``) column replaced by
+    ``new_text``. Row shape: ``| `path` | Type | Nullable | Meaning |``."""
+    pattern = re.compile(rf"^\|\s*`{re.escape(path)}`\s*\|([^|]*)\|([^|]*)\|(.*)$", re.MULTILINE)
+
+    def _sub(m):
+        cells = [m.group(1), m.group(2)]
+        cells[cell_index] = f" {new_text} "
+        return f"| `{path}` |{cells[0]}|{cells[1]}|{m.group(3)}"
+
+    mutated, n = pattern.subn(_sub, doc_text)
+    assert n == 1, f"expected exactly one schema-table row for {path!r}, found {n}"
+    return mutated
+
+
+def _check_doc_row_matches_schema(path):
+    """The Type and Nullable columns of ``path``'s schema-table row in
+    ``API_MD_TEXT`` must agree with the doc-type label and nullability half
+    of ``ALL_SCHEMA[path]``."""
+    doc_rows = _documented_field_rows(API_MD_TEXT)
+    assert path in doc_rows, f"{path!r} has no schema-table row in docs/api.md"
+    doc_type, doc_nullable = doc_rows[path]
+    _expected_type, (_may_be_missing, may_be_null), expected_doc_type = ALL_SCHEMA[path]
+    assert doc_type == expected_doc_type, (
+        f"{path!r}: docs/api.md Type column is {doc_type!r}, "
+        f"schema tuple declares {expected_doc_type!r}"
+    )
+    doc_says_nullable = "yes" in doc_nullable.lower()
+    assert doc_says_nullable == may_be_null, (
+        f"{path!r}: docs/api.md Nullable column is {doc_nullable!r} "
+        f"(read as nullable={doc_says_nullable}), schema tuple says nullable={may_be_null}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Schema-driven presence/type conformance -- walks a dotted path (with `[]`
 # denoting "one occurrence per list element") against the real payload and
 # enforces the (type, presence) the schema declares for it.
@@ -212,7 +273,10 @@ def _resolve(payload, tokens):
                 continue
             sub = val[key]
             if list_wildcard:
-                nxt.extend(sub) if isinstance(sub, list) else nxt.append(_MISSING)
+                if isinstance(sub, list):
+                    nxt.extend(sub)
+                else:
+                    nxt.append(_MISSING)
             else:
                 nxt.append(sub)
         current = nxt
@@ -232,7 +296,10 @@ def _set_first_occurrence(payload, tokens, new_value):
             if not isinstance(c, dict) or key not in c:
                 continue
             sub = c[key]
-            nxt.extend(sub) if list_wildcard and isinstance(sub, list) else nxt.append(sub)
+            if list_wildcard and isinstance(sub, list):
+                nxt.extend(sub)
+            else:
+                nxt.append(sub)
         containers = nxt
         if not containers:
             return False
@@ -240,6 +307,35 @@ def _set_first_occurrence(payload, tokens, new_value):
     for c in containers:
         if isinstance(c, dict):
             c[last_tok] = new_value
+            return True
+    return False
+
+
+def _delete_first_occurrence(payload, tokens):
+    """Mutate `payload` in place: delete the first resolvable occurrence of
+    `tokens`. Returns True if a key was deleted, False if no container with
+    that key could be found. Mirrors `_set_first_occurrence`'s container walk
+    exactly, so the two probe the same occurrence of a path."""
+    containers = [payload]
+    for tok in tokens[:-1]:
+        list_wildcard = tok.endswith("[]")
+        key = tok[:-2] if list_wildcard else tok
+        nxt = []
+        for c in containers:
+            if not isinstance(c, dict) or key not in c:
+                continue
+            sub = c[key]
+            if list_wildcard and isinstance(sub, list):
+                nxt.extend(sub)
+            else:
+                nxt.append(sub)
+        containers = nxt
+        if not containers:
+            return False
+    last_tok = tokens[-1]
+    for c in containers:
+        if isinstance(c, dict) and last_tok in c:
+            del c[last_tok]
             return True
     return False
 
@@ -256,7 +352,7 @@ def _wrong_type_value(expected_type):
 def _check_path_conformant(path):
     """Enforce `ALL_SCHEMA[path]` against the payload `_raw_payload_text()`
     currently resolves to -- the seam a `monkeypatch`-based mutation rebinds."""
-    expected_type, (may_be_missing, may_be_null) = ALL_SCHEMA[path]
+    expected_type, (may_be_missing, may_be_null), _doc_type = ALL_SCHEMA[path]
     payload = json.loads(_raw_payload_text())
     tokens = path.split(".")
     occurrences = _resolve(payload, tokens)
@@ -311,6 +407,22 @@ def _check_sample_array_lengths_coherent(payload):
             assert len(series) == n_bins, (
                 f"sample {sample.get('name')!r} systUp[{src!r}] length {len(series)} != n_bins {n_bins}"
             )
+
+
+def _check_systup_keys_subset_of_systsources(payload):
+    """docs/api.md: `samples[].systUp` carries "one key per source in
+    `systSources`, present only for the sources this sample actually produced
+    a template for" -- the assertable direction is subset, not set equality.
+    A sample legitimately omits a source it lacks a template for; it must
+    never carry a key `systSources` does not name. Checked per sample."""
+    sources = set(payload["systSources"])
+    for sample in payload["samples"]:
+        keys = set(sample.get("systUp", {}).keys())
+        extra = keys - sources
+        assert not extra, (
+            f"sample {sample.get('name')!r} has systUp key(s) {sorted(extra)} not present in "
+            f"systSources {sorted(sources)}"
+        )
 
 
 def _check_data_length_matches_bins(payload):
@@ -465,6 +577,36 @@ def test_appending_orphan_row_makes_no_orphan_check_fail(monkeypatch):
 
 
 @pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
+def test_doc_type_and_nullable_columns_match_schema(path):
+    """B-014: row-parity between docs/api.md's Type/Nullable columns and the
+    schema tuples, one case per path so the denominator is enumerable via
+    --collect-only rather than asserted in prose."""
+    _check_doc_row_matches_schema(path)
+
+
+@pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
+def test_corrupting_doc_type_cell_makes_row_parity_check_fail(path, monkeypatch):
+    """Falsifiability meta-test for the Type-column half of row parity."""
+    mutated = _replace_row_cell(API_MD_TEXT, path, 0, "totally-wrong-type")
+    monkeypatch.setattr(sys.modules[__name__], "API_MD_TEXT", mutated)
+    with pytest.raises(AssertionError, match=re.escape(path)):
+        _check_doc_row_matches_schema(path)
+
+
+@pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
+def test_corrupting_doc_nullable_cell_makes_row_parity_check_fail(path, monkeypatch):
+    """Falsifiability meta-test for the Nullable-column half of row parity.
+    Flips the cell to the opposite of what the schema tuple declares, so the
+    mutation always disagrees with the real nullability."""
+    _expected_type, (_may_be_missing, may_be_null), _doc_type = ALL_SCHEMA[path]
+    flipped = "no" if may_be_null else "**yes**"
+    mutated = _replace_row_cell(API_MD_TEXT, path, 1, flipped)
+    monkeypatch.setattr(sys.modules[__name__], "API_MD_TEXT", mutated)
+    with pytest.raises(AssertionError, match=re.escape(path)):
+        _check_doc_row_matches_schema(path)
+
+
+@pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
 def test_payload_conforms_to_schema_field(path):
     """The schema-driven presence/type check, run against the real, unedited
     payload for every one of ALL_SCHEMA_PATHS -- this is what makes the
@@ -481,7 +623,7 @@ def test_corrupting_field_makes_schema_check_fail(path, monkeypatch):
     a value of the wrong type, monkeypatch that in for `_raw_payload_text`,
     and prove `_check_path_conformant` now raises naming that exact path."""
     payload = json.loads(_raw_payload_text())
-    expected_type, _presence = ALL_SCHEMA[path]
+    expected_type, _presence, _doc_type = ALL_SCHEMA[path]
     tokens = path.split(".")
     mutated_ok = _set_first_occurrence(payload, tokens, _wrong_type_value(expected_type))
     assert mutated_ok, f"could not locate a container to corrupt for {path!r}"
@@ -491,12 +633,92 @@ def test_corrupting_field_makes_schema_check_fail(path, monkeypatch):
         _check_path_conformant(path)
 
 
+@pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
+def test_deleting_field_falsifies_presence_check(path, monkeypatch):
+    """Falsifiability meta-test for the *presence* half of the schema tuple,
+    paired 1:1 with ALL_SCHEMA_PATHS -- B-014, closing the first of B-004's
+    two open findings (the type mutation above was the only half of the
+    three-part check this suite could falsify; presence could be deleted
+    wholesale with the suite still green).
+
+    Deletes one occurrence of `path` from an in-memory copy of the payload
+    and checks the real, unmutated `_check_path_conformant` against what the
+    schema actually promises for that path: a raise naming `path` when the
+    field is not allowed to be missing (REQUIRED/NULLABLE), and no raise at
+    all when it is (OPTIONAL/OPTIONAL_NULLABLE) -- deleting an OPTIONAL field
+    is not a contract violation, so there is nothing to falsify there. Most
+    of ALL_SCHEMA_PATHS fall in the first group; only
+    samples[].systUp.{jec,lep,btag} and fit.method are in the second."""
+    _expected_type, (may_be_missing, _may_be_null), _doc_type = ALL_SCHEMA[path]
+    payload = json.loads(_raw_payload_text())
+    tokens = path.split(".")
+    # `fit.method` has no producer yet (docs/api.md semantics 7) and is
+    # already absent from the real payload -- deletion is then a no-op, and
+    # the "missing" case this test wants to exercise is already the payload's
+    # actual state, so a failed deletion is not itself an error here.
+    _delete_first_occurrence(payload, tokens)
+    mutated_text = json.dumps(payload)
+    monkeypatch.setattr(sys.modules[__name__], "_raw_payload_text", lambda: mutated_text)
+    if may_be_missing:
+        _check_path_conformant(path)  # deleting an OPTIONAL field is legal -- must not raise
+    else:
+        with pytest.raises(AssertionError, match=re.escape(path)):
+            _check_path_conformant(path)
+
+
+@pytest.mark.parametrize("path", ALL_SCHEMA_PATHS)
+def test_nulling_field_falsifies_nullability_check(path, monkeypatch):
+    """Falsifiability meta-test for the *nullability* half of the schema
+    tuple, paired 1:1 with ALL_SCHEMA_PATHS -- the second half of B-004's
+    open finding.
+
+    Sets one occurrence of `path` to `None` and checks the real, unmutated
+    `_check_path_conformant` against what the schema promises: a raise
+    naming `path` when null is not allowed (REQUIRED/OPTIONAL), and no raise
+    when it is (NULLABLE/OPTIONAL_NULLABLE)."""
+    _expected_type, (_may_be_missing, may_be_null), _doc_type = ALL_SCHEMA[path]
+    payload = json.loads(_raw_payload_text())
+    tokens = path.split(".")
+    mutated_ok = _set_first_occurrence(payload, tokens, None)
+    assert mutated_ok, f"could not locate a container to null for {path!r}"
+    mutated_text = json.dumps(payload)
+    monkeypatch.setattr(sys.modules[__name__], "_raw_payload_text", lambda: mutated_text)
+    if may_be_null:
+        _check_path_conformant(path)  # nulling a nullable field is legal -- must not raise
+    else:
+        with pytest.raises(AssertionError, match=re.escape(path)):
+            _check_path_conformant(path)
+
+
 def test_top_level_fields_present(payload):
     _check_top_level_fields_present(payload)
 
 
 def test_sample_array_lengths_coherent(payload):
     _check_sample_array_lengths_coherent(payload)
+
+
+def test_systup_keys_are_subset_of_systsources(payload):
+    """B-014: docs/api.md states `samples[].systUp` carries "one key per
+    source in systSources, present only for the sources this sample actually
+    produced a template for" -- the assertable direction is subset, not set
+    equality (a sample may legitimately omit a source), asserted per sample."""
+    _check_systup_keys_subset_of_systsources(payload)
+
+
+def test_systup_extra_key_makes_subset_check_fail():
+    """Falsifiability meta-test: a fixture payload with a `systUp` key absent
+    from `systSources` must be rejected, and the failure must name both the
+    offending sample and the offending key."""
+    fixture = {
+        "systSources": ["jec"],
+        "samples": [
+            {"name": "A", "systUp": {"jec": [1.0]}},
+            {"name": "B", "systUp": {"jec": [1.0], "bogus": [2.0]}},
+        ],
+    }
+    with pytest.raises(AssertionError, match=r"'B'.*bogus"):
+        _check_systup_keys_subset_of_systsources(fixture)
 
 
 def test_data_length_matches_bins(payload):
