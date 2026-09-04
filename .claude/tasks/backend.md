@@ -12,7 +12,11 @@ IDs are `B-nnn`, allocated in order and never reused.
 **RELEASED BY THE USER 2026-09-02.** The hold placed on 2026-09-01 — pending the M1 style
 choice — is lifted for all three. **The user's instruction is explicit: DO NOT run them in
 parallel.** One at a time, each to completion before the next is dispatched, in the standing
-merge order **B-013 (#17), then B-008 (#19), then B-014 (#18)**. This overrides the
+merge order **B-013 (#17), then B-008 (#19), then B-014 (#18)** — **B-008 merged out of that
+order on 2026-09-04**, because B-013 is escalated and blocked on a user ruling and the two PRs'
+file sets are disjoint (`safe_eval.py`/`test_safe_eval.py` vs `path_filter.py` + its two test
+files), so the ordering bought nothing once B-013 stalled. **B-013's branch is now behind `main`:
+merge `main` into it before the next cycle. Never rebase.** This overrides the
 2026-08-31 parallel dispatch pattern; the reason is the user's token budget, not a file
 conflict. Each still gets `isolation: "worktree"`.
 
@@ -24,92 +28,10 @@ dispatch was lost and never landed, and the branch head is still `fba2ad6`. Re-d
 **cycle 3, not cycle 4**, and if it does not close at 0R/0M, stop and escalate rather than
 dispatch a fourth.
 
-**2026-09-03:** D-002 (#24) merged, so the queue is unblocked. B-013's cycle-1 reviewer is
-dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three dispatched in parallel 2026-08-31, one worktree each. Counts below were enumerated by
-`scout` at `fe8dd2d` on the day of dispatch, not inherited from the entries.
-
-### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
-- **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `fba2ad6`
-- **Status:** **§5.1 gate FAILED at `51d46e9`, 2026-09-01 — back to the coder, no reviewer
-  dispatched.** In `~/fce-gate-b008`: flake8 0 on `src/ tests/ scripts/`, diff correctly scoped to
-  `path_filter.py` + the new `tests/test_path_filter_exprs.py`, but `pytest tests/` is
-  **2 failed / 421 passed** against a 413-passed / 0-failed floor.
-  `test_docstring_eval_compile_line_numbers_match_this_file` and its perturbation twin both fail:
-  `tests/test_path_filter.py:221` parses the module docstring for its literal `eval`/`compile`
-  line-number claims, the rewrite removed both call sites and the claims with them, so the regex
-  returns `None`. **That is C5 — "the docstring line-number test stays green" — failing**, and it
-  is the drift guard that kept the seven `eval(` sites honest. Coder to decide between inverting
-  the guard (docstring claims zero call sites, asserted against `ast`) and retiring it against a
-  named replacement shown failing on a reintroduced `eval(`. **Note for every future gate: a bare
-  `pytest` in a fresh worktree collects nothing (`No module named 'fce_web'`) — use the
-  worktree's own `./.venv/bin/python -m pytest`.**
-  **Gate re-run at `a8f79d8` 2026-09-01: 423 passed / 0 failed, flake8 0, diff confined to
-  `path_filter.py` + `tests/test_path_filter.py` + `tests/test_path_filter_exprs.py` —
-  reproduced. Cycle 1 reviewer dispatched.** The coder took the first option: the docstring now
-  claims **zero** call sites and `test_no_eval_or_compile_call_sites` asserts that against `ast`,
-  with a perturbation twin. `tests/test_path_filter.py` was edited outside the original file
-  scope — **authorised by me at the gate**, declared in the body. **Suite floor becomes 423 when
-  this merges**, not before. C1 stays deviated: `analytical_loop.py:290` still holds a live
-  `compile()`; the reviewer rules on whether that satisfies C1 as written.
-  **Cycle 1 reviewed 2026-09-01: `2R / 2M / 3m`, `verdict=rework`, scope pass.
-  Both Required are against my dispatch, not the coder** — R1: no criterion carried a
-  `Check:`/`Expect:` pair (§5.2); R2: C1's wording spanned `src/fce_web/engine/` while the file
-  scope covered one file in it, so it was unsatisfiable as written. **Re-spec'd, cycle 2
-  dispatched:** C1 now reads "`path_filter.py` contains zero direct `eval()`/`compile()` call
-  sites, asserted against `ast`"; `analytical_loop.py:290` is out of scope and becomes **B-015**.
-  The inertness argument was verified independently, not accepted — the reviewer instrumented the
-  golden and all **1,424,355** evaluations went through `safe_eval`, none through a
-  caller-supplied code object. M1: the golden reaches only 2 of 6 `safe_evaluate` call sites
-  (`:483` 7 calls, `:749` 1,424,348), so **the per-event observable fallback at `:537` — the half
-  C2 names — is driven by nothing**; the parity test reconstructs the namespace dicts locally
-  instead of calling a public function. Fix goes through `fill_histogram_from_cache` twice, once
-  with the vectorised path forced into its `except`. M2: `:454` compiles unconditionally where
-  `:602` guards, so a valid `observable: ""` now aborts a run that used to return an empty
-  histogram — restore the old behaviour, put emptiness validation in `runconfig.py` (backlogged).
-  The C5 replacement guard was mutation-tested by the reviewer and is genuinely sensitive.
-  **Cycle 2 delivered `fba2ad6`; §5.1 gate reproduced 2026-09-01: 424 passed / 0 failed
-  (floor 423), flake8 0, diff still the same three files. Cycle 2 in review.** M2 fixed at
-  `path_filter.py:460` — the blank-observable guard now matches the sibling at `:601`, pinned by a
-  test. M1 fixed at `tests/test_path_filter_exprs.py:225-308` — parity now runs through
-  `fill_histogram_from_cache` twice per corpus expression, the fallback forced by monkeypatching
-  `_ArrayProxy.__init__` to raise, asserting bin-for-bin equality, with a `_P4Proxy.mass`
-  mutation gate. Reviewer asked to **re-instrument the call sites** rather than read the diff: a
-  test that claims to force the `except` without entering it looks identical from the diff.
-  **Suite floor becomes 424 when this merges**, not before.
-  **Cycle 2 reviewed: `0R / 1M / 2m`, `verdict=rework`. R1, R2, M1, M2, m1, m3 all closed and
-  verified — M1 by re-instrumentation, not by reading the diff: `{489: 10, 543: 50}`, so the
-  per-event observable fallback at `:543` that cycle 1 found driven by nothing now runs 50 times.
-  M2 confirmed by splicing the `:466` guard back out.** **M3, new and a §5.3 shape:** the M1
-  rework *deleted* cycle 1's per-value comparison (50 values, `atol=1e-3`) and replaced it with a
-  20-bin `np.array_equal`, moving the detection floor from ~`1e-3` to ~one bin width — perturbing
-  the per-event `_delta_r` passes at `+0.5` and only fails at `+1.0`, so **a 0.5 GeV vectorised/
-  per-event disagreement ships green**. C2 says "identical numbers"; the assertion says "same
-  coarse bin". **Cycle 3 was dispatched at the §5.7 limit but NEVER LANDED** — reconciled against git
-  2026-09-01: branch head is still `fba2ad6`, the cycle-2 delivery, and no reviewer verdict
-  returned. The dispatch is lost, not in flight. Re-dispatch is cycle 3, not cycle 4.
-  **Cycle 3 delivered `df0eb9a`; §5.1 gate reproduced 2026-09-04 in `~/fce-gate-b008c3` (clean
-  worktree, own venv — the coder had run on the primary checkout's venv via `PYTHONPATH`):
-  426 passed / 0 failed (floor 424), flake8 0, diff = the same three files. Cycle-3 reviewer
-  dispatched — the §5.7 limit. If it does not close at 0R/0M, stop and escalate.**
-  M3 fixed additively, as instructed: `tests/test_path_filter_exprs.py:224-260` adds per-value
-  `assert_allclose(atol=1e-3)` **alongside** the bin-count `array_equal` rather than replacing it,
-  with a `_RecordingHist` wrapper at `:161-220` capturing the raw per-event values handed to
-  `.fill()`, and two new mutation-gate cases at `delta=1e-2` and `delta=2e-3`. `"deltaR(l1, l2)"`
-  added to `EXPR_CORPUS` because the existing `< 3.0` boolean cannot exercise a precision
-  comparison. The reviewer is asked to re-instrument the call sites rather than read the diff, and
-  to confirm the entry-point coverage cycle 2 won (`{489: 10, 543: 50}`) was not traded back.
-  **Suite floor becomes 426 when this merges**, not before. If it does not close at 0R/0M, stop and escalate. C1 is
-  **deviated, in writing**: `path_filter.py` itself is clean, but
-  `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
-  outside the given scope — the coder reports the call is now functionally inert because
-  `path_filter.py` recompiles from `cfg["sel_exprs"]` and never trusts
-  `cfg["compiled_sel_exprs"]`. **The reviewer decides whether an out-of-scope live `compile()`
-  satisfies C1 as written.** **checks=5.** C1 no `eval`/`compile` in `engine/`; C2 vectorised
-  vs per-event golden values; C3 `UnsafeExpression` not swallowed; C4 escape refused before any
-  event is read; C5 the docstring line-number test stays green.
-- **Enumerated:** 7 `eval(` at 335/377/456/515/718/730/748, 1 `compile(` at 481, file is 761
-  lines. Self-guarded by `tests/test_path_filter.py:230`, which is why they had not drifted.
-- **Regression net:** B-012's golden file. A routing change that moves any bin fails parity.
+**2026-09-04:** B-008 merged. **B-013 (#17) is escalated** — cycle 4 came back `0R / 2M / 1m`;
+awaiting the user's ruling between a re-specification adding C9 and merging with M2 open.
+**B-014 (#18)** is next in the queue: reviewer re-dispatch, still cycle 1, gate reproduced.
+Counts in the entries below were enumerated by `scout` at `fe8dd2d`, not inherited.
 
 ### B-013 — Close B-006's two open findings
 - **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
@@ -179,28 +101,6 @@ cannot corrupt each other while in flight, only at the merge.
 **Merge order: B-013, then B-008, then B-014.** If B-008's branch has fallen behind by then,
 merge `main` into the branch. Never rebase.
 
-### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
-- **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
-- **Accept:** C1 `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` returns nothing;
-  C2 golden-value tests prove the vectorised path and the per-event fallback produce **identical
-  numbers** on the same events — new ground, the reference suite asserts nothing about what any
-  expression evaluates to; C3 an `UnsafeExpression` propagates and is **not** swallowed by the bare
-  `except Exception: pass`; C4 the escape expression fed in as a selection is refused before any
-  event is read; C5 `test_docstring_eval_compile_line_numbers_match_this_file` stays green.
-  All mutation-gated. checks=5.
-- **Navigate by OUR line numbers, never the reference's.** In `src/fce_web/engine/path_filter.py`
-  as of `6457e45`: `eval` at **335, 377, 456, 515, 718, 730, 748**, `compile` at **481**. They
-  shift the moment this task edits the file, which is what C5 exists to catch.
-- **`CompiledExpr` is not a safety certificate** — `object.__new__` and `dataclasses.replace` both
-  forge one. Route through `compile_expr`; never accept a caller's `CompiledExpr` as evidence.
-- **Depends on:** ~~B-006~~ (merged `ce4dcd6`), ~~B-007~~ (merged `d906b59`), ~~B-012~~ (merged
-  `928c1ba`). **Released 2026-08-31.** The golden file `tests/fixtures/golden/zpeak-dilepton.json`
-  and `tests/test_engine_parity.py` are now this task's regression net — a routing change that
-  alters any bin fails parity.
-- **Branch / PR:** not yet opened
-- **History:** [`archive/backend.md`](archive/backend.md) — the seven-vs-eight `eval` count settled,
-  the `ast.Pow` resolution and what is given up by it, and the superseded open question.
-
 ### B-014 — Close B-004's two open findings: falsify the presence/nullability halves, guard the doc columns
 - **Scope:** `tests/test_api_contract.py`, `docs/api.md`
 - **Accept:** C1 the schema meta-test gains presence and nullability mutations (delete / set
@@ -246,8 +146,8 @@ merge `main` into the branch. Never rebase.
   reaches the parser unbounded.
 - **Accept:** either the call site goes, or the expression reaching it is bounded by the same caps
   as every other path, with a test that fails if the bound is removed.
-- **Depends on:** B-008 merging first — same file neighbourhood, and B-008's own deviation points
-  here.
+- **Depends on:** ~~B-008~~ **merged `7d5fa0a` 2026-09-04 — RELEASED.** B-008's own C1 deviation
+  points here, and the reviewer confirmed the line is inert but unbounded.
 
 ## Blocked
 
@@ -262,7 +162,7 @@ wave 2   B-007  vendor path_filter (decoupled)  -+ parallel     DONE, merged d90
 wave 3   B-009  RunContext + analytical_loop                    DONE, merged 1689b27
 wave 4   B-011  headless driver                                 DONE, merged 82ef336
 wave 5   B-012  parity proof            <- M2 CHECKPOINT     DONE, merged 928c1ba
-wave 6   B-008  path_filter -> safe_eval        -+ RELEASED by the B-012 merge
+wave 6   B-008  path_filter -> safe_eval        -+ DONE, merged 7d5fa0a
          B-013  close B-006's open findings     -+
          B-014  close B-004's open findings     -+
 ```
@@ -278,6 +178,10 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-008** — `path_filter.py` routed through `safe_eval` — #19, `7d5fa0a`, 3 cycles + 1 re-spec,
+  clean gate (0R/0M/0m). checks=5. Suite floor → **426**. C1 **deviated in writing and accepted**:
+  `analytical_loop.py:290`'s live `compile()` is out of scope and is now **B-015**. **B-015 is
+  released by this merge.**
 - **B-012** — the parity proof (**M2 checkpoint**) — #15, `928c1ba`, 3 cycles, clean gate
   (0R/0M/1m), converged on the §5.7 limit. Suite floor → **413**. m6 backlogged.
 - **B-011** — headless driver — #14, `82ef336`, 2 cycles, clean gate. Suite → **398**.
@@ -310,4 +214,7 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **413 passed**; flake8 0 across `src/ tests/ scripts/`
+- Suite floor **426 passed**; flake8 0 across `src/ tests/ scripts/`. (413 before the B-008 merge.)
+- **`src/fce_web/engine/path_filter.py` contains zero `eval()`/`compile()` call sites**, asserted
+  against `ast` by `tests/test_path_filter.py`, with a perturbation twin (B-008). The last live
+  `compile()` in `engine/` is `analytical_loop.py:290` — inert today, unbounded, and B-015's job.

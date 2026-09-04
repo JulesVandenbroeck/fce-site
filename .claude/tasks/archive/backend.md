@@ -1603,3 +1603,117 @@ two route clauses as a golden literal in the test and compare. Any edit to that 
 fails until someone deliberately updates the golden, which is the drift guard actually wanted,
 and it is decidable. It also dissolves M2: a better wording is no longer a red suite, it is a
 deliberate golden update.
+
+
+---
+
+## B-008 — Route `path_filter.py`'s expressions through `safe_eval` (merged #19, `7d5fa0a`)
+
+### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
+- **Branch / PR:** `task/b-008-path-filter-safe-eval` — **#19**, `fba2ad6`
+- **Status:** **§5.1 gate FAILED at `51d46e9`, 2026-09-01 — back to the coder, no reviewer
+  dispatched.** In `~/fce-gate-b008`: flake8 0 on `src/ tests/ scripts/`, diff correctly scoped to
+  `path_filter.py` + the new `tests/test_path_filter_exprs.py`, but `pytest tests/` is
+  **2 failed / 421 passed** against a 413-passed / 0-failed floor.
+  `test_docstring_eval_compile_line_numbers_match_this_file` and its perturbation twin both fail:
+  `tests/test_path_filter.py:221` parses the module docstring for its literal `eval`/`compile`
+  line-number claims, the rewrite removed both call sites and the claims with them, so the regex
+  returns `None`. **That is C5 — "the docstring line-number test stays green" — failing**, and it
+  is the drift guard that kept the seven `eval(` sites honest. Coder to decide between inverting
+  the guard (docstring claims zero call sites, asserted against `ast`) and retiring it against a
+  named replacement shown failing on a reintroduced `eval(`. **Note for every future gate: a bare
+  `pytest` in a fresh worktree collects nothing (`No module named 'fce_web'`) — use the
+  worktree's own `./.venv/bin/python -m pytest`.**
+  **Gate re-run at `a8f79d8` 2026-09-01: 423 passed / 0 failed, flake8 0, diff confined to
+  `path_filter.py` + `tests/test_path_filter.py` + `tests/test_path_filter_exprs.py` —
+  reproduced. Cycle 1 reviewer dispatched.** The coder took the first option: the docstring now
+  claims **zero** call sites and `test_no_eval_or_compile_call_sites` asserts that against `ast`,
+  with a perturbation twin. `tests/test_path_filter.py` was edited outside the original file
+  scope — **authorised by me at the gate**, declared in the body. **Suite floor becomes 423 when
+  this merges**, not before. C1 stays deviated: `analytical_loop.py:290` still holds a live
+  `compile()`; the reviewer rules on whether that satisfies C1 as written.
+  **Cycle 1 reviewed 2026-09-01: `2R / 2M / 3m`, `verdict=rework`, scope pass.
+  Both Required are against my dispatch, not the coder** — R1: no criterion carried a
+  `Check:`/`Expect:` pair (§5.2); R2: C1's wording spanned `src/fce_web/engine/` while the file
+  scope covered one file in it, so it was unsatisfiable as written. **Re-spec'd, cycle 2
+  dispatched:** C1 now reads "`path_filter.py` contains zero direct `eval()`/`compile()` call
+  sites, asserted against `ast`"; `analytical_loop.py:290` is out of scope and becomes **B-015**.
+  The inertness argument was verified independently, not accepted — the reviewer instrumented the
+  golden and all **1,424,355** evaluations went through `safe_eval`, none through a
+  caller-supplied code object. M1: the golden reaches only 2 of 6 `safe_evaluate` call sites
+  (`:483` 7 calls, `:749` 1,424,348), so **the per-event observable fallback at `:537` — the half
+  C2 names — is driven by nothing**; the parity test reconstructs the namespace dicts locally
+  instead of calling a public function. Fix goes through `fill_histogram_from_cache` twice, once
+  with the vectorised path forced into its `except`. M2: `:454` compiles unconditionally where
+  `:602` guards, so a valid `observable: ""` now aborts a run that used to return an empty
+  histogram — restore the old behaviour, put emptiness validation in `runconfig.py` (backlogged).
+  The C5 replacement guard was mutation-tested by the reviewer and is genuinely sensitive.
+  **Cycle 2 delivered `fba2ad6`; §5.1 gate reproduced 2026-09-01: 424 passed / 0 failed
+  (floor 423), flake8 0, diff still the same three files. Cycle 2 in review.** M2 fixed at
+  `path_filter.py:460` — the blank-observable guard now matches the sibling at `:601`, pinned by a
+  test. M1 fixed at `tests/test_path_filter_exprs.py:225-308` — parity now runs through
+  `fill_histogram_from_cache` twice per corpus expression, the fallback forced by monkeypatching
+  `_ArrayProxy.__init__` to raise, asserting bin-for-bin equality, with a `_P4Proxy.mass`
+  mutation gate. Reviewer asked to **re-instrument the call sites** rather than read the diff: a
+  test that claims to force the `except` without entering it looks identical from the diff.
+  **Suite floor becomes 424 when this merges**, not before.
+  **Cycle 2 reviewed: `0R / 1M / 2m`, `verdict=rework`. R1, R2, M1, M2, m1, m3 all closed and
+  verified — M1 by re-instrumentation, not by reading the diff: `{489: 10, 543: 50}`, so the
+  per-event observable fallback at `:543` that cycle 1 found driven by nothing now runs 50 times.
+  M2 confirmed by splicing the `:466` guard back out.** **M3, new and a §5.3 shape:** the M1
+  rework *deleted* cycle 1's per-value comparison (50 values, `atol=1e-3`) and replaced it with a
+  20-bin `np.array_equal`, moving the detection floor from ~`1e-3` to ~one bin width — perturbing
+  the per-event `_delta_r` passes at `+0.5` and only fails at `+1.0`, so **a 0.5 GeV vectorised/
+  per-event disagreement ships green**. C2 says "identical numbers"; the assertion says "same
+  coarse bin". **Cycle 3 was dispatched at the §5.7 limit but NEVER LANDED** — reconciled against git
+  2026-09-01: branch head is still `fba2ad6`, the cycle-2 delivery, and no reviewer verdict
+  returned. The dispatch is lost, not in flight. Re-dispatch is cycle 3, not cycle 4.
+  **Cycle 3 delivered `df0eb9a`; §5.1 gate reproduced 2026-09-04 in `~/fce-gate-b008c3` (clean
+  worktree, own venv — the coder had run on the primary checkout's venv via `PYTHONPATH`):
+  426 passed / 0 failed (floor 424), flake8 0, diff = the same three files. Cycle-3 reviewer
+  dispatched — the §5.7 limit. If it does not close at 0R/0M, stop and escalate.**
+  M3 fixed additively, as instructed: `tests/test_path_filter_exprs.py:224-260` adds per-value
+  `assert_allclose(atol=1e-3)` **alongside** the bin-count `array_equal` rather than replacing it,
+  with a `_RecordingHist` wrapper at `:161-220` capturing the raw per-event values handed to
+  `.fill()`, and two new mutation-gate cases at `delta=1e-2` and `delta=2e-3`. `"deltaR(l1, l2)"`
+  added to `EXPR_CORPUS` because the existing `< 3.0` boolean cannot exercise a precision
+  comparison. The reviewer is asked to re-instrument the call sites rather than read the diff, and
+  to confirm the entry-point coverage cycle 2 won (`{489: 10, 543: 50}`) was not traded back.
+  **Suite floor becomes 426 when this merges**, not before. If it does not close at 0R/0M, stop and escalate. C1 is
+  **deviated, in writing**: `path_filter.py` itself is clean, but
+  `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
+  outside the given scope — the coder reports the call is now functionally inert because
+  `path_filter.py` recompiles from `cfg["sel_exprs"]` and never trusts
+  `cfg["compiled_sel_exprs"]`. **The reviewer decides whether an out-of-scope live `compile()`
+  satisfies C1 as written.** **checks=5.** C1 no `eval`/`compile` in `engine/`; C2 vectorised
+  vs per-event golden values; C3 `UnsafeExpression` not swallowed; C4 escape refused before any
+  event is read; C5 the docstring line-number test stays green.
+- **Enumerated:** 7 `eval(` at 335/377/456/515/718/730/748, 1 `compile(` at 481, file is 761
+  lines. Self-guarded by `tests/test_path_filter.py:230`, which is why they had not drifted.
+- **Regression net:** B-012's golden file. A routing change that moves any bin fails parity.
+
+
+### The original Ready entry
+
+### B-008 — Route `path_filter.py`'s expressions through `safe_eval`
+- **Scope:** `src/fce_web/engine/path_filter.py`, `tests/test_path_filter_exprs.py`
+- **Accept:** C1 `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` returns nothing;
+  C2 golden-value tests prove the vectorised path and the per-event fallback produce **identical
+  numbers** on the same events — new ground, the reference suite asserts nothing about what any
+  expression evaluates to; C3 an `UnsafeExpression` propagates and is **not** swallowed by the bare
+  `except Exception: pass`; C4 the escape expression fed in as a selection is refused before any
+  event is read; C5 `test_docstring_eval_compile_line_numbers_match_this_file` stays green.
+  All mutation-gated. checks=5.
+- **Navigate by OUR line numbers, never the reference's.** In `src/fce_web/engine/path_filter.py`
+  as of `6457e45`: `eval` at **335, 377, 456, 515, 718, 730, 748**, `compile` at **481**. They
+  shift the moment this task edits the file, which is what C5 exists to catch.
+- **`CompiledExpr` is not a safety certificate** — `object.__new__` and `dataclasses.replace` both
+  forge one. Route through `compile_expr`; never accept a caller's `CompiledExpr` as evidence.
+- **Depends on:** ~~B-006~~ (merged `ce4dcd6`), ~~B-007~~ (merged `d906b59`), ~~B-012~~ (merged
+  `928c1ba`). **Released 2026-08-31.** The golden file `tests/fixtures/golden/zpeak-dilepton.json`
+  and `tests/test_engine_parity.py` are now this task's regression net — a routing change that
+  alters any bin fails parity.
+- **Branch / PR:** not yet opened
+- **History:** [`archive/backend.md`](archive/backend.md) — the seven-vs-eight `eval` count settled,
+  the `ast.Pow` resolution and what is given up by it, and the superseded open question.
+
