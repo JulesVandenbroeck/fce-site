@@ -87,8 +87,8 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
   coarse bin". **Cycle 3 was dispatched at the §5.7 limit but NEVER LANDED** — reconciled against git
   2026-09-01: branch head is still `fba2ad6`, the cycle-2 delivery, and no reviewer verdict
   returned. The dispatch is lost, not in flight. Re-dispatch is cycle 3, not cycle 4.
-  When it is re-dispatched — fix additively, never by trading the
-  entry-point coverage back. If it does not close at 0R/0M, stop and escalate. C1 is
+  **Cycle 3 DISPATCHED 2026-09-04** — worktree, comment `5491736326`, M3 only, fix additively,
+  never by trading the entry-point coverage back. If it does not close at 0R/0M, stop and escalate. C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
   outside the given scope — the coder reports the call is now functionally inert because
