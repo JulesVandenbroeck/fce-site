@@ -26,6 +26,7 @@ every distinct expression found in the three saved analyses
 not against whatever ``safe_eval`` itself computes.
 """
 
+import ast
 import dataclasses
 import math
 import os
@@ -37,6 +38,8 @@ import pytest
 import vector
 
 from fce_web.safe_eval import (
+    MAX_AST_NODES,
+    MAX_EXPR_LENGTH,
     SAFE_BUILTINS,
     CompiledExpr,
     UnsafeExpression,
@@ -304,8 +307,20 @@ class TestEscapesRejected:
             compile_expr("l1.pt[0:1]")
 
     def test_expression_over_length_cap_is_rejected(self):
+        # A long numeric literal: over MAX_EXPR_LENGTH in characters but only
+        # 3 AST nodes (Expression, Compare, Constant -- well, Compare's two
+        # operands add a couple more, but nowhere near MAX_AST_NODES), so
+        # this trips the length cap and only the length cap. The old payload
+        # ("l1.pt > 0" + " and l1.pt > 0" * 200) was ~2900 characters *and*
+        # several hundred AST nodes, so it would still have raised with
+        # MAX_EXPR_LENGTH disabled entirely -- it was accidentally testing
+        # the node-count cap, not the one it was named for.
+        expr = "l1.pt > " + "0" * 501
+        assert len(expr) > MAX_EXPR_LENGTH
+        node_count = len(list(ast.walk(ast.parse(expr, mode="eval"))))
+        assert node_count < MAX_AST_NODES // 2  # comfortably under, isolates the caps
         with pytest.raises(UnsafeExpression):
-            compile_expr("l1.pt > 0" + " and l1.pt > 0" * 200)
+            compile_expr(expr)
 
     def test_expression_over_node_count_cap_is_rejected(self):
         # 150 chained unary minuses: each contributes a UnaryOp node plus a
@@ -399,8 +414,25 @@ def _leaked_reference_modules() -> dict:
 _ESCAPE_PROOF_SENTINEL = "ESCAPE-PROOF-REACHED-REAL-IMPORT"
 
 #: Environment variables that change whether a bare `assert` compiles into
-#: the child's bytecode at all. Stripped explicitly rather than relying on
-#: the parent's environment not having them set -- see criterion 11.
+#: *a subprocess's* bytecode at all -- stripped from the grandchild's `env`
+#: in `_run_reference_escape_proof` (see criterion 11) so that a
+#: `PYTHONOPTIMIZE` inherited from this test process cannot silently
+#: de-assert a future version of that child script the way it de-asserted
+#: the pre-criterion-11 one, which used a bare `assert` and would then have
+#: exited 0 having checked nothing. The script that ships today does not
+#: use `assert` -- it branches explicitly on the escape result and only
+#: prints `_ESCAPE_PROOF_SENTINEL` on success -- so removing this tuple does
+#: not currently change the child's behaviour; verified by mutating the
+#: filter to a no-op and re-running `_run_reference_escape_proof` directly
+#: with `PYTHONOPTIMIZE=1` set, which still returns 0 and still prints the
+#: sentinel. This tuple is defence-in-depth against the child script
+#: regaining a bare `assert` later, not a guard this test currently
+#: exercises. It does **not** protect the assertions in *this* test module:
+#: running `pytest` itself under `PYTHONOPTIMIZE=1` strips the bare
+#: `assert`s in these test functions regardless of anything this tuple
+#: filters, because that stripping happens in this process's own bytecode
+#: compilation, before any subprocess `env` dict is ever built. Do not read
+#: a passing suite under `PYTHONOPTIMIZE=1` as evidence of anything.
 _ASSERT_STRIPPING_ENV_VARS = ("PYTHONOPTIMIZE", "PYTHONDONTWRITEBYTECODE")
 
 
@@ -572,6 +604,75 @@ def test_reference_checkout_does_not_leak_into_this_process():
 # ---------------------------------------------------------------------------
 # 2. General compile-time enforcement (not escape-specific).
 # ---------------------------------------------------------------------------
+
+#: B-013 cycle 4, C8 (R3/M2 of PR #17's cycle-3 review, retired C6/C7): the
+#: prose-parsing meta-test above was defeated in both directions -- a false
+#: docstring ("at no point invokes __init__", "elides the constructor
+#: entirely") could be worded around the cue list (R3), and a *true*
+#: rewording of the very same paragraph ("does call __init__ again and
+#: __post_init__ does run; the identity check simply does not fire")
+#: tripped the negation cues and went red for stating the correct fact
+#: (M2). No cue list closes both directions at once, because "is this
+#: wording a negation" is not decidable from a fixed vocabulary. What is
+#: decidable is whether the paragraph is *the one already reviewed* --
+#: hence an exact-string pin instead of a polarity classifier. These are
+#: the two route clauses of CompiledExpr.__doc__, held here as golden
+#: literals and compared after whitespace normalisation only.
+_REPLACE_ROUTE_START = "``dataclasses.replace(good, code=evil)``"
+_REPLACE_ROUTE_END = "is substituted;"
+_REPLACE_ROUTE_GOLDEN = (
+    "``dataclasses.replace(good, code=evil)`` **does** call ``__init__`` "
+    "again, and ``__post_init__`` **does** run, but its identity check has "
+    "nothing to catch because the legitimately-earned ``proof`` field is "
+    "reused verbatim and only ``code`` is substituted;"
+)
+
+_NEW_ROUTE_START = "``object.__new__(CompiledExpr)``"
+_NEW_ROUTE_END = "entirely."
+_NEW_ROUTE_GOLDEN = (
+    "``object.__new__(CompiledExpr)`` followed by ``object.__setattr__`` on "
+    "each field is the route that actually **skips** ``__init__`` (and "
+    "therefore ``__post_init__``) entirely."
+)
+
+#: One sentence, repeated in every failure message below, so a red here is
+#: never mistaken for a finding: a golden pin cannot tell a truer wording
+#: from a false one, so any edit to this paragraph -- including a correction
+#: -- fails until the golden is updated deliberately to match it.
+_DRIFT_GUARD_NOTE = (
+    "this is an exact-string pin, not a truth check: a red here means the "
+    "docstring paragraph changed, not that it is wrong -- if the new wording "
+    "is accurate, update the golden constant in this test to match it"
+)
+
+
+def _normalise_whitespace(text: str) -> str:
+    """Collapse all whitespace runs (including newlines) to single spaces
+    and strip the ends, so a golden literal need not reproduce the
+    docstring's line-wrapping column."""
+    return " ".join(text.split())
+
+
+def _extract_route_clause(doc: str, start_marker: str, end_marker: str, label: str) -> str:
+    """The whitespace-normalised text of one route clause in `doc`, bounded
+    by two fixed markers. Fails via `pytest.fail` (carrying the drift-guard
+    note) rather than letting `ValueError` from a missing marker propagate,
+    so every red -- marker gone or golden mismatch -- explains itself."""
+    if start_marker not in doc:
+        pytest.fail(
+            f"{label}: docstring no longer contains {start_marker!r} -- "
+            f"{_DRIFT_GUARD_NOTE}"
+        )
+    start = doc.index(start_marker)
+    if end_marker not in doc[start:]:
+        pytest.fail(
+            f"{label}: docstring contains {start_marker!r} but not a "
+            f"following {end_marker!r} -- {_DRIFT_GUARD_NOTE}"
+        )
+    end = doc.index(end_marker, start) + len(end_marker)
+    return _normalise_whitespace(doc[start:end])
+
+
 class TestCompileTimeGeneral:
     def test_compile_expr_returns_compiled_expr(self):
         assert isinstance(compile_expr("l1.pt > 20"), CompiledExpr)
@@ -637,30 +738,37 @@ class TestCompileTimeGeneral:
         with pytest.raises(UnsafeExpression):
             CompiledExpr(source="1 + 1", code=code, proof=object())
 
-    def test_dataclasses_replace_bypasses_the_guard(self):
+    def test_dataclasses_replace_is_a_known_limitation_not_a_guarantee(self):
         # B-006 re-specification, criterion 10: the class docstring used to
         # claim outright that a caller "cannot construct a CompiledExpr
         # around an unvalidated code object". dataclasses.replace() calls
         # __init__ again, but with a legitimately-earned `proof` reused
         # verbatim and only `code` substituted -- the identity check in
         # __post_init__ has nothing to catch, because `proof` really is
-        # `_PROOF`. Documents the corrected, narrower claim; not a defect
-        # to fix, per the docstring's "what this does not defend against".
+        # `_PROOF`. This test names and pins the *limitation* the corrected
+        # docstring now documents explicitly under "what this does not
+        # defend against" -- it is not a specification of desired behaviour,
+        # and a future change that started rejecting this forgery would not
+        # be a regression against this test's intent. Only a change that
+        # *silently* stopped raising here without anyone noticing would be:
+        # the test exists so that if this ever becomes fixable cheaply, the
+        # person doing it sees this comment rather than reading a green test
+        # as "this is fine, leave it".
         good = compile_expr("1 + 1")
         evil_code = compile(
             "().__class__.__bases__[0].__subclasses__()[0]", "<evil>", "eval"
         )
         forged = dataclasses.replace(good, code=evil_code)
         # The forged object exists and evaluate() runs the substituted
-        # code -- this is the narrowed claim being demonstrated, not
-        # asserted as safe.
+        # code -- this pins the limitation, it does not bless it as safe.
         assert evaluate(forged, {}) is type
 
-    def test_object_new_bypasses_the_guard(self):
+    def test_object_new_is_a_known_limitation_not_a_guarantee(self):
         # B-006 re-specification, criterion 10, second route: object.__new__
         # plus object.__setattr__ never calls __init__ at all, so
         # __post_init__ never runs. Same conclusion as the replace() case
-        # above -- documents what the docstring now says explicitly.
+        # above, and the same caveat: this pins a known limitation for
+        # visibility, it is not a specification that this must keep working.
         evil_code = compile(
             "().__class__.__bases__[0].__subclasses__()[0]", "<evil>", "eval"
         )
@@ -685,6 +793,91 @@ class TestCompileTimeGeneral:
         with pytest.raises(pytest.fail.Exception):
             with pytest.raises(UnsafeExpression):
                 CompiledExpr(source="1 + 1", code=code, proof=object())
+
+    def test_forgery_routes_differ_in_post_init_call_mechanism(self, monkeypatch):
+        # B-013 cycle 2, C5: pins the *mechanism* of the two forgery routes
+        # above by observation, not by prose -- the cycle-1 review
+        # established that dataclasses.replace() DOES call __init__ (and
+        # therefore __post_init__), and that the identity check inside it
+        # runs and simply has nothing to catch because the legitimately-
+        # earned `proof` field is carried over unchanged; object.__new__()
+        # is the route that skips __init__/__post_init__ entirely. A
+        # counter wrapped around the real __post_init__ (monkeypatch, not a
+        # tracked-file edit) makes that difference observable rather than
+        # asserted.
+        calls = []
+        real_post_init = CompiledExpr.__post_init__
+
+        def counting_post_init(self):
+            calls.append(self)
+            real_post_init(self)
+
+        monkeypatch.setattr(CompiledExpr, "__post_init__", counting_post_init)
+
+        good = compile_expr("1 + 1")
+        evil_code = compile("1 + 1", "<evil>", "eval")
+
+        calls.clear()  # compile_expr("1 + 1") above already called it once
+        forged_by_replace = dataclasses.replace(good, code=evil_code)
+        assert len(calls) == 1, (
+            "dataclasses.replace() must call __init__/__post_init__ exactly "
+            "once -- it did not, contradicting the cycle-1 review's finding"
+        )
+        # The identity check passed silently: it has nothing to catch,
+        # because the legitimate proof was carried over verbatim.
+        assert forged_by_replace.proof is good.proof
+
+        calls.clear()
+        forged_by_new = object.__new__(CompiledExpr)
+        object.__setattr__(forged_by_new, "source", "x")
+        object.__setattr__(forged_by_new, "code", evil_code)
+        object.__setattr__(forged_by_new, "proof", object())
+        # This assertion pins a CPython invariant -- object.__new__() never
+        # calls __init__ (and therefore never __post_init__) for *any*
+        # class, by language definition, not by anything safe_eval.py does.
+        # It cannot fail from a change to this module; it is the control
+        # arm against which the replace-route assertion above (which *can*
+        # fail, and did, in the cycle-1 review) is contrasted. Only that
+        # assertion is falsifiable from a change to safe_eval.py.
+        assert len(calls) == 0, (
+            "object.__new__() must never call __init__/__post_init__ -- it "
+            "did, contradicting the cycle-1 review's finding"
+        )
+
+    def test_compiled_expr_docstring_route_clauses_are_pinned_exactly(self):
+        # B-013 cycle 4, C8 (retires C6/C7): cycles 2 and 3 both tried to
+        # *classify* the docstring's wording (keyword presence, then
+        # negation polarity) and both were defeated -- R3 found a false
+        # docstring that passed by dodging the cue list, M2 found a *true*
+        # rewording of the same fact that failed by tripping it. Classifying
+        # prose for truth is not decidable from a fixed vocabulary in either
+        # direction. Comparing it to a known-good literal is: this pins the
+        # two route clauses of CompiledExpr.__doc__ exactly (whitespace
+        # normalised only) against the mechanism pinned by observation in
+        # test_forgery_routes_differ_in_post_init_call_mechanism above. A
+        # red here is a drift guard, not a truth check -- see
+        # _DRIFT_GUARD_NOTE and each assertion's message.
+        doc = CompiledExpr.__doc__
+
+        replace_clause = _extract_route_clause(
+            doc, _REPLACE_ROUTE_START, _REPLACE_ROUTE_END, "dataclasses.replace route"
+        )
+        assert replace_clause == _REPLACE_ROUTE_GOLDEN, (
+            "CompiledExpr's docstring wording for the dataclasses.replace "
+            f"route no longer matches the pinned golden -- {_DRIFT_GUARD_NOTE}"
+            f"\n  actual: {replace_clause!r}"
+            f"\n  golden: {_REPLACE_ROUTE_GOLDEN!r}"
+        )
+
+        new_clause = _extract_route_clause(
+            doc, _NEW_ROUTE_START, _NEW_ROUTE_END, "object.__new__ route"
+        )
+        assert new_clause == _NEW_ROUTE_GOLDEN, (
+            "CompiledExpr's docstring wording for the object.__new__ route "
+            f"no longer matches the pinned golden -- {_DRIFT_GUARD_NOTE}"
+            f"\n  actual: {new_clause!r}"
+            f"\n  golden: {_NEW_ROUTE_GOLDEN!r}"
+        )
 
 
 # ---------------------------------------------------------------------------
