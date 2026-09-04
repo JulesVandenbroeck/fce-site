@@ -122,6 +122,30 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   them), m5 (the 768 gap is exactly 384.0px against a 0.5 tolerance — zero headroom, document it),
   m6 (the deviation note never addresses the reflow alternative) — all three folded into cycle 3
   and backlogged.
+  **Cycle 3 reviewed 2026-09-04: `1R / 0M / 3m`, `verdict=rework`, scope pass, comment
+  `5538847938`. ESCALATED — Required > 0 at the §5.7 limit.**
+  M5, M6, m4, m5, m6 all **fixed and independently mutation-verified**, not accepted on the
+  coder's transcripts: the reviewer broke C7's sweep with four units the coder never used, and
+  broke C10 three ways the coder never used (`font-size: 6px`, `font-size: 0`, a CSS
+  `transform: scale(0.4)` — the last failing *both* C10 lines, which proves C10 measures rendered
+  and not authored size). C10's thresholds ruled defensible: 11.0 sits ~8% below the smallest
+  declared 12px and still trips on a 12->11px token drop. Cycle 1's M2 confirmed **not**
+  reintroduced, measured not inferred — `scrollLeft` 336 at 1024 / 352 at 768, 5/5 hit-tests,
+  keyboard focus scrolls the far node into view at both widths. The fast-forward deviation
+  confirmed from git.
+  **R3 is a false-claim defect, and the property it falsely claims actually holds.**
+  `shell.css:193` and `verify.py:6928` both cite a horizontal-scroll guard
+  `shell-page-no-h-scroll` that **exists nowhere in `verify.py`**; C8 asserts only durations, ring
+  contrast and the focus walk. The reviewer measured no h-scroll at all three widths, so the page
+  is fine and the record is not. It is load-bearing: the fixed 704px surface is exactly what would
+  push the page into horizontal scroll, and the three sibling explorations all guard it
+  (`verify.py:2603`, `:4403`, `:5544`) while the shell does not.
+  **§5.4 diagnosis — this is A CYCLE, not a re-specification** (clause 3): no criterion of this
+  task ever gated horizontal scroll, so nothing was dropped and no unmet criterion shipped without
+  a command. Same shape as D-001 cycle 4's false `font-family` claim, which was also introduced by
+  the previous cycle's own fix.
+  m7 (C10's hard-coded selector list), m8 (C4's containment target drifted to `#canvas-wrap`),
+  m9 (no on-screen affordance that the canvas continues) — all backlogged.
   Cycle 1 `2R / 4M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5524842859`.
   **Both Requireds are instruments that cannot fail, and both were mutation-proven, not argued.**
   R1 `verify.py:6568-6580` — C7's literal sweep matches hex only, so `white`, `rebeccapurple`,

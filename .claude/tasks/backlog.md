@@ -605,3 +605,10 @@ and are historical now that #6 is merged.
 - **D-010 M6 (if overruled)** — the canvas SVG scales its text with the viewBox (0.52 at 1024,
   0.497 at 768; a 14px node title renders near 7px). Belongs to the real Bench implementation if
   the exploration page overrules it.
+- **D-010 m7** — C10's canvas-label selector list is hard-coded in `verify.py:6905-6912`; a future
+  label class is invisible to it, guarded only by `total_texts > 0`.
+- **D-010 m8** — C4's containment now measures against `#canvas-wrap`, partly off-screen at
+  1024/768. It only runs at 1440 so nothing is falsely certified, but "visible" has drifted from
+  what it measures.
+- **D-010 m9** — no on-screen affordance that the canvas continues past the region at 1024/768.
+  Reachability is measured; discoverability is unchecked.
