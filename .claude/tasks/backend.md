@@ -34,11 +34,20 @@ Counts in the entries below were enumerated by `scout` at `fe8dd2d`, not inherit
 
 ### B-014 — Close B-004's two open findings
 - **Branch / PR:** `task/b-014-api-contract-findings` — **#18**, `3e3550f`
-- **Status:** cycle 1 in review. §5.1 gate in `~/fce-gate-b014`: **286** collected (from 134),
+- **Status:** **cycle-1 reviewer dispatched 2026-09-04** (the 2026-08-31 dispatch never returned
+  a verdict; nothing it did is on the PR, so this is still cycle 1). §5.1 gate re-reproduced
+  2026-09-04 at `3e3550f`: 286 collected, **565 passed**, flake8 0, 13 `^##` headings, diff =
+  `tests/test_api_contract.py` alone.
+  **The branch is 142 commits behind `main`. Test-merged locally 2026-09-04 (not pushed): the
+  merge is CLEAN, no conflicts, `580 passed / 0 failed`, flake8 0. So the PR is safe to merge
+  directly and the suite floor becomes 580, not 565.** Being behind is not a finding against the
+  coder and the reviewer was told so.
+  Earlier gate in `~/fce-gate-b014`: §5.1 gate in `~/fce-gate-b014`: **286** collected (from 134),
   **565 passed**, flake8 0, **13** `^##` headings, diff touches only `tests/test_api_contract.py`
   — reproduced exactly. C2 **implemented, not overruled**: schema tuples extended to
   `(type, presence, doc_type_label)`, and `docs/api.md` needed no edit because it already agreed
-  in every cell. **Suite floor becomes 565 when this merges**, not before. **checks=4.** C1 presence + nullability mutations, parametrised
+  in every cell. **Suite floor becomes 580 when this merges** (565 is the branch in isolation, against its stale
+  base) — not before. **checks=4.** C1 presence + nullability mutations, parametrised
   1:1 with the schema tuples; C2 `docs/api.md` Type/Nullable row parity (**overrulable in
   writing**); C3 `systUp` keys ⊆ `systSources`, per sample; C4 the two ternary statements.
 - **Enumerated:** 18 test functions / 134 cases / 13 `^##` headings. The entry's old "329 passed"
