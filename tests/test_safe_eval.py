@@ -635,6 +635,51 @@ _NEW_ROUTE_GOLDEN = (
     "therefore ``__post_init__``) entirely."
 )
 
+#: B-016, C1: the two clause golden above are pinned by finding a start and
+#: end marker *inside* the docstring, so a contradicting statement placed
+#: outside both -- before the first marker, after the last, or spliced
+#: between the two clauses -- moves neither marker and changes nothing the
+#: extraction looks at. It is caught here instead, by pinning the *entire*
+#: docstring (whitespace normalised, same as the clause goldens) rather
+#: than any substring of it. Anything that changes anywhere in the
+#: docstring is a mismatch against this golden, by construction.
+_FULL_DOCSTRING_GOLDEN = (
+    'An expression that has been parsed, validated, and compiled. '
+    'Immutable and holds no reference to any per-run or per-event state '
+    '-- the same :class:`CompiledExpr` can be reused, from any number of '
+    'threads, across every event in a run and across runs. The '
+    'constructor is enforced-private: it requires ``proof`` to be the '
+    'module-private :data:`_PROOF` sentinel, which only '
+    ':func:`compile_expr` can supply. Calling ``CompiledExpr(source, '
+    'code, proof)`` from outside this module -- the ordinary way a caller '
+    'would try to build one, with an unvalidated ``code`` object and any '
+    '``proof`` value it can name -- raises :class:`UnsafeExpression`. '
+    'That is the property this guard was built for and the only one it '
+    'enforces. **What this does not defend against**, stated explicitly '
+    'because B-008 is expected to treat this type as a safety '
+    'certificate: a caller already executing arbitrary Python *in this '
+    'process* can still produce a ``CompiledExpr`` wrapping an arbitrary '
+    'code object, by two routes with *different* relationships to '
+    '``__init__``/``__post_init__`` -- ``dataclasses.replace(good, '
+    'code=evil)`` **does** call ``__init__`` again, and ``__post_init__`` '
+    '**does** run, but its identity check has nothing to catch because '
+    'the legitimately-earned ``proof`` field is reused verbatim and only '
+    '``code`` is substituted; ``object.__new__(CompiledExpr)`` followed '
+    'by ``object.__setattr__`` on each field is the route that actually '
+    '**skips** ``__init__`` (and therefore ``__post_init__``) entirely. '
+    'Both were demonstrated in the B-006 re-specification review. Neither '
+    "is reachable from a student's typed expression, or from anything "
+    'that only calls :func:`compile_expr` and :func:`evaluate` -- '
+    'reaching them requires the caller to already be running arbitrary '
+    'code in this interpreter, at which point it has no need of '
+    '``CompiledExpr`` to do so. So: **a ``CompiledExpr`` obtained from '
+    ':func:`compile_expr` is proof its ``source`` passed validation.** It '
+    'is *not* a capability-secure token that resists forgery by '
+    'co-located Python code -- do not use it as a boundary against '
+    'anything already running inside this process, only as a boundary '
+    'against unvalidated *input* reaching :func:`evaluate`.'
+)
+
 #: One sentence, repeated in every failure message below, so a red here is
 #: never mistaken for a finding: a golden pin cannot tell a truer wording
 #: from a false one, so any edit to this paragraph -- including a correction
@@ -844,6 +889,31 @@ class TestCompileTimeGeneral:
             "did, contradicting the cycle-1 review's finding"
         )
 
+    def test_compiled_expr_docstring_pin_catches_mutation_anywhere(self, monkeypatch):
+        # B-016, C1: B-013's route-clause markers only see the two pinned
+        # clauses -- a contradicting statement placed *outside* both of them
+        # (before the first, after the last, or between them) changed
+        # nothing that the marker-based extraction above looks at, so it
+        # passed silently. Proven here by monkeypatch (never a tracked-file
+        # edit) at exactly the three positions the drift can appear: at the
+        # very start of the docstring, at its very end, and spliced into its
+        # middle -- and asserted against the *whole* pinned docstring, not a
+        # substring of it, precisely because a partial pin is the hole.
+        original = CompiledExpr.__doc__
+        claim = "\n    Neither route ever executes __init__.\n"
+        half = len(original) // 2
+        mutations = {
+            "prepend": claim + original,
+            "append": original + claim,
+            "middle": original[:half] + claim + original[half:],
+        }
+        for label, mutated in mutations.items():
+            monkeypatch.setattr(CompiledExpr, "__doc__", mutated, raising=False)
+            with pytest.raises(AssertionError):
+                whole_doc = _normalise_whitespace(CompiledExpr.__doc__)
+                assert whole_doc == _FULL_DOCSTRING_GOLDEN, label
+            monkeypatch.setattr(CompiledExpr, "__doc__", original, raising=False)
+
     def test_compiled_expr_docstring_route_clauses_are_pinned_exactly(self):
         # B-013 cycle 4, C8 (retires C6/C7): cycles 2 and 3 both tried to
         # *classify* the docstring's wording (keyword presence, then
@@ -877,6 +947,22 @@ class TestCompileTimeGeneral:
             f"no longer matches the pinned golden -- {_DRIFT_GUARD_NOTE}"
             f"\n  actual: {new_clause!r}"
             f"\n  golden: {_NEW_ROUTE_GOLDEN!r}"
+        )
+
+        # B-016, C1: the two marker-bounded checks above see only the text
+        # between their own start and end markers -- a contradicting
+        # statement placed before the first marker, after the last, or
+        # spliced between the two clauses moves neither marker and passes
+        # both assertions above untouched. Closed by additionally pinning
+        # the docstring in its entirety, so a mutation anywhere in it is a
+        # mismatch against this golden by construction, not by classifying
+        # where a marker happens to sit.
+        whole_doc = _normalise_whitespace(doc)
+        assert whole_doc == _FULL_DOCSTRING_GOLDEN, (
+            "CompiledExpr's docstring no longer matches the pinned golden in "
+            f"its entirety -- {_DRIFT_GUARD_NOTE}"
+            f"\n  actual: {whole_doc!r}"
+            f"\n  golden: {_FULL_DOCSTRING_GOLDEN!r}"
         )
 
 
