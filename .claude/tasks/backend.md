@@ -13,8 +13,11 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`,
   `tests/test_run_context.py`
 - **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, cycle-1 head `7899231`
-- **Status:** RE-SPECIFICATION dispatched 2026-09-04 — **not a cycle**, still cycle 1.
-  **C1-C9, checks=9** (C1-C5 verbatim in #26's body; C6-C9 new).
+- **Status:** re-spec delivered `02a542b`; **in re-review** (still cycle 1). **C1-C9, checks=9.**
+  R1/M1/m1 all fixed, none overruled. Gate re-run in the coder's worktree: **588 passed** (floor
+  583, never fell), flake8 0, 8 tests collected, scope exactly the three files, head matches #26.
+  `_validate_sel_exprs` (`analytical_loop.py:216-244`) restores the early gate *and* bounds it
+  through `safe_eval.compile_expr` — strictly stronger than the unbounded `compile()` on `main`.
 - **Review (cycle 1):** 1R / 1M / 1m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540011186).
   M1: the deleted `compile()` was dead as an *optimisation* but live as an early **syntax gate** —
   `sel_exprs=["l1.pt >>> 20"]` raised `SyntaxError` on `main` and now returns a completed-looking
@@ -35,7 +38,11 @@ IDs are `B-nnn`, allocated in order and never reused.
 ### B-016 — Close B-013's two open findings: anchor the docstring golden, correct the C8 record
 - **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
 - **Branch / PR:** `task/b-016-safe-eval-doc-anchor` — **#27**, cycle-1 head `1c8b195`
-- **Status:** in review — **cycle 2 dispatched** 2026-09-04. **C1-C6, checks=6.**
+- **Status:** cycle 2 delivered `b7da9be`; **in re-review**. **C1-C6, checks=6.**
+  M1/m1 both fixed, neither overruled. Gate re-run in the coder's worktree: **582 passed**, flake8
+  0, scope `tests/test_safe_eval.py` only, head matches #27. **C5 verified independently by me:**
+  corrupting `_FULL_DOCSTRING_GOLDEN` now reddens all three docstring tests, including the
+  mutation-anywhere test that previously stayed green — M1's defect is genuinely closed.
 - **Review (cycle 1):** 0R / 1M / 1m — [PR #27 comment](https://github.com/JulesVandenbroeck/fce-site/pull/27#issuecomment-5540053740).
   C1-C4 all met and independently reproduced: the reviewer's own plugin mutation reddened the pin
   at prepend/append/between-clauses, all three hitting the **whole-doc golden** rather than the
