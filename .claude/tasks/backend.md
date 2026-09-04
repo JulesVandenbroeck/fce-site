@@ -87,8 +87,18 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
   coarse bin". **Cycle 3 was dispatched at the §5.7 limit but NEVER LANDED** — reconciled against git
   2026-09-01: branch head is still `fba2ad6`, the cycle-2 delivery, and no reviewer verdict
   returned. The dispatch is lost, not in flight. Re-dispatch is cycle 3, not cycle 4.
-  **Cycle 3 DISPATCHED 2026-09-04** — worktree, comment `5491736326`, M3 only, fix additively,
-  never by trading the entry-point coverage back. If it does not close at 0R/0M, stop and escalate. C1 is
+  **Cycle 3 delivered `df0eb9a`; §5.1 gate reproduced 2026-09-04 in `~/fce-gate-b008c3` (clean
+  worktree, own venv — the coder had run on the primary checkout's venv via `PYTHONPATH`):
+  426 passed / 0 failed (floor 424), flake8 0, diff = the same three files. Cycle-3 reviewer
+  dispatched — the §5.7 limit. If it does not close at 0R/0M, stop and escalate.**
+  M3 fixed additively, as instructed: `tests/test_path_filter_exprs.py:224-260` adds per-value
+  `assert_allclose(atol=1e-3)` **alongside** the bin-count `array_equal` rather than replacing it,
+  with a `_RecordingHist` wrapper at `:161-220` capturing the raw per-event values handed to
+  `.fill()`, and two new mutation-gate cases at `delta=1e-2` and `delta=2e-3`. `"deltaR(l1, l2)"`
+  added to `EXPR_CORPUS` because the existing `< 3.0` boolean cannot exercise a precision
+  comparison. The reviewer is asked to re-instrument the call sites rather than read the diff, and
+  to confirm the entry-point coverage cycle 2 won (`{489: 10, 543: 50}`) was not traded back.
+  **Suite floor becomes 426 when this merges**, not before. If it does not close at 0R/0M, stop and escalate. C1 is
   **deviated, in writing**: `path_filter.py` itself is clean, but
   `grep -rnE "\beval\(|\bcompile\(" src/fce_web/engine/` still hits `analytical_loop.py:290`,
   outside the given scope — the coder reports the call is now functionally inert because
