@@ -1,0 +1,401 @@
+/* shell.css — D-010, the three-region page shell around the Bench canvas.
+ * Every colour, spacing, radius and border value here is a var() into
+ * ../../src/fce_web/static/css/tokens.css — the SHIPPED token set, not this
+ * directory's own diverged copy (D-002 froze that split; C7 asserts the
+ * <link> in shell.html resolves there). The only bare numeric literals in
+ * this file are 0, 100%, 1px hairlines, and the three geometric constants
+ * D-013 settled and this task's own criteria name: 328.0 (the opened node's
+ * width), 300.0 (its height) and, where it appears, 80.5 (the collapsed
+ * node's width) — verify.py's `shell-shipped-tokens` section sweeps this
+ * file's own source text for anything outside that list.
+ *
+ * Node CARD sizing itself is never expressed here at all: `.node-card` is
+ * width:100%/height:100% of whatever box shell.html's script gives its
+ * foreignObject (80.5x48 collapsed, 328.0x300.0 opened), the same division
+ * of labour bench.css uses for its own freely-positioned nodes.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--space-rule) - var(--border-hairline)),
+    var(--paper-line) calc(var(--space-rule) - var(--border-hairline)),
+    var(--paper-line) var(--space-rule)
+  );
+}
+
+button { font: inherit; color: inherit; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- focus — visible everywhere, never removed -------------------------- */
+button:focus-visible,
+.canvas-wrap:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+/* The node-card toggle sits inside a saturated --node-* fill, the same
+ * reasoning bench.css's own port/handle focus rule gives: a graphite-blue
+ * ring can under-contrast against a fill it is painted on, so this rings
+ * with --node-label-on-fill instead — already proven >= 4.5:1 against every
+ * node fill for label text (tokens.css's own node-identity comment). */
+.node-card__toggle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--node-label-on-fill);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---- shell: three regions, one flex row ---------------------------------- */
+.shell {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- palette (left, collapses) ------------------------------------------- */
+.palette {
+  /* 0 1 auto, not 0 0 auto: the canvas region's own min-width is the floor
+   * this layout defends (see .canvas-region), so when the row runs out of
+   * width it is the two side regions that give, down to their collapsed
+   * rail width, never the canvas. */
+  flex: 0 1 auto;
+  min-width: var(--space-7);
+  width: var(--space-7);
+  border-right: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-settle);
+}
+/* Sized against the OPENED node (328.0px), not the collapsed one — C3. The
+ * extra var(--space-2) beyond the two var(--space-3) side paddings is
+ * headroom, not decoration: it is what keeps the measured inner content box
+ * strictly above the 328.0 floor rather than landing exactly on it. */
+.palette[data-state="expanded"] {
+  width: calc(328.0px + var(--space-3) * 2 + var(--space-2));
+}
+.palette__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: var(--border-hairline) solid var(--paper-line);
+}
+.palette__title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--ink-70);
+  white-space: nowrap;
+}
+.palette[data-state="collapsed"] .palette__title { opacity: 0; }
+.palette__toggle {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.palette__toggle:hover { background: var(--hover-bg); }
+
+.palette__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.palette[data-state="collapsed"] .palette__list { display: none; }
+
+.palette__add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.palette__add:hover { border-color: var(--graphite-blue); }
+.palette__add-swatch {
+  flex: 0 0 auto;
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+/* One hue per placeable kind, the same everywhere it appears (design manual
+ * §2): the four the 2026-09-02 ruling leaves in the palette. No fifth swatch
+ * for the four Observable modes — they are one node, one hue, a toggle
+ * inside it, not four palette entries. */
+.palette__add--multiplicity .palette__add-swatch { background: var(--node-multiplicity); }
+.palette__add--selection .palette__add-swatch { background: var(--node-selection); }
+.palette__add--observable .palette__add-swatch { background: var(--node-observable); }
+.palette__add--histogram .palette__add-swatch { background: var(--node-histogram); }
+
+/* ---- canvas region (middle, always present, never covered) -------------- */
+/* The canvas is the region that may not collapse. Its min-width is a hard
+ * floor of 6 x --space-7 = 384px: an opened node card is 328.0px wide, and
+ * 384 is that plus the region's own two var(--space-3) paddings and enough
+ * margin that the card is never flush against a panel edge. Everything else
+ * in the row yields to this (see .palette / .mission-panel flex-shrink),
+ * and the two breakpoints at the bottom of this file step the expanded
+ * panel widths down so the floor is met without any shrinking at all at
+ * 1024 and 768. verify.py's `shell-canvas-always-visible` measures the gap
+ * between the palette's right edge and the panel's left edge against this
+ * same 384px, at all three design widths. */
+.canvas-region {
+  /* basis 0, not auto: the region takes what the row has left rather than
+   * asking for its own content width, so the two side regions keep their
+   * declared widths until the canvas actually reaches its floor -- at which
+   * point they, and only they, start giving. */
+  flex: 1 1 0;
+  min-width: calc(var(--space-7) * 6);
+  display: flex;
+  padding: var(--space-3);
+  /* The drawing surface below is a fixed 704x512 design surface, so at
+   * 1024 and 768 it is wider than this region's content box and this is
+   * the container that scrolls. Design manual §4: wide content scrolls
+   * inside its own container, the page body never scrolls horizontally
+   * (verify.py's `shell-page-no-h-scroll` half of C8 holds the page). */
+  overflow: auto;
+  background: var(--paper);
+}
+/* Fixed at the 11 x --space-7 = 704px design size, never scaled down.
+ *
+ * Cycle-2 review M6: this used to be `width: 100%; max-width: 704px`, which
+ * let the SVG's viewBox scale the whole graph to fit a narrow region. That
+ * kept every node on screen, but preserveAspectRatio scales *text* with the
+ * geometry: at 1024 the surface rendered 366px against a 704 viewBox
+ * (x0.52) and at 768 it rendered 350px (x0.497), so the 14px node title
+ * came out at about 7px and the card labels were illegible at two of the
+ * three verified widths. A minimum scale of exactly 1.0 -- a fixed surface
+ * -- is the simplest form of the "give it a minimum scale and let the
+ * region scroll" route, and it is the only one that buys anything here:
+ * neither 1024 nor 768 leaves room for even a 0.82 scale without scrolling,
+ * so an intermediate minimum would scroll *and* shrink the type.
+ * `shell-canvas-text-legible` measures rendered text size on the canvas at
+ * all three widths so this cannot regress silently again.
+ *
+ * `margin: auto` rather than the region's `justify-content: center`: with
+ * centring, an overflowing item overflows both edges and the leading half
+ * is unreachable by scrolling. Flexbox resolves auto margins to zero when
+ * the free space is negative, so this centres when there is room and packs
+ * to the start when there is not, leaving the whole surface scrollable. */
+.canvas-wrap {
+  flex: 0 0 auto;
+  margin: auto;
+  width: calc(var(--space-7) * 11);
+  height: calc(var(--space-7) * 8);
+  border: var(--border-hairline) solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.canvas-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.canvas-bg { fill: var(--panel); }
+
+/* ---- node card (HTML content painted inside a foreignObject) ------------ */
+.node-card {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  color: var(--node-label-on-fill);
+  box-shadow: 0 var(--border-hairline) 0 var(--node-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.node-card--observable { background: var(--node-observable); }
+.node-card--histogram { background: var(--node-histogram); }
+.node-card--multiplicity { background: var(--node-multiplicity); }
+.node-card--selection { background: var(--node-selection); }
+
+.node-card__title {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Grows inline, in place, per the M1-checkpoint ruling this task cites —
+ * this body copy is what a real interior's guided form would occupy; here
+ * it is enough to demonstrate the footprint growing, since D-010's own
+ * question is where the card paints, not what it asks. */
+.node-card__body {
+  margin: 0;
+  font-size: var(--text-xs);
+  display: none;
+}
+.node-card--open .node-card__body { display: block; }
+.node-card__toggle {
+  margin-top: auto;
+  align-self: flex-start;
+  border: var(--border-hairline) solid var(--node-label-on-fill);
+  background: transparent;
+  color: var(--node-label-on-fill);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+/* ---- mission panel (right, expands + pages back through missions) ------- */
+.mission-panel {
+  flex: 0 1 auto;
+  min-width: var(--space-7);
+  width: var(--space-7);
+  border-left: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-settle);
+}
+.mission-panel[data-state="expanded"] {
+  width: calc(var(--space-7) * 5);
+}
+.mission-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: var(--border-hairline) solid var(--paper-line);
+}
+.mission-panel__pager {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.mission-panel__pager:hover { background: var(--hover-bg); }
+.mission-panel__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mission-panel__toggle {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.mission-panel__toggle:hover { background: var(--hover-bg); }
+
+.mission-panel__body {
+  padding: var(--space-3);
+}
+.mission-panel[data-state="collapsed"] .mission-panel__body { display: none; }
+.mission-panel__brief {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-70);
+}
+
+/* ---- narrow widths — the canvas keeps its floor, the panels step down ---
+ * Breakpoints are the three widths this design is verified at (1440, 1024,
+ * 768). A media query prelude is the one place a length cannot be a var()
+ * — CSS does not resolve custom properties there — so these two are literal
+ * by necessity, and verify.py's literal sweep strips @media preludes for
+ * exactly that reason. Every length inside the blocks is still a token. */
+/* At 1024 only the mission panel steps down: 1024 - 368 (the palette, still
+ * sized against the opened node, C3) - 256 = 400px of canvas, above the
+ * 384px floor. At 768 no arrangement can keep the palette at 368 and the
+ * canvas above its floor, so both sides drop to 3 x --space-7 = 192px:
+ * 768 - 192 - 192 = exactly 384.
+ *
+ * Exactly, with nothing spare, and that is deliberate (cycle-2 review m5).
+ * The canvas is the region that may not collapse, so at the narrowest
+ * verified width it takes every pixel the row can give it and the two side
+ * panels take what is left. verify.py's C1 measures this gap against
+ * `384.0 - 0.5`, so the tolerance is half a pixel and there is no headroom
+ * on purpose: if a future token change turns that line red it is reporting
+ * a real loss of canvas, and the fix is to restate this breakpoint, not to
+ * widen the tolerance.
+ *
+ * Why the row is kept and the panels narrowed, rather than reflowed
+ * (cycle-1 review M2's alternative, cycle-2 review m6 asking for the
+ * reason): a reflow — stacking the palette or the mission panel above or
+ * below the canvas at 768 — buys the palette its full 368px back, but it
+ * takes the cost out of the criterion this exploration exists to settle.
+ * C1 is "the canvas region is always present and never covered", and it is
+ * checked over the full viewport height precisely because the brief's §4
+ * claim is that the graph is the page and the two side regions are
+ * furniture around it. A stacked palette turns the canvas into a band
+ * roughly half the height it has here and puts the thing being reasoned
+ * about below the fold at exactly the width where screen room is scarcest;
+ * a stacked mission panel does the same to the brief the student is
+ * reading against. Narrowing a panel costs a panel some columns of text —
+ * measured, nothing in the palette clips or overflows at 192px. Reflowing
+ * costs the canvas half its height. The cheaper loss is the panel's.
+ *
+ * This is a judgement about a three-region shell at 768, not a ruling for
+ * the real Bench: a reflow may well be right there, where the canvas is a
+ * work surface a student stays in rather than an exemplar with two nodes
+ * on it. It is recorded here so that decision is taken again on purpose. */
+@media (max-width: 1024px) {
+  .mission-panel[data-state="expanded"] {
+    width: calc(var(--space-7) * 4);
+  }
+}
+@media (max-width: 768px) {
+  .palette[data-state="expanded"],
+  .mission-panel[data-state="expanded"] {
+    width: calc(var(--space-7) * 3);
+  }
+}
+
+/* ---- reduced motion — end state appears, no transit ---------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .palette,
+  .mission-panel {
+    transition: none;
+  }
+}
