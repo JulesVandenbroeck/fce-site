@@ -110,7 +110,25 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
   assertion gated by paraphrase mutations, not by a verbatim restore. Verbatim in PR #17's body.
 - **Depends on:** nothing (B-006 merged).
 - **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `ae1efcf`
-- **Status:** **cycle-4 reviewer DISPATCHED 2026-09-04.** Gate already reproduced at `ae1efcf`.
+- **Status:** **cycle 4 reviewed 2026-09-04: `0R / 2M / 1m`, `verdict=rework`, scope pass.
+  ESCALATED to the user — past the §5.7 limit, awaiting a ruling.** Comment `5537939571`.
+  R3 **fixed** and proven not to be a marker-presence check: the reviewer built its own mutation
+  with all four markers preserved and the golden equality still went red on both arms, plus a
+  whitespace-only positive control that passed. M2 (cycle 3) **resolved by design** — the truer
+  wording fails on the golden, which is correct under a pin. m3 fixed.
+  **M1 is PR-body-only.** The pasted (a)-(c) failure messages are start-marker lookups and do not
+  reproduce; (c)'s names the wrong arm entirely. The instrument is sound — the reviewer
+  established that independently — but the *recorded evidence* never exercises
+  `tests/test_safe_eval.py:865,875`, the assertions C8 exists for. No code change; re-run the gate
+  with a marker-preserving mutation and paste it.
+  **M2 is a §5.3 substitution and it is my act, not the coder's.** The golden pins two bounded
+  clauses, so a contradicting sentence *elsewhere* in `CompiledExpr.__doc__` passes silently —
+  verified: appending a blanket "neither route ever executes `__init__`" gives `1 passed`. That is
+  cycle 1's M1 error re-entering undetected. Cycle 2's meta-test rejected a blanket phrase;
+  retiring C6/C7 for the golden dropped that guard. The user's ruling was to replace the
+  *instrument*, not to stop guarding the property. **So the fix is a RE-SPECIFICATION under §5.4
+  clause 1 — adding C9 (the blanket-claim shape absent from the whole docstring, or the golden
+  anchored to the enclosing paragraph) — and it does NOT count as cycle 5.** checks 6 -> 7.
   The user ruled at the §5.7 limit (2026-09-03) to spend a fourth cycle on a **golden-string pin**
   rather than merge with the instrument open. **C6 and C7 are RETIRED and replaced by C8 — my
   substitution, on that ruling, and the one deliberate one in this task's history.** The property
