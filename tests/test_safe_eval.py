@@ -635,6 +635,51 @@ _NEW_ROUTE_GOLDEN = (
     "therefore ``__post_init__``) entirely."
 )
 
+#: B-016, C1: the two clause golden above are pinned by finding a start and
+#: end marker *inside* the docstring, so a contradicting statement placed
+#: outside both -- before the first marker, after the last, or spliced
+#: between the two clauses -- moves neither marker and changes nothing the
+#: extraction looks at. It is caught here instead, by pinning the *entire*
+#: docstring (whitespace normalised, same as the clause goldens) rather
+#: than any substring of it. Anything that changes anywhere in the
+#: docstring is a mismatch against this golden, by construction.
+_FULL_DOCSTRING_GOLDEN = (
+    'An expression that has been parsed, validated, and compiled. '
+    'Immutable and holds no reference to any per-run or per-event state '
+    '-- the same :class:`CompiledExpr` can be reused, from any number of '
+    'threads, across every event in a run and across runs. The '
+    'constructor is enforced-private: it requires ``proof`` to be the '
+    'module-private :data:`_PROOF` sentinel, which only '
+    ':func:`compile_expr` can supply. Calling ``CompiledExpr(source, '
+    'code, proof)`` from outside this module -- the ordinary way a caller '
+    'would try to build one, with an unvalidated ``code`` object and any '
+    '``proof`` value it can name -- raises :class:`UnsafeExpression`. '
+    'That is the property this guard was built for and the only one it '
+    'enforces. **What this does not defend against**, stated explicitly '
+    'because B-008 is expected to treat this type as a safety '
+    'certificate: a caller already executing arbitrary Python *in this '
+    'process* can still produce a ``CompiledExpr`` wrapping an arbitrary '
+    'code object, by two routes with *different* relationships to '
+    '``__init__``/``__post_init__`` -- ``dataclasses.replace(good, '
+    'code=evil)`` **does** call ``__init__`` again, and ``__post_init__`` '
+    '**does** run, but its identity check has nothing to catch because '
+    'the legitimately-earned ``proof`` field is reused verbatim and only '
+    '``code`` is substituted; ``object.__new__(CompiledExpr)`` followed '
+    'by ``object.__setattr__`` on each field is the route that actually '
+    '**skips** ``__init__`` (and therefore ``__post_init__``) entirely. '
+    'Both were demonstrated in the B-006 re-specification review. Neither '
+    "is reachable from a student's typed expression, or from anything "
+    'that only calls :func:`compile_expr` and :func:`evaluate` -- '
+    'reaching them requires the caller to already be running arbitrary '
+    'code in this interpreter, at which point it has no need of '
+    '``CompiledExpr`` to do so. So: **a ``CompiledExpr`` obtained from '
+    ':func:`compile_expr` is proof its ``source`` passed validation.** It '
+    'is *not* a capability-secure token that resists forgery by '
+    'co-located Python code -- do not use it as a boundary against '
+    'anything already running inside this process, only as a boundary '
+    'against unvalidated *input* reaching :func:`evaluate`.'
+)
+
 #: One sentence, repeated in every failure message below, so a red here is
 #: never mistaken for a finding: a golden pin cannot tell a truer wording
 #: from a false one, so any edit to this paragraph -- including a correction
@@ -651,6 +696,35 @@ def _normalise_whitespace(text: str) -> str:
     and strip the ends, so a golden literal need not reproduce the
     docstring's line-wrapping column."""
     return " ".join(text.split())
+
+
+def _assert_whole_docstring_pinned(doc: str) -> None:
+    """The single assertion path every whole-docstring pin check shares --
+    both ``test_compiled_expr_docstring_route_clauses_are_pinned_exactly``
+    (against the real, unmutated ``CompiledExpr.__doc__``) and
+    ``test_compiled_expr_docstring_pin_catches_mutation_anywhere`` (against
+    a monkeypatched one) call this, so there is exactly one comparison to
+    ``_FULL_DOCSTRING_GOLDEN`` in this module rather than two independent
+    reimplementations that could disagree.
+
+    B-016 cycle 2, C5 (closes review PR #27 M1): the mutation-anywhere test
+    used to inline its own ``==`` comparison instead of calling this, which
+    meant it always compared a *mutated* docstring against the golden and
+    always expected a mismatch -- true regardless of whether the golden
+    itself is the correct pin or garbage, so it never actually exercised
+    the golden's correctness and stayed green under
+    ``_FULL_DOCSTRING_GOLDEN = "totally wrong golden"`` while its sibling
+    correctly went red. Routing both tests through this one function does
+    not by itself fix that -- see the mutation test's own comment for the
+    second half of the fix, which calls this against the *unmutated*
+    docstring too."""
+    whole_doc = _normalise_whitespace(doc)
+    assert whole_doc == _FULL_DOCSTRING_GOLDEN, (
+        "CompiledExpr's docstring no longer matches the pinned golden in "
+        f"its entirety -- {_DRIFT_GUARD_NOTE}"
+        f"\n  actual: {whole_doc!r}"
+        f"\n  golden: {_FULL_DOCSTRING_GOLDEN!r}"
+    )
 
 
 def _extract_route_clause(doc: str, start_marker: str, end_marker: str, label: str) -> str:
@@ -844,6 +918,46 @@ class TestCompileTimeGeneral:
             "did, contradicting the cycle-1 review's finding"
         )
 
+    def test_compiled_expr_docstring_pin_catches_mutation_anywhere(self, monkeypatch):
+        # B-016, C1: B-013's route-clause markers only see the two pinned
+        # clauses -- a contradicting statement placed *outside* both of them
+        # (before the first, after the last, or between them) changed
+        # nothing that the marker-based extraction above looks at, so it
+        # passed silently. Proven here by monkeypatch (never a tracked-file
+        # edit) at exactly the three positions the drift can appear: at the
+        # very start of the docstring, at its very end, and spliced into its
+        # middle -- and asserted against the *whole* pinned docstring, not a
+        # substring of it, precisely because a partial pin is the hole.
+        #
+        # B-016 cycle 2, C5 (closes review PR #27 M1): the loop below only
+        # ever compares a *mutated* docstring to the golden inside
+        # pytest.raises(AssertionError) -- that mismatch is guaranteed
+        # whether the golden is the correct pin or garbage, so on its own it
+        # is not independent evidence that the golden itself is right, and
+        # it stayed green under a corrupted `_FULL_DOCSTRING_GOLDEN` while
+        # `test_compiled_expr_docstring_route_clauses_are_pinned_exactly`
+        # correctly went red. The line directly below closes that: it calls
+        # the same `_assert_whole_docstring_pinned` helper the sibling test
+        # uses, against the real, *unmutated* docstring, with no
+        # `pytest.raises` around it -- so if the golden is wrong, this test
+        # now fails here, before the mutation loop even starts, exactly as
+        # its sibling does.
+        original = CompiledExpr.__doc__
+        _assert_whole_docstring_pinned(original)
+
+        claim = "\n    Neither route ever executes __init__.\n"
+        half = len(original) // 2
+        mutations = {
+            "prepend": claim + original,
+            "append": original + claim,
+            "middle": original[:half] + claim + original[half:],
+        }
+        for label, mutated in mutations.items():
+            monkeypatch.setattr(CompiledExpr, "__doc__", mutated, raising=False)
+            with pytest.raises(AssertionError):
+                _assert_whole_docstring_pinned(CompiledExpr.__doc__)
+            monkeypatch.setattr(CompiledExpr, "__doc__", original, raising=False)
+
     def test_compiled_expr_docstring_route_clauses_are_pinned_exactly(self):
         # B-013 cycle 4, C8 (retires C6/C7): cycles 2 and 3 both tried to
         # *classify* the docstring's wording (keyword presence, then
@@ -877,6 +991,44 @@ class TestCompileTimeGeneral:
             f"no longer matches the pinned golden -- {_DRIFT_GUARD_NOTE}"
             f"\n  actual: {new_clause!r}"
             f"\n  golden: {_NEW_ROUTE_GOLDEN!r}"
+        )
+
+        # B-016, C1: the two marker-bounded checks above see only the text
+        # between their own start and end markers -- a contradicting
+        # statement placed before the first marker, after the last, or
+        # spliced between the two clauses moves neither marker and passes
+        # both assertions above untouched. Closed by additionally pinning
+        # the docstring in its entirety, so a mutation anywhere in it is a
+        # mismatch against this golden by construction, not by classifying
+        # where a marker happens to sit.
+        # B-016 cycle 2, C5: routed through the shared helper so this and
+        # the mutation-anywhere test above have exactly one comparison to
+        # _FULL_DOCSTRING_GOLDEN between them, not two independent ones.
+        _assert_whole_docstring_pinned(doc)
+
+    def test_route_goldens_agree_with_full_docstring_golden(self):
+        # B-016 cycle 2, C6 (closes review PR #27 m1): _REPLACE_ROUTE_GOLDEN,
+        # _NEW_ROUTE_GOLDEN and _FULL_DOCSTRING_GOLDEN are three separate
+        # literals pasted independently, with nothing structural tying them
+        # together -- an edit to CompiledExpr's docstring that updates the
+        # whole-doc golden but misses a clause golden (or vice versa) would
+        # go undetected by every other test here, each of which only ever
+        # compares the real docstring against one golden at a time. This
+        # asserts the goldens agree with each other directly, so a lockstep
+        # edit that misses one goes red immediately, naming which one
+        # disagrees, without needing CompiledExpr.__doc__ to change again
+        # first. Containment rather than derivation (composing
+        # _FULL_DOCSTRING_GOLDEN out of the clause goldens) so each golden
+        # keeps reading as a normal literal at its own definition site.
+        assert _REPLACE_ROUTE_GOLDEN in _FULL_DOCSTRING_GOLDEN, (
+            "_REPLACE_ROUTE_GOLDEN is not contained in _FULL_DOCSTRING_GOLDEN "
+            "-- the clause golden and the whole-doc golden have drifted "
+            f"apart -- {_DRIFT_GUARD_NOTE}"
+        )
+        assert _NEW_ROUTE_GOLDEN in _FULL_DOCSTRING_GOLDEN, (
+            "_NEW_ROUTE_GOLDEN is not contained in _FULL_DOCSTRING_GOLDEN -- "
+            f"the clause golden and the whole-doc golden have drifted apart "
+            f"-- {_DRIFT_GUARD_NOTE}"
         )
 
 
