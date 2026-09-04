@@ -23,18 +23,32 @@ take an explicit ``cancel: Optional[threading.Event]`` parameter instead:
 that does not care about cancellation. This is the seam B-009's ``RunContext`` and B-011's
 headless driver plug into; neither is built by this task.
 
+**B-008: every student-typed expression in this file now routes through
+``fce_web.safe_eval``.** The reference's pattern of running a student expression through the
+builtin functions named "eval" and "compile" with a merely restricted ``__builtins__`` does
+not stop attribute-traversal escapes (see ``.claude/backend/CLAUDE.md`` §3.2) and is remote
+code execution on a shared classroom host. Every selection and observable in this module is
+now validated once by ``fce_web.safe_eval.compile_expr`` -- outside any per-event or per-basket
+try/except, so a rejected expression's ``fce_web.safe_eval.UnsafeExpression`` is never
+swallowed by this module's ``except Exception`` handlers -- and evaluated with
+``fce_web.safe_eval.evaluate`` against the same compiled code object for both the vectorized
+fast path and the per-event fallback. **This file now contains zero direct calls of the
+builtins named ``eval`` or ``compile``** -- guarded by
+``tests/test_path_filter.py::test_no_eval_or_compile_call_sites``, which parses this exact
+claim out of this docstring and checks it against what ``ast`` finds in this file, so a
+reintroduced ``eval()``/``compile()`` call here fails the suite instead of drifting undetected
+a second time -- see B-008's PR for why its predecessor's line-number-matching form of this
+guard could not survive a file with zero such calls, and had to be inverted rather than
+retired.
+
 **Not done here, on purpose:**
 
-- The seven ``eval()`` calls (this file's lines 335, 377, 456, 515, 718, 730, 748) and the
-  one ``compile()`` call (this file's line 481) are unsafe against a student-supplied
-  expression -- see ``.claude/backend/CLAUDE.md`` §3.2. They are vendored unchanged from
-  the reference (whose own line numbers differ from these -- these are re-derived for
-  *this* file, and ``tests/test_path_filter.py::test_docstring_eval_compile_line_numbers_match_this_file``
-  parses this file with ``ast`` on every run so this paragraph cannot go stale silently).
-  B-008 swaps them for ``fce_web.safe_eval``, not this task.
 - ``sumw2`` (``bh.storage.Weight()``) is deliberately absent. ``bh.Histogram(ax)`` keeps
   the reference's default ``Double()`` storage everywhere in this file, per the user's
   ruling that ``weightsSquared`` stays contract-nullable in ``docs/api.md``.
+- ``engine/analytical_loop.py:290`` still builds a code object from a student-typed
+  selection expression using the same two builtins by name, outside this file's scope --
+  reported to the orchestrator in B-008's PR rather than edited here.
 """
 import math
 import re
@@ -50,6 +64,7 @@ import vector
 # vectorized loops below actually pick up the change, proving the ``h_{src}_up`` keys
 # are driven by that module rather than a literal list here.
 from fce_web.engine import systematics
+from fce_web.safe_eval import CompiledExpr, compile_expr, evaluate as safe_evaluate
 
 
 def preprocess_hep_expr(expr: str) -> str:
@@ -61,13 +76,16 @@ def preprocess_hep_expr(expr: str) -> str:
     return expr
 
 
-_SAFE_BUILTINS = {
-    "abs": abs, "max": max, "min": min, "len": len,
-    "float": float, "int": int, "bool": bool,
-    "sqrt": math.sqrt, "cos": math.cos, "sin": math.sin,
-    "tan": math.tan, "pi": math.pi, "exp": math.exp, "log": math.log,
-    "True": True, "False": False, "None": None,
-}
+def _compile_all(exprs) -> List[CompiledExpr]:
+    """Validate and compile every non-empty expression in *exprs*, eagerly.
+
+    Every caller of this helper calls it before touching a single event or a single array
+    index -- see each call site's comment. A rejected expression's ``UnsafeExpression``
+    therefore always escapes to the caller of the public function it was called from: it is
+    raised here, outside every ``try/except Exception`` block in this module, so none of
+    them can catch it.
+    """
+    return [compile_expr(e) for e in exprs if e]
 
 
 class _P:
@@ -299,13 +317,22 @@ def filter_selection_cache(parent_cache_path: str, additional_exprs: list,
 
     Used when the parent prefix cache already exists on disk (e.g. sel_[hash_A]_s.npz)
     so we only need to apply the new expression rather than re-reading the ROOT file.
-    compiled_exprs: optional list of pre-compiled code objects matching additional_exprs.
+
+    ``compiled_exprs`` is accepted only for call-signature compatibility and is otherwise
+    ignored: a caller-supplied compiled object is never trusted as evidence that its source
+    was validated (``fce_web.safe_eval.CompiledExpr``'s own docstring explains why -- it can
+    be forged by code already running in this process). Every expression in
+    ``additional_exprs`` is (re)validated and compiled by this function, through
+    ``fce_web.safe_eval.compile_expr``, before ``parent_cache_path`` is opened -- an unsafe
+    expression is rejected without reading a single byte of the cache.
 
     Unexercised by any caller in the reference repo (kskovpen/fce) as of the commit this
     was vendored from, and by anything in this repo as of task B-007 -- vendored anyway
     because it is part of the module's public surface, but no production code path reaches
     it yet.
     """
+    compiled = _compile_all(additional_exprs)
+
     data = np.load(parent_cache_path, mmap_mode='r')
     n = len(data["weight"])
 
@@ -314,7 +341,6 @@ def filter_selection_cache(parent_cache_path: str, additional_exprs: list,
     # numpy operations release the Python GIL, enabling true parallel execution
     # when multiple workers call this function on different samples simultaneously.
     # Produces the same output as the per-event fallback but orders of magnitude faster.
-    exprs_to_eval = compiled_exprs if compiled_exprs else additional_exprs
     try:
         nphot_arr = data["nphot"] if "nphot" in data else np.zeros(n, dtype=np.float32)
         vec_vars = {
@@ -328,11 +354,8 @@ def filter_selection_cache(parent_cache_path: str, additional_exprs: list,
             "deltaR": _delta_r_vec, "mT": _mT_vec,
         }
         mask = np.ones(n, dtype=bool)
-        for expr in exprs_to_eval:
-            if not expr:
-                continue
-            # NOTE: unsafe eval, vendored unchanged -- B-008 replaces this with safe_eval.
-            result = eval(expr, {"__builtins__": _SAFE_BUILTINS}, vec_vars)
+        for ce in compiled:
+            result = safe_evaluate(ce, vec_vars)
             result = np.asarray(result, dtype=bool).ravel()
             if result.shape[0] != n:
                 raise ValueError("shape mismatch")
@@ -369,12 +392,9 @@ def filter_selection_cache(parent_cache_path: str, additional_exprs: list,
                 "deltaR": _delta_r, "mT": _mT,
             }
             skip = False
-            for expr in exprs_to_eval:
-                if not expr:
-                    continue
+            for ce in compiled:
                 try:
-                    # NOTE: unsafe eval, vendored unchanged -- see module docstring.
-                    if not eval(expr, {"__builtins__": _SAFE_BUILTINS}, local_vars):
+                    if not safe_evaluate(ce, local_vars):
                         skip = True
                         break
                 except Exception:
@@ -426,10 +446,24 @@ def fill_histogram_from_cache(cache_file: str, outHist, observable_target: str,
     fallback loop (mirroring the reference's poll of its global stop flag at that
     same call site); when it is set the function returns immediately, leaving the histogram
     partially filled. ``cancel=None`` means the loop always runs to completion.
+
+    ``observable_target`` is validated and compiled exactly once, through
+    ``fce_web.safe_eval.compile_expr``, before ``cache_file`` is opened -- an unsafe
+    expression is rejected without reading a single byte of the cache. The same compiled
+    code object is then reused, via ``fce_web.safe_eval.evaluate``, by both the vectorized
+    fast path and the per-event fallback below.
+
+    A falsy ``observable_target`` (``None`` or ``""`` -- a blank observable is a valid
+    ``RunConfig``, see ``runconfig.py``) is not compiled at all, matching
+    ``filter_raw_event_data``'s guard: this is a pre-existing, pre-B-008 behaviour
+    (an empty histogram, the run completes) being preserved, not a new one, and
+    B-008 does not change what a valid config does.
     """
     # Local import: keeps module import-time deps minimal (boost_histogram is only
     # needed here, not for the proxy/eval/cache-I/O paths exercised by unit tests).
     import boost_histogram as bh
+
+    compiled_obs = compile_expr(observable_target) if observable_target else None
 
     # OPT-1: mmap_mode='r' lets the OS page in only accessed columns; unaccessed arrays
     # are never faulted into RAM (particularly useful in the vectorized path below).
@@ -452,8 +486,7 @@ def fill_histogram_from_cache(cache_file: str, outHist, observable_target: str,
             "met": _ArrayProxy("met", data),
             "deltaR": _delta_r_vec, "mT": _mT_vec,
         }
-        # NOTE: unsafe eval, vendored unchanged -- see module docstring.
-        vals = eval(observable_target, {"__builtins__": _SAFE_BUILTINS}, vec_vars)
+        vals = safe_evaluate(compiled_obs, vec_vars)
         vals = np.asarray(vals, dtype=np.float64).ravel()
         if vals.shape[0] == n:
             mask = np.isfinite(vals) & (vals > -900.0)
@@ -476,11 +509,8 @@ def fill_histogram_from_cache(cache_file: str, outHist, observable_target: str,
         pass
 
     # ── Per-event fallback (handles any expression the vectorized path can't) ─
-    # OPT-2: pre-compile the observable expression once outside the event loop
-    try:
-        observable_code = compile(observable_target, '<obs>', 'eval')
-    except Exception:
-        observable_code = None
+    # OPT-2: no separate compile step here -- ``compiled_obs`` was already built once,
+    # above, before ``cache_file`` was even opened, and is reused for every event.
 
     # Create variation histograms before the loop when with_syst is requested.
     if with_syst:
@@ -510,9 +540,7 @@ def fill_histogram_from_cache(cache_file: str, outHist, observable_target: str,
                 "ph1": ph1, "ph2": ph2, "met": met,
                 "deltaR": _delta_r, "mT": _mT,
             }
-            expr_or_code = observable_code if observable_code is not None else observable_target
-            # NOTE: unsafe eval, vendored unchanged -- see module docstring.
-            obs_val = eval(expr_or_code, {"__builtins__": _SAFE_BUILTINS}, local_vars)
+            obs_val = safe_evaluate(compiled_obs, local_vars)
             if obs_val is None:
                 continue
             obs_val = float(obs_val)
@@ -560,9 +588,23 @@ def filter_raw_event_data(arrays, nev, cfg, outHist, observable_target,
     touching ``outHist`` or ``cache_acc``.
     ``cancel=None`` means never cancel. The third element of the return tuple is that
     same cancelled flag for both the cancelled and completed paths.
+
+    ``cfg["sel_exprs"]`` and ``observable_target`` are validated and compiled, through
+    ``fce_web.safe_eval.compile_expr``, before this basket's ``arrays`` are touched at all
+    -- not even to read a column reference, let alone index into a single event. A rejected
+    expression's ``UnsafeExpression`` therefore propagates before a single event in *any*
+    basket of the run has been processed. ``cfg["compiled_sel_exprs"]``, previously an
+    opt-in pre-compiled-code fast path, is no longer read here: a caller-supplied compiled
+    object is never trusted as evidence its source was validated (see
+    ``fce_web.safe_eval.CompiledExpr``'s own docstring for why), so this function always
+    (re)compiles ``cfg["sel_exprs"]`` itself.
     """
     if cancel is not None and cancel.is_set():
         return [], [], True
+
+    sel_exprs = cfg.get("sel_exprs", [])
+    compiled_sel_exprs = _compile_all(sel_exprs)
+    compiled_obs = compile_expr(observable_target) if observable_target else None
 
     has_el = "electron_pt" in arrays and len(arrays["electron_pt"]) > 0
     has_mu = "muon_pt"     in arrays and len(arrays["muon_pt"])     > 0
@@ -601,9 +643,6 @@ def filter_raw_event_data(arrays, nev, cfg, outHist, observable_target,
     ph_e   = arrays["photon_e"]   if has_ph else None
 
     mult_cuts = cfg.get("mult_cuts", [])
-    sel_exprs = cfg.get("sel_exprs", [])
-    # OPT-2: use pre-compiled expression objects when passed via cfg
-    compiled_sel_exprs = cfg.get("compiled_sel_exprs", None)
 
     _NULL = _P()
 
@@ -711,28 +750,14 @@ def filter_raw_event_data(arrays, nev, cfg, outHist, observable_target,
 
             # ── Selection expressions ────────────────────────────────────
             skip = False
-            if compiled_sel_exprs is not None:
-                for code in compiled_sel_exprs:
-                    try:
-                        # NOTE: unsafe eval, vendored unchanged -- see module docstring.
-                        if not eval(code, {"__builtins__": _SAFE_BUILTINS}, local_vars):
-                            skip = True
-                            break
-                    except Exception:
+            for ce in compiled_sel_exprs:
+                try:
+                    if not safe_evaluate(ce, local_vars):
                         skip = True
                         break
-            else:
-                for expr in sel_exprs:
-                    if not expr:
-                        continue
-                    try:
-                        # NOTE: unsafe eval, vendored unchanged -- see module docstring.
-                        if not eval(expr, {"__builtins__": _SAFE_BUILTINS}, local_vars):
-                            skip = True
-                            break
-                    except Exception:
-                        skip = True
-                        break
+                except Exception:
+                    skip = True
+                    break
             if skip:
                 continue
 
@@ -742,10 +767,9 @@ def filter_raw_event_data(arrays, nev, cfg, outHist, observable_target,
                               l1, l2, j1, j2, ph1, ph2, met, w)
 
             # ── Observable evaluation ────────────────────────────────────
-            if outHist is not None and observable_target:
+            if outHist is not None and compiled_obs is not None:
                 try:
-                    # NOTE: unsafe eval, vendored unchanged -- see module docstring.
-                    obs_val = eval(observable_target, {"__builtins__": _SAFE_BUILTINS}, local_vars)
+                    obs_val = safe_evaluate(compiled_obs, local_vars)
                     if obs_val is None:
                         continue
                     obs_val = float(obs_val)

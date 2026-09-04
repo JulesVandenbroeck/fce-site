@@ -191,14 +191,24 @@ def test_path_filter_imports_with_ui_poisoned():
 
 
 # ---------------------------------------------------------------------------
-# Criterion 7 (PR #12 cycle-2 suggested-major): the module docstring's claimed
-# ``eval``/``compile`` line numbers must be this file's real ones, re-derived by
-# parsing the file rather than hand-copied -- so a later edit that shifts lines
-# breaks this test instead of silently rotting the docstring B-008 will navigate by.
+# Criterion 7 (PR #12 cycle-2 suggested-major), inverted by B-008: the module no
+# longer calls the builtins named ``eval``/``compile`` at all (every student
+# expression now routes through ``fce_web.safe_eval``), so this guard's job changes
+# from "the docstring's claimed line numbers match ast" to "the docstring's claim of
+# *zero* such call sites matches what ast actually finds" -- a reintroduced eval()
+# or compile() call in this file must fail this test, not just go unmentioned in a
+# docstring nobody re-derives.
 # ---------------------------------------------------------------------------
 
 def _actual_eval_compile_lines(source: str):
-    """Return (sorted eval() call lines, sorted compile() call lines) found by ast."""
+    """Return (sorted eval() call lines, sorted compile() call lines) found by ast.
+
+    Deliberately name-shaped: it matches ``ast.Call`` nodes whose ``func`` is an
+    ``ast.Name`` equal to ``"eval"``/``"compile"``, so e.g. ``builtins.eval(...)``
+    (an ``ast.Attribute`` func, not an ``ast.Name``) would slip past this guard.
+    That is a known, accepted gap for this module -- do not widen the check to
+    close it without re-deriving what else it would then need to reject.
+    """
     tree = ast.parse(source)
     eval_lines, compile_lines = [], []
     for node in ast.walk(tree):
@@ -210,61 +220,55 @@ def _actual_eval_compile_lines(source: str):
     return sorted(eval_lines), sorted(compile_lines)
 
 
-def _claimed_eval_compile_lines(docstring: str):
-    """Parse the "this file's lines ..." claim out of the module docstring."""
-    eval_m = re.search(
-        r"``eval\(\)`` calls \(this file's lines ([0-9, ]+)\)", docstring
-    )
-    compile_m = re.search(
-        r"``compile\(\)`` call \(this file's line ([0-9]+)\)", docstring
-    )
-    assert eval_m and compile_m, (
-        "module docstring no longer states this file's eval/compile line numbers "
-        "in the expected format -- update this test's regex to match"
-    )
-    eval_lines = sorted(int(x) for x in eval_m.group(1).split(","))
-    compile_lines = [int(compile_m.group(1))]
-    return eval_lines, compile_lines
-
-
-def test_docstring_eval_compile_line_numbers_match_this_file():
-    """The docstring's claimed line numbers for every ``eval``/``compile`` call site
-    must equal what ``ast`` actually finds in this file, right now.
+def _docstring_claims_zero_call_sites(docstring: str) -> bool:
+    """True iff the module docstring makes the "zero eval/compile call sites" claim
+    this test enforces, in the exact wording B-008's docstring uses.
     """
-    import fce_web.engine.path_filter as pf
-
-    source = inspect.getsource(pf)
-    actual_eval, actual_compile = _actual_eval_compile_lines(source)
-    claimed_eval, claimed_compile = _claimed_eval_compile_lines(pf.__doc__)
-
-    assert claimed_eval == actual_eval, (
-        f"docstring claims eval() at {claimed_eval}, ast finds {actual_eval}"
-    )
-    assert claimed_compile == actual_compile, (
-        f"docstring claims compile() at {claimed_compile}, ast finds {actual_compile}"
-    )
+    return re.search(
+        r"zero direct calls of the\s*\n?\s*builtins named ``eval`` or ``compile``",
+        docstring,
+    ) is not None
 
 
-def test_docstring_eval_compile_line_check_catches_a_perturbed_number():
-    """Mutation test (string substitution on the in-memory docstring, no tracked file
-    touched): if one claimed line number is wrong, the comparison used by the test
-    above must actually notice.
+def test_no_eval_or_compile_call_sites():
+    """The docstring must claim zero ``eval``/``compile`` call sites, and ``ast`` must
+    agree: this file contains none, right now.
     """
     import fce_web.engine.path_filter as pf
 
     source = inspect.getsource(pf)
     actual_eval, actual_compile = _actual_eval_compile_lines(source)
 
-    perturbed_docstring = pf.__doc__.replace(
-        f"line {actual_compile[0]})", f"line {actual_compile[0] + 1})"
+    assert _docstring_claims_zero_call_sites(pf.__doc__), (
+        "module docstring no longer states the 'zero eval/compile call sites' claim "
+        "in the expected wording -- update this test's regex to match"
     )
-    assert perturbed_docstring != pf.__doc__, (
-        "perturbation did not change the docstring -- fix this test's substitution"
+    assert actual_eval == [], f"docstring claims zero eval() call sites, ast finds {actual_eval}"
+    assert actual_compile == [], (
+        f"docstring claims zero compile() call sites, ast finds {actual_compile}"
     )
 
-    _claimed_eval, claimed_compile = _claimed_eval_compile_lines(perturbed_docstring)
-    assert claimed_compile != actual_compile, (
-        "perturbed docstring still matches ast output -- the check is not sensitive"
+
+def test_no_eval_or_compile_call_sites_catches_a_reintroduced_call():
+    """Mutation test: build an in-memory copy of the module's source with a bare
+    ``eval(...)`` call spliced in (string substitution, no tracked file touched,
+    nothing exec'd -- the assertion under test only needs ``ast`` to see the node),
+    and confirm the check above would actually fail against it.
+    """
+    import fce_web.engine.path_filter as pf
+
+    source = inspect.getsource(pf)
+    mutated_source = source.replace(
+        "def preprocess_hep_expr(expr: str) -> str:\n",
+        "def preprocess_hep_expr(expr: str) -> str:\n    eval('1')\n",
+        1,
+    )
+    assert mutated_source != source, "mutation did not change the source -- fix this test's substitution"
+
+    mutated_eval, _mutated_compile = _actual_eval_compile_lines(mutated_source)
+    assert mutated_eval != [], (
+        "reintroduced eval() call not detected by ast -- the 'zero call sites' check "
+        "used by test_no_eval_or_compile_call_sites is not sensitive to this mutation"
     )
 
 
