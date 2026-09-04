@@ -70,11 +70,11 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ### D-010 — The three-region page shell
 - **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`
-- **Accept:** **checks=9** — verbatim in PR #25's body. C1 canvas never covered; C2 palette
+- **Accept:** **checks=10** (was 9; C10 added by cycle 3's M6 fix) — verbatim in PR #25's body. C1 canvas never covered; C2 palette
   collapse gives its width to the canvas only; C3 palette inner width >= 328.0px; C4 an opened
   node is contained and paints above what it overlaps; C5 the pager reads `m3,m2,m1,m2,m3`;
   C6 ui state never enters the run payload; C7 only the shipped `tokens.css`; C8 reduced motion +
-  focus walk; C9 the verify.py floors hold and `board-lane-fill` stays the only red.
+  focus walk; C9 the verify.py floors hold and `board-lane-fill` stays the only red; C10 canvas type stays legible (scale >= 0.95, rendered label >= 11.0px) across 4 states x 3 widths.
 - **Depends on:** ~~D-009~~, ~~D-013~~, ~~D-002~~ — all merged.
 - **Branch / PR:** `task/d-010-page-shell` — **#25**, `6d91a96`
 - **Status:** **cycle 2 delivered `cfd2a1d`; §5.1 gate reproduced 2026-09-04 in `~/fce-gate-d010c2`
@@ -92,8 +92,21 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   Cycle-1 gate had reproduced (9/9 shell sections PASS,
   `FAILED sections: ['board-lane-fill']`, counts 86/303, diff = the 3 scoped files).
 - **Review:** cycle 2 `0R / 2M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5538399914`.
-  **Cycle 3 dispatched 2026-09-04 — the §5.7 limit. If it does not close at 0R/0M, stop and
-  escalate.** All six cycle-1 findings verified fixed by the reviewer's own mutations, not by the
+  **Cycle 3 delivered `04849a1`; §5.1 gate reproduced 2026-09-04 — 413 passed, flake8 0, AST
+  floors risen 78/213 -> 79/215, all 10 shell sections PASS, `FAILED sections: ['board-lane-fill']`,
+  diff = the 3 scoped files. Cycle-3 reviewer dispatched — the §5.7 limit. If it does not close at
+  0R/0M, stop and escalate.**
+  **M6 was FIXED, not overruled.** `.canvas-wrap` becomes a fixed 704x512 surface with
+  `.canvas-region` scrolling, minimum scale 1.0, so no downscaled type — and the fix ships **the
+  observer that was the actual finding**: new section `shell-canvas-text-legible` = **C10**,
+  measuring the SVG's screen CTM scale and every label's rendered px over 4 states x 3 widths,
+  with `SHELL_CANVAS_MIN_SCALE = 0.95` and `SHELL_CANVAS_MIN_TEXT_PX = 11.0`. **checks 9 -> 10.**
+  The coder verified the reviewer's numbers before acting rather than accepting them: the fluid
+  wrap did render at x0.5199 at 1024, putting a 14px title at 7.28px. M5 fixed by matching the
+  unit generically and exempting by value; m4, m5, m6 all folded in.
+  Deviation: the worktree ran detached and pushed a fast-forward to the branch, because
+  `task/d-010-page-shell` is checked out in two stale agent worktrees. No new branch, no
+  force-push — confirmed from git at the gate. All six cycle-1 findings verified fixed by the reviewer's own mutations, not by the
   coder's transcripts. **C3's <=768 deviation is SETTLED and accepted** — the reviewer did the
   arithmetic: 368 + 64 + 384 = 816 > 768, so no 768 row holds the palette at 328px+ with the
   canvas above its floor. C3 is met; do not reopen it.
