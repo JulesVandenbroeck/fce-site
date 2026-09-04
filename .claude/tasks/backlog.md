@@ -614,3 +614,14 @@ and are historical now that #6 is merged.
   Reachability is measured; discoverability is unchecked.
 - **D-005 m7** — the "chips render identically" body claim on PR #16, three cycles uncorrected.
   Still open; recorded here so it is not lost now that D-010 has closed.
+- **B-014 m1** — `tests/test_api_contract.py:665-666`, `:689-690`: both falsifiability meta-tests
+  match on `re.escape(path)`, which any assertion naming the path satisfies. Deleting the
+  `v is _MISSING` branch lets `isinstance(_MISSING, ...)` raise and name the path, so 26 of 30
+  presence cases pass for the wrong reason — caught only by the 4 OPTIONAL paths. Match the
+  presence/nullability message text instead.
+- **B-014 m2** — `tests/test_api_contract.py:637-666`: the `[fit.method]` case is vacuous (field
+  absent, deletion returns False, return discarded), so it duplicates the plain schema test.
+  Honestly disclosed, but it hollows out the 30-case denominator.
+- **B-014 m3** — `tests/test_api_contract.py:245`: `"yes" in doc_nullable.lower()` is a substring
+  heuristic on a column carrying qualified prose. A cell like `no (yes once a producer exists)`
+  would read as nullable. Parse the leading token.

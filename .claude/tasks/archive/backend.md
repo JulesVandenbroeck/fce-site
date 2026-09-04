@@ -1786,3 +1786,49 @@ deliberate golden update.
   node cap structurally cannot (the 5.6 MB / 1.68 s measurement, the 501-digit 3-node payload), and
   why the docstring contradiction matters to B-008.
 
+
+
+---
+
+## B-014 — Close B-004's two open findings (merged #18, `db085dd`)
+
+### B-014 — Close B-004's two open findings
+- **Branch / PR:** `task/b-014-api-contract-findings` — **#18**, `3e3550f`
+- **Status:** **cycle-1 reviewer dispatched 2026-09-04** (the 2026-08-31 dispatch never returned
+  a verdict; nothing it did is on the PR, so this is still cycle 1). §5.1 gate re-reproduced
+  2026-09-04 at `3e3550f`: 286 collected, **565 passed**, flake8 0, 13 `^##` headings, diff =
+  `tests/test_api_contract.py` alone.
+  **The branch is 142 commits behind `main`. Test-merged locally 2026-09-04 (not pushed): the
+  merge is CLEAN, no conflicts, `580 passed / 0 failed`, flake8 0. So the PR is safe to merge
+  directly and the suite floor becomes 580, not 565.** Being behind is not a finding against the
+  coder and the reviewer was told so.
+  Earlier gate in `~/fce-gate-b014`: §5.1 gate in `~/fce-gate-b014`: **286** collected (from 134),
+  **565 passed**, flake8 0, **13** `^##` headings, diff touches only `tests/test_api_contract.py`
+  — reproduced exactly. C2 **implemented, not overruled**: schema tuples extended to
+  `(type, presence, doc_type_label)`, and `docs/api.md` needed no edit because it already agreed
+  in every cell. **Suite floor becomes 580 when this merges** (565 is the branch in isolation, against its stale
+  base) — not before. **checks=4.** C1 presence + nullability mutations, parametrised
+  1:1 with the schema tuples; C2 `docs/api.md` Type/Nullable row parity (**overrulable in
+  writing**); C3 `systUp` keys ⊆ `systSources`, per sample; C4 the two ternary statements.
+- **Enumerated:** 18 test functions / 134 cases / 13 `^##` headings. The entry's old "329 passed"
+  suite floor was **stale** — it is **413**.
+
+
+### The original Ready entry
+
+### B-014 — Close B-004's two open findings: falsify the presence/nullability halves, guard the doc columns
+- **Scope:** `tests/test_api_contract.py`, `docs/api.md`
+- **Accept:** C1 the schema meta-test gains presence and nullability mutations (delete / set
+  `None`, require a raise **naming the path**), mutation-gated — rebinding `_check_path_conformant`
+  without the two asserts yields `134 passed` today and must yield many failures after; C2 the
+  `Type`/`Nullable` columns of `docs/api.md` are row-parity tested against the schema tuples, with
+  its own meta-test; C3 `systUp`'s key set asserted against `systSources`; C4 the two
+  `nxt.extend(...) if ... else ...` expressions become statements. checks=4.
+- **Floors — a fall in any is `Required`:** 18 test functions / **134** cases; `docs/api.md` at
+  **13** `^##` headings; full suite **329 passed**.
+- **Depends on:** nothing (B-004 merged). **Deferred behind B-012.** Parallel with B-013; never
+  with anything editing `docs/api.md`.
+- **Branch / PR:** not yet opened
+- **History:** [`archive/backend.md`](archive/backend.md) — the two findings stated so they are
+  not re-litigated, and the standing invitation to overrule C2 in writing.
+

@@ -9,49 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-**RELEASED BY THE USER 2026-09-02.** The hold placed on 2026-09-01 — pending the M1 style
-choice — is lifted for all three. **The user's instruction is explicit: DO NOT run them in
-parallel.** One at a time, each to completion before the next is dispatched, in the standing
-merge order **B-013 (#17), then B-008 (#19), then B-014 (#18)** — **B-008 merged out of that
-order on 2026-09-04**, because B-013 is escalated and blocked on a user ruling and the two PRs'
-file sets are disjoint (`safe_eval.py`/`test_safe_eval.py` vs `path_filter.py` + its two test
-files), so the ordering bought nothing once B-013 stalled. **B-013's branch is now behind `main`:
-merge `main` into it before the next cycle. Never rebase.** This overrides the
-2026-08-31 parallel dispatch pattern; the reason is the user's token budget, not a file
-conflict. Each still gets `isolation: "worktree"`.
-
-Where each one stands when it is picked up: **B-013 (#17)** cycle-1 review was dispatched
-2026-08-31 and never returned a verdict — re-dispatch the reviewer, still cycle 1, gate already
-reproduced. **B-014 (#18)** the same — reviewer re-dispatch, still cycle 1, gate reproduced.
-**B-008 (#19)** is at the §5.7 limit: cycle 2 came back `0R / 1M / 2m` with M3 open, the cycle-3
-dispatch was lost and never landed, and the branch head is still `fba2ad6`. Re-dispatching it is
-**cycle 3, not cycle 4**, and if it does not close at 0R/0M, stop and escalate rather than
-dispatch a fourth.
-
-**2026-09-04:** B-008 merged. **B-013 merged `87428ee` with M1/M2 open -> B-016.** **B-014 (#18)** is the last item in the
-queue: reviewer re-dispatch, still cycle 1, gate reproduced.
-Counts in the entries below were enumerated by `scout` at `fe8dd2d`, not inherited.
-
-### B-014 — Close B-004's two open findings
-- **Branch / PR:** `task/b-014-api-contract-findings` — **#18**, `3e3550f`
-- **Status:** **cycle-1 reviewer dispatched 2026-09-04** (the 2026-08-31 dispatch never returned
-  a verdict; nothing it did is on the PR, so this is still cycle 1). §5.1 gate re-reproduced
-  2026-09-04 at `3e3550f`: 286 collected, **565 passed**, flake8 0, 13 `^##` headings, diff =
-  `tests/test_api_contract.py` alone.
-  **The branch is 142 commits behind `main`. Test-merged locally 2026-09-04 (not pushed): the
-  merge is CLEAN, no conflicts, `580 passed / 0 failed`, flake8 0. So the PR is safe to merge
-  directly and the suite floor becomes 580, not 565.** Being behind is not a finding against the
-  coder and the reviewer was told so.
-  Earlier gate in `~/fce-gate-b014`: §5.1 gate in `~/fce-gate-b014`: **286** collected (from 134),
-  **565 passed**, flake8 0, **13** `^##` headings, diff touches only `tests/test_api_contract.py`
-  — reproduced exactly. C2 **implemented, not overruled**: schema tuples extended to
-  `(type, presence, doc_type_label)`, and `docs/api.md` needed no edit because it already agreed
-  in every cell. **Suite floor becomes 580 when this merges** (565 is the branch in isolation, against its stale
-  base) — not before. **checks=4.** C1 presence + nullability mutations, parametrised
-  1:1 with the schema tuples; C2 `docs/api.md` Type/Nullable row parity (**overrulable in
-  writing**); C3 `systUp` keys ⊆ `systSources`, per sample; C4 the two ternary statements.
-- **Enumerated:** 18 test functions / 134 cases / 13 `^##` headings. The entry's old "329 passed"
-  suite floor was **stale** — it is **413**.
+_none — M2 wave 6 is complete._
 
 ## Ready
 
@@ -63,22 +21,6 @@ are a docstring, a test isolation assertion and a comment — no behaviour chang
 cannot corrupt each other while in flight, only at the merge.
 **Merge order: B-013, then B-008, then B-014.** If B-008's branch has fallen behind by then,
 merge `main` into the branch. Never rebase.
-
-### B-014 — Close B-004's two open findings: falsify the presence/nullability halves, guard the doc columns
-- **Scope:** `tests/test_api_contract.py`, `docs/api.md`
-- **Accept:** C1 the schema meta-test gains presence and nullability mutations (delete / set
-  `None`, require a raise **naming the path**), mutation-gated — rebinding `_check_path_conformant`
-  without the two asserts yields `134 passed` today and must yield many failures after; C2 the
-  `Type`/`Nullable` columns of `docs/api.md` are row-parity tested against the schema tuples, with
-  its own meta-test; C3 `systUp`'s key set asserted against `systSources`; C4 the two
-  `nxt.extend(...) if ... else ...` expressions become statements. checks=4.
-- **Floors — a fall in any is `Required`:** 18 test functions / **134** cases; `docs/api.md` at
-  **13** `^##` headings; full suite **329 passed**.
-- **Depends on:** nothing (B-004 merged). **Deferred behind B-012.** Parallel with B-013; never
-  with anything editing `docs/api.md`.
-- **Branch / PR:** not yet opened
-- **History:** [`archive/backend.md`](archive/backend.md) — the two findings stated so they are
-  not re-litigated, and the standing invitation to overrule C2 in writing.
 
 ### B-016 — Close B-013's two open findings: anchor the docstring golden, correct the C8 record
 - **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
@@ -134,7 +76,9 @@ wave 4   B-011  headless driver                                 DONE, merged 82e
 wave 5   B-012  parity proof            <- M2 CHECKPOINT     DONE, merged 928c1ba
 wave 6   B-008  path_filter -> safe_eval        -+ DONE, merged 7d5fa0a
          B-013  close B-006's open findings     -+ DONE, merged 87428ee
-         B-014  close B-004's open findings     -+
+         B-014  close B-004's open findings     -+ DONE, merged db085dd
+wave 7   B-015  bound analytical_loop.py:290       RELEASED by B-008
+         B-016  close B-013's open findings        RELEASED by B-013
 ```
 Wave 6 is deferred behind the checkpoint by the user's ruling 2026-08-22 — nothing depends on
 those three, and after B-012 the golden file is their regression net. **Do not re-order without
@@ -148,6 +92,9 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-014** — closed B-004's presence/nullability + doc-parity findings — #18, `db085dd`,
+  1 cycle, clean gate (0R/0M/3m). checks=4; C2 **implemented, not overruled**. 134 → 286 cases,
+  18 → 25 test functions, none dropped or softened. Suite floor → **580**. m1/m2/m3 backlogged.
 - **B-013** — closed B-006's two open findings on `safe_eval` — #17, `87428ee`, 4 cycles + 1
   re-spec, **merged on the user's ruling with M1 and M2 open** (PR #17 comment `5539...`).
   checks=6 (C6/C7 retired for C8, the one deliberate substitution in the task's history, on the
@@ -188,7 +135,11 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **426 passed**; flake8 0 across `src/ tests/ scripts/`. (413 before the B-008 merge.)
+- Suite floor **580 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+  `db085dd`, 2026-09-04. (413 before B-008; 426 after B-008 + B-013.)
+- `docs/api.md` at **13** `^##` headings, **30** schema rows, and its `Type`/`Nullable` columns
+  are row-parity tested against the schema tuples with their own meta-test (B-014). An edit to
+  either the doc or the schema that breaks agreement fails `tests/test_api_contract.py`.
 - **`src/fce_web/engine/path_filter.py` contains zero `eval()`/`compile()` call sites**, asserted
   against `ast` by `tests/test_path_filter.py`, with a perturbation twin (B-008). The last live
   `compile()` in `engine/` is `analytical_loop.py:290` — inert today, unbounded, and B-015's job.
