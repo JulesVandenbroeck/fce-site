@@ -40,7 +40,7 @@ import boost_histogram as bh
 import uproot
 
 from fce_web.engine.path_filter import (filter_raw_event_data, fill_histogram_from_cache,
-                                        make_cache_acc, save_cache, preprocess_hep_expr)
+                                        make_cache_acc, save_cache)
 from fce_web.engine.path_final import write_final_histograms
 from fce_web.paths import get_fce_home
 from fce_web.runs import RunContext, RunResult
@@ -120,7 +120,7 @@ def _report_progress(ctx: RunContext, fraction: float) -> None:
 
 
 def _process_sample(sel_cfg, s, idx, active_samples, cfg,
-                    compiled_sel_exprs, ctx: RunContext,
+                    ctx: RunContext,
                     tracker: _TaskTracker, hdir: str) -> bool:
     """Process one sample for one selection branch: build cache then fill histograms."""
     n_samp = len(active_samples)
@@ -129,7 +129,6 @@ def _process_sample(sel_cfg, s, idx, active_samples, cfg,
 
     branch_cfg = dict(cfg)
     branch_cfg["sel_exprs"] = sel_cfg["sel_exprs"]
-    branch_cfg["compiled_sel_exprs"] = compiled_sel_exprs  # OPT-2
     branch_cfg["h5_sel"] = h5_sel
 
     if ctx.cancel.is_set():
@@ -284,13 +283,6 @@ def run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> R
         sel_nid = sel_cfg.get("nid")
         sel_name = sel_cfg.get("node_name", "")
 
-        # OPT-2: compile selection expressions once per selection branch,
-        # shared across all sample workers (code objects are read-only).
-        compiled_sel_exprs = [
-            compile(preprocess_hep_expr(e), '<sel>', 'eval')
-            for e in sel_cfg.get("sel_exprs", []) if e and e.strip()
-        ]
-
         h5_sel = sel_cfg["h5_sel"]
         all_cached = all(
             os.path.exists(os.path.join(
@@ -314,7 +306,7 @@ def run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> R
                 pool.submit(
                     _process_sample,
                     sel_cfg, s, idx, active_samples, cfg,
-                    compiled_sel_exprs, ctx, tracker, hdir,
+                    ctx, tracker, hdir,
                 ): s
                 for idx, s in enumerate(active_samples)
             }

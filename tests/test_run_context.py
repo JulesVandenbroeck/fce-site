@@ -103,7 +103,7 @@ def test_analytical_loop_imports_and_runs_with_ui_poisoned(tmp_path):
 # ---------------------------------------------------------------------------
 
 def _stub_process_sample(sel_cfg, s, idx, active_samples, cfg,
-                         compiled_sel_exprs, ctx, tracker, hdir):
+                         ctx, tracker, hdir):
     """Fast stand-in for the real ``_process_sample``: no ROOT file is
     touched. Simulates a small amount of work via ``ctx.cancel.wait`` so
     cancellation set from another thread wakes this one immediately rather
