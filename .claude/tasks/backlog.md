@@ -595,3 +595,13 @@ and are historical now that #6 is merged.
   `shell.html:69-71`: `#pager-forward` is not disabled at m3 nor `#pager-back` at m1, and
   `#mission-label` has no `aria-live`, so the change is silent to a screen reader. Out of scope
   for D-010's criteria — belongs to whoever ships the real panel markup. Raised 2026-09-03.
+
+- **D-010 m4** — `verify.py` C9 docstring misrecords 2 `all_results.append` registrations as
+  pre-existing; by AST this PR added them. Folded into D-010 cycle 3.
+- **D-010 m5** — C1's 768 gap measures exactly 384.0px against a `floor - 0.5` tolerance: zero
+  headroom, so a token nudge turns it red for a rounding reason. Folded into D-010 cycle 3.
+- **D-010 m6** — the ≤768 deviation note never addresses the reflow alternative the cycle-1
+  review named. Folded into D-010 cycle 3.
+- **D-010 M6 (if overruled)** — the canvas SVG scales its text with the viewBox (0.52 at 1024,
+  0.497 at 768; a 14px node title renders near 7px). Belongs to the real Bench implementation if
+  the exploration page overrules it.

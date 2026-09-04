@@ -91,7 +91,25 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   floor. checks stay 9.
   Cycle-1 gate had reproduced (9/9 shell sections PASS,
   `FAILED sections: ['board-lane-fill']`, counts 86/303, diff = the 3 scoped files).
-- **Review:** cycle 1 `2R / 4M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5524842859`.
+- **Review:** cycle 2 `0R / 2M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5538399914`.
+  **Cycle 3 dispatched 2026-09-04 — the §5.7 limit. If it does not close at 0R/0M, stop and
+  escalate.** All six cycle-1 findings verified fixed by the reviewer's own mutations, not by the
+  coder's transcripts. **C3's <=768 deviation is SETTLED and accepted** — the reviewer did the
+  arithmetic: 368 + 64 + 384 = 816 > 768, so no 768 row holds the palette at 328px+ with the
+  canvas above its floor. C3 is met; do not reopen it.
+  **M5** is R1's blind spot one layer down — C7's `length_re` still enumerates units in a fixed
+  alternation, so `90dvh` / `12pt` / `2cm` / `0.25turn` report zero offenders. Match units
+  generically, exempt by value.
+  **M6 is a fix-induced regression and the clearest instance of §5.5 on this project yet:** the M2
+  fix keeps the canvas on screen by scaling the SVG viewBox, which scales the text with it — 0.52
+  at 1024, 0.497 at 768, so a 14px node title renders near 7px. Cycle 1's defect was traded for a
+  new one **and no check observes it**, which is the actual finding. Overrulable in writing as
+  belonging to the real Bench implementation; if fixed, it must add a check on rendered text size.
+  m4 (the C9 docstring misrecords 2 registrations as pre-existing when AST shows this PR added
+  them), m5 (the 768 gap is exactly 384.0px against a 0.5 tolerance — zero headroom, document it),
+  m6 (the deviation note never addresses the reflow alternative) — all three folded into cycle 3
+  and backlogged.
+  Cycle 1 `2R / 4M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5524842859`.
   **Both Requireds are instruments that cannot fail, and both were mutation-proven, not argued.**
   R1 `verify.py:6568-6580` — C7's literal sweep matches hex only, so `white`, `rebeccapurple`,
   `rgb()`, `hsl()` all pass, and `length_re`'s trailing `\b` after `%` can never match, so every
