@@ -13,11 +13,21 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`,
   `tests/test_run_context.py`
 - **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, cycle-1 head `7899231`
-- **Status:** re-spec delivered `02a542b`; **in re-review** (still cycle 1). **C1-C9, checks=9.**
-  R1/M1/m1 all fixed, none overruled. Gate re-run in the coder's worktree: **588 passed** (floor
-  583, never fell), flake8 0, 8 tests collected, scope exactly the three files, head matches #26.
-  `_validate_sel_exprs` (`analytical_loop.py:216-244`) restores the early gate *and* bounds it
-  through `safe_eval.compile_expr` — strictly stronger than the unbounded `compile()` on `main`.
+- **Status:** **cycle 3 dispatched** 2026-09-04 — the §5.7 limit. **C1-C11, checks=11.**
+- **Review (cycle 2):** 1R / 0M / 2m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540111544).
+  R1 and M1 fixed. `_validate_sel_exprs` (`analytical_loop.py:217-245`, called at `:270`) restores
+  the early gate *and* bounds it — strictly stronger than `main`'s bare `compile()`, and the
+  reviewer's mutation 3 proved C8 is **not** satisfiable by reinstating the old call. 588 passed.
+  **R2:** the m1 fix narrowed the guard — `_compiled_sel_exprs_reference_sites` misses a read via
+  `cfg.get("compiled_sel_exprs", [])`, the idiom this codebase actually uses. Instrument, not code;
+  the property holds today. → C10. m3 (C8's `-k bound` selects the whole file) → C11.
+  **m2 backlogged:** the gate covers `sel_exprs` only — a mistyped *observable* still hits the
+  `except Exception` swallow in a worker. Pre-existing, outside B-015's remit.
+- **Three blind instruments on this one task, all mine:** C3 (`pytest tests/ -q` prints 583 either
+  way), C8 (`-k bound` matches the file name), C9 (enumerated "assignment or subscript" without
+  enumerating how this codebase reads cfg keys). Counting cycle 2 as a **cycle**, not a third
+  consecutive re-specification — C9 shipped with commands, and declaring re-spec again would put
+  the §5.7 limit permanently out of reach. **If cycle 3 does not converge, escalate to the user.**
 - **Review (cycle 1):** 1R / 1M / 1m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540011186).
   M1: the deleted `compile()` was dead as an *optimisation* but live as an early **syntax gate** —
   `sel_exprs=["l1.pt >>> 20"]` raised `SyntaxError` on `main` and now returns a completed-looking
@@ -33,27 +43,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Gate history:** cycle 1's first gate failed on a fabricated transcript (`5 passed` for a file
   that never held more than 3 tests); corrected body-only, head unmoved. Also not a cycle.
 - **Depends on:** ~~B-008~~ merged `7d5fa0a`.
-- **History:** [`archive/backend.md`](archive/backend.md)
-
-### B-016 — Close B-013's two open findings: anchor the docstring golden, correct the C8 record
-- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
-- **Branch / PR:** `task/b-016-safe-eval-doc-anchor` — **#27**, cycle-1 head `1c8b195`
-- **Status:** cycle 2 delivered `b7da9be`; **in re-review**. **C1-C6, checks=6.**
-  M1/m1 both fixed, neither overruled. Gate re-run in the coder's worktree: **582 passed**, flake8
-  0, scope `tests/test_safe_eval.py` only, head matches #27. **C5 verified independently by me:**
-  corrupting `_FULL_DOCSTRING_GOLDEN` now reddens all three docstring tests, including the
-  mutation-anywhere test that previously stayed green — M1's defect is genuinely closed.
-- **Review (cycle 1):** 0R / 1M / 1m — [PR #27 comment](https://github.com/JulesVandenbroeck/fce-site/pull/27#issuecomment-5540053740).
-  C1-C4 all met and independently reproduced: the reviewer's own plugin mutation reddened the pin
-  at prepend/append/between-clauses, all three hitting the **whole-doc golden** rather than the
-  marker lookup, control green. The C8 correction comment is live on PR #17.
-  M1: `test_compiled_expr_docstring_pin_catches_mutation_anywhere` re-implements the comparison
-  inline, so it stays green when `_FULL_DOCSTRING_GOLDEN` is corrupted while its sibling fails —
-  it detects nothing new yet raised the floor to 581 and was offered as independent C1 evidence.
-  → C5. m1 (three goldens must be edited in lockstep) folded into C6, not backlogged.
-- **Cycle, not a re-specification:** C1 shipped with a full command and was met; M1 is against a
-  property no criterion gated (§5.4 clause 3).
-- **Depends on:** ~~B-013~~ merged `87428ee`.
 - **History:** [`archive/backend.md`](archive/backend.md)
 
 ## Ready
@@ -91,6 +80,13 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-016** — closed B-013's two open findings on the `safe_eval` docstring pin — #27, `900dce8`,
+  2 cycles, clean gate (0R/0M/0m). checks=6. Test-side only. The pin is now anchored to the
+  **whole docstring**, so a contradicting claim anywhere reddens it, not only inside the two
+  pinned route clauses; `_assert_whole_docstring_pinned` is the single shared comparison and
+  `test_route_goldens_agree_with_full_docstring_golden` stops the three goldens drifting apart.
+  C8's record on PR #17 is corrected with a marker-preserving mutation. Suite floor → **582**.
+  **B-013's findings are closed; nothing carries forward.**
 - **B-014** — closed B-004's presence/nullability + doc-parity findings — #18, `db085dd`,
   1 cycle, clean gate (0R/0M/3m). checks=4; C2 **implemented, not overruled**. 134 → 286 cases,
   18 → 25 test functions, none dropped or softened. Suite floor → **580**. m1/m2/m3 backlogged.
