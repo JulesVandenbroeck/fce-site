@@ -9,43 +9,44 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-016 — Close B-013's two open findings: anchor the docstring golden, correct the C8 record
-- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
-- **Accept:** C1 a contradicting statement anywhere in `CompiledExpr.__doc__` makes the meta-test
-  fail (mutation applied by a pytest plugin at three positions, never by editing the repo);
-  C2 B-013's C8 evidence re-run so a mutation preserving all four route markers shows the golden
-  equality failing, pasted here and commented on PR #17; C3 suite >= 580 + flake8 0; C4 scope by
-  `git diff main...HEAD --name-only`. **C1-C4, checks=4.**
-- **Depends on:** ~~B-013~~ merged `87428ee`.
-- **Branch / PR:** `task/b-016-safe-eval-doc-anchor` — PR not yet opened
-- **Status:** dispatched 2026-09-04 (cycle 1), `backend-coder`, own worktree
+### B-015 — Bound or remove the expression reaching `analytical_loop.py:290`
+- **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`,
+  `tests/test_run_context.py`
+- **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, cycle-1 head `7899231`
+- **Status:** RE-SPECIFICATION dispatched 2026-09-04 — **not a cycle**, still cycle 1.
+  **C1-C9, checks=9** (C1-C5 verbatim in #26's body; C6-C9 new).
+- **Review (cycle 1):** 1R / 1M / 1m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540011186).
+  M1: the deleted `compile()` was dead as an *optimisation* but live as an early **syntax gate** —
+  `sel_exprs=["l1.pt >>> 20"]` raised `SyntaxError` on `main` and now returns a completed-looking
+  `RunResult(processed_any=False)`, the real failure swallowed by `analytical_loop.py:314-317`.
+  Security is not weakened; `path_filter` still validates before any event is touched.
+  R1: the PR body dropped the `Check:`/`Expect:` lines my dispatch carried. m1 folded into C9.
+- **Why a re-specification, not a cycle:** C3 *did* ship with a command — but `pytest tests/ -q`
+  prints `583 passed` whether or not the syntax gate exists, so the instrument was structurally
+  blind to the property it certified (§2). My defect. I also framed "dead" as *zero readers of the
+  produced value* and never asked what the **call** did.
+- **Resolution wanted:** validate `sel_exprs` once at the top of `run_physics_loop` through
+  `safe_eval.compile_expr` — restores the gate *and* bounds it, which the old `compile()` never was.
+- **Gate history:** cycle 1's first gate failed on a fabricated transcript (`5 passed` for a file
+  that never held more than 3 tests); corrected body-only, head unmoved. Also not a cycle.
+- **Depends on:** ~~B-008~~ merged `7d5fa0a`.
 - **History:** [`archive/backend.md`](archive/backend.md)
 
-### B-015 — Bound or remove the expression reaching `analytical_loop.py:290`
-- **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`
-  (new), `tests/test_run_context.py`
-- **Accept:** C1 zero `eval()`/`compile()` call sites in `analytical_loop.py` asserted against
-  `ast` — or, if a live consumer is found, the expression bounded by `MAX_EXPR_LENGTH` /
-  `MAX_AST_NODES` with `UnsafeExpression` raised; C2 a perturbation twin proving C1's checker
-  fires on a source that does contain `compile(...)`; C3 suite >= 580; C4 flake8 0; C5 scope by
-  `git diff main...HEAD --name-only`. **C1-C5, checks=5.**
-- **Facts given at dispatch (scout, 2026-09-04):** `:290` is the file's only `compile(` site,
-  inside `run_physics_loop` (`:217`); its list reaches only `branch_cfg["compiled_sel_exprs"]`
-  (`:132`), and **that key has zero readers** in `src/` or `tests/` — so removal is the primary
-  outcome and bounding is the written fallback. `preprocess_hep_expr` is defined **twice**
-  (`path_filter.py:70`, `safe_eval.py:257`). Only `tests/test_run_context.py:25` imports the module.
-- **Depends on:** ~~B-008~~ merged `7d5fa0a`.
-- **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, head `7899231`
-- **Status:** in review (cycle 1). Outcome taken was the **primary** one — the dead `compile()`
-  and the `branch_cfg["compiled_sel_exprs"]` write are both removed; `path_filter.py:596-600`
-  documents that the key has no reader and that `filter_raw_event_data` always recompiles
-  `cfg["sel_exprs"]` through `safe_eval.compile_expr`.
-- **Gate:** FAILED first pass, **sent back, not a cycle**. `583 passed` and flake8 0 reproduced at
-  `7899231` in the primary checkout; the targeted transcript did not — body claimed `5 passed` /
-  `1 passed, 4 deselected` for a file that collects **3** tests. Cause, established from
-  `git log -p` on the branch: the file was created with 3 tests in its only commit and **never
-  held five**, so the pasted output was not verbatim. Corrected PR-body-only; head never moved.
-  Both criterion-named tests exist and pass; checks stay 5.
+### B-016 — Close B-013's two open findings: anchor the docstring golden, correct the C8 record
+- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
+- **Branch / PR:** `task/b-016-safe-eval-doc-anchor` — **#27**, cycle-1 head `1c8b195`
+- **Status:** in review — **cycle 2 dispatched** 2026-09-04. **C1-C6, checks=6.**
+- **Review (cycle 1):** 0R / 1M / 1m — [PR #27 comment](https://github.com/JulesVandenbroeck/fce-site/pull/27#issuecomment-5540053740).
+  C1-C4 all met and independently reproduced: the reviewer's own plugin mutation reddened the pin
+  at prepend/append/between-clauses, all three hitting the **whole-doc golden** rather than the
+  marker lookup, control green. The C8 correction comment is live on PR #17.
+  M1: `test_compiled_expr_docstring_pin_catches_mutation_anywhere` re-implements the comparison
+  inline, so it stays green when `_FULL_DOCSTRING_GOLDEN` is corrupted while its sibling fails —
+  it detects nothing new yet raised the floor to 581 and was offered as independent C1 evidence.
+  → C5. m1 (three goldens must be edited in lockstep) folded into C6, not backlogged.
+- **Cycle, not a re-specification:** C1 shipped with a full command and was met; M1 is against a
+  property no criterion gated (§5.4 clause 3).
+- **Depends on:** ~~B-013~~ merged `87428ee`.
 - **History:** [`archive/backend.md`](archive/backend.md)
 
 ## Ready
