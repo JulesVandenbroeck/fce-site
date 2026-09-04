@@ -77,9 +77,18 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   focus walk; C9 the verify.py floors hold and `board-lane-fill` stays the only red.
 - **Depends on:** ~~D-009~~, ~~D-013~~, ~~D-002~~ — all merged.
 - **Branch / PR:** `task/d-010-page-shell` — **#25**, `6d91a96`
-- **Status:** **cycle-2 rework DISPATCHED 2026-09-04** to design-coder at high effort, worktree,
-  with comment `5524842859` and IDs R1/R2/M1/M2/M3/M4. checks stay 9 — R1/R2 repair existing
-  instruments rather than add criteria; M4's grep floor is replaced by an AST count.
+- **Status:** **cycle 2 delivered `cfd2a1d`; §5.1 gate reproduced 2026-09-04 in `~/fce-gate-d010c2`
+  — all 9 shell sections PASS, `FAILED sections: ['board-lane-fill']` and nothing else, flake8 0
+  across `src/ tests/ scripts/` + `verify.py`, AST floors 78 / 213, diff vs merge base = the 3
+  scoped files. Cycle-2 reviewer dispatched.** All six findings reported fixed, none overruled.
+  M2 fixed in CSS only — `shell.html` untouched, so no markup or JS moved this cycle: the canvas
+  region gets `flex: 1 1 0` + a 384px `min-width` floor, the two side regions yield instead, the
+  canvas SVG scales by viewBox rather than cropping, and two breakpoints step the panel down at
+  1024 and both regions at 768. **M4's grep floor is retired for an AST count — 78 registrations
+  and 213 reporting calls, superseding the self-inflating 86 / 303.** One deviation declared and
+  handed to the reviewer to rule on: at <=768 the expanded palette is 192px, below C3's 328px, on
+  the argument that no 768 row holds a 368px palette + 320px panel + a canvas above its 384px
+  floor. checks stay 9.
   Cycle-1 gate had reproduced (9/9 shell sections PASS,
   `FAILED sections: ['board-lane-fill']`, counts 86/303, diff = the 3 scoped files).
 - **Review:** cycle 1 `2R / 4M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5524842859`.
@@ -196,6 +205,11 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md).
   constraint stays visible if the node model or the plot's sizing ever changes.
   **A future task must not read that as a regression it introduced, and must not delete,
   disable, relabel or downgrade that section to make the run green.**
+- **The `all_results.append` / `line()` floors are counted from the AST, not by grep** (D-010
+  cycle 2, 2026-09-04). The old `grep -c` counted lines that merely *mention* the string,
+  including the counting lines themselves — it reported 86 against 78 real registrations. On
+  `task/d-010-page-shell` at `cfd2a1d`: **78** registrations, **213** reporting calls, both by
+  `ast.walk`. Do not reinstate a grep floor.
 - `verify.py` on `main` at `72d2950`: **71** registered sections.
   `grep -c 'all_results.append'` = **71**; `grep -c 'results.append\|line('` = **269**.
   A fall in either is `Required`. Superseded: 69 / 233 at `0aee604` (65 sections). Superseded historical figure: 46 / 149 / 121 non-bench at
