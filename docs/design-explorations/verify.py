@@ -6190,6 +6190,57 @@ SHELL_PAGER_BACK = "#pager-back"
 SHELL_PAGER_FORWARD = "#pager-forward"
 SHELL_CANVAS_WRAP = "#canvas-wrap"
 
+# The three widths this design is verified at, and the canvas region's own
+# hard floor: `min-width: calc(var(--space-7) * 6)` = 384px in shell.css,
+# which is the opened node card's 328.0px plus the region's two
+# var(--space-3) paddings and margin over. Both are constants of the design,
+# derived from nothing the checks below measure -- which is the whole point
+# of cycle-1 review R2: C1's probes must be anchored to something that does
+# not shrink when the region under test shrinks.
+SHELL_DESIGN_WIDTHS: tuple[int, ...] = (1440, 1024, 768)
+SHELL_CANVAS_MIN_W = 384.0
+
+# WCAG 2.2 SC 2.4.11 (focus appearance) non-text contrast floor for a focus
+# indicator against its adjacent background.
+FOCUS_RING_MIN_CONTRAST = 3.0
+
+# C9's two floors, counted from this file's own AST rather than by grepping
+# lines (cycle-1 review M4): real `all_results.append(...)` registrations
+# inside `main()`, and real `line(...)` / `results.append(...)` reporting
+# calls anywhere in the file. 67 and 195 respectively on `main` at 72d2950.
+SHELL_REGISTRATION_FLOOR = 78
+SHELL_REPORT_CALL_FLOOR = 213
+
+# The CSS named colours, for C7's literal sweep (cycle-1 review R1: the old
+# sweep saw hex and nothing else, so `color: white` and
+# `border-color: rebeccapurple` both passed as "zero offenders"). Matched
+# with a `(?<![\w-]) ... (?![\w-])` guard so a hyphenated identifier that
+# merely contains one -- `--graphite-blue`, `white-space` -- is not a hit.
+# `transparent` and `currentColor` are deliberately absent: neither names a
+# colour, so neither is a value that ought to have been a token.
+CSS_NAMED_COLORS: frozenset[str] = frozenset(
+    """
+    aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue
+    blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk
+    crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki
+    darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen
+    darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue
+    dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite
+    gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki
+    lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan
+    lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen
+    lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen
+    magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen
+    mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream
+    mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid
+    palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum
+    powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown
+    seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen
+    steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow
+    yellowgreen
+    """.split()
+)
+
 
 def _shell_set_palette_state(page: Page, want: str) -> None:
     cur = page.eval_on_selector("#palette", "el => el.dataset.state")
@@ -6207,19 +6258,24 @@ def _shell_set_panel_state(page: Page, want: str) -> None:
 
 def check_shell_canvas_always_visible(pw: Playwright) -> bool:
     """Criterion 1: in every one of the 4 (palette collapsed/expanded) x
-    (mission panel collapsed/expanded) combinations, `#canvas-region` --
-    the always-present middle region design-brief.md §4 requires -- is
-    never covered. Probed with a real `document.elementFromPoint` at the
-    region's own centre plus 5 points inset 8px from its own
-    `getBoundingClientRect()` (the four corners and the top-edge midpoint):
-    6 probes per state, 4 states, 24 probes total, each required to resolve
-    to `#canvas-region` itself or one of its descendants (the wrap, the svg,
-    a node card) -- never the palette or the mission panel painting over
-    it, which a free-canvas overlap (C4's own concern) could not cause here
-    since palette and panel are ordinary flex siblings, never positioned
-    over the canvas."""
-    section("Shell C1 -- canvas region always present, never covered, all 4 states")
-    browser, context, page, *_ = load_shell_page(pw, 1440)
+    (mission panel collapsed/expanded) combinations, at each of the three
+    design widths (1440, 1024, 768), `#canvas-region` -- the always-present
+    middle region design-brief.md §4 requires -- is both large enough to be
+    the canvas and not covered by anything.
+
+    Cycle-1 review R2: the probes used to be derived from the region's own
+    `getBoundingClientRect()`, so they shrank with it and `.canvas-region {
+    max-width: 3px }` still scored 24/24. Nothing here is derived from the
+    region under test any more. The probe rectangle is the *gap between the
+    other two regions* -- from the palette's right edge to the mission
+    panel's left edge, over the full viewport height -- and that gap is
+    first required to be at least `SHELL_CANVAS_MIN_W` (384px, the
+    `min-width` shell.css gives `.canvas-region`: an opened 328.0px node
+    card plus its two var(--space-3) paddings and margin). A region squeezed
+    to 3px leaves a 3px gap and fails the floor; a region pushed out from
+    under the gap leaves probe points landing on `<body>` and fails the
+    probes. 6 probes per state, 4 states, 3 widths = 72 probes."""
+    section("Shell C1 -- canvas region always present, never covered, 4 states x 3 widths")
 
     states = [
         ("collapsed", "collapsed"),
@@ -6230,46 +6286,72 @@ def check_shell_canvas_always_visible(pw: Playwright) -> bool:
     total_probes = 0
     total_hits = 0
     failures = []
-    for palette_state, panel_state in states:
-        _shell_set_palette_state(page, palette_state)
-        _shell_set_panel_state(page, panel_state)
-        result = page.evaluate(
-            """() => {
-                const region = document.getElementById('canvas-region');
-                const r = region.getBoundingClientRect();
-                const inset = 8;
-                const pts = [
-                    [r.left + r.width / 2, r.top + r.height / 2],           // centre
-                    [r.left + inset, r.top + inset],                        // top-left
-                    [r.right - inset, r.top + inset],                       // top-right
-                    [r.left + inset, r.bottom - inset],                     // bottom-left
-                    [r.right - inset, r.bottom - inset],                    // bottom-right
-                    [r.left + r.width / 2, r.top + inset],                  // top-edge midpoint
-                ];
-                return pts.map(([x, y]) => {
-                    const el = document.elementFromPoint(x, y);
-                    const hit = !!(el && (el === region || region.contains(el)));
-                    return { x, y, tag: el ? el.tagName : null, cls: el ? el.getAttribute('class') : null, hit };
-                });
-            }"""
-        )
-        for probe in result:
-            total_probes += 1
-            if probe["hit"]:
-                total_hits += 1
-            else:
-                failures.append({"state": f"palette={palette_state},panel={panel_state}", **probe})
+    floor_failures = []
+    gaps = []
+    for width in SHELL_DESIGN_WIDTHS:
+        browser, context, page, *_ = load_shell_page(pw, width)
+        for palette_state, panel_state in states:
+            _shell_set_palette_state(page, palette_state)
+            _shell_set_panel_state(page, panel_state)
+            result = page.evaluate(
+                """(floor) => {
+                    // Every coordinate below comes from the palette, the mission
+                    // panel or the viewport -- never from #canvas-region itself,
+                    // which is the thing under test (cycle-1 review R2).
+                    const region = document.getElementById('canvas-region');
+                    const p = document.getElementById('palette').getBoundingClientRect();
+                    const m = document.getElementById('mission-panel').getBoundingClientRect();
+                    const gap = { left: p.right, right: m.left, top: 0, bottom: window.innerHeight };
+                    const gapWidth = gap.right - gap.left;
+                    const inset = 8;
+                    const midX = (gap.left + gap.right) / 2;
+                    const pts = [
+                        [midX, (gap.top + gap.bottom) / 2],                 // centre
+                        [gap.left + inset, gap.top + inset],                // top-left
+                        [gap.right - inset, gap.top + inset],               // top-right
+                        [gap.left + inset, gap.bottom - inset],             // bottom-left
+                        [gap.right - inset, gap.bottom - inset],            // bottom-right
+                        [midX, gap.top + inset],                            // top-edge midpoint
+                    ];
+                    const probes = pts.map(([x, y]) => {
+                        const el = document.elementFromPoint(x, y);
+                        const hit = !!(el && (el === region || region.contains(el)));
+                        return { x, y, tag: el ? el.tagName : null, cls: el ? el.getAttribute('class') : null, hit };
+                    });
+                    return { gapWidth, floorOk: gapWidth >= floor - 0.5, probes };
+                }""",
+                SHELL_CANVAS_MIN_W,
+            )
+            state_name = f"{width}px palette={palette_state},panel={panel_state}"
+            gaps.append(f"{state_name}: gap={result['gapWidth']:.1f}px")
+            if not result["floorOk"]:
+                floor_failures.append(f"{state_name}: gap {result['gapWidth']:.1f}px < {SHELL_CANVAS_MIN_W}px")
+            for probe in result["probes"]:
+                total_probes += 1
+                if probe["hit"]:
+                    total_hits += 1
+                else:
+                    failures.append({"state": state_name, **probe})
+        browser.close()
 
-    ok = total_probes == 24 and total_hits == 24
+    floor_ok = not floor_failures
     line(
-        f"{total_probes} probes across 4 states (6 each: centre + 4 corners + top-edge midpoint, "
-        "each inset 8px from #canvas-region's own rect)",
-        ok,
+        f"palette-to-panel gap >= {SHELL_CANVAS_MIN_W}px in all 12 (4 states x 3 widths) layouts",
+        floor_ok,
+        "; ".join(gaps) if floor_ok else f"{len(floor_failures)} below the floor: {floor_failures[:4]}",
+    )
+
+    expected_probes = 6 * len(states) * len(SHELL_DESIGN_WIDTHS)
+    probes_ok = total_probes == expected_probes and total_hits == expected_probes
+    line(
+        f"{total_probes} probes across 4 states x {len(SHELL_DESIGN_WIDTHS)} widths "
+        "(6 each: centre + 4 corners + top-edge midpoint of the palette-to-panel gap, inset 8px)",
+        probes_ok,
         f"{total_hits}/{total_probes} hit #canvas-region or a descendant",
     )
+    ok = floor_ok and probes_ok
     for f in failures[:10]:
         print(f"       miss at {f['state']}: ({f['x']:.1f},{f['y']:.1f}) -> <{f['tag']} class={f['cls']!r}>")
-    browser.close()
     return ok
 
 
@@ -6512,7 +6594,11 @@ def check_shell_ui_state_not_in_payload(pw: Playwright) -> bool:
     after = payload_json()
 
     identical = before == after
-    line("payload before toggling == payload after 2x palette + 2x panel toggles", identical, f"before={before}, after={after}")
+    line(
+        "payload before toggling == payload after 2x palette + 2x panel toggles",
+        identical,
+        f"before={before}, after={after}",
+    )
 
     pattern = re.compile(r"collaps|expand|panelOpen|open|ui", re.IGNORECASE)
     match = pattern.search(before)
@@ -6538,8 +6624,8 @@ def check_shell_shipped_tokens(pw: Playwright) -> bool:
     section("Shell C7 -- consumes the shipped tokens.css; shell.css carries no stray literals")
 
     html_text = SHELL_HTML.read_text()
-    stylesheet_lines = [l for l in html_text.splitlines() if 'rel="stylesheet"' in l]
-    href_matches = [m.group(1) for l in stylesheet_lines for m in [re.search(r'href="([^"]+)"', l)] if m]
+    stylesheet_lines = [ln for ln in html_text.splitlines() if 'rel="stylesheet"' in ln]
+    href_matches = [m.group(1) for ln in stylesheet_lines for m in [re.search(r'href="([^"]+)"', ln)] if m]
     tokens_href = next((h for h in href_matches if h.endswith("tokens.css")), None)
     resolved = (SHELL_HTML.parent / tokens_href).resolve() if tokens_href else None
     link_ok = resolved == APP_TOKENS_CSS.resolve()
@@ -6551,10 +6637,19 @@ def check_shell_shipped_tokens(pw: Playwright) -> bool:
 
     css_text = SHELL_CSS.read_text()
     css_no_comments = re.sub(r"/\*.*?\*/", "", css_text, flags=re.S)
-
-    exempt_lengths = {("0", None), ("100", "%"), ("1", "px"), ("328.0", "px"), ("300.0", "px"), ("80.5", "px")}
+    # Media query preludes are blanked (spaces, so line numbers survive)
+    # before the sweep: a media feature is the one place in CSS where a
+    # length may not be a custom property -- `@media (max-width: var(--x))`
+    # does not resolve -- so shell.css's two breakpoints are literal by
+    # necessity, and shell.css says so at the rule itself. Everything
+    # *inside* the blocks is still swept.
+    css_swept = re.sub(
+        r"@media[^{]*", lambda m: re.sub(r"[^\n]", " ", m.group(0)), css_no_comments
+    )
 
     def is_exempt_number(value: float, unit: str) -> bool:
+        """0 anywhere, 100%, a 1px hairline, and the three geometric
+        constants D-013 settled and this task's own criteria name."""
         if value == 0:
             return True
         if unit == "%" and value == 100:
@@ -6565,24 +6660,47 @@ def check_shell_shipped_tokens(pw: Playwright) -> bool:
             return True
         return False
 
-    length_re = re.compile(r"(?<![\w.#-])(-?\d+(?:\.\d+)?)(px|em|rem|%|vh|vw|vmin|vmax|deg|s|ms|ch|ex|fr)\b")
-    color_re = re.compile(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{1}|[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?\b")
+    # Cycle-1 review R1: the trailing `\b` this pattern used to carry after
+    # the unit alternation could never match for `%` -- `%` is not a word
+    # character and a CSS percentage is always followed by `;`, `)` or
+    # whitespace -- so every percentage literal was invisible to the sweep.
+    # A negative lookahead is the boundary that works for every unit,
+    # word-ending or not. `ms` precedes `s` and `rem` precedes `em` so the
+    # longer unit wins the alternation.
+    length_re = re.compile(
+        r"(?<![\w.#-])(-?\d+(?:\.\d+)?)(px|rem|em|vmin|vmax|vh|vw|deg|ms|s|ch|ex|fr|%)(?![\w.%])"
+    )
+    hex_color_re = re.compile(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{1}|[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?\b")
+    # ...and the colour syntaxes it could not see at all: `rgb()`, `hsl()`,
+    # `color()` and their relatives, and the 148 CSS named colours.
+    color_fn_re = re.compile(
+        r"(?<![\w-])(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|device-cmyk)\s*\(",
+        re.IGNORECASE,
+    )
+    named_color_re = re.compile(
+        r"(?<![\w-])(" + "|".join(sorted(CSS_NAMED_COLORS, key=len, reverse=True)) + r")(?![\w-])",
+        re.IGNORECASE,
+    )
+
+    def line_of(pos: int) -> int:
+        return css_swept.count("\n", 0, pos) + 1
 
     offenders = []
-    for m in length_re.finditer(css_no_comments):
-        value = float(m.group(1))
-        unit = m.group(2)
-        if not is_exempt_number(value, unit):
-            line_no = css_no_comments.count("\n", 0, m.start()) + 1
-            offenders.append(f"line {line_no}: literal length {m.group(0)!r}")
-    for m in color_re.finditer(css_no_comments):
-        line_no = css_no_comments.count("\n", 0, m.start()) + 1
-        offenders.append(f"line {line_no}: literal colour {m.group(0)!r}")
+    for m in length_re.finditer(css_swept):
+        if not is_exempt_number(float(m.group(1)), m.group(2)):
+            offenders.append(f"line {line_of(m.start())}: literal length {m.group(0)!r}")
+    for m in hex_color_re.finditer(css_swept):
+        offenders.append(f"line {line_of(m.start())}: literal colour {m.group(0)!r}")
+    for m in color_fn_re.finditer(css_swept):
+        offenders.append(f"line {line_of(m.start())}: literal colour function {m.group(1).lower()}(...)")
+    for m in named_color_re.finditer(css_swept):
+        offenders.append(f"line {line_of(m.start())}: named colour {m.group(1)!r}")
 
     sweep_ok = len(offenders) == 0
     line(
-        f"literal-value sweep of shell.css's own source ({len(css_no_comments.splitlines())} lines, "
-        "comments stripped)",
+        f"literal-value sweep of shell.css's own source ({len(css_swept.splitlines())} lines, "
+        "comments and @media preludes stripped; lengths, hex, rgb()/hsl()/color() and the "
+        f"{len(CSS_NAMED_COLORS)} CSS named colours)",
         sweep_ok,
         "zero offenders" if sweep_ok else f"{len(offenders)} offender(s)",
     )
@@ -6602,7 +6720,11 @@ def check_shell_reduced_motion_and_focus(pw: Playwright) -> bool:
     the palette toggle, both pager controls, and the canvas
     (`#canvas-wrap`, given `tabindex="0"` in shell.html for exactly this),
     each with a `:focus-visible` match and a painted (non-`none`,
-    non-zero-width) outline."""
+    non-zero-width) outline -- and, per cycle-1 review M1, each ring
+    additionally *measured*: its computed `outline-color` composited over
+    the nearest painted ancestor background and required to clear WCAG SC
+    2.4.11's 3:1 non-text floor, so a ring that stopped being perceivable
+    could no longer pass on presence alone."""
     section("Shell C8 -- reduced motion is inert; focus walk reaches palette/pager/canvas")
 
     browser, context, page, *_ = load_shell_page(pw, 1440, reduced_motion="reduce")
@@ -6652,7 +6774,25 @@ def check_shell_reduced_motion_and_focus(pw: Playwright) -> bool:
                     cs.outlineStyle !== 'none' &&
                     parseFloat(cs.outlineWidth) > 0
                 );
-                return { wid, id: el.id || null, tag: el.tagName, cls: el.getAttribute('class'), present };
+                // The ring is painted outside the element's own border box
+                // (outline-offset), so the background it must be perceivable
+                // against is the nearest painted ancestor background, walked
+                // up until one is opaque. Returned as the stack of rgba()
+                // strings; Python composites and measures it.
+                const bgStack = [];
+                for (let a = el.parentElement; a; a = a.parentElement) {
+                    const bg = getComputedStyle(a).backgroundColor;
+                    if (!bg || bg === 'rgba(0, 0, 0, 0)') continue;
+                    bgStack.push(bg);
+                    const m = bg.match(/rgba?\\(([^)]*)\\)/);
+                    const parts = m ? m[1].split(',').map(s => parseFloat(s)) : [];
+                    if (parts.length < 4 || parts[3] >= 1) break;
+                }
+                return {
+                    wid, id: el.id || null, tag: el.tagName, cls: el.getAttribute('class'),
+                    present, outlineColor: cs.outlineColor, outlineWidth: cs.outlineWidth,
+                    bgStack,
+                };
             }"""
         )
         if info is None:
@@ -6662,6 +6802,40 @@ def check_shell_reduced_motion_and_focus(pw: Playwright) -> bool:
         seen.add(info["wid"])
         stops.append(info)
         page2.keyboard.press("Tab")
+
+    # Cycle-1 review M1: `present` above is presence, not perceivability --
+    # verbatim the pattern that produced this file's own verify.py:2405
+    # Required finding (a 1.06:1 ring passing a presence-only test). Every
+    # ring is now measured against the background it is actually painted on,
+    # to WCAG SC 2.4.11's 3:1 non-text floor.
+    ring_rows = []
+    ring_failures = []
+    for s in stops:
+        bg = None
+        for bg_str in reversed(s.get("bgStack") or []):
+            parsed = parse_rgba(bg_str)
+            if parsed is None:
+                continue
+            bg = composite_over(parsed, bg if bg is not None else (255.0, 255.0, 255.0))
+        ring = parse_rgba(s.get("outlineColor") or "")
+        if bg is None or ring is None:
+            ring_failures.append(f"id={s['id']!r}: no measurable ring/background "
+                                 f"(outlineColor={s.get('outlineColor')!r}, bgStack={s.get('bgStack')})")
+            continue
+        ratio = contrast_ratio(composite_over(ring, bg), bg)
+        ring_rows.append((s["id"] or s["cls"], ratio))
+        if ratio < FOCUS_RING_MIN_CONTRAST:
+            ring_failures.append(
+                f"id={s['id']!r} class={s['cls']!r}: ring {s['outlineColor']} on "
+                f"rgb({bg[0]:.0f}, {bg[1]:.0f}, {bg[2]:.0f}) = {ratio:.2f}:1"
+            )
+    ring_ok = not ring_failures and len(ring_rows) == len(stops)
+    line(
+        f"every focus ring measured against the background it is painted on, "
+        f">= {FOCUS_RING_MIN_CONTRAST}:1 (WCAG SC 2.4.11)",
+        ring_ok,
+        ", ".join(f"{name}={r:.2f}:1" for name, r in ring_rows) if ring_ok else f"{ring_failures}",
+    )
 
     stop_ids = {s["id"]: s["present"] for s in stops if s["id"]}
     targets = {
@@ -6681,7 +6855,7 @@ def check_shell_reduced_motion_and_focus(pw: Playwright) -> bool:
         print(f"       [{mark}] id={s['id']!r} <{s['tag']} class={s['cls']!r}>")
     browser2.close()
 
-    return motion_ok and focus_ok
+    return motion_ok and focus_ok and ring_ok
 
 
 def check_shell_verify_floors(pw: Playwright) -> bool:
@@ -6690,32 +6864,58 @@ def check_shell_verify_floors(pw: Playwright) -> bool:
     section` already checks a different floor in this file -- by reading
     this file's own source, not by re-running the whole suite recursively
     (which `--all` already does, and which the task's own "Verification"
-    instructions run separately from outside this process). Two counts,
-    matching `grep -c`'s own line-counting semantics exactly (a line counts
-    once even if the pattern matches it twice): lines containing
-    `all_results.append` (floor 71 + 9 new shell-* sections = 80), and
-    lines containing `results.append` or `line(` (floor 269). Also
-    confirms `board-lane-fill` -- D-006's overruled C10, left red on
-    purpose -- is still registered and still named, neither deleted nor
-    relabelled."""
+    instructions run separately from outside this process).
+
+    Cycle-1 review M4: both counts used to be `grep -c`-style line counts,
+    which counted every line that merely *mentioned* the string -- including
+    this function's own counting lines and its docstring, inflating the
+    registration count to 86 against 78 real registrations. Both are now
+    counted from this file's own AST, the way `check_all_sections_wrapped_
+    in_run_section` already counts a different floor: real
+    `all_results.append(...)` calls inside `main()` (floor 78 -- 67 on main
+    at 72d2950, plus this task's own 9 shell-* sections, plus 2 that were
+    already there and that the old line count could not distinguish), and
+    real `line(...)` / `results.append(...)` calls anywhere in the file
+    (floor 213 -- 195 on main, plus this task's own reporting). Prose can no
+    longer clear either. Also confirms
+    `board-lane-fill` -- D-006's overruled C10, left red on purpose -- is
+    still registered and still named, neither deleted nor relabelled."""
     section("Shell C9 -- this file's own verification floors, and the one intended red")
     text = Path(__file__).read_text()
-    lines = text.splitlines()
+    tree = ast.parse(text, filename=str(Path(__file__)))
+    main_def = next(
+        (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "main"), None
+    )
 
-    appends = sum(1 for l in lines if "all_results.append" in l)
-    reports = sum(1 for l in lines if "results.append" in l or "line(" in l)
+    def is_append_to(node: ast.AST, target: str) -> bool:
+        return (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "append"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == target
+        )
 
-    appends_ok = appends >= 71 + 9
-    reports_ok = reports >= 269
+    appends = sum(1 for n in ast.walk(main_def) if is_append_to(n, "all_results")) if main_def else 0
+    reports = sum(
+        1
+        for n in ast.walk(tree)
+        if (isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "line")
+        or is_append_to(n, "results")
+    )
+
+    appends_ok = appends >= SHELL_REGISTRATION_FLOOR
+    reports_ok = reports >= SHELL_REPORT_CALL_FLOOR
     line(
-        f"lines containing 'all_results.append': {appends}",
+        f"real all_results.append(...) calls in main(), by AST: {appends}",
         appends_ok,
-        "floor is 71 (main, at 72d2950) + 9 (this task's own shell-* sections) = 80",
+        f"floor is {SHELL_REGISTRATION_FLOOR} (67 registrations on main at 72d2950, "
+        "+ 9 shell-* sections, + 2 the old line-count could not tell apart)",
     )
     line(
-        f"lines containing 'results.append' or 'line(': {reports}",
+        f"real line(...) / results.append(...) calls in this file, by AST: {reports}",
         reports_ok,
-        "floor is 269 (main, at 72d2950)",
+        f"floor is {SHELL_REPORT_CALL_FLOOR}",
     )
 
     board_fn_present = "def check_board_lane_fill" in text
@@ -7246,31 +7446,58 @@ def main() -> None:
             # (C1-C9), each already wrapped in `run_section` by construction
             # -- see each `check_shell_*` function's own docstring.
             all_results.append(
-                ("shell-canvas-always-visible", run_section("shell-canvas-always-visible", check_shell_canvas_always_visible, pw))
+                (
+                    "shell-canvas-always-visible",
+                    run_section("shell-canvas-always-visible", check_shell_canvas_always_visible, pw),
+                )
             )
             all_results.append(
-                ("shell-palette-collapse-gives-canvas", run_section("shell-palette-collapse-gives-canvas", check_shell_palette_collapse_gives_canvas, pw))
+                (
+                    "shell-palette-collapse-gives-canvas",
+                    run_section("shell-palette-collapse-gives-canvas", check_shell_palette_collapse_gives_canvas, pw),
+                )
             )
             all_results.append(
-                ("shell-palette-sized-to-opened-node", run_section("shell-palette-sized-to-opened-node", check_shell_palette_sized_to_opened_node, pw))
+                (
+                    "shell-palette-sized-to-opened-node",
+                    run_section("shell-palette-sized-to-opened-node", check_shell_palette_sized_to_opened_node, pw),
+                )
             )
             all_results.append(
-                ("shell-grown-node-visible-above", run_section("shell-grown-node-visible-above", check_shell_grown_node_visible_above, pw))
+                (
+                    "shell-grown-node-visible-above",
+                    run_section("shell-grown-node-visible-above", check_shell_grown_node_visible_above, pw),
+                )
             )
             all_results.append(
-                ("shell-mission-panel-pager", run_section("shell-mission-panel-pager", check_shell_mission_panel_pager, pw))
+                (
+                    "shell-mission-panel-pager",
+                    run_section("shell-mission-panel-pager", check_shell_mission_panel_pager, pw),
+                )
             )
             all_results.append(
-                ("shell-ui-state-not-in-payload", run_section("shell-ui-state-not-in-payload", check_shell_ui_state_not_in_payload, pw))
+                (
+                    "shell-ui-state-not-in-payload",
+                    run_section("shell-ui-state-not-in-payload", check_shell_ui_state_not_in_payload, pw),
+                )
             )
             all_results.append(
-                ("shell-shipped-tokens", run_section("shell-shipped-tokens", check_shell_shipped_tokens, pw))
+                (
+                    "shell-shipped-tokens",
+                    run_section("shell-shipped-tokens", check_shell_shipped_tokens, pw),
+                )
             )
             all_results.append(
-                ("shell-reduced-motion-and-focus", run_section("shell-reduced-motion-and-focus", check_shell_reduced_motion_and_focus, pw))
+                (
+                    "shell-reduced-motion-and-focus",
+                    run_section("shell-reduced-motion-and-focus", check_shell_reduced_motion_and_focus, pw),
+                )
             )
             all_results.append(
-                ("shell-verify-floors", run_section("shell-verify-floors", check_shell_verify_floors, pw))
+                (
+                    "shell-verify-floors",
+                    run_section("shell-verify-floors", check_shell_verify_floors, pw),
+                )
             )
 
     section("Summary")

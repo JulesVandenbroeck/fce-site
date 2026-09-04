@@ -77,7 +77,12 @@ button:focus-visible,
 
 /* ---- palette (left, collapses) ------------------------------------------- */
 .palette {
-  flex: 0 0 auto;
+  /* 0 1 auto, not 0 0 auto: the canvas region's own min-width is the floor
+   * this layout defends (see .canvas-region), so when the row runs out of
+   * width it is the two side regions that give, down to their collapsed
+   * rail width, never the canvas. */
+  flex: 0 1 auto;
+  min-width: var(--space-7);
   width: var(--space-7);
   border-right: var(--border-hairline) solid var(--paper-line);
   background: var(--panel);
@@ -162,9 +167,23 @@ button:focus-visible,
 .palette__add--histogram .palette__add-swatch { background: var(--node-histogram); }
 
 /* ---- canvas region (middle, always present, never covered) -------------- */
+/* The canvas is the region that may not collapse. Its min-width is a hard
+ * floor of 6 x --space-7 = 384px: an opened node card is 328.0px wide, and
+ * 384 is that plus the region's own two var(--space-3) paddings and enough
+ * margin that the card is never flush against a panel edge. Everything else
+ * in the row yields to this (see .palette / .mission-panel flex-shrink),
+ * and the two breakpoints at the bottom of this file step the expanded
+ * panel widths down so the floor is met without any shrinking at all at
+ * 1024 and 768. verify.py's `shell-canvas-always-visible` measures the gap
+ * between the palette's right edge and the panel's left edge against this
+ * same 384px, at all three design widths. */
 .canvas-region {
-  flex: 1 1 auto;
-  min-width: 0;
+  /* basis 0, not auto: the region takes what the row has left rather than
+   * asking for its own content width, so the two side regions keep their
+   * declared widths until the canvas actually reaches its floor -- at which
+   * point they, and only they, start giving. */
+  flex: 1 1 0;
+  min-width: calc(var(--space-7) * 6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -172,9 +191,16 @@ button:focus-visible,
   overflow: auto;
   background: var(--paper);
 }
+/* Fluid, not fixed: the drawing surface takes the region's full width up to
+ * its 11 x --space-7 = 704px design size, and the SVG's own viewBox +
+ * default preserveAspectRatio scales the graph down to fit rather than
+ * cropping it. A node placed near the canvas's far corner is therefore
+ * still on screen at 768px, which a fixed 704px surface inside a region
+ * narrower than 704px could not manage. */
 .canvas-wrap {
-  flex: 0 0 auto;
-  width: calc(var(--space-7) * 11);
+  flex: 0 1 auto;
+  width: 100%;
+  max-width: calc(var(--space-7) * 11);
   height: calc(var(--space-7) * 8);
   border: var(--border-hairline) solid var(--paper-line);
   border-radius: var(--radius);
@@ -237,7 +263,8 @@ button:focus-visible,
 
 /* ---- mission panel (right, expands + pages back through missions) ------- */
 .mission-panel {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: var(--space-7);
   width: var(--space-7);
   border-left: var(--border-hairline) solid var(--paper-line);
   background: var(--panel);
@@ -292,6 +319,29 @@ button:focus-visible,
   margin: 0;
   font-size: var(--text-sm);
   color: var(--ink-70);
+}
+
+/* ---- narrow widths — the canvas keeps its floor, the panels step down ---
+ * Breakpoints are the three widths this design is verified at (1440, 1024,
+ * 768). A media query prelude is the one place a length cannot be a var()
+ * — CSS does not resolve custom properties there — so these two are literal
+ * by necessity, and verify.py's literal sweep strips @media preludes for
+ * exactly that reason. Every length inside the blocks is still a token. */
+/* At 1024 only the mission panel steps down: 1024 - 368 (the palette, still
+ * sized against the opened node, C3) - 256 = 400px of canvas, above the
+ * 384px floor. At 768 no arrangement can keep the palette at 368 and the
+ * canvas above its floor, so both sides drop to 3 x --space-7 = 192px:
+ * 768 - 192 - 192 = exactly 384. */
+@media (max-width: 1024px) {
+  .mission-panel[data-state="expanded"] {
+    width: calc(var(--space-7) * 4);
+  }
+}
+@media (max-width: 768px) {
+  .palette[data-state="expanded"],
+  .mission-panel[data-state="expanded"] {
+    width: calc(var(--space-7) * 3);
+  }
 }
 
 /* ---- reduced motion — end state appears, no transit ---------------------- */
