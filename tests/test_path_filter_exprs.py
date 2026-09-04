@@ -102,6 +102,11 @@ EXPR_CORPUS = [
     "j1.btag > 0.7",
     "abs(l1.eta) < 2.5",
     "deltaR(l1, l2) < 3.0",
+    # M3 (PR #19 cycle-2 review): the boolean comparison above only ever produces
+    # 0.0/1.0, so it cannot exercise a per-value precision comparison -- the raw
+    # continuous deltaR value below is what the small-perturbation mutation gate
+    # further down needs.
+    "deltaR(l1, l2)",
     "mT(l1, met) > 5",
     "l1.pt - l2.pt",
     "l1.pt / (l2.pt + 1.0)",
@@ -177,8 +182,41 @@ def _local_vars(data, i):
 # for bin.
 
 
+class _RecordingHist:
+    """Wraps a real ``bh.Histogram`` and additionally records the exact raw value
+    passed to every ``.fill()`` call, in call order.
+
+    M3 (PR #19 cycle-2 review): comparing only ``.view()`` -- bin *counts* -- caps
+    the detection floor at roughly one bin width, because a 20-bin histogram over
+    this corpus's range is far coarser than the float32 cache-roundtrip noise floor
+    the module docstring above documents (~1e-3). Recording the raw numbers each
+    path actually computed, before they are binned, lets the caller compare them
+    directly at that tolerance -- while ``fill_histogram_from_cache`` itself is
+    still exercised exactly as before, through its real ``outHist.h["h"].fill()``
+    call sites, so the entry-point coverage this class sits inside is unchanged.
+    """
+
+    def __init__(self, axis):
+        import boost_histogram as bh
+        self._h = bh.Histogram(axis)
+        self.filled_values = []
+
+    def fill(self, values, weight=None):
+        self.filled_values.extend(np.atleast_1d(np.asarray(values, dtype=np.float64)).tolist())
+        self._h.fill(values, weight=weight)
+
+    def view(self, flow=False):
+        return self._h.view(flow=flow)
+
+    @property
+    def axes(self):
+        return self._h.axes
+
+
 def _fill_via_production(cache_file, expr, axis, *, force_fallback, monkeypatch=None):
-    """Run ``fill_histogram_from_cache`` and return its filled bin contents.
+    """Run ``fill_histogram_from_cache`` and return ``(bin_view, raw_values)`` --
+    the filled histogram's bin contents, and the exact per-event numbers that
+    produced them, in the order they were filled.
 
     ``force_fallback=True`` monkeypatches ``_ArrayProxy.__init__`` to raise --
     caught by the vectorized path's own ``except Exception: pass`` at
@@ -186,7 +224,6 @@ def _fill_via_production(cache_file, expr, axis, *, force_fallback, monkeypatch=
     driven through the per-event fallback instead. ``monkeypatch`` is required
     in that case; nothing tracked is ever modified.
     """
-    import boost_histogram as bh
     from fce_web.engine import path_filter as pf
 
     if force_fallback:
@@ -199,11 +236,12 @@ def _fill_via_production(cache_file, expr, axis, *, force_fallback, monkeypatch=
 
     class _Hist:
         def __init__(self):
-            self.h = {"h": bh.Histogram(axis)}
+            self.h = {"h": _RecordingHist(axis)}
 
     hist = _Hist()
     pf.fill_histogram_from_cache(cache_file, hist, expr, with_syst=False)
-    return hist.h["h"].view(flow=False).copy()
+    recording = hist.h["h"]
+    return recording.view(flow=False).copy(), np.asarray(recording.filled_values, dtype=np.float64)
 
 
 def _axis_for(vec_vals, bins=20):
@@ -233,8 +271,8 @@ def test_vectorized_and_per_event_paths_agree_through_fill_histogram(tmp_path, m
         vec_vals = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
         axis = _axis_for(vec_vals)
 
-        normal = _fill_via_production(cache_file, expr, axis, force_fallback=False)
-        fallback = _fill_via_production(
+        normal, normal_raw = _fill_via_production(cache_file, expr, axis, force_fallback=False)
+        fallback, fallback_raw = _fill_via_production(
             cache_file, expr, axis, force_fallback=True, monkeypatch=monkeypatch,
         )
         monkeypatch.undo()  # restore _ArrayProxy before the next expression's normal run
@@ -243,11 +281,29 @@ def test_vectorized_and_per_event_paths_agree_through_fill_histogram(tmp_path, m
             f"expr {expr!r}: vectorized-path histogram != per-event-fallback histogram "
             f"through fill_histogram_from_cache\nvectorized={normal!r}\nfallback={fallback!r}"
         )
+
+        # M3 (PR #19 cycle-2 review): the bin-count comparison above only proves the
+        # two paths land in the same ~one-bin-width bucket, not that they produced
+        # the same numbers -- repair that additively, without removing the
+        # entry-point coverage above, by also comparing the raw per-event values
+        # each path actually filled, at the cache's float32-roundtrip noise floor.
+        assert len(normal_raw) == len(fallback_raw), (
+            f"expr {expr!r}: vectorized path filled {len(normal_raw)} events, "
+            f"fallback filled {len(fallback_raw)} -- different events passed the two paths' masks"
+        )
+        np.testing.assert_allclose(
+            normal_raw, fallback_raw, atol=1e-3,
+            err_msg=(
+                f"expr {expr!r}: per-value mismatch between vectorized and per-event-fallback "
+                f"values through fill_histogram_from_cache, above the float32 cache-roundtrip "
+                f"noise floor (atol=1e-3)"
+            ),
+        )
         checked += 1
 
     assert checked == len(EXPR_CORPUS)
     print(f"compared {len(EXPR_CORPUS)} expressions through fill_histogram_from_cache, "
-          "vectorized path vs. forced per-event fallback, bin-for-bin")
+          "vectorized path vs. forced per-event fallback, bin-for-bin and value-for-value")
 
 
 def test_boolean_operators_agree_with_manual_combination(tmp_path):
@@ -305,8 +361,8 @@ def test_fill_histogram_parity_mutation_gate_perturbed_vectorized_mass_is_caught
 
     monkeypatch.setattr(pf._P4Proxy, "mass", property(_perturbed_mass))
 
-    normal = _fill_via_production(cache_file, expr, axis, force_fallback=False)
-    fallback = _fill_via_production(
+    normal, _ = _fill_via_production(cache_file, expr, axis, force_fallback=False)
+    fallback, _ = _fill_via_production(
         cache_file, expr, axis, force_fallback=True, monkeypatch=monkeypatch,
     )
 
@@ -314,6 +370,57 @@ def test_fill_histogram_parity_mutation_gate_perturbed_vectorized_mass_is_caught
         "the +5.0 mutation on the vectorized path's _P4Proxy.mass produced no detectable "
         "mismatch through fill_histogram_from_cache"
     )
+
+
+# ---------------------------------------------------------------------------
+# M3 (PR #19 cycle-2 review): the per-value comparison's floor, proven by
+# mutation. The M1 rework moved C2's detection floor from ~1e-3 (cycle 1's
+# per-value comparison) to ~one bin width (a 20-bin ``np.array_equal``): a +0.5
+# perturbation of the per-event ``_delta_r`` still passed the bin comparison,
+# and only +1.0 failed it -- reproduced by hand against fba2ad6 before this fix:
+# ``delta=0.5: bin-equal=True`` / ``delta=1.0: bin-equal=False``. The per-value
+# comparison added above must catch perturbations far below that: both
+# magnitudes here are well under a single bin width (see ``_axis_for``) and both
+# exceed the 1e-3 tolerance, so both must turn the comparison red.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("delta", [1e-2, 2e-3])
+def test_fill_histogram_parity_mutation_gate_small_delta_r_perturbation_is_caught(
+    tmp_path, monkeypatch, delta,
+):
+    pytest.importorskip("boost_histogram")
+    from fce_web.engine import path_filter as pf
+
+    cache_file = _build_cache(tmp_path, name=f"delta_r_mutation_{delta}.npz")
+    data = np.load(cache_file, mmap_mode="r")
+    expr = "deltaR(l1, l2)"
+    ce = compile_expr(expr)
+    vec_vals = np.asarray(evaluate(ce, _vec_vars(data)), dtype=np.float64).ravel()
+    axis = _axis_for(vec_vals)
+
+    original_delta_r = pf._delta_r
+
+    def _perturbed_delta_r(a, b):
+        return original_delta_r(a, b) + delta
+
+    # Only the per-event ``_delta_r`` is patched -- the vectorized ``_delta_r_vec``
+    # (a separate function, used by the "normal" call below) is untouched, mirroring
+    # a real vectorized/per-event disagreement rather than perturbing both paths
+    # identically.
+    monkeypatch.setattr(pf, "_delta_r", _perturbed_delta_r)
+
+    normal_bins, normal_raw = _fill_via_production(cache_file, expr, axis, force_fallback=False)
+    fallback_bins, fallback_raw = _fill_via_production(
+        cache_file, expr, axis, force_fallback=True, monkeypatch=monkeypatch,
+    )
+
+    assert np.array_equal(normal_bins, fallback_bins), (
+        f"delta={delta}: expected this perturbation to stay inside the bin-comparison's "
+        f"coarser floor (that is the defect M3 fixes) -- it did not, so the mutation is "
+        f"not exercising the gap this test is proving exists"
+    )
+    with pytest.raises(AssertionError):
+        np.testing.assert_allclose(normal_raw, fallback_raw, atol=1e-3)
 
 
 # ---------------------------------------------------------------------------
