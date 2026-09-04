@@ -14,7 +14,7 @@ Do not load `.claude/tasks/archive/` or `backlog.md`.
 
 | Task | Role | Branch | PR | Cycle | State | Handoff |
 |---|---|---|---|---|---|---|
-| B-015 | backend | `task/b-015-bound-loop-expr` | #26 | 3 | cycle 3 dispatched then recalled ~34s in; **no cycle-3 commit**, branch still at `02a542b` | `b-015-backend-3.md` if the agent wrote one |
+| B-015 | backend | `task/b-015-bound-loop-expr` | #26 | 3 | cycle 3 **did no work at all** — blocked out of its own branch, then recalled. No cycle-3 commit; branch still at `02a542b` | `b-015-backend-3.md` |
 
 ## Git as of this commit
 
@@ -24,6 +24,17 @@ Do not load `.claude/tasks/archive/` or `backlog.md`.
     task/b-016-safe-eval-doc-anchor: b7da9be (merged as 900dce8)
 
 Re-run `git branch -a` and `gh pr list --state open` before acting. If they disagree, **git is right.**
+
+## Why cycle 3 produced nothing — read before re-dispatching
+The agent never reached the branch. `task/b-015-bound-loop-expr` was checked out in the *cycle-2
+coder's* worktree (`agent-a69a9a8164287b840`), which was **locked**, so the cycle-3 agent could not
+check the branch out, build a venv, or touch a file. **I have since removed that stale worktree and
+the branch is now free** (`git worktree list` shows no holder; branch intact at `02a542b`).
+
+The general lesson, now bitten twice in opposite directions: removing a finished agent's worktree
+makes it unresumable, but *leaving* it locked blocks the next agent that needs the same branch.
+Leave it while the agent may still be resumed; remove it before dispatching another agent onto that
+branch.
 
 ## First moves, in order
 1. **Re-dispatch B-015 cycle 3** to `backend-coder` in its own worktree. The dispatch text is
