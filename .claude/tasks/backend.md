@@ -110,7 +110,7 @@ dispatched; B-008 and B-014 wait their turn — serial, one at a time. All three
   assertion gated by paraphrase mutations, not by a verbatim restore. Verbatim in PR #17's body.
 - **Depends on:** nothing (B-006 merged).
 - **Branch / PR:** `task/b-013-safe-eval-findings` — **#17**, `ae1efcf`
-- **Status:** **cycle 4 delivered, NOT YET REVIEWED — session ended at the 82% usage threshold.**
+- **Status:** **cycle-4 reviewer DISPATCHED 2026-09-04.** Gate already reproduced at `ae1efcf`.
   The user ruled at the §5.7 limit (2026-09-03) to spend a fourth cycle on a **golden-string pin**
   rather than merge with the instrument open. **C6 and C7 are RETIRED and replaced by C8 — my
   substitution, on that ruling, and the one deliberate one in this task's history.** The property

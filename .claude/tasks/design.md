@@ -77,8 +77,10 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   focus walk; C9 the verify.py floors hold and `board-lane-fill` stays the only red.
 - **Depends on:** ~~D-009~~, ~~D-013~~, ~~D-002~~ — all merged.
 - **Branch / PR:** `task/d-010-page-shell` — **#25**, `6d91a96`
-- **Status:** **cycle 1 reviewed, rework NOT YET DISPATCHED — stopped at the 75% soft threshold
-  2026-09-03.** Next session dispatches cycle 2. Gate had reproduced (9/9 shell sections PASS,
+- **Status:** **cycle-2 rework DISPATCHED 2026-09-04** to design-coder at high effort, worktree,
+  with comment `5524842859` and IDs R1/R2/M1/M2/M3/M4. checks stay 9 — R1/R2 repair existing
+  instruments rather than add criteria; M4's grep floor is replaced by an AST count.
+  Cycle-1 gate had reproduced (9/9 shell sections PASS,
   `FAILED sections: ['board-lane-fill']`, counts 86/303, diff = the 3 scoped files).
 - **Review:** cycle 1 `2R / 4M / 3m`, `verdict=rework`, scope pass, PR #25 comment `5524842859`.
   **Both Requireds are instruments that cannot fail, and both were mutation-proven, not argued.**
