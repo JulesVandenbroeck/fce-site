@@ -6204,12 +6204,28 @@ SHELL_CANVAS_MIN_W = 384.0
 # indicator against its adjacent background.
 FOCUS_RING_MIN_CONTRAST = 3.0
 
+# C10's two floors (cycle-2 review M6). The canvas is an SVG with a fixed
+# `viewBox`, so anything that lets the rendered surface be narrower than the
+# viewBox scales the *text* along with the geometry -- cycle 2 shipped a
+# fluid `.canvas-wrap` that rendered at 0.52 of design size at 1024, turning
+# a 14px node title into a 7px one, and no check in this file could see it.
+# These two can: the SVG's own screen CTM scale, and the rendered size of
+# every piece of text on the canvas (its computed font-size multiplied by
+# that scale). 0.95 rather than 1.0 because `.canvas-wrap`'s hairline border
+# eats a fraction of a pixel off the surface at every width; 11.0px is the
+# floor below which a label stops being body text and starts being a
+# texture, and it sits below --text-xs (12px), the smallest size the canvas
+# actually declares, so an unscaled canvas clears it with room.
+SHELL_CANVAS_MIN_SCALE = 0.95
+SHELL_CANVAS_MIN_TEXT_PX = 11.0
+
 # C9's two floors, counted from this file's own AST rather than by grepping
 # lines (cycle-1 review M4): real `all_results.append(...)` registrations
 # inside `main()`, and real `line(...)` / `results.append(...)` reporting
-# calls anywhere in the file. 67 and 195 respectively on `main` at 72d2950.
-SHELL_REGISTRATION_FLOOR = 78
-SHELL_REPORT_CALL_FLOOR = 213
+# calls anywhere in the file. 67 and 195 respectively on `main` at 72d2950;
+# 79 and 215 here (cycle 3 adds `shell-canvas-text-legible`, C10).
+SHELL_REGISTRATION_FLOOR = 79
+SHELL_REPORT_CALL_FLOOR = 215
 
 # The CSS named colours, for C7's literal sweep (cycle-1 review R1: the old
 # sweep saw hex and nothing else, so `color: white` and
@@ -6274,7 +6290,19 @@ def check_shell_canvas_always_visible(pw: Playwright) -> bool:
     card plus its two var(--space-3) paddings and margin). A region squeezed
     to 3px leaves a 3px gap and fails the floor; a region pushed out from
     under the gap leaves probe points landing on `<body>` and fails the
-    probes. 6 probes per state, 4 states, 3 widths = 72 probes."""
+    probes. 6 probes per state, 4 states, 3 widths = 72 probes.
+
+    Cycle-2 review m5, on the zero headroom at 768: with both panels
+    expanded the measured gap there is exactly 384.0px, dead on the floor,
+    and the `floor - 0.5` tolerance is the only slack. That is intended and
+    is arithmetic, not luck. shell.css's 768 breakpoint steps both expanded
+    panels to 3 x --space-7 = 192px precisely so that 768 - 192 - 192 = 384
+    -- the canvas takes every pixel the row can give it and the two side
+    panels take what is left, which is what "the canvas is the region that
+    may not collapse" means at the narrowest verified width. A future token
+    nudge that turns this line red is therefore reporting a real loss of
+    canvas, not a rounding artefact, and the correct response is to restate
+    the breakpoint rather than to widen the tolerance."""
     section("Shell C1 -- canvas region always present, never covered, 4 states x 3 widths")
 
     states = [
@@ -6665,11 +6693,19 @@ def check_shell_shipped_tokens(pw: Playwright) -> bool:
     # character and a CSS percentage is always followed by `;`, `)` or
     # whitespace -- so every percentage literal was invisible to the sweep.
     # A negative lookahead is the boundary that works for every unit,
-    # word-ending or not. `ms` precedes `s` and `rem` precedes `em` so the
-    # longer unit wins the alternation.
-    length_re = re.compile(
-        r"(?<![\w.#-])(-?\d+(?:\.\d+)?)(px|rem|em|vmin|vmax|vh|vw|deg|ms|s|ch|ex|fr|%)(?![\w.%])"
-    )
+    # word-ending or not.
+    #
+    # Cycle-2 review M5: the unit itself used to be a fixed alternation
+    # (`px|rem|em|vmin|...`), which is the same blind spot one layer down --
+    # `90dvh`, `12pt`, `2cm` and `0.25turn` are all real CSS and none of
+    # them was in the list, so a rule written in any of them swept clean.
+    # The unit is now matched generically -- one or more ASCII letters, or
+    # `%` -- and the exemptions below are stated by *value*, so a unit
+    # nobody thought of is caught rather than ignored. Greedy `[a-zA-Z]+`
+    # also removes the ordering trap the alternation had (`ms` had to
+    # precede `s`, `rem` had to precede `em`, or the shorter unit won and
+    # the sweep read `200ms` as `200m` + a stray `s`).
+    length_re = re.compile(r"(?<![\w.#-])(-?\d+(?:\.\d+)?)([a-zA-Z]+|%)(?![\w.%])")
     hex_color_re = re.compile(r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{1}|[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?\b")
     # ...and the colour syntaxes it could not see at all: `rgb()`, `hsl()`,
     # `color()` and their relatives, and the 148 CSS named colours.
@@ -6858,6 +6894,111 @@ def check_shell_reduced_motion_and_focus(pw: Playwright) -> bool:
     return motion_ok and focus_ok and ring_ok
 
 
+def check_shell_canvas_text_legible(pw: Playwright) -> bool:
+    """Criterion 10, added by cycle-2 review M6: text painted on the canvas
+    is still readable at every design width, in every panel state.
+
+    This section exists because of a fix-induced regression the previous
+    nine checks could not see. C1 asks that the canvas region be present
+    and uncovered; C4 asks that an opened node be contained in the canvas
+    surface. Cycle 2 satisfied both at 1024 and 768 by making `.canvas-wrap`
+    fluid, so the SVG's fixed 704x512 `viewBox` scaled to fit -- surface and
+    nodes stayed on screen, and `preserveAspectRatio` quietly scaled the
+    *type* with the geometry: 0.52 at 1024 and 0.497 at 768, a 14px node
+    title rendered at about 7px. Every check passed. Presence is not
+    legibility, and nothing here measured legibility.
+
+    So this measures the rendered thing directly, in the same 4 states x 3
+    widths grid C1 uses (12 layouts). Two lines, both mutation-visible:
+
+    (a) The SVG's own `getScreenCTM().a` -- the ratio between one user unit
+        of the `viewBox` and one CSS pixel on screen -- against
+        `SHELL_CANVAS_MIN_SCALE`. This is the mechanism, and it fails for
+        *any* cause of downscaling, not only the one cycle 2 introduced.
+    (b) Every text-bearing element on the canvas (`.node-card__title`,
+        `.node-card__body`, `.node-card__toggle`), computed font-size
+        multiplied by that scale, against `SHELL_CANVAS_MIN_TEXT_PX`. This
+        is the symptom, in the unit a reader would complain in, and it
+        would also catch type made illegible by a token change rather than
+        by a transform. n1 is opened first so `.node-card__body` -- which
+        is `display: none` while collapsed -- is really laid out and really
+        measured in at least one card.
+
+    The surface is fixed rather than fluid now (`shell.css` `.canvas-wrap`),
+    and `.canvas-region` scrolls; C8's own no-horizontal-scroll half still
+    holds the page itself, so the scrolling is confined to the region that
+    owns the wide content, as the design manual's §4 layout rule requires."""
+    section("Shell C10 -- canvas text is rendered at legible size, 4 states x 3 widths")
+
+    states = [
+        ("collapsed", "collapsed"),
+        ("collapsed", "expanded"),
+        ("expanded", "collapsed"),
+        ("expanded", "expanded"),
+    ]
+    measure_js = """() => {
+        const svg = document.getElementById('canvas-svg');
+        const ctm = svg.getScreenCTM();
+        const texts = [];
+        for (const sel of ['.node-card__title', '.node-card__body', '.node-card__toggle']) {
+            for (const el of document.querySelectorAll(sel)) {
+                const fs = parseFloat(getComputedStyle(el).fontSize);
+                texts.push({ sel, declared: fs, rendered: fs * ctm.a });
+            }
+        }
+        return { scale: ctm.a, texts };
+    }"""
+
+    scale_failures = []
+    text_failures = []
+    scales = []
+    min_rendered = None
+    total_texts = 0
+    for width in SHELL_DESIGN_WIDTHS:
+        browser, context, page, *_ = load_shell_page(pw, width)
+        # Open n1 so the collapsed-only-hidden `.node-card__body` is laid
+        # out and therefore really measurable in at least one card.
+        page.click('.node-card[data-node-id="n1"] .node-card__toggle')
+        page.wait_for_timeout(50)
+        for palette_state, panel_state in states:
+            _shell_set_palette_state(page, palette_state)
+            _shell_set_panel_state(page, panel_state)
+            result = page.evaluate(measure_js)
+            state_name = f"{width}px palette={palette_state},panel={panel_state}"
+            scales.append(f"{state_name}: x{result['scale']:.4f}")
+            if result["scale"] < SHELL_CANVAS_MIN_SCALE:
+                scale_failures.append(f"{state_name}: scale {result['scale']:.4f} < {SHELL_CANVAS_MIN_SCALE}")
+            for t in result["texts"]:
+                total_texts += 1
+                if min_rendered is None or t["rendered"] < min_rendered:
+                    min_rendered = t["rendered"]
+                if t["rendered"] < SHELL_CANVAS_MIN_TEXT_PX:
+                    text_failures.append(
+                        f"{state_name}: {t['sel']} declared {t['declared']:.2f}px "
+                        f"renders {t['rendered']:.2f}px"
+                    )
+        browser.close()
+
+    scale_ok = not scale_failures and len(scales) == len(states) * len(SHELL_DESIGN_WIDTHS)
+    line(
+        f"#canvas-svg screen CTM scale >= {SHELL_CANVAS_MIN_SCALE} in all "
+        f"{len(states) * len(SHELL_DESIGN_WIDTHS)} (4 states x 3 widths) layouts",
+        scale_ok,
+        "; ".join(scales) if scale_ok else f"{len(scale_failures)} below the floor: {scale_failures[:4]}",
+    )
+    texts_ok = total_texts > 0 and not text_failures
+    line(
+        f"every canvas label's rendered size (computed font-size x that scale) "
+        f">= {SHELL_CANVAS_MIN_TEXT_PX}px, {total_texts} measurements",
+        texts_ok,
+        f"smallest rendered {min_rendered:.2f}px" if texts_ok else f"{len(text_failures)} illegible",
+    )
+    for f in text_failures[:10]:
+        print(f"       {f}")
+
+    return scale_ok and texts_ok
+
+
 def check_shell_verify_floors(pw: Playwright) -> bool:
     """Criterion 9: this file's own existing verification floors do not
     fall, checked the same static way `check_all_sections_wrapped_in_run_
@@ -6872,12 +7013,21 @@ def check_shell_verify_floors(pw: Playwright) -> bool:
     registration count to 86 against 78 real registrations. Both are now
     counted from this file's own AST, the way `check_all_sections_wrapped_
     in_run_section` already counts a different floor: real
-    `all_results.append(...)` calls inside `main()` (floor 78 -- 67 on main
-    at 72d2950, plus this task's own 9 shell-* sections, plus 2 that were
-    already there and that the old line count could not distinguish), and
-    real `line(...)` / `results.append(...)` calls anywhere in the file
-    (floor 213 -- 195 on main, plus this task's own reporting). Prose can no
-    longer clear either. Also confirms
+    `all_results.append(...)` calls inside `main()` (floor 79 -- 67 on main
+    at 72d2950, plus this task's own 10 shell-* sections, plus 2 that this
+    task itself added), and real `line(...)` / `results.append(...)` calls
+    anywhere in the file (floor 215 -- 195 on main, plus this task's own
+    reporting). Prose can no longer clear either.
+
+    Cycle-2 review m4 corrects the record on those 2: this docstring used to
+    say they "were already there and the old line count could not tell
+    apart". By AST they are not. `main`'s `--section` block had 2
+    `all_results.append(...)` sites; this task's own rewrite of that block
+    -- which added the `browser_needed` branch, so that a `--section
+    shell-*` name opens one shared Chromium and a tokens-* name opens none
+    -- split them into 4. They are new registrations introduced by this PR,
+    they raise the floor legitimately, and no earlier count concealed them.
+    Also confirms
     `board-lane-fill` -- D-006's overruled C10, left red on purpose -- is
     still registered and still named, neither deleted nor relabelled."""
     section("Shell C9 -- this file's own verification floors, and the one intended red")
@@ -6910,7 +7060,7 @@ def check_shell_verify_floors(pw: Playwright) -> bool:
         f"real all_results.append(...) calls in main(), by AST: {appends}",
         appends_ok,
         f"floor is {SHELL_REGISTRATION_FLOOR} (67 registrations on main at 72d2950, "
-        "+ 9 shell-* sections, + 2 the old line-count could not tell apart)",
+        "+ 10 shell-* sections, + 2 this task's own --section dispatch rewrite added)",
     )
     line(
         f"real line(...) / results.append(...) calls in this file, by AST: {reports}",
@@ -7443,7 +7593,7 @@ def main() -> None:
 
         if args.all or args.shell:
             # One `all_results.append(...)` per D-010 acceptance criterion
-            # (C1-C9), each already wrapped in `run_section` by construction
+            # (C1-C10), each already wrapped in `run_section` by construction
             # -- see each `check_shell_*` function's own docstring.
             all_results.append(
                 (
@@ -7491,6 +7641,12 @@ def main() -> None:
                 (
                     "shell-reduced-motion-and-focus",
                     run_section("shell-reduced-motion-and-focus", check_shell_reduced_motion_and_focus, pw),
+                )
+            )
+            all_results.append(
+                (
+                    "shell-canvas-text-legible",
+                    run_section("shell-canvas-text-legible", check_shell_canvas_text_legible, pw),
                 )
             )
             all_results.append(
@@ -8575,6 +8731,7 @@ SHELL_SECTIONS = {
     "shell-ui-state-not-in-payload": check_shell_ui_state_not_in_payload,
     "shell-shipped-tokens": check_shell_shipped_tokens,
     "shell-reduced-motion-and-focus": check_shell_reduced_motion_and_focus,
+    "shell-canvas-text-legible": check_shell_canvas_text_legible,
     "shell-verify-floors": check_shell_verify_floors,
 }
 

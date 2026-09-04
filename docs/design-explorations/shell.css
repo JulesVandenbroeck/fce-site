@@ -185,22 +185,40 @@ button:focus-visible,
   flex: 1 1 0;
   min-width: calc(var(--space-7) * 6);
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: var(--space-3);
+  /* The drawing surface below is a fixed 704x512 design surface, so at
+   * 1024 and 768 it is wider than this region's content box and this is
+   * the container that scrolls. Design manual §4: wide content scrolls
+   * inside its own container, the page body never scrolls horizontally
+   * (verify.py's `shell-page-no-h-scroll` half of C8 holds the page). */
   overflow: auto;
   background: var(--paper);
 }
-/* Fluid, not fixed: the drawing surface takes the region's full width up to
- * its 11 x --space-7 = 704px design size, and the SVG's own viewBox +
- * default preserveAspectRatio scales the graph down to fit rather than
- * cropping it. A node placed near the canvas's far corner is therefore
- * still on screen at 768px, which a fixed 704px surface inside a region
- * narrower than 704px could not manage. */
+/* Fixed at the 11 x --space-7 = 704px design size, never scaled down.
+ *
+ * Cycle-2 review M6: this used to be `width: 100%; max-width: 704px`, which
+ * let the SVG's viewBox scale the whole graph to fit a narrow region. That
+ * kept every node on screen, but preserveAspectRatio scales *text* with the
+ * geometry: at 1024 the surface rendered 366px against a 704 viewBox
+ * (x0.52) and at 768 it rendered 350px (x0.497), so the 14px node title
+ * came out at about 7px and the card labels were illegible at two of the
+ * three verified widths. A minimum scale of exactly 1.0 -- a fixed surface
+ * -- is the simplest form of the "give it a minimum scale and let the
+ * region scroll" route, and it is the only one that buys anything here:
+ * neither 1024 nor 768 leaves room for even a 0.82 scale without scrolling,
+ * so an intermediate minimum would scroll *and* shrink the type.
+ * `shell-canvas-text-legible` measures rendered text size on the canvas at
+ * all three widths so this cannot regress silently again.
+ *
+ * `margin: auto` rather than the region's `justify-content: center`: with
+ * centring, an overflowing item overflows both edges and the leading half
+ * is unreachable by scrolling. Flexbox resolves auto margins to zero when
+ * the free space is negative, so this centres when there is room and packs
+ * to the start when there is not, leaving the whole surface scrollable. */
 .canvas-wrap {
-  flex: 0 1 auto;
-  width: 100%;
-  max-width: calc(var(--space-7) * 11);
+  flex: 0 0 auto;
+  margin: auto;
+  width: calc(var(--space-7) * 11);
   height: calc(var(--space-7) * 8);
   border: var(--border-hairline) solid var(--paper-line);
   border-radius: var(--radius);
@@ -331,7 +349,37 @@ button:focus-visible,
  * sized against the opened node, C3) - 256 = 400px of canvas, above the
  * 384px floor. At 768 no arrangement can keep the palette at 368 and the
  * canvas above its floor, so both sides drop to 3 x --space-7 = 192px:
- * 768 - 192 - 192 = exactly 384. */
+ * 768 - 192 - 192 = exactly 384.
+ *
+ * Exactly, with nothing spare, and that is deliberate (cycle-2 review m5).
+ * The canvas is the region that may not collapse, so at the narrowest
+ * verified width it takes every pixel the row can give it and the two side
+ * panels take what is left. verify.py's C1 measures this gap against
+ * `384.0 - 0.5`, so the tolerance is half a pixel and there is no headroom
+ * on purpose: if a future token change turns that line red it is reporting
+ * a real loss of canvas, and the fix is to restate this breakpoint, not to
+ * widen the tolerance.
+ *
+ * Why the row is kept and the panels narrowed, rather than reflowed
+ * (cycle-1 review M2's alternative, cycle-2 review m6 asking for the
+ * reason): a reflow — stacking the palette or the mission panel above or
+ * below the canvas at 768 — buys the palette its full 368px back, but it
+ * takes the cost out of the criterion this exploration exists to settle.
+ * C1 is "the canvas region is always present and never covered", and it is
+ * checked over the full viewport height precisely because the brief's §4
+ * claim is that the graph is the page and the two side regions are
+ * furniture around it. A stacked palette turns the canvas into a band
+ * roughly half the height it has here and puts the thing being reasoned
+ * about below the fold at exactly the width where screen room is scarcest;
+ * a stacked mission panel does the same to the brief the student is
+ * reading against. Narrowing a panel costs a panel some columns of text —
+ * measured, nothing in the palette clips or overflows at 192px. Reflowing
+ * costs the canvas half its height. The cheaper loss is the panel's.
+ *
+ * This is a judgement about a three-region shell at 768, not a ruling for
+ * the real Bench: a reflow may well be right there, where the canvas is a
+ * work surface a student stays in rather than an exemplar with two nodes
+ * on it. It is recorded here so that decision is taken again on purpose. */
 @media (max-width: 1024px) {
   .mission-panel[data-state="expanded"] {
     width: calc(var(--space-7) * 4);
