@@ -38,3 +38,84 @@ it. Never at startup.
   template and mount `/static`, but `templates/` and `static/` belong to frontend, not
   backend (shared §4), and `StaticFiles` cannot mount a directory that does not exist. This
   pulled the first front-end task forward from M3 to M1.
+
+
+---
+
+## F-002 — Link the design tokens stylesheet into `base.html`
+
+Merged #30 `78c0b3c`, 2026-09-07. 1 cycle + 1 re-specification, `findings=2, verdict=approve`.
+checks=6 (5 live, C2 retired). Suite floor 594 → 596.
+
+### F-002 — Link the stylesheets into `base.html`
+- **Scope:** `src/fce_web/templates/base.html`
+- **Accept:** `<link rel="stylesheet">` for the design role's tokens and main stylesheet,
+  in cascade order; page still renders with zero console errors and zero 404s
+- **Depends on:** ~~D-002~~ **merged 2026-09-03 (#24, `72d2950`) — RELEASED.**
+  `src/fce_web/static/css/tokens.css` exists and is the tokens file to link. There is **no
+  main stylesheet yet** — D-010 is the first task that writes one — so this task links tokens
+  only, unless it is dispatched after D-010. **This entry's original premise was FALSE and is corrected here**
+  (`scout`, 2026-09-07). It read: "the four self-hosted woff2 are exercised for the first time
+  here ... a 404 on a font is exactly what this task's zero-404 assertion exists to catch."
+  They are not exercised, and it would not catch one. `tokens.css` is 355 lines holding only
+  four `@font-face` rules (`:52, :60, :68, :76`) and one `:root` block (`:84-355`); **no rule
+  in it applies `font-family` to any element selector**, and a declared face is fetched only
+  when some rule uses the family. So linking it fetches zero fonts and "no font 404s" is
+  vacuously true. Nor could a frontend coder fix that: the fix is a `font-family` declaration
+  in `static/css/`, which is the design role's file. **The fonts stay unexercised until the
+  first task that applies `var(--font-body)` to a real selector — see F-003.**
+- **Branch / PR:** not yet opened
+- **Status:** **RELEASED — B-017 merged #28 `aef697f`, 2026-09-07.** Ready to dispatch.
+  History of the block: The `scout` fact-find, 2026-09-07: `tests/e2e/conftest.py`
+  collects console errors (`PageActivity.console_errors`, `:51`) and **requested URLs only**
+  (`:53`, `page.on("request", ...)` at `:82`). There is **no response-status collection anywhere
+  under `tests/`**, so "zero 404s" has no instrument — a font 404 is indistinguishable from a 200
+  in the data that exists. `conftest.py` is backend's file, so the probe was split off as
+  **B-017** and this task consumes it read-only. Do not weaken the criterion to fit the old
+  instrument; that is the D-001 failure shape.
+- **The contract to cite verbatim, do not re-derive:** `PageActivity.bad_responses:
+  list[tuple[str, int]]` in `tests/e2e/conftest.py`, each entry `(url, status)`, collected iff
+  `is_bad_response_status(status)` — **status >= 400**, so a redirect is not a failure. Fixtures
+  available: `live_server`, `browser`, `page`, `index`. `tests/e2e/` holds 25 nodeids at
+  `aef697f`; that floor may rise and must not fall.
+- **Facts for the dispatch, enumerated 2026-09-07, do not re-derive:** `base.html` is 16 lines
+  with **zero** `<link rel="stylesheet">` and its `<head>` is lines 3-10. Static is mounted at
+  `/static` from `src/fce_web/static` (`app.py:94-98`). `static/css/` holds exactly one file,
+  `tokens.css`. It declares **four** `@font-face` rules (`:52, :60, :68, :76`) whose `src:` URLs
+  are all relative — `url("../fonts/<name>.woff2")` at `:54, :62, :70, :78` — resolving against
+  `/static/css/`, so they only work if the link is served from that path.
+- **The second blind spot, and the criteria must close it:** a declared `@font-face` is fetched
+  only when a rule actually uses the family. `base.html` has no styled content, so "no font 404s"
+  is satisfiable vacuously, by the fonts never being requested at all. The criterion has to
+  assert the four woff2 are **requested and 200**, not merely that nothing failed.
+
+### The premise that was false, caught before dispatch
+This entry had said since 2026-09-03 that F-002 "is what first renders the shipped
+`tokens.css`, so the four self-hosted woff2 are exercised for the first time here", and that a
+font 404 "is exactly what this task's zero-404 assertion exists to catch". A `scout` fact-find
+on the morning of dispatch falsified both halves: `tokens.css` is 355 lines of four
+`@font-face` rules and one `:root` block, and **no rule in it applies `font-family` to any
+element selector**, so no face is ever fetched and the assertion is vacuous. A frontend coder
+could not have fixed it either — the fix is a declaration in `static/css/`, design's file.
+
+This is the first time on this project that the blind-instrument shape was caught *before*
+dispatch instead of by a review cycle. The cost was one `scout`. D-001 paid four cycles for
+the same shape. The font check became **F-003**, blocked on the first task that applies
+`var(--font-body)` to a real selector.
+
+### C3 is why the task closed in one cycle
+Instead of "no 404s", C3 asserted `getComputedStyle(document.documentElement)
+.getPropertyValue('--font-body')` contains `EB Garamond` — impossible to satisfy unless the
+sheet loaded *and* parsed *and* applied, and inside frontend's scope. The reviewer then built a
+sharper mutation than the coder's: serving a `tokens.css` that defines
+`--font-body: Comic Sans MS` turned **only** C3 red while C2 and C4 stayed green, isolating the
+load-bearing check. That same mutation is what condemned C2 (F1) as fully subsumed.
+
+### F2 — a hard boundary I contradicted
+My file scope handed the frontend coder `tests/e2e/test_smoke.py`, which `frontend/CLAUDE.md`
+§1 forbade. The coder followed the scope, correctly. Escalated to the user, who ruled
+**`tests/e2e/` is shared**: backend owns the harness and `conftest.py`, frontend owns the
+browser assertions about its own markup, and a missing fixture is reported rather than added.
+Written into `shared/CLAUDE.md` §4 and `frontend/CLAUDE.md` §1 on 2026-09-07. The rejected
+alternative was pairing every frontend task with a backend task, which would have made this
+one-line `<link>` two branches, two reviews and two merges, serialised.
