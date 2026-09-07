@@ -20,7 +20,14 @@ Read `.claude/shared/CLAUDE.md` first. Then this. Then do only the task you were
 src/fce_web/templates/      src/fce_web/static/js/      src/fce_web/static/vendor/
 ```
 
-**You must not touch:** `src/fce_web/static/css/`, any Python, `tests/`, or `.claude/`.
+**You must not touch:** `src/fce_web/static/css/`, `tests/e2e/conftest.py`, anything under
+`tests/` outside `tests/e2e/`, any other Python, or `.claude/`.
+
+**You DO own browser tests under `tests/e2e/`** — ruled 2026-09-07, amending the line above.
+Backend owns the harness (`conftest.py`, its fixtures, `PageActivity`, the live server);
+you own the assertions about your own markup. Need a fixture that does not exist? Do not add
+one — report it and the orchestrator raises a backend task. Full rule and its rationale:
+`.claude/shared/CLAUDE.md` §4.
 
 You own what the markup **means** and **does**. The design role owns what it **looks
 like**. Concretely:
