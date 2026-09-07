@@ -68,72 +68,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-### D-014 — Close D-010's open findings: the missing horizontal-scroll guard
-- **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`
-- **Why:** D-010 merged `a059f34` on the user's ruling with R3 open. The property holds — the
-  reviewer measured `scrollWidth == clientWidth` at 1440/1024/768 — but `shell.css:193` and
-  `verify.py:6928` both cite a guard `shell-page-no-h-scroll` that exists nowhere, and the fixed
-  704px canvas surface is exactly what would break it. The three sibling explorations guard it
-  (`verify.py:2603`, `:4403`, `:5544`); the shell does not.
-- **Accept:**
-  - [ ] C1 A registered section asserts no horizontal page scroll at 1440, 1024 and 768, in all
-        four palette/panel states. checks 10 -> 11.
-        Check:  force it false — `.canvas-wrap { width: 3000px }` — then restore.
-        Expect: the named section FAILS naming the width, then PASSES.
-  - [ ] C2 `grep -n 'shell-page-no-h-scroll' docs/design-explorations/verify.py` resolves to a
-        real registered section, or both citing comments are deleted.
-        Expect: a line number, not empty.
-  - [ ] C3 m7 — C10's canvas-label selector list stops being hard-coded, or the section fails
-        when a label class it does not know about is the only one present.
-  - [ ] C4 m8 — C4's containment target is either restored to something wholly on screen, or its
-        name and docstring are corrected to say it measures `#canvas-wrap` at 1440 only.
-  - [ ] C5 m9 — a visible affordance that the canvas continues past the region at 1024/768.
-- **Floors:** `verify.py --all` exits 1 with **exactly** `FAILED sections: ['board-lane-fill']`;
-  AST floors **79 registrations / 215 reporting calls** at `a059f34`, may rise, never fall;
-  flake8 0; `pytest tests/ -q` >= 426.
-- **Depends on:** ~~D-010~~ merged `a059f34`.
-- **Branch / PR:** `task/d-014-shell-scroll-guard` — **#29**, head `e3c5b0f` (`main` merged in
-  at the pre-review gate, so the >=596 floor is reachable on the branch; the merge changed
-  nothing under `docs/design-explorations/`)
-- **Status:** in review (cycle 1) — re-specification delivered, **re-review dispatched**.
-  §5.4 clause 2: F1 was against C5 and F3 against C3, neither shipped with a command, so the
-  cycle count stays at 1. C3 and C5 re-specified with commands; C6 added for F2. checks=6.
-  One §5.1 gate return (branch behind `main`, suite floor unverifiable) — **not a cycle**.
-  Gate re-run clean at `e3c5b0f`: `verify.py --all` exits 1 with exactly `['board-lane-fill']`,
-  AST floors **80/216 -> 81/217**, flake8 clean, `pytest tests/ -q` **596**, scope exactly
-  `shell.css` + `verify.py` with `shell.html` untouched.
-- **Coder's F2 split, to check at merge:** F2 was not accepted wholesale. `.palette__toggle`'s
-  `position: relative` did not reproduce and is **deleted** with its comment;
-  `.mission-panel__toggle`'s **is** load-bearing — removing it alone reddens
-  `shell-page-no-h-scroll` at `panel=collapsed` by exactly 41px at all three widths
-  (1481>1440, 1065>1024, 809>768) — and is **kept** with a comment citing that measurement.
-  That is the written overrule C6 permitted.
-- **Review (cycle 1):** 3 findings, `verdict=rework` —
-  [PR #29 comment](https://github.com/JulesVandenbroeck/fce-site/pull/29#issuecomment-5568675854).
-  The gate passed cleanly first: `verify.py --all` exits 1 with exactly `['board-lane-fill']`,
-  334 sections PASS, AST floors **79/215 → 80/216**, flake8 clean, `pytest` 592, scope exact,
-  and `shell-page-no-h-scroll` now resolves to a real section at `verify.py:7125`.
-  **F1** — the `@media (max-width: 1024px)` edge fade (`shell.css:219-229`) paints
-  unconditionally, but at 1024 with palette *and* panel collapsed the region does not overflow
-  (`scrollWidth 896 == clientWidth 896`): a "more content this way" cue where there is none.
-  C5's stated premise measures false in that state. Fix: move to `max-width: 768px`, where
-  overflow is unconditional in all four states (`736 > 640/512/512/384`), or gate on the state
-  classes that actually overflow at 1024.
-  **F2** — `position: relative` on the two toggles (`shell.css:124`, `:359`) plus 11 lines of
-  comment was carried in on a root-cause claim that **does not reproduce**: the shipped section
-  passes 12/12 on pre-fix `origin/main` and 12/12 with both declarations removed. Pre-fix
-  `.sr-only` rects measured inside the viewport in both palette states. Delete both, or cite
-  the width/state where the escape actually widens `scrollWidth`.
-  **F3** — `[class^="node-card__"]` (`verify.py:6965`) matches only when the token is *first*,
-  so the docstring's "any current or future `node-card__*` class is swept" (`:6944`)
-  overclaims. `[class*="node-card__"]`, same one line.
-- **My C1 was not falsifying, and the coder proved it.** I specified
-  `.canvas-wrap { width: 3000px }` as the mutation; `.canvas-region`'s `overflow: auto` absorbs
-  it, so the section correctly stays green. The coder measured that, said so in writing, and
-  substituted `overflow: visible`, which does trip it. The reviewer reproduced both. §2's *do
-  the feasibility arithmetic before you impose a floor*, unlearned again — this is the same
-  defect as D-004 cycle 3's 1.15:1.
-- **History:** [`archive/design.md`](archive/design.md)
+_none._
 
 ## Ready
 
@@ -176,6 +111,16 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-014** — closed D-010's open findings: the horizontal-scroll guard — #29, `63a6fd8`,
+  2 cycles + 1 re-spec + 1 gate return, clean gate (`findings=5, verdict=approve`, all five
+  folded in before merge). checks=6. Ships the real `shell-page-no-h-scroll` section the CSS and
+  `verify.py` had cited into thin air, plus a new `shell-canvas-fade-affordance` guard.
+  **`shell.html` was never touched** — the whole task landed in `shell.css` + `verify.py`.
+  **The reviewer withdrew its own cycle-1 F2**: it had bundled the two `position: relative`
+  declarations, and the coder's per-declaration split was correct. `.palette__toggle`'s was dead
+  and is deleted; `.mission-panel__toggle`'s is load-bearing (41px of overflow at
+  `panel=collapsed`, all three widths) and is kept with the measurement cited in place.
+  **D-010's R3 and m7/m8/m9 are all closed; nothing carries forward.**
 - **D-010** — the three-region page shell — #25, `a059f34`, 3 cycles, **merged on the user's
   ruling with R3 open** (PR #25 comment). checks=10 (C10 `shell-canvas-text-legible` added by
   cycle 3's M6 fix). Ships `docs/design-explorations/shell.html` + `shell.css`. The M1 ruling's
@@ -240,7 +185,10 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md).
   including the counting lines themselves — it reported 86 against 78 real registrations. On
   `task/d-010-page-shell` at `cfd2a1d`: **78** registrations, **213** reporting calls, both by
   `ast.walk`. Do not reinstate a grep floor.
-- **`verify.py` on `main` at `a059f34`: 79 AST registrations / 215 reporting calls** (D-010).
+- **`verify.py` on `main` at `63a6fd8`: 81 AST registrations / 217 reporting calls** (D-014).
+  The fade affordance is guarded by `shell-canvas-fade-affordance` over **12 layouts**
+  (4 palette/panel states x 1440/1024/768); it goes red if a cue is painted where the region
+  does not overflow. Superseded: 79 / 215 at `a059f34` (D-010).
   Superseded: `verify.py` on `main` at `72d2950`: **71** registered sections.
   `grep -c 'all_results.append'` = **71**; `grep -c 'results.append\|line('` = **269**.
   A fall in either is `Required`. Superseded: 69 / 233 at `0aee604` (65 sections). Superseded historical figure: 46 / 149 / 121 non-bench at

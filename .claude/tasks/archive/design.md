@@ -1907,3 +1907,67 @@ The full active-list entry as it stood at merge, 2026-09-03. checks=10, final ga
   is self-inflating. m1/m2/m3 backlogged.
 - **History:** [`archive/design.md`](archive/design.md)
 
+
+---
+
+### D-014 — Close D-010's open findings: the missing horizontal-scroll guard
+
+Merged #29 `63a6fd8`, 2026-09-07. 2 cycles + 1 re-specification + 1 §5.1 gate return. checks=6.
+Final gate `findings=5, verdict=approve`, and all five findings were folded in before the merge
+rather than backlogged, on the reviewer's explicit statement that they needed no further cycle.
+
+**What it closed.** D-010 merged `a059f34` with R3 open: `shell.css:193` and `verify.py:6928`
+both cited a guard section `shell-page-no-h-scroll` that existed nowhere, while the three sibling
+explorations had one. D-014 built it, and closed m7/m8/m9 alongside. Nothing from D-010 carries
+forward.
+
+**The re-specification, and it was mine.** Cycle 1 came back `verdict=rework` with three findings.
+F1 was against C5 and F3 against C3, and **neither criterion had shipped with a command** — I
+wrote the property and no `Check:`/`Expect:`. §5.4 clause 2, so the cycle count stayed at 1. The
+re-dispatch wrote both commands and added C6 for F2.
+
+**My C1 was not falsifying, and the coder proved it.** I specified `.canvas-wrap { width: 3000px }`
+as the mutation. `.canvas-region`'s `overflow: auto` absorbs it, so the section correctly stayed
+green. The coder measured that, said so in writing, and substituted `overflow: visible`, which
+does trip it. The reviewer reproduced both directions. This is §2's *do the feasibility arithmetic
+before you impose a floor*, unlearned again — the same defect as D-004 cycle 3's unreachable
+1.15:1 floor and D-006's C10.
+
+**The reviewer was wrong once, and the coder caught it.** Cycle-1 F2 asked for two
+`position: relative` declarations to be deleted as a pair, on a root-cause claim the reviewer had
+measured as not reproducing. The coder isolated them one at a time instead of accepting or
+rejecting the pair:
+
+| Declaration | Removing it alone | Outcome |
+|---|---|---|
+| `.palette__toggle` | section stays green 12/12 | dead — deleted with its comment |
+| `.mission-panel__toggle` | section reddens at `panel=collapsed`, **+41px** at all three widths (1481>1440, 1065>1024, 809>768) | load-bearing — kept, comment now cites the measurement |
+
+The cycle-2 reviewer reproduced the 41px layout-for-layout and withdrew its own finding in
+writing: *"My cycle-1 F2 bundled both declarations and was wrong about the mission-panel half;
+the coder's per-declaration isolation is the correct reading."* This is the mechanism in §5.6
+working exactly as intended — a coder overruling a finding with a measurement rather than an
+argument, and the reviewer verifying rather than defending.
+
+**The gate return that was not a cycle.** The branch base predated `main`'s F-002 and B-017
+merges, so `pytest` gave 592 against a stated floor of 596. The coder diagnosed this correctly and
+flagged it rather than hiding it, but a reviewer handed an unverifiable floor either accepts it or
+burns a cycle. §5.1 return: merge `main` into the branch (§4 — never rebase), re-run, 596. Zero
+conflicts; `git diff --stat 2b82d61 e3c5b0f -- docs/design-explorations/` was empty, so the merge
+provably changed nothing in scope.
+
+**F4-F8, folded not backlogged.** F4 was a docstring on the new guard describing a fix that was
+not made ("narrows the media query to 768px" when what shipped is `:has()`-gated at 1024), which
+would have led the next reader to delete the 1024 rule. F5 omitted 1440 from the guard's width
+grid — the width where the region overflows in *no* state and a false cue is cheapest to
+reintroduce; it is now 12 layouts, not 8. F6/F7/F8 were duplicated CSS, a stale count, and 15
+lines of review narration in a comment.
+
+**What the shell now guarantees.** `shell-canvas-fade-affordance` asserts that the edge fade is
+painted if and only if `.canvas-region` actually overflows, across 4 palette/panel states x
+1440/1024/768. Mutation-verified in both directions by the reviewer: re-injecting the
+unconditional 1024 media query reddens it naming the exact state
+(`1024px palette=collapsed,panel=collapsed: overflowing=False but faded=True`).
+
+**Floors moved:** AST 79/215 (`a059f34`) -> 80/216 (cycle 1) -> **81/217** (`63a6fd8`).
+`board-lane-fill` remains the one deliberate red section.
