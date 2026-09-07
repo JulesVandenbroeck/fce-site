@@ -93,10 +93,9 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   flake8 0; `pytest tests/ -q` >= 426.
 - **Depends on:** ~~D-010~~ merged `a059f34`.
 - **Branch / PR:** `task/d-014-shell-scroll-guard` — **#29**, head `6472598`
-- **Status:** **cycle 1 reviewed `verdict=rework`; re-dispatch NOT sent — session ended at the
-  90% usage limit.** Next session re-dispatches this as a **RE-SPECIFICATION, not a cycle**
-  (§5.4 clause 2): F1 is against C5 and F3 against C3, and **neither shipped with a command** —
-  I wrote the property and no `Check:`/`Expect:`. Cycle count stays at 1.
+- **Status:** in review (cycle 1) — **re-specification dispatched 2026-09-07**, §5.4 clause 2:
+  F1 is against C5 and F3 against C3, and neither shipped with a command. Cycle count stays
+  at 1. C3 and C5 re-specified with commands; C6 added for F2. checks=6.
 - **Review (cycle 1):** 3 findings, `verdict=rework` —
   [PR #29 comment](https://github.com/JulesVandenbroeck/fce-site/pull/29#issuecomment-5568675854).
   The gate passed cleanly first: `verify.py --all` exits 1 with exactly `['board-lane-fill']`,
