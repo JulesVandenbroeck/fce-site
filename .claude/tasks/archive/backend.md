@@ -1832,3 +1832,78 @@ deliberate golden update.
 - **History:** [`archive/backend.md`](archive/backend.md) — the two findings stated so they are
   not re-litigated, and the standing invitation to overrule C2 in writing.
 
+
+
+---
+
+## B-015 — Bound or remove the expression reaching `analytical_loop.py:290`
+
+Merged #26 `4761d9a`, 2026-09-07. 3 cycles + 1 re-specification, closed on the §5.7 limit with
+`findings=3, verdict=approve`. checks=11 (C1-C11). Suite floor 582 → 592.
+
+### B-015 — Bound or remove the expression reaching `analytical_loop.py:290`
+- **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`,
+  `tests/test_run_context.py`
+- **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, cycle-1 head `7899231`
+- **Status:** **in review (cycle 3)** — re-dispatched 2026-09-07 to `backend-coder` **into the
+  existing worktree** `.claude/worktrees/agent-a06ce392cab09d5d5`, which holds the branch.
+  Resuming from [`handoff/b-015-backend-3.md`](../handoff/b-015-backend-3.md). **C1-C11, checks=11.**
+  **This is the §5.7 limit: if cycle 3 does not converge, escalate to the user.**
+- **Git reconciled 2026-09-07:** the list said the first cycle-3 attempt did zero work; git says
+  the branch is at `3bbb01c` (a `merge origin/main`, 13 ahead of `origin`, never pushed) with an
+  **uncommitted edit to `tests/test_analytical_loop_expr_bound.py`**. Some work was done and lost
+  to the interruption. PR #26 head is still `02a542b`. A fresh worktree cannot take this branch —
+  that is what deadlocked 2026-09-04 — so the dispatch names the existing worktree instead. No
+  locks remain on any of the 105 worktrees.
+- **Review (cycle 2):** 1R / 0M / 2m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540111544).
+  R1 and M1 fixed. `_validate_sel_exprs` (`analytical_loop.py:217-245`, called at `:270`) restores
+  the early gate *and* bounds it — strictly stronger than `main`'s bare `compile()`, and the
+  reviewer's mutation 3 proved C8 is **not** satisfiable by reinstating the old call. 588 passed.
+  **R2:** the m1 fix narrowed the guard — `_compiled_sel_exprs_reference_sites` misses a read via
+  `cfg.get("compiled_sel_exprs", [])`, the idiom this codebase actually uses. Instrument, not code;
+  the property holds today. → C10. m3 (C8's `-k bound` selects the whole file) → C11.
+  **m2 backlogged:** the gate covers `sel_exprs` only — a mistyped *observable* still hits the
+  `except Exception` swallow in a worker. Pre-existing, outside B-015's remit.
+- **Three blind instruments on this one task, all mine:** C3 (`pytest tests/ -q` prints 583 either
+  way), C8 (`-k bound` matches the file name), C9 (enumerated "assignment or subscript" without
+  enumerating how this codebase reads cfg keys). Counting cycle 2 as a **cycle**, not a third
+  consecutive re-specification — C9 shipped with commands, and declaring re-spec again would put
+  the §5.7 limit permanently out of reach. **If cycle 3 does not converge, escalate to the user.**
+- **Review (cycle 1):** 1R / 1M / 1m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540011186).
+  M1: the deleted `compile()` was dead as an *optimisation* but live as an early **syntax gate** —
+  `sel_exprs=["l1.pt >>> 20"]` raised `SyntaxError` on `main` and now returns a completed-looking
+  `RunResult(processed_any=False)`, the real failure swallowed by `analytical_loop.py:314-317`.
+  Security is not weakened; `path_filter` still validates before any event is touched.
+  R1: the PR body dropped the `Check:`/`Expect:` lines my dispatch carried. m1 folded into C9.
+- **Why a re-specification, not a cycle:** C3 *did* ship with a command — but `pytest tests/ -q`
+  prints `583 passed` whether or not the syntax gate exists, so the instrument was structurally
+  blind to the property it certified (§2). My defect. I also framed "dead" as *zero readers of the
+  produced value* and never asked what the **call** did.
+- **Resolution wanted:** validate `sel_exprs` once at the top of `run_physics_loop` through
+  `safe_eval.compile_expr` — restores the gate *and* bounds it, which the old `compile()` never was.
+- **Gate history:** cycle 1's first gate failed on a fabricated transcript (`5 passed` for a file
+  that never held more than 3 tests); corrected body-only, head unmoved. Also not a cycle.
+- **Depends on:** ~~B-008~~ merged `7d5fa0a`.
+- **History:** [`archive/backend.md`](archive/backend.md)
+
+### Cycle 3 (2026-09-07)
+[PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5567363807).
+R2 fixed (→ C10): `_compiled_sel_exprs_reference_sites` widened to match `ast.Call` on
+`.get`/`.pop`/`.setdefault` with a string-constant key. m3 fixed (→ C11): C8's `-k bound` replaced
+by two explicit nodeids. m2 carried to the backlog as cycle 2 asked. 592 passed, flake8 clean;
+the reviewer reproduced every number and ran five mutations of its own.
+
+**Three findings, all approved-despite and backlogged, none a defect in the shipped guard:**
+F1 — the dead-key matcher has now been widened twice and is still blind to
+`cfg.update({...})` and `dict(cfg, ...)`; one line of `ast.dump` covers every shape and deletes
+~60. F2 — six of ten tests in the file guard that a dead key stays dead, against a 35-line
+production change; a pre-ruling artefact. F3 — `_validate_sel_exprs`'s docstring is 16 lines of
+review archaeology around 6 lines of code.
+
+**The lesson, and it is the same one three times.** This task cost three cycles and one
+re-specification, and every one of them was spent on an *instrument*, never on the guard. C3
+(`pytest tests/ -q` prints the same number either way), C8 (`-k bound` matches the filename),
+C9 (enumerated node shapes without enumerating how this codebase reads cfg keys) — three blind
+instruments, all mine. The reviewer's F1 closes the loop: the fourth widening of a hand-rolled
+matcher would have been a fourth cycle, and the answer was always one stdlib line. Ask what a
+check prints when the property is false, and prefer the check that cannot be narrow.

@@ -9,54 +9,11 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-015 — Bound or remove the expression reaching `analytical_loop.py:290`
-- **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`,
-  `tests/test_run_context.py`
-- **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, cycle-1 head `7899231`
-- **Status:** **in review (cycle 3)** — re-dispatched 2026-09-07 to `backend-coder` **into the
-  existing worktree** `.claude/worktrees/agent-a06ce392cab09d5d5`, which holds the branch.
-  Resuming from [`handoff/b-015-backend-3.md`](../handoff/b-015-backend-3.md). **C1-C11, checks=11.**
-  **This is the §5.7 limit: if cycle 3 does not converge, escalate to the user.**
-- **Git reconciled 2026-09-07:** the list said the first cycle-3 attempt did zero work; git says
-  the branch is at `3bbb01c` (a `merge origin/main`, 13 ahead of `origin`, never pushed) with an
-  **uncommitted edit to `tests/test_analytical_loop_expr_bound.py`**. Some work was done and lost
-  to the interruption. PR #26 head is still `02a542b`. A fresh worktree cannot take this branch —
-  that is what deadlocked 2026-09-04 — so the dispatch names the existing worktree instead. No
-  locks remain on any of the 105 worktrees.
-- **Review (cycle 2):** 1R / 0M / 2m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540111544).
-  R1 and M1 fixed. `_validate_sel_exprs` (`analytical_loop.py:217-245`, called at `:270`) restores
-  the early gate *and* bounds it — strictly stronger than `main`'s bare `compile()`, and the
-  reviewer's mutation 3 proved C8 is **not** satisfiable by reinstating the old call. 588 passed.
-  **R2:** the m1 fix narrowed the guard — `_compiled_sel_exprs_reference_sites` misses a read via
-  `cfg.get("compiled_sel_exprs", [])`, the idiom this codebase actually uses. Instrument, not code;
-  the property holds today. → C10. m3 (C8's `-k bound` selects the whole file) → C11.
-  **m2 backlogged:** the gate covers `sel_exprs` only — a mistyped *observable* still hits the
-  `except Exception` swallow in a worker. Pre-existing, outside B-015's remit.
-- **Three blind instruments on this one task, all mine:** C3 (`pytest tests/ -q` prints 583 either
-  way), C8 (`-k bound` matches the file name), C9 (enumerated "assignment or subscript" without
-  enumerating how this codebase reads cfg keys). Counting cycle 2 as a **cycle**, not a third
-  consecutive re-specification — C9 shipped with commands, and declaring re-spec again would put
-  the §5.7 limit permanently out of reach. **If cycle 3 does not converge, escalate to the user.**
-- **Review (cycle 1):** 1R / 1M / 1m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540011186).
-  M1: the deleted `compile()` was dead as an *optimisation* but live as an early **syntax gate** —
-  `sel_exprs=["l1.pt >>> 20"]` raised `SyntaxError` on `main` and now returns a completed-looking
-  `RunResult(processed_any=False)`, the real failure swallowed by `analytical_loop.py:314-317`.
-  Security is not weakened; `path_filter` still validates before any event is touched.
-  R1: the PR body dropped the `Check:`/`Expect:` lines my dispatch carried. m1 folded into C9.
-- **Why a re-specification, not a cycle:** C3 *did* ship with a command — but `pytest tests/ -q`
-  prints `583 passed` whether or not the syntax gate exists, so the instrument was structurally
-  blind to the property it certified (§2). My defect. I also framed "dead" as *zero readers of the
-  produced value* and never asked what the **call** did.
-- **Resolution wanted:** validate `sel_exprs` once at the top of `run_physics_loop` through
-  `safe_eval.compile_expr` — restores the gate *and* bounds it, which the old `compile()` never was.
-- **Gate history:** cycle 1's first gate failed on a fabricated transcript (`5 passed` for a file
-  that never held more than 3 tests); corrected body-only, head unmoved. Also not a cycle.
-- **Depends on:** ~~B-008~~ merged `7d5fa0a`.
-- **History:** [`archive/backend.md`](archive/backend.md)
+_none — M2 is complete._
 
 ## Ready
 
-_none — wave 7 is the last of M2, and both of it are in progress._
+_none — M2 is complete. Next milestone is M3 (first vertical slice), not yet decomposed._
 
 ## Blocked
 
@@ -74,8 +31,8 @@ wave 5   B-012  parity proof            <- M2 CHECKPOINT     DONE, merged 928c1b
 wave 6   B-008  path_filter -> safe_eval        -+ DONE, merged 7d5fa0a
          B-013  close B-006's open findings     -+ DONE, merged 87428ee
          B-014  close B-004's open findings     -+ DONE, merged db085dd
-wave 7   B-015  bound analytical_loop.py:290       -+ parallel   DISPATCHED 2026-09-04
-         B-016  close B-013's open findings        -+            DISPATCHED 2026-09-04
+wave 7   B-015  bound analytical_loop.py:290       -+ parallel   DONE, merged 4761d9a
+         B-016  close B-013's open findings        -+            DONE, merged 900dce8
 ```
 Wave 6 is deferred behind the checkpoint by the user's ruling 2026-08-22 — nothing depends on
 those three, and after B-012 the golden file is their regression net. **Do not re-order without
@@ -89,6 +46,13 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-015** — bounded the last live `compile()` in `engine/` — #26, `4761d9a`, 3 cycles +
+  1 re-spec, clean gate at the §5.7 limit (`findings=3, verdict=approve`). checks=11. The dead
+  call site at `analytical_loop.py:290` is removed and replaced by `_validate_sel_exprs`, called
+  once at the top of `run_physics_loop`, routing every `sel_expr` through `safe_eval.compile_expr`
+  — the early syntax gate `main` had, now bounded, which the bare `compile()` never was.
+  Suite floor → **592**. **M2 is complete.** F1/F2/F3 backlogged — all three are simplifications
+  of the test instrument, none is a defect in the shipped guard.
 - **B-016** — closed B-013's two open findings on the `safe_eval` docstring pin — #27, `900dce8`,
   2 cycles, clean gate (0R/0M/0m). checks=6. Test-side only. The pin is now anchored to the
   **whole docstring**, so a contradicting claim anywhere reddens it, not only inside the two
@@ -139,11 +103,15 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **580 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
-  `db085dd`, 2026-09-04. (413 before B-008; 426 after B-008 + B-013.)
+- Suite floor **592 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+  `4761d9a`, 2026-09-07. (580 at `db085dd`; 582 after B-016; 413 before B-008.)
 - `docs/api.md` at **13** `^##` headings, **30** schema rows, and its `Type`/`Nullable` columns
   are row-parity tested against the schema tuples with their own meta-test (B-014). An edit to
   either the doc or the schema that breaks agreement fails `tests/test_api_contract.py`.
 - **`src/fce_web/engine/path_filter.py` contains zero `eval()`/`compile()` call sites**, asserted
-  against `ast` by `tests/test_path_filter.py`, with a perturbation twin (B-008). The last live
-  `compile()` in `engine/` is `analytical_loop.py:290` — inert today, unbounded, and B-015's job.
+  against `ast` by `tests/test_path_filter.py`, with a perturbation twin (B-008).
+- **`engine/analytical_loop.py` contains zero `eval()`/`compile()` call sites**, asserted against
+  `ast` with a perturbation twin (B-015). `_validate_sel_exprs` (`analytical_loop.py:217-245`) is
+  the single gate: it is called once at the top of `run_physics_loop`, before any cache directory
+  is touched, and raises `UnsafeExpression` naming the offending expression. **`engine/` now holds
+  no unbounded expression path.**

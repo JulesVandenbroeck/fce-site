@@ -631,3 +631,22 @@ and are historical now that #6 is merged.
   mistyping an observable still hits the `except Exception` swallow at `analytical_loop.py:314-317`
   and the two error paths now behave differently. Pre-existing; the `compile()` B-015 replaced
   covered `sel_exprs` only. Raised by the PR #26 cycle-2 review, 2026-09-04.
+
+- **B-015 F1 — collapse the `compiled_sel_exprs` dead-key matcher to one `ast.dump` line.**
+  `tests/test_analytical_loop_expr_bound.py:55-90`. `_compiled_sel_exprs_reference_sites` is a
+  hand-rolled node-shape matcher, widened twice across cycles 2 and 3, and the PR #26 cycle-3
+  reviewer proved it is *still* blind to `cfg.update({"compiled_sel_exprs": ...})` and
+  `dict(cfg, compiled_sel_exprs=...)`. Replace the checker and its four twins with
+  `assert "compiled_sel_exprs" not in ast.dump(ast.parse(source))` — strictly more coverage,
+  ~60 fewer lines, and comments are still not AST nodes so m1 stays closed. Raised by the PR #26
+  cycle-3 review, 2026-09-07.
+- **B-015 F2 — thin `tests/test_analytical_loop_expr_bound.py` under the 2026-09-07 test ruling.**
+  240 lines, ten tests, six of which guard a source-introspection checker asserting that a dead
+  key stays dead — against a 35-line production change. The load-bearing checks are the three
+  `run_physics_loop` gate tests plus `test_no_eval_or_compile_call_sites_in_analytical_loop`;
+  the rest collapse into F1's one line. A pre-ruling artefact. Do with F1, not separately.
+- **B-015 F3 — cut `_validate_sel_exprs`'s docstring.** `analytical_loop.py:217-232`: 16 lines of
+  review archaeology (cycle-1 M1, what the removed loop did, which review found it) wrapping 6
+  lines of code. Two sentences suffice — gate `sel_exprs` through `compile_expr` before any event
+  is touched, bounded and student-legible where a bare `compile()` was neither. Git carries the
+  history. Raised by the PR #26 cycle-3 review, 2026-09-07.
