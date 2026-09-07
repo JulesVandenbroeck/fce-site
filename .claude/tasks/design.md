@@ -68,10 +68,6 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none_
-
-## Ready
-
 ### D-014 — Close D-010's open findings: the missing horizontal-scroll guard
 - **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`
 - **Why:** D-010 merged `a059f34` on the user's ruling with R3 open. The property holds — the
@@ -96,8 +92,13 @@ _none_
   AST floors **79 registrations / 215 reporting calls** at `a059f34`, may rise, never fall;
   flake8 0; `pytest tests/ -q` >= 426.
 - **Depends on:** ~~D-010~~ merged `a059f34`.
-- **Branch / PR:** not yet opened
+- **Branch / PR:** `task/d-014-shell-scroll-guard` — not yet opened
+- **Status:** dispatched 2026-09-07 to `design-coder`, cycle 1, own worktree. checks=5.
 - **History:** [`archive/design.md`](archive/design.md)
+
+## Ready
+
+_none._
 
 
 ## Blocked

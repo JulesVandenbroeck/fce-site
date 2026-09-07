@@ -26,6 +26,8 @@ _none_
   Their `src:` URLs must resolve at the served path, not just on disk — a 404 on a font is
   exactly what this task's zero-404 assertion exists to catch.
 - **Branch / PR:** not yet opened
+- **Status:** blocked on a `scout` fact-find (2026-09-07) — the criteria need the real names of
+  the console-error and failed-request instruments before this is dispatchable.
 
 ## Blocked
 
