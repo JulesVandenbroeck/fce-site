@@ -9,11 +9,26 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none — M2 is complete._
+### B-017 — Give the Playwright harness a response-status probe (**CONTRACT TASK**)
+- **Scope:** `tests/e2e/conftest.py`, `tests/e2e/test_smoke.py`
+- **Accept:** `PageActivity` carries every non-2xx response with URL and integer status,
+  from a `page.on("response", ...)` in `observe()`; falsifiability proven by a known-missing
+  `/static` URL captured as 404, gated by a no-op-handler mutation; no existing nodeid dropped;
+  suite >= 592; scope exactly the two files by three-dot diff. **C1-C5, checks=5.**
+- **Why it exists:** F-002's "zero 404s" had no instrument. `conftest.py:82` records
+  `request.url` and nothing about the response, so a font 404 and a font 200 are the same data.
+  `conftest.py` is backend's file, so the probe splits out here. **F-002 consumes the attribute
+  name and type read-only and is blocked until this merges** — it runs before its consumer and
+  does not merge with an open finding against the shared name (§2, contract tasks).
+- **Depends on:** nothing.
+- **Branch / PR:** `task/b-017-response-probe` — not yet opened
+- **Status:** dispatched 2026-09-07 to `backend-coder`, cycle 1, own worktree.
+- **History:** [`archive/backend.md`](archive/backend.md)
 
 ## Ready
 
-_none — M2 is complete. Next milestone is M3 (first vertical slice), not yet decomposed._
+_none — M2 is complete. B-017 is an M1 leftover, not M2. Next milestone is M3
+(first vertical slice), not yet decomposed._
 
 ## Blocked
 
