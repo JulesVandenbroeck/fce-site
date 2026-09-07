@@ -7088,7 +7088,7 @@ def check_shell_verify_floors(pw: Playwright) -> bool:
         f"real all_results.append(...) calls in main(), by AST: {appends}",
         appends_ok,
         f"floor is {SHELL_REGISTRATION_FLOOR} (67 registrations on main at 72d2950, "
-        "+ 11 shell-* sections, + 2 D-010's own --section dispatch rewrite added)",
+        "+ 12 shell-* sections, + 2 D-010's own --section dispatch rewrite added)",
     )
     line(
         f"real line(...) / results.append(...) calls in this file, by AST: {reports}",
@@ -7171,12 +7171,16 @@ def check_shell_canvas_fade_affordance(pw: Playwright) -> bool:
     Cycle 1 gated it on `@media (max-width: 1024px)` unconditionally; the
     review measured that at 1024 with palette and panel both collapsed
     `.canvas-region` does not overflow at all (`scrollWidth == clientWidth`),
-    so the fade painted there anyway. The fix narrows the media query to
-    `max-width: 768px`, where the fixed 704px canvas surface exceeds the
-    region's available width in all four palette/panel states.
+    so the fade painted there anyway. The fix keeps the 1024 rule but gates
+    it on `.shell:has(.palette[data-state="expanded"])` /
+    `.shell:has(.mission-panel[data-state="expanded"])` -- the three states
+    at 1024 that do overflow -- and leaves the 768 rule unconditional, since
+    the fixed 704px canvas surface exceeds the region's available width in
+    all four palette/panel states there.
 
-    This measures the property the fix is supposed to establish, at both
-    the old and the new breakpoint, in all 4 states: `.canvas-region`'s own
+    This measures the property the fix is supposed to establish, at 1440
+    (where the region never overflows, so the fade must never paint) and at
+    both gated widths, in all 4 states: `.canvas-region`'s own
     `scrollWidth > clientWidth` against whether the `::after` pseudo-element
     actually generates a box (`content` resolves to `none` when no `@media`
     rule matches, and to the empty string when one does)."""
@@ -7198,7 +7202,7 @@ def check_shell_canvas_fade_affordance(pw: Playwright) -> bool:
     }"""
     mismatches = []
     reports = []
-    for width in (1024, 768):
+    for width in (1440, 1024, 768):
         browser, context, page, *_ = load_shell_page(pw, width)
         for palette_state, panel_state in states:
             _shell_set_palette_state(page, palette_state)
@@ -7212,7 +7216,7 @@ def check_shell_canvas_fade_affordance(pw: Playwright) -> bool:
 
     ok = not mismatches
     line(
-        "fade visibility agrees with .canvas-region overflow in all 8 (4 states x 2 widths) layouts",
+        "fade visibility agrees with .canvas-region overflow in all 12 (4 states x 3 widths) layouts",
         ok,
         "; ".join(reports) if ok else f"{len(mismatches)} mismatch(es): {mismatches}",
     )
