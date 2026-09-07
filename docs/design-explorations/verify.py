@@ -6224,10 +6224,11 @@ SHELL_CANVAS_MIN_TEXT_PX = 11.0
 # inside `main()`, and real `line(...)` / `results.append(...)` reporting
 # calls anywhere in the file. 67 and 195 respectively on `main` at 72d2950;
 # 79 and 215 after D-010 cycle 3 (which added `shell-canvas-text-legible`,
-# C10); 80 and 216 here (D-014 adds `shell-page-no-h-scroll`, C11). Floors
-# may rise; they may never fall.
-SHELL_REGISTRATION_FLOOR = 80
-SHELL_REPORT_CALL_FLOOR = 216
+# C10); 80 and 216 after D-014 cycle 1 (adds `shell-page-no-h-scroll`, C11);
+# 81 and 217 here (D-014 cycle 2, review F1, adds
+# `shell-canvas-fade-affordance`). Floors may rise; they may never fall.
+SHELL_REGISTRATION_FLOOR = 81
+SHELL_REPORT_CALL_FLOOR = 217
 
 # The CSS named colours, for C7's literal sweep (cycle-1 review R1: the old
 # sweep saw hex and nothing else, so `color: white` and
@@ -6941,10 +6942,11 @@ def check_shell_canvas_text_legible(pw: Playwright) -> bool:
         array, so a label class no one wrote into that list -- added
         alongside the three, or replacing one of them -- rendered off
         screen with nothing here noticing. The selector is now
-        `[class^="node-card__"]`, one prefix match against `.node-card`'s
+        `[class*="node-card__"]`, one substring match against `.node-card`'s
         own BEM element namespace rather than a name-by-name enumeration,
-        so any current or future `node-card__*` class is swept without this
-        function needing to know its name in advance.
+        so any current or future `node-card__*` class is swept -- wherever
+        it falls in the attribute -- without this function needing to know
+        its name in advance.
 
     The surface is fixed rather than fluid now (`shell.css` `.canvas-wrap`),
     and `.canvas-region` scrolls; `shell-page-no-h-scroll` (C11, D-014)
@@ -6962,7 +6964,7 @@ def check_shell_canvas_text_legible(pw: Playwright) -> bool:
         const svg = document.getElementById('canvas-svg');
         const ctm = svg.getScreenCTM();
         const texts = [];
-        const sel = '[class^="node-card__"]';
+        const sel = '[class*="node-card__"]';
         for (const el of document.querySelectorAll(sel)) {
             const fs = parseFloat(getComputedStyle(el).fontSize);
             texts.push({ sel: el.getAttribute('class'), declared: fs, rendered: fs * ctm.a });
@@ -7158,6 +7160,61 @@ def check_shell_page_no_h_scroll(pw: Playwright) -> bool:
         f"{len(states) * len(SHELL_DESIGN_WIDTHS)} (4 states x 3 widths) layouts",
         ok,
         "; ".join(reports) if ok else f"{len(failures)} layout(s) with page horizontal scroll: {failures}",
+    )
+    return ok
+
+
+def check_shell_canvas_fade_affordance(pw: Playwright) -> bool:
+    """D-014 cycle 2 (review F1): `.canvas-region`'s trailing-edge ink-fade
+    (shell.css, `.canvas-region::after`) is a "more content this way" cue,
+    and a cue that paints when there is nothing to point at is a false one.
+    Cycle 1 gated it on `@media (max-width: 1024px)` unconditionally; the
+    review measured that at 1024 with palette and panel both collapsed
+    `.canvas-region` does not overflow at all (`scrollWidth == clientWidth`),
+    so the fade painted there anyway. The fix narrows the media query to
+    `max-width: 768px`, where the fixed 704px canvas surface exceeds the
+    region's available width in all four palette/panel states.
+
+    This measures the property the fix is supposed to establish, at both
+    the old and the new breakpoint, in all 4 states: `.canvas-region`'s own
+    `scrollWidth > clientWidth` against whether the `::after` pseudo-element
+    actually generates a box (`content` resolves to `none` when no `@media`
+    rule matches, and to the empty string when one does)."""
+    section("Shell canvas-fade-affordance -- the trailing-edge fade paints only where the region actually overflows")
+
+    states = [
+        ("collapsed", "collapsed"),
+        ("collapsed", "expanded"),
+        ("expanded", "collapsed"),
+        ("expanded", "expanded"),
+    ]
+    measure_js = """() => {
+        const region = document.querySelector('.canvas-region');
+        const after = getComputedStyle(region, '::after');
+        return {
+            overflowing: region.scrollWidth > region.clientWidth,
+            faded: after.content !== 'none',
+        };
+    }"""
+    mismatches = []
+    reports = []
+    for width in (1024, 768):
+        browser, context, page, *_ = load_shell_page(pw, width)
+        for palette_state, panel_state in states:
+            _shell_set_palette_state(page, palette_state)
+            _shell_set_panel_state(page, panel_state)
+            result = page.evaluate(measure_js)
+            state_name = f"{width}px palette={palette_state},panel={panel_state}"
+            reports.append(f"{state_name}: overflowing={result['overflowing']} faded={result['faded']}")
+            if result["overflowing"] != result["faded"]:
+                mismatches.append(f"{state_name}: overflowing={result['overflowing']} but faded={result['faded']}")
+        browser.close()
+
+    ok = not mismatches
+    line(
+        "fade visibility agrees with .canvas-region overflow in all 8 (4 states x 2 widths) layouts",
+        ok,
+        "; ".join(reports) if ok else f"{len(mismatches)} mismatch(es): {mismatches}",
     )
     return ok
 
@@ -7742,6 +7799,12 @@ def main() -> None:
                 (
                     "shell-page-no-h-scroll",
                     run_section("shell-page-no-h-scroll", check_shell_page_no_h_scroll, pw),
+                )
+            )
+            all_results.append(
+                (
+                    "shell-canvas-fade-affordance",
+                    run_section("shell-canvas-fade-affordance", check_shell_canvas_fade_affordance, pw),
                 )
             )
 
@@ -8823,6 +8886,7 @@ SHELL_SECTIONS = {
     "shell-canvas-text-legible": check_shell_canvas_text_legible,
     "shell-verify-floors": check_shell_verify_floors,
     "shell-page-no-h-scroll": check_shell_page_no_h_scroll,
+    "shell-canvas-fade-affordance": check_shell_canvas_fade_affordance,
 }
 
 

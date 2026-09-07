@@ -113,15 +113,6 @@ button:focus-visible,
 }
 .palette[data-state="collapsed"] .palette__title { opacity: 0; }
 .palette__toggle {
-  /* Relative: its own `.sr-only` child is `position: absolute` with no
-   * offsets, so without a positioned ancestor here its containing block
-   * would be the initial containing block (D-014 root cause) -- its static
-   * position then escapes `.palette`'s own `overflow: hidden` clip
-   * entirely (a clip only bounds descendants whose containing block chain
-   * passes through it) and can widen `document.documentElement.
-   * scrollWidth`. This keeps the sr-only span's containing block inside
-   * the button that is itself inside the clipped rail. */
-  position: relative;
   flex: 0 0 auto;
   width: var(--space-5);
   height: var(--space-5);
@@ -207,16 +198,35 @@ button:focus-visible,
    * not the page. */
   position: relative;
 }
-/* D-014 (D-010 review minor m9): at 1024 and 768 the fixed 704px canvas
- * surface is always wider than this region -- see the two breakpoints
- * below, neither of which ever gives the row enough width to hold 704px --
- * so a reader who never touches the region has no way to know it scrolls.
- * A quiet ink-fade at the trailing edge, pinned to the region's own box
- * rather than to the scrolled content (no `left`/`right` shift on scroll),
- * says "more here" without a script watching scroll position -- it is
- * always present at these two widths because the overflow it names is
- * unconditional at them, so a static cue is honest, not a guess. */
+/* D-014 cycle 2 (review F1): the trailing-edge ink-fade only paints where
+ * `.canvas-region` actually overflows -- a cue that paints with nothing to
+ * point at is a false one. Cycle 1 gated it on `@media (max-width: 1024px)`
+ * unconditionally, but the review measured that at 1024 with palette and
+ * panel both collapsed the region does not overflow at all (scrollWidth ==
+ * clientWidth == 896px); the other three states at 1024 do overflow. At 768
+ * the fixed 704px canvas surface exceeds the region's available width in
+ * all four states (measured 736 > 640/512/512/384), so that breakpoint's
+ * rule stays unconditional. At 1024 the fade is gated on the same
+ * `data-state` the overflow itself tracks: it shows whenever the palette or
+ * the mission panel is expanded (any of the three overflowing states) and
+ * is silent only when both are collapsed (the one state that does not
+ * overflow). A quiet ink-fade at the trailing edge, pinned to the region's
+ * own box rather than to the scrolled content (no `left`/`right` shift on
+ * scroll), says "more here" without a script watching scroll position. */
 @media (max-width: 1024px) {
+  .shell:has(.palette[data-state="expanded"]) .canvas-region::after,
+  .shell:has(.mission-panel[data-state="expanded"]) .canvas-region::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--space-3);
+    background: linear-gradient(to right, transparent, var(--ink-45));
+    pointer-events: none;
+  }
+}
+@media (max-width: 768px) {
   .canvas-region::after {
     content: "";
     position: absolute;
@@ -353,9 +363,14 @@ button:focus-visible,
   text-overflow: ellipsis;
 }
 .mission-panel__toggle {
-  /* position: relative -- see .palette__toggle's own comment; same
-   * sr-only-escapes-the-clip mechanism, on the side of the shell where the
-   * escaped static position lands past the viewport's right edge (D-014). */
+  /* D-014 cycle 2: `.palette__toggle`'s own `position: relative` (cycle 1)
+   * did not reproduce under measurement and was removed -- but this one is
+   * load-bearing. With it removed, `shell-page-no-h-scroll` reddens at
+   * `panel=collapsed`, both palette states, at all three widths: its
+   * `.sr-only` child's static position escapes the panel's `overflow:
+   * hidden` clip and widens `document.documentElement.scrollWidth` past
+   * `clientWidth` by 41px (1481 > 1440 at 1440px; 1065 > 1024 at 1024px;
+   * 809 > 768 at 768px). Kept for that reason, on this element only. */
   position: relative;
   flex: 0 0 auto;
   width: var(--space-5);
