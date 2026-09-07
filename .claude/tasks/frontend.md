@@ -11,9 +11,39 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 _none_
 
+## Ready
+
+M3 wave 1. Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+
+### F-004 — Port the three-region shell into the app
+- **Scope:** `src/fce_web/templates/` (the shell template, `base.html`),
+  `src/fce_web/static/js/shell.js`, `tests/e2e/test_shell.py`
+- **Accept:** C1-C7 in the plan. Three regions per the 2026-09-01 ruling (canvas always
+  present, palette left/collapsible, mission panel right/expandable); collapse and expand
+  keyboard-operable; `shell.html:90-310`'s inline script becomes a module file; zero inline
+  `style=`; `PageActivity.console_errors == []` and `bad_responses == []`.
+- **Depends on:** nothing. **Blocks F-005 and D-015.**
+- **Branch / PR:** not yet opened
+- **Status:** ready, not dispatched
+- **Note:** writes **no CSS** — the page is expected to look unstyled. D-015 styles it in wave 3.
+  If a new route is needed, stop and report: `routes/pages.py` is backend's.
+
 ## Blocked
 
-_none_
+### F-003 — Prove the four woff2 are actually served
+- **Depends on:** **D-015** — the first task to apply `font-family: var(--font-body)` to a real
+  selector in `src/fce_web/static/css/`. That task now exists; full entry below under
+  `## Deferred`, unchanged. Wave 4.
+### F-005 — Port the Bench canvas
+- **Depends on:** F-004. Consumes B-020's payload shape read-only. Wave 2.
+### F-006 — The merged `Observable` node interior
+- **Depends on:** F-005. Ports **`observable.html`** (D-013), *not* `interiors.html` (D-009,
+  superseded by the 2026-09-02 one-node ruling). Wave 3.
+### F-007 — Serialise, submit, stream, show progress
+- **Depends on:** F-005, F-006, B-020, B-021, B-022. Wave 5.
+### F-008 — The interactive SVG histogram
+- **Depends on:** B-019, F-007. Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge
+  are explicitly out of scope by the user's 2026-09-07 ruling. Wave 5.
 
 ## Done
 

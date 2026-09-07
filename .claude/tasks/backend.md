@@ -13,12 +13,42 @@ _none._
 
 ## Ready
 
-_none — M2 is complete. B-017 is an M1 leftover, not M2. Next milestone is M3
-(first vertical slice), not yet decomposed._
+M3 wave 1. Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+Both dispatch with `isolation: "worktree"`.
+
+### B-018 — A committed fixture dataset the pipeline can run on
+- **Scope:** `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`,
+  `tests/fixtures/make_fixture.py`, `tests/fixtures/README.md`, `tests/test_fixture_dataset.py`
+- **Accept:** C1-C8 in the plan. Tree `ntuple` with the 9 branches `analytical_loop.py:154-159`
+  reads; X1 peaks at the Z mass within +/-3 GeV; `run_analysis` completes offline and writes
+  `output/hist*.root`; `tests/fixtures/` <= 5 MB.
+- **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
+- **Branch / PR:** not yet opened
+- **Status:** ready, not dispatched
+- **Note:** rests on the user's 2026-09-07 carve-out to `shared/CLAUDE.md` §3 — a *fixture*
+  ROOT file may be committed; real datasets still may not.
+
+### B-020 — Connection allowlist and graph -> RunConfig (**CONTRACT TASK**)
+- **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`, `docs/api.md` (`## Endpoints`, :27)
+- **Accept:** C1-C10 in the plan. Allowlist matches brief §4's five rows and the reference's
+  `_VALID_CONNECTIONS` when `FCE_PARITY_REFERENCE_ROOT` resolves (skips otherwise);
+  `DataSource` synthesised and rejected if submitted; `Observable` mode resolved; output
+  accepted by `RunConfig.from_dict` without raising.
+- **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
+  finding against the payload shape; reviewed at raised effort.
+- **Branch / PR:** not yet opened
+- **Status:** ready, not dispatched
 
 ## Blocked
 
-_none._ Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
+### B-019 — Engine output -> `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**)
+- **Depends on:** B-018. F-008 consumes it read-only. Wave 2.
+### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
+- **Depends on:** B-019, B-020. Wave 3.
+### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
+- **Depends on:** B-021. Wave 4, closes checkpoint 1.
+
+M2 plan (historical): `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
 
 #### M2 sequencing — RE-ORDERED 2026-08-22 on the user's ruling
 ```

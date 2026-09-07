@@ -95,7 +95,11 @@ Fixed. Do not introduce alternatives without the orchestrator escalating to the 
 - No React, Vue, Svelte, or any SPA framework.
 - No TypeScript.
 - Never edit files owned by another role (see §4).
-- Never commit dataset files (ROOT files) to git.
+- Never commit dataset files (ROOT files) to git. **One bounded exception, ruled by the user
+  2026-09-07 for M3:** a single small *fixture* ROOT file may live under `tests/fixtures/`,
+  sized so the whole suite stays cheap to clone, existing only so the pipeline is runnable
+  and reviewable offline. It is a test fixture, not a dataset. Real datasets are still never
+  committed, and this is not a licence to add a second one — see `docs/plan-m3-vertical-slice.md`.
 
 ---
 
