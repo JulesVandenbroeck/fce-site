@@ -26,6 +26,16 @@ IDs are `B-nnn`, allocated in order and never reused.
      (`analytical_loop.py:274`, `path_final.py:22-26`). Pointing `env` at `tests/fixtures/`
      writes `output/` into the committed tree. C5 now requires a tmp FCE_HOME and asserts
      `tests/fixtures/output/` does not exist after the run.
+- **Approach changed mid-task, 2026-09-07, on the user's information.** Real 91 GeV datasets are
+  at `https://homepage.iihe.ac.be/~kskovpen/fce/datasets/IDEA/91GeV/` — X1 158M, X2 92M, X3 51M,
+  X4 19M, X5 5.3M, **X6 5.9M**, data 4.8M. The fixture is therefore **downsampled from real
+  simulation, not synthesised**: `make_fixture.py` is a downsampler, the real files land in
+  `~/.fce/datasets/IDEA/91GeV/` (outside the repo, never committed), and C7 becomes
+  "byte-identical given the same sources and the same N" — there is no seed. `make_fixture.py`
+  may fetch; the suite must not. X1 is what mission 1 needs for the Z peak.
+- **X6 exists.** `shared/CLAUDE.md` §5 documents X1-X5 and calls X4/X5 unknown. There are seven
+  files, not six. X4/X5/X6 are all still undocumented processes, so **mission 3 stays blocked on
+  the user identifying them** — but the files are now known to exist and are downloadable.
 - **No samples config.** The user asked for one; nothing in `src/fce_web/` reads one.
   `driver.py:24` mentions `config/samples.json` only as a comment about the reference repo;
   samples are discovered by scanning `<dataset_dir>/*.root` (`driver.py:82-95`). Adding one
