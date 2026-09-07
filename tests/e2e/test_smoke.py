@@ -35,7 +35,7 @@ from scripts.screenshot import (
     resolve_output_dir,
     serve_app,
 )
-from tests.e2e.conftest import REPO_ROOT, LoadedPage, off_origin_requests
+from tests.e2e.conftest import REPO_ROOT, LoadedPage, observe, off_origin_requests
 
 #: Seconds to wait when probing a port that should no longer be listening.
 CONNECT_TIMEOUT = 2.0
@@ -86,6 +86,14 @@ def test_off_origin_requests_are_reported_when_one_happens(index: LoadedPage) ->
     with index.page.expect_request(OFF_ORIGIN_PROBE):
         index.page.evaluate(f"new Image().src = {json.dumps(OFF_ORIGIN_PROBE)}")
     assert off_origin_requests(index.activity.requested_urls, index.base_url) == [OFF_ORIGIN_PROBE]
+
+
+def test_bad_response_is_collected_with_its_url_and_status(page: Page, live_server: str) -> None:
+    """Guard: a non-2xx response is caught with the URL and status that produced it."""
+    activity = observe(page)
+    missing_url = f"{live_server}/static/does-not-exist.css"
+    page.goto(missing_url)
+    assert (missing_url, 404) in activity.bad_responses
 
 
 def test_console_errors_are_collected_when_one_happens(index: LoadedPage) -> None:

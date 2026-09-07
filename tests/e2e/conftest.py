@@ -19,7 +19,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
-from playwright.sync_api import Browser, ConsoleMessage, Error, Page, sync_playwright
+from playwright.sync_api import Browser, ConsoleMessage, Error, Page, Response, sync_playwright
 
 #: The checkout. Put on ``sys.path`` so ``scripts/`` is importable however
 #: pytest was invoked: the server helper the browser tests need is the same
@@ -51,6 +51,7 @@ class PageActivity:
     console_errors: list[str] = field(default_factory=list)
     page_errors: list[str] = field(default_factory=list)
     requested_urls: list[str] = field(default_factory=list)
+    bad_responses: list[tuple[str, int]] = field(default_factory=list)
 
 
 @dataclass
@@ -77,9 +78,14 @@ def observe(page: Page) -> PageActivity:
     def on_page_error(error: Error) -> None:
         activity.page_errors.append(error.message)
 
+    def on_response(response: Response) -> None:
+        if not 200 <= response.status < 300:
+            activity.bad_responses.append((response.url, response.status))
+
     page.on("console", on_console)
     page.on("pageerror", on_page_error)
     page.on("request", lambda request: activity.requested_urls.append(request.url))
+    page.on("response", on_response)
     return activity
 
 
