@@ -1907,3 +1907,59 @@ C9 (enumerated node shapes without enumerating how this codebase reads cfg keys)
 instruments, all mine. The reviewer's F1 closes the loop: the fourth widening of a hand-rolled
 matcher would have been a fourth cycle, and the answer was always one stdlib line. Ask what a
 check prints when the property is false, and prefer the check that cannot be narrow.
+
+
+---
+
+## B-017 — Give the Playwright harness a response-status probe
+
+Merged #28 `aef697f`, 2026-09-07. 2 cycles + 1 re-specification, `findings=1, verdict=approve`.
+checks=7 (C1-C7). Suite floor 593 → 594.
+
+### B-017 — Give the Playwright harness a response-status probe (**CONTRACT TASK**)
+- **Scope:** `tests/e2e/conftest.py`, `tests/e2e/test_smoke.py`
+- **Accept:** `PageActivity` carries every non-2xx response with URL and integer status,
+  from a `page.on("response", ...)` in `observe()`; falsifiability proven by a known-missing
+  `/static` URL captured as 404, gated by a no-op-handler mutation; no existing nodeid dropped;
+  suite >= 592; scope exactly the two files by three-dot diff. **C1-C5, checks=5.**
+- **Why it exists:** F-002's "zero 404s" had no instrument. `conftest.py:82` records
+  `request.url` and nothing about the response, so a font 404 and a font 200 are the same data.
+  `conftest.py` is backend's file, so the probe splits out here. **F-002 consumes the attribute
+  name and type read-only and is blocked until this merges** — it runs before its consumer and
+  does not merge with an open finding against the shared name (§2, contract tasks).
+- **Depends on:** nothing.
+- **Branch / PR:** `task/b-017-response-probe` — not yet opened
+- **Status:** dispatched 2026-09-07 to `backend-coder`, cycle 1, own worktree.
+- **History:** [`archive/backend.md`](archive/backend.md)
+
+### Why it exists
+F-002 was written with a criterion — "zero 404s" — that had no instrument. `conftest.py:82`
+recorded `request.url` and nothing about the response, so a font 404 and a font 200 were the
+same data. Caught at decomposition by a `scout` fact-find rather than by a review cycle, which
+is the first time on this project that this shape was caught *before* dispatch rather than
+after. The harness is backend's file, so it split out here as a contract task.
+
+### Cycle 1 → re-specification → cycle 2
+Cycle 1 approved with F1: my dispatch specified the bad-status window as `[200, 300)` verbatim,
+which classifies a 3xx redirect as a failure. The coder implemented exactly what I wrote, so
+this was **my** defect and the re-dispatch was a re-specification, not a cycle — the reviewer
+said so unprompted ("the boundary is the dispatch's to move, not the coder's to guess at").
+C6/C7 added; the window became `status >= 400` behind `is_bad_response_status`.
+
+Because this is a contract task, it was **not** merged with F1 open (§2). D-004 merged that way
+and it cost D-008 three cycles on the same eight colours.
+
+### What the reviewer did that the coder did not
+- Cycle 1: a second mutation the PR never ran — rebinding `Response.status` to a constant `500`
+  — proving the assertion is load-bearing on the *status value*, not merely on the URL being
+  collected.
+- Cycle 2: re-derived the coder's "no 3xx route exists" premise independently instead of
+  trusting the grep. One hit in `src/fce_web/`, a docstring at `runs.py:39`. No route. So
+  asserting the boundary at the classifier was correct rather than a dodge.
+
+### Also worth keeping
+Two body-only send-backs at the §5.1 free gate, neither a cycle, neither moving the head:
+C3 first cited a `def test_` line diff and the number 22 (real: 23 → 24), and after the re-spec
+the same block was stale again at 24 (real: 25). The instrument, not just the number, was the
+problem the first time: a line-oriented match over source is blind to class-scoped tests, which
+is the B-006 cycle-4 failure exactly. `--collect-only` is what sees what pytest collects.

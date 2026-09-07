@@ -68,10 +68,6 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none_
-
-## Ready
-
 ### D-014 — Close D-010's open findings: the missing horizontal-scroll guard
 - **Scope:** `docs/design-explorations/shell.html`, `shell.css`, `verify.py`
 - **Why:** D-010 merged `a059f34` on the user's ruling with R3 open. The property holds — the
@@ -96,8 +92,40 @@ _none_
   AST floors **79 registrations / 215 reporting calls** at `a059f34`, may rise, never fall;
   flake8 0; `pytest tests/ -q` >= 426.
 - **Depends on:** ~~D-010~~ merged `a059f34`.
-- **Branch / PR:** not yet opened
+- **Branch / PR:** `task/d-014-shell-scroll-guard` — **#29**, head `6472598`
+- **Status:** in review (cycle 1) — **re-specification dispatched 2026-09-07**, §5.4 clause 2:
+  F1 is against C5 and F3 against C3, and neither shipped with a command. Cycle count stays
+  at 1. C3 and C5 re-specified with commands; C6 added for F2. checks=6.
+- **Review (cycle 1):** 3 findings, `verdict=rework` —
+  [PR #29 comment](https://github.com/JulesVandenbroeck/fce-site/pull/29#issuecomment-5568675854).
+  The gate passed cleanly first: `verify.py --all` exits 1 with exactly `['board-lane-fill']`,
+  334 sections PASS, AST floors **79/215 → 80/216**, flake8 clean, `pytest` 592, scope exact,
+  and `shell-page-no-h-scroll` now resolves to a real section at `verify.py:7125`.
+  **F1** — the `@media (max-width: 1024px)` edge fade (`shell.css:219-229`) paints
+  unconditionally, but at 1024 with palette *and* panel collapsed the region does not overflow
+  (`scrollWidth 896 == clientWidth 896`): a "more content this way" cue where there is none.
+  C5's stated premise measures false in that state. Fix: move to `max-width: 768px`, where
+  overflow is unconditional in all four states (`736 > 640/512/512/384`), or gate on the state
+  classes that actually overflow at 1024.
+  **F2** — `position: relative` on the two toggles (`shell.css:124`, `:359`) plus 11 lines of
+  comment was carried in on a root-cause claim that **does not reproduce**: the shipped section
+  passes 12/12 on pre-fix `origin/main` and 12/12 with both declarations removed. Pre-fix
+  `.sr-only` rects measured inside the viewport in both palette states. Delete both, or cite
+  the width/state where the escape actually widens `scrollWidth`.
+  **F3** — `[class^="node-card__"]` (`verify.py:6965`) matches only when the token is *first*,
+  so the docstring's "any current or future `node-card__*` class is swept" (`:6944`)
+  overclaims. `[class*="node-card__"]`, same one line.
+- **My C1 was not falsifying, and the coder proved it.** I specified
+  `.canvas-wrap { width: 3000px }` as the mutation; `.canvas-region`'s `overflow: auto` absorbs
+  it, so the section correctly stays green. The coder measured that, said so in writing, and
+  substituted `overflow: visible`, which does trip it. The reviewer reproduced both. §2's *do
+  the feasibility arithmetic before you impose a floor*, unlearned again — this is the same
+  defect as D-004 cycle 3's 1.15:1.
 - **History:** [`archive/design.md`](archive/design.md)
+
+## Ready
+
+_none._
 
 
 ## Blocked

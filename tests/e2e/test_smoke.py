@@ -35,7 +35,7 @@ from scripts.screenshot import (
     resolve_output_dir,
     serve_app,
 )
-from tests.e2e.conftest import REPO_ROOT, LoadedPage, off_origin_requests
+from tests.e2e.conftest import REPO_ROOT, LoadedPage, is_bad_response_status, observe, off_origin_requests
 
 #: Seconds to wait when probing a port that should no longer be listening.
 CONNECT_TIMEOUT = 2.0
@@ -66,6 +66,25 @@ def test_index_page_logs_no_console_errors(index: LoadedPage) -> None:
     assert index.activity.console_errors == []
 
 
+def test_index_page_has_no_bad_responses(index: LoadedPage) -> None:
+    """Necessary but not sufficient on its own -- see test_tokens_stylesheet_is_applied
+    (F-002 C3) for the check that actually proves the stylesheet loaded and was parsed.
+    """
+    assert index.activity.bad_responses == []
+
+
+def test_tokens_stylesheet_is_applied(index: LoadedPage) -> None:
+    """F-002 C3, the load-bearing check: --font-body is readable off <html> at
+    runtime, proving tokens.css was requested, parsed, and applied -- not merely
+    linked. Falsifiability: point base.html's href at a nonexistent file and this
+    goes red (paste of both runs is in the PR body).
+    """
+    value = index.page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--font-body')"
+    )
+    assert "EB Garamond" in value
+
+
 def test_index_page_raises_no_page_errors(index: LoadedPage) -> None:
     """No script on the page throws an uncaught exception."""
     assert index.activity.page_errors == []
@@ -86,6 +105,29 @@ def test_off_origin_requests_are_reported_when_one_happens(index: LoadedPage) ->
     with index.page.expect_request(OFF_ORIGIN_PROBE):
         index.page.evaluate(f"new Image().src = {json.dumps(OFF_ORIGIN_PROBE)}")
     assert off_origin_requests(index.activity.requested_urls, index.base_url) == [OFF_ORIGIN_PROBE]
+
+
+def test_bad_response_is_collected_with_its_url_and_status(page: Page, live_server: str) -> None:
+    """Guard: a non-2xx response is caught with the URL and status that produced it."""
+    activity = observe(page)
+    missing_url = f"{live_server}/static/does-not-exist.css"
+    page.goto(missing_url)
+    assert (missing_url, 404) in activity.bad_responses
+
+
+def test_bad_response_status_excludes_redirects() -> None:
+    """Guard (F1): a 3xx is routing, not a failure, and must never be collected.
+
+    Asserted at the classifier directly rather than against a live 3xx route:
+    nothing in the app redirects today (grepped for ``RedirectResponse``), and
+    F-002 needs the boundary right before it grows the app's first one, not a
+    route invented here to exercise a case the app does not yet have.
+    """
+    assert is_bad_response_status(404) is True
+    assert is_bad_response_status(301) is False
+    assert is_bad_response_status(302) is False
+    assert is_bad_response_status(304) is False
+    assert is_bad_response_status(200) is False
 
 
 def test_console_errors_are_collected_when_one_happens(index: LoadedPage) -> None:

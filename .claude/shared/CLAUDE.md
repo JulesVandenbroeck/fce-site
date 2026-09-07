@@ -129,10 +129,20 @@ Ownership is a hard boundary. The reviewer checks it on every task.
 | Role | Owns (may create/edit) | Must not touch |
 |---|---|---|
 | **backend** | `app.py`, `routes/`, `runs.py`, `store.py`, `missions.py`, `safe_eval.py`, `engine/`, `objects.py`, `paths.py`, `tests/`, `content/`, `pyproject.toml`, `docs/api.md` | `templates/`, `static/` |
-| **frontend** | `templates/`, `static/js/`, `static/vendor/` | `static/css/`, any Python |
+| **frontend** | `templates/`, `static/js/`, `static/vendor/`, and browser tests under `tests/e2e/` | `static/css/`, `tests/e2e/conftest.py`, `tests/` outside `tests/e2e/`, any other Python |
 | **design** | `static/css/`; and in `templates/`, **only** class attributes and purely presentational wrapper elements | HTMX attributes (`hx-*`), form field `name`/`id`, `data-*` bindings, template logic (`{% %}`, `{{ }}`), any Python, any JS |
 
-**The frontend/design seam is the one place two roles share a file.** The rule:
+**The frontend/e2e seam, ruled 2026-09-07.** Backend owns the *harness* — `tests/e2e/conftest.py`,
+its fixtures, `PageActivity`, the live server. Frontend owns the browser *assertions about its
+own markup*, in `tests/e2e/` test files. If frontend needs a fixture that does not exist, it
+does not add one: it reports that and the orchestrator raises a backend task.
+
+Why: F-002's dispatch handed a frontend coder `tests/e2e/test_smoke.py`, which this table then
+forbade it to touch. The coder followed the scope and the reviewer caught the contradiction. The
+alternative — pairing every frontend task with a backend task to write its browser check — would
+have made a one-line `<link>` into two branches, two reviews and two merges, serialised.
+
+**The frontend/design seam is the other place two roles share a file.** The rule:
 frontend owns what the markup *means* and *does*; design owns what it *looks like*.
 If design needs a hook that does not exist, it adds a class. If design believes the
 markup structure itself is wrong, it does not change it — it reports that to the
