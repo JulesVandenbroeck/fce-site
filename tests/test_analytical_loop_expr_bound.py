@@ -52,11 +52,21 @@ def test_no_eval_or_compile_call_sites_in_analytical_loop():
     )
 
 
+_COMPILED_SEL_EXPRS_KEY = "compiled_sel_exprs"
+_DICT_READ_METHODS = ("get", "pop", "setdefault")
+
+
 def _compiled_sel_exprs_reference_sites(source: str):
     """Return sorted line numbers of *real* uses of the ``compiled_sel_exprs`` key/name:
-    a ``Name`` node with that id (a plain assignment or read), or a ``Subscript`` node
-    whose slice is the string constant ``"compiled_sel_exprs"`` (a dict key access, e.g.
-    ``branch_cfg["compiled_sel_exprs"] = ...``).
+
+    - a ``Name`` node with that id (a plain assignment or read);
+    - a ``Subscript`` node whose slice is the string constant ``"compiled_sel_exprs"``
+      (a dict key access, e.g. ``branch_cfg["compiled_sel_exprs"] = ...``);
+    - a ``Call`` to a ``.get``/``.pop``/``.setdefault`` method whose first argument is the
+      string constant ``"compiled_sel_exprs"`` (e.g. ``cfg.get("compiled_sel_exprs", [])``)
+      -- the idiom this codebase actually uses to *read* a cfg key
+      (``analytical_loop.py:254``, ``path_filter.py:594``), and the shape the cycle-2 review's
+      R2 found this checker blind to (mutation 6: ``1 passed`` where it should have failed).
 
     Deliberately AST-based rather than a substring search over the source text (closes
     B-015 cycle-1 review m1): a comment merely *mentioning* the string must not trip this,
@@ -65,12 +75,18 @@ def _compiled_sel_exprs_reference_sites(source: str):
     tree = ast.parse(source)
     sites = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and node.id == "compiled_sel_exprs":
+        if isinstance(node, ast.Name) and node.id == _COMPILED_SEL_EXPRS_KEY:
             sites.append(node.lineno)
         elif isinstance(node, ast.Subscript):
             slice_node = node.slice
-            if isinstance(slice_node, ast.Constant) and slice_node.value == "compiled_sel_exprs":
+            if isinstance(slice_node, ast.Constant) and slice_node.value == _COMPILED_SEL_EXPRS_KEY:
                 sites.append(node.lineno)
+        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr in _DICT_READ_METHODS):
+            for arg in node.args:
+                if isinstance(arg, ast.Constant) and arg.value == _COMPILED_SEL_EXPRS_KEY:
+                    sites.append(node.lineno)
+                    break
     return sorted(sites)
 
 
@@ -106,6 +122,31 @@ def test_compiled_sel_exprs_key_is_gone_catches_a_real_assignment():
     assert sites != [], (
         "perturbation twin: checker did not detect a deliberately reintroduced "
         'branch_cfg["compiled_sel_exprs"] = [] assignment'
+    )
+
+
+# ---------------------------------------------------------------------------
+# C10 (closes R2): the cycle-2 review found the checker blind to a reintroduced
+# *read* via ``cfg.get("compiled_sel_exprs", [])`` -- the idiom this codebase
+# actually uses to read a cfg key (``analytical_loop.py:254``, ``path_filter.py:594``).
+# These twins exercise that widened branch directly.
+# ---------------------------------------------------------------------------
+
+def test_compiled_sel_exprs_key_is_gone_catches_a_get_read():
+    source = inspect.getsource(analytical_loop) + '\nbranch_cfg.get("compiled_sel_exprs", [])\n'
+    sites = _compiled_sel_exprs_reference_sites(source)
+    assert sites != [], (
+        "perturbation twin: checker did not detect a reintroduced "
+        'branch_cfg.get("compiled_sel_exprs", []) read'
+    )
+
+
+def test_compiled_sel_exprs_key_is_gone_catches_a_pop_read():
+    source = inspect.getsource(analytical_loop) + '\nbranch_cfg.pop("compiled_sel_exprs", None)\n'
+    sites = _compiled_sel_exprs_reference_sites(source)
+    assert sites != [], (
+        "perturbation twin: checker did not detect a reintroduced "
+        'branch_cfg.pop("compiled_sel_exprs", None) read'
     )
 
 
