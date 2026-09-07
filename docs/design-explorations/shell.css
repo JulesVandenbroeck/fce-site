@@ -190,9 +190,38 @@ button:focus-visible,
    * 1024 and 768 it is wider than this region's content box and this is
    * the container that scrolls. Design manual §4: wide content scrolls
    * inside its own container, the page body never scrolls horizontally
-   * (verify.py's `shell-page-no-h-scroll` half of C8 holds the page). */
+   * (verify.py's `shell-page-no-h-scroll`, D-014's C11, holds the page). */
   overflow: auto;
   background: var(--paper);
+  /* Containing block for the ::after edge fade just below (D-014, D-010
+   * review minor m9) -- positioned against this region's own padding box,
+   * not the page. */
+  position: relative;
+}
+/* Trailing-edge ink-fade: measured absent at 1024 with palette and panel
+ * both collapsed (scrollWidth == clientWidth == 896px), measured present at
+ * 768 in all four states (736 > 640/512/512/384) -- pinned to the region's
+ * own box, not the scrolled content, so it does not shift on scroll. */
+.canvas-region::after {
+  content: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--space-3);
+  background: linear-gradient(to right, transparent, var(--ink-45));
+  pointer-events: none;
+}
+@media (max-width: 1024px) {
+  .shell:has(.palette[data-state="expanded"]) .canvas-region::after,
+  .shell:has(.mission-panel[data-state="expanded"]) .canvas-region::after {
+    content: "";
+  }
+}
+@media (max-width: 768px) {
+  .canvas-region::after {
+    content: "";
+  }
 }
 /* Fixed at the 11 x --space-7 = 704px design size, never scaled down.
  *
@@ -319,6 +348,15 @@ button:focus-visible,
   text-overflow: ellipsis;
 }
 .mission-panel__toggle {
+  /* D-014 cycle 2: `.palette__toggle`'s own `position: relative` (cycle 1)
+   * did not reproduce under measurement and was removed -- but this one is
+   * load-bearing. With it removed, `shell-page-no-h-scroll` reddens at
+   * `panel=collapsed`, both palette states, at all three widths: its
+   * `.sr-only` child's static position escapes the panel's `overflow:
+   * hidden` clip and widens `document.documentElement.scrollWidth` past
+   * `clientWidth` by 41px (1481 > 1440 at 1440px; 1065 > 1024 at 1024px;
+   * 809 > 768 at 768px). Kept for that reason, on this element only. */
+  position: relative;
   flex: 0 0 auto;
   width: var(--space-5);
   height: var(--space-5);

@@ -6223,9 +6223,12 @@ SHELL_CANVAS_MIN_TEXT_PX = 11.0
 # lines (cycle-1 review M4): real `all_results.append(...)` registrations
 # inside `main()`, and real `line(...)` / `results.append(...)` reporting
 # calls anywhere in the file. 67 and 195 respectively on `main` at 72d2950;
-# 79 and 215 here (cycle 3 adds `shell-canvas-text-legible`, C10).
-SHELL_REGISTRATION_FLOOR = 79
-SHELL_REPORT_CALL_FLOOR = 215
+# 79 and 215 after D-010 cycle 3 (which added `shell-canvas-text-legible`,
+# C10); 80 and 216 after D-014 cycle 1 (adds `shell-page-no-h-scroll`, C11);
+# 81 and 217 here (D-014 cycle 2, review F1, adds
+# `shell-canvas-fade-affordance`). Floors may rise; they may never fall.
+SHELL_REGISTRATION_FLOOR = 81
+SHELL_REPORT_CALL_FLOOR = 217
 
 # The CSS named colours, for C7's literal sweep (cycle-1 review R1: the old
 # sweep saw hex and nothing else, so `color: white` and
@@ -6475,12 +6478,23 @@ def check_shell_grown_node_visible_above(pw: Playwright) -> bool:
     its SVG sibling list (paint order is DOM order in SVG; there is no
     z-index) -- both named here, per this criterion's own instruction,
     rather than left to be inferred from the diff. Checks (a) the grown
-    card's rect is contained in `#canvas-wrap`'s own visible rect, and (b)
-    a 5x5 grid of 25 points inside the grown card's rect all resolve to it
-    or a descendant -- including the points that land inside n2's own
-    original footprint, proving the overlap is real and n1 still paints on
-    top of it."""
-    section("Shell C4 -- opened node stays fully visible and paints above what it overlaps")
+    card's rect is contained in `#canvas-wrap`'s own box (its
+    `getBoundingClientRect()` -- not viewport-clipped, so this is a
+    containment check against the wrap's own geometry, not a claim that the
+    wrap itself is fully scrolled into view), and (b) a 5x5 grid of 25
+    points inside the grown card's rect all resolve to it or a descendant
+    -- including the points that land inside n2's own original footprint,
+    proving the overlap is real and n1 still paints on top of it.
+
+    D-014 (D-010 review minor m8): this runs at 1440 only, with both side
+    panels collapsed, and neither the section name nor this docstring used
+    to say so -- both now do. The clamp-and-raise mechanism this criterion
+    exists to prove is a JS computation independent of viewport width
+    (`toggleNode`'s clamp uses the canvas's own fixed 704x512 design size,
+    not anything that varies with the shell's breakpoints), so one width is
+    the mechanism's own natural scope; C1 and C10 already cover the
+    per-width, per-state grid this section deliberately does not repeat."""
+    section("Shell C4 -- opened node stays visible, paints above overlaps (1440px, panels collapsed, only)")
     browser, context, page, *_ = load_shell_page(pw, 1440)
     # Maximise the canvas region's own on-screen room so the fixed-size
     # canvas-wrap (768x512) never needs its own scroll to hold the grown
@@ -6915,8 +6929,7 @@ def check_shell_canvas_text_legible(pw: Playwright) -> bool:
         of the `viewBox` and one CSS pixel on screen -- against
         `SHELL_CANVAS_MIN_SCALE`. This is the mechanism, and it fails for
         *any* cause of downscaling, not only the one cycle 2 introduced.
-    (b) Every text-bearing element on the canvas (`.node-card__title`,
-        `.node-card__body`, `.node-card__toggle`), computed font-size
+    (b) Every text-bearing element on the canvas, computed font-size
         multiplied by that scale, against `SHELL_CANVAS_MIN_TEXT_PX`. This
         is the symptom, in the unit a reader would complain in, and it
         would also catch type made illegible by a token change rather than
@@ -6924,8 +6937,19 @@ def check_shell_canvas_text_legible(pw: Playwright) -> bool:
         is `display: none` while collapsed -- is really laid out and really
         measured in at least one card.
 
+        D-014 (D-010 review minor m7): the element list used to be a fixed
+        `['.node-card__title', '.node-card__body', '.node-card__toggle']`
+        array, so a label class no one wrote into that list -- added
+        alongside the three, or replacing one of them -- rendered off
+        screen with nothing here noticing. The selector is now
+        `[class*="node-card__"]`, one substring match against `.node-card`'s
+        own BEM element namespace rather than a name-by-name enumeration,
+        so any current or future `node-card__*` class is swept -- wherever
+        it falls in the attribute -- without this function needing to know
+        its name in advance.
+
     The surface is fixed rather than fluid now (`shell.css` `.canvas-wrap`),
-    and `.canvas-region` scrolls; C8's own no-horizontal-scroll half still
+    and `.canvas-region` scrolls; `shell-page-no-h-scroll` (C11, D-014)
     holds the page itself, so the scrolling is confined to the region that
     owns the wide content, as the design manual's §4 layout rule requires."""
     section("Shell C10 -- canvas text is rendered at legible size, 4 states x 3 widths")
@@ -6940,11 +6964,10 @@ def check_shell_canvas_text_legible(pw: Playwright) -> bool:
         const svg = document.getElementById('canvas-svg');
         const ctm = svg.getScreenCTM();
         const texts = [];
-        for (const sel of ['.node-card__title', '.node-card__body', '.node-card__toggle']) {
-            for (const el of document.querySelectorAll(sel)) {
-                const fs = parseFloat(getComputedStyle(el).fontSize);
-                texts.push({ sel, declared: fs, rendered: fs * ctm.a });
-            }
+        const sel = '[class*="node-card__"]';
+        for (const el of document.querySelectorAll(sel)) {
+            const fs = parseFloat(getComputedStyle(el).fontSize);
+            texts.push({ sel: el.getAttribute('class'), declared: fs, rendered: fs * ctm.a });
         }
         return { scale: ctm.a, texts };
     }"""
@@ -7029,7 +7052,12 @@ def check_shell_verify_floors(pw: Playwright) -> bool:
     they raise the floor legitimately, and no earlier count concealed them.
     Also confirms
     `board-lane-fill` -- D-006's overruled C10, left red on purpose -- is
-    still registered and still named, neither deleted nor relabelled."""
+    still registered and still named, neither deleted nor relabelled.
+
+    D-014 raises both floors again, by exactly the registration and
+    reporting it itself adds: `shell-page-no-h-scroll` (C11) is one more
+    `all_results.append(...)` in `main()`'s shell block and one more
+    `line(...)` call inside it."""
     section("Shell C9 -- this file's own verification floors, and the one intended red")
     text = Path(__file__).read_text()
     tree = ast.parse(text, filename=str(Path(__file__)))
@@ -7060,7 +7088,7 @@ def check_shell_verify_floors(pw: Playwright) -> bool:
         f"real all_results.append(...) calls in main(), by AST: {appends}",
         appends_ok,
         f"floor is {SHELL_REGISTRATION_FLOOR} (67 registrations on main at 72d2950, "
-        "+ 10 shell-* sections, + 2 this task's own --section dispatch rewrite added)",
+        "+ 12 shell-* sections, + 2 D-010's own --section dispatch rewrite added)",
     )
     line(
         f"real line(...) / results.append(...) calls in this file, by AST: {reports}",
@@ -7078,6 +7106,121 @@ def check_shell_verify_floors(pw: Playwright) -> bool:
     )
 
     return appends_ok and reports_ok and board_ok
+
+
+def check_shell_page_no_h_scroll(pw: Playwright) -> bool:
+    """D-014: closes the finding D-010 merged with -- shell.css:193 and this
+    file's own C10 docstring (above) both cited a `shell-page-no-h-scroll`
+    section as the thing holding the page's no-horizontal-scroll property,
+    and no such section existed. The property itself held (D-010's review
+    measured `document.documentElement.scrollWidth == clientWidth` at 1440,
+    1024 and 768 by hand); this is that measurement made permanent, the same
+    `scrollWidth > clientWidth` comparison the three sibling explorations
+    fold into their own paint-sweep sections (verify.py:2603, :4403, :5544)
+    -- shell has no browser-driven paint sweep of its own (C7 is a static
+    source sweep), so nothing here folded the check in until now.
+
+    `.canvas-region` is the one region the design manual's own layout rule
+    (`.claude/design/CLAUDE.md` SS4) permits to scroll horizontally -- it
+    holds the fixed 704px canvas surface -- so this measures the page root,
+    not that region, at all 4 (palette/panel) states x 3 widths."""
+    section("Shell C11 -- shell-page-no-h-scroll: the page itself never grows a horizontal scroll, 4 states x 3 widths")
+
+    states = [
+        ("collapsed", "collapsed"),
+        ("collapsed", "expanded"),
+        ("expanded", "collapsed"),
+        ("expanded", "expanded"),
+    ]
+    reports = []
+    failures = []
+    for width in SHELL_DESIGN_WIDTHS:
+        browser, context, page, *_ = load_shell_page(pw, width)
+        for palette_state, panel_state in states:
+            _shell_set_palette_state(page, palette_state)
+            _shell_set_panel_state(page, panel_state)
+            result = page.evaluate(
+                """() => ({
+                    scrollWidth: document.documentElement.scrollWidth,
+                    clientWidth: document.documentElement.clientWidth,
+                })"""
+            )
+            state_name = f"{width}px palette={palette_state},panel={panel_state}"
+            reports.append(f"{state_name}: scrollWidth={result['scrollWidth']} clientWidth={result['clientWidth']}")
+            if result["scrollWidth"] > result["clientWidth"] + 1:
+                failures.append(
+                    f"{state_name}: document.documentElement.scrollWidth "
+                    f"{result['scrollWidth']}px > clientWidth {result['clientWidth']}px"
+                )
+        browser.close()
+
+    ok = not failures
+    line(
+        f"document.documentElement.scrollWidth <= clientWidth in all "
+        f"{len(states) * len(SHELL_DESIGN_WIDTHS)} (4 states x 3 widths) layouts",
+        ok,
+        "; ".join(reports) if ok else f"{len(failures)} layout(s) with page horizontal scroll: {failures}",
+    )
+    return ok
+
+
+def check_shell_canvas_fade_affordance(pw: Playwright) -> bool:
+    """D-014 cycle 2 (review F1): `.canvas-region`'s trailing-edge ink-fade
+    (shell.css, `.canvas-region::after`) is a "more content this way" cue,
+    and a cue that paints when there is nothing to point at is a false one.
+    Cycle 1 gated it on `@media (max-width: 1024px)` unconditionally; the
+    review measured that at 1024 with palette and panel both collapsed
+    `.canvas-region` does not overflow at all (`scrollWidth == clientWidth`),
+    so the fade painted there anyway. The fix keeps the 1024 rule but gates
+    it on `.shell:has(.palette[data-state="expanded"])` /
+    `.shell:has(.mission-panel[data-state="expanded"])` -- the three states
+    at 1024 that do overflow -- and leaves the 768 rule unconditional, since
+    the fixed 704px canvas surface exceeds the region's available width in
+    all four palette/panel states there.
+
+    This measures the property the fix is supposed to establish, at 1440
+    (where the region never overflows, so the fade must never paint) and at
+    both gated widths, in all 4 states: `.canvas-region`'s own
+    `scrollWidth > clientWidth` against whether the `::after` pseudo-element
+    actually generates a box (`content` resolves to `none` when no `@media`
+    rule matches, and to the empty string when one does)."""
+    section("Shell canvas-fade-affordance -- the trailing-edge fade paints only where the region actually overflows")
+
+    states = [
+        ("collapsed", "collapsed"),
+        ("collapsed", "expanded"),
+        ("expanded", "collapsed"),
+        ("expanded", "expanded"),
+    ]
+    measure_js = """() => {
+        const region = document.querySelector('.canvas-region');
+        const after = getComputedStyle(region, '::after');
+        return {
+            overflowing: region.scrollWidth > region.clientWidth,
+            faded: after.content !== 'none',
+        };
+    }"""
+    mismatches = []
+    reports = []
+    for width in (1440, 1024, 768):
+        browser, context, page, *_ = load_shell_page(pw, width)
+        for palette_state, panel_state in states:
+            _shell_set_palette_state(page, palette_state)
+            _shell_set_panel_state(page, panel_state)
+            result = page.evaluate(measure_js)
+            state_name = f"{width}px palette={palette_state},panel={panel_state}"
+            reports.append(f"{state_name}: overflowing={result['overflowing']} faded={result['faded']}")
+            if result["overflowing"] != result["faded"]:
+                mismatches.append(f"{state_name}: overflowing={result['overflowing']} but faded={result['faded']}")
+        browser.close()
+
+    ok = not mismatches
+    line(
+        "fade visibility agrees with .canvas-region overflow in all 12 (4 states x 3 widths) layouts",
+        ok,
+        "; ".join(reports) if ok else f"{len(mismatches)} mismatch(es): {mismatches}",
+    )
+    return ok
 
 
 # Criterion 8's own banned-flag set: a file:// CORS workaround for the
@@ -7592,9 +7735,10 @@ def main() -> None:
             )
 
         if args.all or args.shell:
-            # One `all_results.append(...)` per D-010 acceptance criterion
-            # (C1-C10), each already wrapped in `run_section` by construction
-            # -- see each `check_shell_*` function's own docstring.
+            # One `all_results.append(...)` per D-010/D-014 acceptance
+            # criterion (C1-C11), each already wrapped in `run_section` by
+            # construction -- see each `check_shell_*` function's own
+            # docstring.
             all_results.append(
                 (
                     "shell-canvas-always-visible",
@@ -7653,6 +7797,18 @@ def main() -> None:
                 (
                     "shell-verify-floors",
                     run_section("shell-verify-floors", check_shell_verify_floors, pw),
+                )
+            )
+            all_results.append(
+                (
+                    "shell-page-no-h-scroll",
+                    run_section("shell-page-no-h-scroll", check_shell_page_no_h_scroll, pw),
+                )
+            )
+            all_results.append(
+                (
+                    "shell-canvas-fade-affordance",
+                    run_section("shell-canvas-fade-affordance", check_shell_canvas_fade_affordance, pw),
                 )
             )
 
@@ -8733,6 +8889,8 @@ SHELL_SECTIONS = {
     "shell-reduced-motion-and-focus": check_shell_reduced_motion_and_focus,
     "shell-canvas-text-legible": check_shell_canvas_text_legible,
     "shell-verify-floors": check_shell_verify_floors,
+    "shell-page-no-h-scroll": check_shell_page_no_h_scroll,
+    "shell-canvas-fade-affordance": check_shell_canvas_fade_affordance,
 }
 
 
