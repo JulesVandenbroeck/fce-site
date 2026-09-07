@@ -9,24 +9,34 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-018 — A committed fixture dataset the pipeline can run on
+- **Scope:** `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`,
+  `tests/fixtures/make_fixture.py`, `tests/fixtures/README.md`, `tests/test_fixture_dataset.py`
+- **Accept:** C1-C8 in the plan, C1 and C5 corrected at dispatch (below). checks=8.
+- **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
+- **Branch / PR:** `task/b-018-fixture-dataset` — PR not yet opened
+- **Status:** in review (cycle 1) — dispatched 2026-09-07, `isolation: "worktree"`, effort medium
+- **Note:** rests on the user's 2026-09-07 carve-out to `shared/CLAUDE.md` §3 — a *fixture*
+  ROOT file may be committed; real datasets still may not.
+- **Two dispatch-time corrections, from `scout` 2026-09-07 — do not re-derive:**
+  1. The engine selects branches by **substring** match over tree keys
+     (`analytical_loop.py:156-159`), not exact name. Real names are `pt_lep`-shaped. The plan's
+     C1 "exactly the branches `pt, eta, ...`" was wrong; C1 now asks for the *enumerated* set.
+  2. `get_fce_home(env)` (`paths.py:50-57`) resolves **both** `datasets/` and `output/`
+     (`analytical_loop.py:274`, `path_final.py:22-26`). Pointing `env` at `tests/fixtures/`
+     writes `output/` into the committed tree. C5 now requires a tmp FCE_HOME and asserts
+     `tests/fixtures/output/` does not exist after the run.
+- **No samples config.** The user asked for one; nothing in `src/fce_web/` reads one.
+  `driver.py:24` mentions `config/samples.json` only as a comment about the reference repo;
+  samples are discovered by scanning `<dataset_dir>/*.root` (`driver.py:82-95`). Adding one
+  would be a file with no reader — raised with the user rather than built.
+
 
 ## Ready
 
 M3 wave 1. Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
-Both dispatch with `isolation: "worktree"`.
-
-### B-018 — A committed fixture dataset the pipeline can run on
-- **Scope:** `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`,
-  `tests/fixtures/make_fixture.py`, `tests/fixtures/README.md`, `tests/test_fixture_dataset.py`
-- **Accept:** C1-C8 in the plan. Tree `ntuple` with the 9 branches `analytical_loop.py:154-159`
-  reads; X1 peaks at the Z mass within +/-3 GeV; `run_analysis` completes offline and writes
-  `output/hist*.root`; `tests/fixtures/` <= 5 MB.
-- **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
-- **Branch / PR:** not yet opened
-- **Status:** ready, not dispatched
-- **Note:** rests on the user's 2026-09-07 carve-out to `shared/CLAUDE.md` §3 — a *fixture*
-  ROOT file may be committed; real datasets still may not.
+B-018 is dispatched (see `## In progress`); B-020 is the remaining wave-1 task and is
+independent of it. Dispatch with `isolation: "worktree"`.
 
 ### B-020 — Connection allowlist and graph -> RunConfig (**CONTRACT TASK**)
 - **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`, `docs/api.md` (`## Endpoints`, :27)
