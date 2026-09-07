@@ -12,10 +12,22 @@ IDs are `B-nnn`, allocated in order and never reused.
 ### B-018 — A committed fixture dataset the pipeline can run on
 - **Scope:** `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`,
   `tests/fixtures/make_fixture.py`, `tests/fixtures/README.md`, `tests/test_fixture_dataset.py`
-- **Accept:** C1-C8 in the plan, C1 and C5 corrected at dispatch (below). checks=8.
+- **Accept:** C1-C8 in the plan, C1 and C5 corrected at dispatch (below). checks=8; the coder
+  reports all 8 met. Suite floor **596 -> 605** (+9). Fixture is 4 files, ~0.72 MB, 2000 events
+  each, downsampled from the real datasets with every real branch name and dtype preserved
+  (30 branches: the 26 the engine's substring filter selects, plus 4 it never reads by name).
+  X1 modal bin **90.5 GeV** (C3, within 3 of 91.2); X3 modal bin **75.5 GeV** (C4, below the
+  peak as brief §3 describes).
 - **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
-- **Branch / PR:** `task/b-018-fixture-dataset` — PR not yet opened
-- **Status:** in review (cycle 1) — dispatched 2026-09-07, `isolation: "worktree"`, effort medium
+- **Branch / PR:** `task/b-018-fixture-dataset` at `8a4ef27` — **#31, open**
+- **Status:** cycle 1 complete, **awaiting reviewer dispatch**. §5.1 free gate **PASSED** in
+  `~/fce-gate-b018` (a detached worktree off `origin/task/b-018-fixture-dataset`):
+  `605 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0. PR body carries scope, C1-C8 with
+  IDs and evidence, and the transcript — §4 rule 3 satisfied. **Next move: dispatch
+  `code-reviewer` with the PR number and nothing else.**
+  One immaterial discrepancy, recorded so the reviewer is not surprised: the PR reports
+  `du -sb tests/fixtures/` = **756272**; the gate worktree measures **751620**. A stale
+  `__pycache__` in the coder's tree. C6's 5 MB cap holds on either figure.
 - **Note:** rests on the user's 2026-09-07 carve-out to `shared/CLAUDE.md` §3 — a *fixture*
   ROOT file may be committed; real datasets still may not.
 - **Two dispatch-time corrections, from `scout` 2026-09-07 — do not re-derive:**

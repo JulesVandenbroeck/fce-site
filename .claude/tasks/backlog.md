@@ -650,3 +650,13 @@ and are historical now that #6 is merged.
   lines of code. Two sentences suffice — gate `sel_exprs` through `compile_expr` before any event
   is touched, bounded and student-legible where a bare `compile()` was neither. Git carries the
   history. Raised by the PR #26 cycle-3 review, 2026-09-07.
+
+- **`analytical_loop.run_physics_loop` ignores the `env` it was given** (backend, found by B-018's
+  coder 2026-09-07). `driver._dataset_dir` honours `env` (`driver.py:77`) but
+  `analytical_loop.py:272` resolves its cache/output `hdir` via `get_fce_home()` with **no** `env`
+  argument, so it always reads the real process environment. Consequence: a caller can redirect
+  where the engine *reads* but not where it *writes*. No existing test caught it because every
+  prior test either stubs `run_physics_loop` or runs with `env=None`. B-018's C5 test works around
+  it with `monkeypatch.setenv("FCE_HOME", ...)` — a legitimate test-only fix; the inconsistency is
+  real and wants its own backend task. **Relevant to B-021**, which will run the engine on behalf
+  of a web request and needs writes to land where it says.
