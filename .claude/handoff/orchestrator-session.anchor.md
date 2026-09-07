@@ -1,36 +1,32 @@
-# Orchestrator anchor — 2026-09-03, refreshed at the 75% soft threshold
+# Orchestrator anchor — 2026-09-04, 50% of the 5h limit (resets 17:00)
 
-**Budget:** 76% of the 5h limit at the time of writing; window resets 17:00. **No new work
-dispatched from here.** One agent is in flight: B-013 cycle 4 (backend-coder, worktree).
+**Session goal:** dispatch B-015 and B-016 — wave 7, the last of M2. Both dispatched, both PRs open.
 
-## In flight
-- **B-013 #17 cycle 4** — dispatched after the user's ruling at the §5.7 limit. Head at dispatch
-  `5782fa8`. Collect it, run the §5.1 gate, and if it is clean dispatch the cycle-4 reviewer.
-  If the budget will not carry a review, leave the PR open and say so — do not merge unreviewed.
+## State
+- **B-015** — PR **#26**, head `7899231`, `task/b-015-bound-loop-expr`. In review (cycle 1),
+  reviewer dispatched at high effort. checks=5. Took the PRIMARY outcome: dead `compile()` at
+  `analytical_loop.py:290` and the `compiled_sel_exprs` write removed.
+- **B-016** — PR **#27**, head `1c8b195`, `task/b-016-safe-eval-doc-anchor`. Cycle 1 reported,
+  **§5.1 gate in progress**. checks=4. Test-side only (`tests/test_safe_eval.py`, +86 lines).
+  Claims 581 passed. Also commented the C8 correction on merged PR #17.
 
-## Not dispatched, ready to go next session
-- **D-010 #25 cycle 2** — the review is posted (comment `5524842859`) and the findings are written
-  into `design.md` in full. R1, R2, M1, M3, M4 are all "the instrument cannot fail"; **M2 is the
-  only finding against the design** (fixed 704x512 canvas in a collapsible region: at 768 the
-  region is 80px and shows nothing). Dispatch design-coder at high effort with the comment URL and
-  the finding IDs. checks stay 9 — R1/R2 repair existing checks, they do not add criteria.
-- **B-008 #19** — §5.7 limit already, M3 open. Re-dispatch is **cycle 3, not 4**; escalate if it
-  does not close 0R/0M.
-- **B-014 #18** — cycle 1, gate reproduced, reviewer never returned a verdict. Re-dispatch the
-  reviewer, still cycle 1.
-- **F-002** — links `tokens.css` into `base.html`; first thing to render the shipped woff2.
+## Decisions made
+- B-015's Accept was not criterion-shaped; scout established `compiled_sel_exprs` has **zero
+  readers**, so removal is primary and bounding is the written fallback. That is why it closed in
+  one cycle.
+- B-015's gate FAILED on a **fabricated transcript** (`5 passed` for a file that never held more
+  than 3 tests, proven by `git log -p`). Corrected PR-body-only, head never moved. NOT a cycle.
 
-## The lesson this session paid for twice, in two different roles
-**An `Expect:` that enumerates adversarial examples is a floor, not a proof.** B-013 cycles 2 and 3
-and D-010's R1/R2/M4 are the same defect: I specified *which mutations must fail* instead of
-requiring an instrument that is decidable. The reviewer then defeats it with the mutation I did
-not think of. Before writing an `Expect:`, ask whether the property is decidable by that
-instrument **at all** — a regex over English is not, in either direction.
+## Dead ends — do not repeat
+- **Do NOT `git worktree remove` a finished agent's worktree.** It makes the agent unresumable
+  (`SendMessage` fails on a missing worktree) and cost a cold agent for a two-command fix.
+- **Do NOT use the primary checkout for a gate while a reviewer is running** — the PR-26 reviewer
+  has it on `task/b-015-bound-loop-expr` right now. Gate inside the coder's own worktree instead.
+- Always `git symbolic-ref --short HEAD` before a bookkeeping commit; I skipped it once and the
+  edit silently no-op'd on a task branch.
 
-## Dead ends
-- Do not extend B-013's negation cue list. That is the retracted approach; C6/C7 are retired and
-  replaced by C8's golden-string pin, my decision, on the user's ruling.
-- Do not read D-010's "a truer wording goes red" as a finding once C8 lands — under a golden pin
-  that is correct behaviour.
-- A bare `pytest` in a fresh worktree collects nothing; use its own `./.venv/bin/python -m pytest`.
-- `verify.py --all` needs ~14 min; give it 1200s. It exits 1 by design with `board-lane-fill` red.
+## Next step
+1. Finish the #27 gate (suite >= 581, flake8 0, C1 mutation triple, C2 golden-mismatch transcript).
+2. If clean, dispatch `code-reviewer` on **27**, PR number only.
+3. Merge order if both approve: **#26 then #27** — they share no files, so either order is safe.
+4. Bookkeeping for B-016 is UNCOMMITTED until primary returns to `main`.

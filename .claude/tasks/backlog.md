@@ -625,3 +625,9 @@ and are historical now that #6 is merged.
 - **B-014 m3** — `tests/test_api_contract.py:245`: `"yes" in doc_nullable.lower()` is a substring
   heuristic on a column carrying qualified prose. A cell like `no (yes once a producer exists)`
   would read as nullable. Parse the leading token.
+- **B-015 m2 — histogram `observable`/`target` expressions are not gated.** `_validate_sel_exprs`
+  (`src/fce_web/engine/analytical_loop.py:238`) iterates `sel_exprs` only. Observable and target
+  expressions are compiled by `path_filter` (`path_filter.py:606`) inside a worker, so a student
+  mistyping an observable still hits the `except Exception` swallow at `analytical_loop.py:314-317`
+  and the two error paths now behave differently. Pre-existing; the `compile()` B-015 replaced
+  covered `sel_exprs` only. Raised by the PR #26 cycle-2 review, 2026-09-04.

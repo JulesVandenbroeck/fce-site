@@ -9,57 +9,49 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none — M2 wave 6 is complete._
+### B-015 — Bound or remove the expression reaching `analytical_loop.py:290`
+- **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`,
+  `tests/test_run_context.py`
+- **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, cycle-1 head `7899231`
+- **Status:** **in review (cycle 3)** — re-dispatched 2026-09-07 to `backend-coder` in a fresh
+  worktree, resuming from [`handoff/b-015-backend-3.md`](../handoff/b-015-backend-3.md). The
+  2026-09-04 cycle-3 attempt did **zero work** — blocked out of the branch by a locked worktree,
+  since removed; branch was still at `02a542b` at re-dispatch. **C1-C11, checks=11.**
+  **This is the §5.7 limit: if cycle 3 does not converge, escalate to the user.**
+- **Review (cycle 2):** 1R / 0M / 2m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540111544).
+  R1 and M1 fixed. `_validate_sel_exprs` (`analytical_loop.py:217-245`, called at `:270`) restores
+  the early gate *and* bounds it — strictly stronger than `main`'s bare `compile()`, and the
+  reviewer's mutation 3 proved C8 is **not** satisfiable by reinstating the old call. 588 passed.
+  **R2:** the m1 fix narrowed the guard — `_compiled_sel_exprs_reference_sites` misses a read via
+  `cfg.get("compiled_sel_exprs", [])`, the idiom this codebase actually uses. Instrument, not code;
+  the property holds today. → C10. m3 (C8's `-k bound` selects the whole file) → C11.
+  **m2 backlogged:** the gate covers `sel_exprs` only — a mistyped *observable* still hits the
+  `except Exception` swallow in a worker. Pre-existing, outside B-015's remit.
+- **Three blind instruments on this one task, all mine:** C3 (`pytest tests/ -q` prints 583 either
+  way), C8 (`-k bound` matches the file name), C9 (enumerated "assignment or subscript" without
+  enumerating how this codebase reads cfg keys). Counting cycle 2 as a **cycle**, not a third
+  consecutive re-specification — C9 shipped with commands, and declaring re-spec again would put
+  the §5.7 limit permanently out of reach. **If cycle 3 does not converge, escalate to the user.**
+- **Review (cycle 1):** 1R / 1M / 1m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540011186).
+  M1: the deleted `compile()` was dead as an *optimisation* but live as an early **syntax gate** —
+  `sel_exprs=["l1.pt >>> 20"]` raised `SyntaxError` on `main` and now returns a completed-looking
+  `RunResult(processed_any=False)`, the real failure swallowed by `analytical_loop.py:314-317`.
+  Security is not weakened; `path_filter` still validates before any event is touched.
+  R1: the PR body dropped the `Check:`/`Expect:` lines my dispatch carried. m1 folded into C9.
+- **Why a re-specification, not a cycle:** C3 *did* ship with a command — but `pytest tests/ -q`
+  prints `583 passed` whether or not the syntax gate exists, so the instrument was structurally
+  blind to the property it certified (§2). My defect. I also framed "dead" as *zero readers of the
+  produced value* and never asked what the **call** did.
+- **Resolution wanted:** validate `sel_exprs` once at the top of `run_physics_loop` through
+  `safe_eval.compile_expr` — restores the gate *and* bounds it, which the old `compile()` never was.
+- **Gate history:** cycle 1's first gate failed on a fabricated transcript (`5 passed` for a file
+  that never held more than 3 tests); corrected body-only, head unmoved. Also not a cycle.
+- **Depends on:** ~~B-008~~ merged `7d5fa0a`.
+- **History:** [`archive/backend.md`](archive/backend.md)
 
 ## Ready
 
-
-**Released 2026-08-31 by the B-012 merge (`928c1ba`); all three dispatched in parallel
-2026-08-31, one worktree each.** They share no files. B-008 and B-013 do share a *symbol*:
-B-008 routes `path_filter.py` through `safe_eval`, and B-013 edits `safe_eval.py`. B-013's edits
-are a docstring, a test isolation assertion and a comment — no behaviour change — so the two
-cannot corrupt each other while in flight, only at the merge.
-**Merge order: B-013, then B-008, then B-014.** If B-008's branch has fallen behind by then,
-merge `main` into the branch. Never rebase.
-
-### B-016 — Close B-013's two open findings: anchor the docstring golden, correct the C8 record
-- **Scope:** `src/fce_web/safe_eval.py`, `tests/test_safe_eval.py`
-- **Why:** B-013 merged `87428ee` on the user's ruling with both open. Neither is a live defect —
-  the page of code is correct and C8's instrument was independently proven sound — but the guard
-  has a hole and the record has a false transcript.
-- **Accept:**
-  - [ ] C1 A contradicting statement placed **anywhere** in `CompiledExpr.__doc__` makes the
-        docstring meta-test fail — not only inside the two pinned route clauses. Today appending
-        a blanket "neither route ever executes `__init__`" gives `1 passed`; that must go red.
-        Anchor the golden to the enclosing paragraph, or assert the blanket claim's shape absent
-        from the whole docstring. Cycle 2's meta-test had this and retiring C6/C7 dropped it.
-        Check:  the mutation above, applied by a pytest plugin, not by editing the repo.
-        Expect: the named test FAILS, and passes again with the plugin removed.
-  - [ ] C2 The PR body's C8 evidence is re-run and replaced with a transcript in which at least
-        one mutation **preserves all four route markers**, so the golden equality itself is shown
-        failing rather than a marker lookup.
-        Check:  the pasted transcript names the golden-mismatch assertion, not a marker lookup.
-        Expect: `AssertionError: ... no longer matches the pinned golden`.
-- **Depends on:** ~~B-013~~ merged. Nothing else. Parallel with anything not editing `safe_eval.py`.
-- **Branch / PR:** not yet opened
-- **History:** [`archive/backend.md`](archive/backend.md)
-
-### B-015 — Bound and validate the expression reaching `analytical_loop.py:290`
-- **Scope:** `src/fce_web/engine/analytical_loop.py`, plus tests. Opened 2026-09-01 out of
-  B-008's cycle-1 review (R2), which found C1 unsatisfiable within B-008's file scope.
-- **Why:** `compile(preprocess_hep_expr(e), '<sel>', 'eval')` at `analytical_loop.py:290` is the
-  last live `compile()` in `src/fce_web/engine/`. It is **functionally inert today** — verified,
-  not assumed: the list it builds reaches only `branch_cfg["compiled_sel_exprs"]`
-  (`analytical_loop.py:132`), `path_filter` no longer reads that key, and an instrumented golden
-  run put all 1,424,355 evaluations through `safe_eval`. `compile()` alone executes nothing, so
-  there is no RCE at that line today. **What is not inert:** the expression reaching it has had
-  no validation and no size bound, so `safe_eval.py:75-80`'s `MAX_EXPR_LENGTH` /
-  `MAX_AST_NODES` caps do not protect that path — a deeply nested student expression still
-  reaches the parser unbounded.
-- **Accept:** either the call site goes, or the expression reaching it is bounded by the same caps
-  as every other path, with a test that fails if the bound is removed.
-- **Depends on:** ~~B-008~~ **merged `7d5fa0a` 2026-09-04 — RELEASED.** B-008's own C1 deviation
-  points here, and the reviewer confirmed the line is inert but unbounded.
+_none — wave 7 is the last of M2, and both of it are in progress._
 
 ## Blocked
 
@@ -77,8 +69,8 @@ wave 5   B-012  parity proof            <- M2 CHECKPOINT     DONE, merged 928c1b
 wave 6   B-008  path_filter -> safe_eval        -+ DONE, merged 7d5fa0a
          B-013  close B-006's open findings     -+ DONE, merged 87428ee
          B-014  close B-004's open findings     -+ DONE, merged db085dd
-wave 7   B-015  bound analytical_loop.py:290       RELEASED by B-008
-         B-016  close B-013's open findings        RELEASED by B-013
+wave 7   B-015  bound analytical_loop.py:290       -+ parallel   DISPATCHED 2026-09-04
+         B-016  close B-013's open findings        -+            DISPATCHED 2026-09-04
 ```
 Wave 6 is deferred behind the checkpoint by the user's ruling 2026-08-22 — nothing depends on
 those three, and after B-012 the golden file is their regression net. **Do not re-order without
@@ -92,6 +84,13 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-016** — closed B-013's two open findings on the `safe_eval` docstring pin — #27, `900dce8`,
+  2 cycles, clean gate (0R/0M/0m). checks=6. Test-side only. The pin is now anchored to the
+  **whole docstring**, so a contradicting claim anywhere reddens it, not only inside the two
+  pinned route clauses; `_assert_whole_docstring_pinned` is the single shared comparison and
+  `test_route_goldens_agree_with_full_docstring_golden` stops the three goldens drifting apart.
+  C8's record on PR #17 is corrected with a marker-preserving mutation. Suite floor → **582**.
+  **B-013's findings are closed; nothing carries forward.**
 - **B-014** — closed B-004's presence/nullability + doc-parity findings — #18, `db085dd`,
   1 cycle, clean gate (0R/0M/3m). checks=4; C2 **implemented, not overruled**. 134 → 286 cases,
   18 → 25 test functions, none dropped or softened. Suite floor → **580**. m1/m2/m3 backlogged.
