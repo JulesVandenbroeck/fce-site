@@ -66,6 +66,25 @@ def test_index_page_logs_no_console_errors(index: LoadedPage) -> None:
     assert index.activity.console_errors == []
 
 
+def test_index_page_has_no_bad_responses(index: LoadedPage) -> None:
+    """Necessary but not sufficient on its own -- see test_tokens_stylesheet_is_applied
+    (F-002 C3) for the check that actually proves the stylesheet loaded and was parsed.
+    """
+    assert index.activity.bad_responses == []
+
+
+def test_tokens_stylesheet_is_applied(index: LoadedPage) -> None:
+    """F-002 C3, the load-bearing check: --font-body is readable off <html> at
+    runtime, proving tokens.css was requested, parsed, and applied -- not merely
+    linked. Falsifiability: point base.html's href at a nonexistent file and this
+    goes red (paste of both runs is in the PR body).
+    """
+    value = index.page.evaluate(
+        "getComputedStyle(document.documentElement).getPropertyValue('--font-body')"
+    )
+    assert "EB Garamond" in value
+
+
 def test_index_page_raises_no_page_errors(index: LoadedPage) -> None:
     """No script on the page throws an uncaught exception."""
     assert index.activity.page_errors == []

@@ -6,6 +6,7 @@
     <title>{{ title }}</title>
     {#- Static assets are referenced by literal path: the app mounts StaticFiles at
        /static, and url_for would force `request` into the template context. #}
+    <link rel="stylesheet" href="/static/css/tokens.css">
     <script type="module" src="/static/js/app.js" defer></script>
   </head>
   <body>
