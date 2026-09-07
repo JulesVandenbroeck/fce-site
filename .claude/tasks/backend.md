@@ -13,9 +13,11 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Scope:** `src/fce_web/engine/analytical_loop.py`, `tests/test_analytical_loop_expr_bound.py`,
   `tests/test_run_context.py`
 - **Branch / PR:** `task/b-015-bound-loop-expr` — **#26**, cycle-1 head `7899231`
-- **Status:** **handed off (cycle 3)** — see [`handoff/SESSION.md`](../handoff/SESSION.md). Cycle 3
-  was dispatched then recalled at the 91% usage threshold ~34s in; **no cycle-3 commit exists**,
-  the branch is still at `02a542b`. Re-dispatch cycle 3 from scratch. **C1-C11, checks=11.**
+- **Status:** **in review (cycle 3)** — re-dispatched 2026-09-07 to `backend-coder` in a fresh
+  worktree, resuming from [`handoff/b-015-backend-3.md`](../handoff/b-015-backend-3.md). The
+  2026-09-04 cycle-3 attempt did **zero work** — blocked out of the branch by a locked worktree,
+  since removed; branch was still at `02a542b` at re-dispatch. **C1-C11, checks=11.**
+  **This is the §5.7 limit: if cycle 3 does not converge, escalate to the user.**
 - **Review (cycle 2):** 1R / 0M / 2m — [PR #26 comment](https://github.com/JulesVandenbroeck/fce-site/pull/26#issuecomment-5540111544).
   R1 and M1 fixed. `_validate_sel_exprs` (`analytical_loop.py:217-245`, called at `:270`) restores
   the early gate *and* bounds it — strictly stronger than `main`'s bare `compile()`, and the
