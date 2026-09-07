@@ -63,6 +63,15 @@ class LoadedPage:
     base_url: str
 
 
+def is_bad_response_status(status: int) -> bool:
+    """Return whether ``status`` belongs in ``PageActivity.bad_responses``.
+
+    ``>= 400`` only: a redirect (3xx) is the server routing the browser
+    somewhere else, not a failure, so it must never trip this probe.
+    """
+    return status >= 400
+
+
 def observe(page: Page) -> PageActivity:
     """Attach collectors to ``page`` and return the record they fill.
 
@@ -79,7 +88,7 @@ def observe(page: Page) -> PageActivity:
         activity.page_errors.append(error.message)
 
     def on_response(response: Response) -> None:
-        if not 200 <= response.status < 300:
+        if is_bad_response_status(response.status):
             activity.bad_responses.append((response.url, response.status))
 
     page.on("console", on_console)
