@@ -9,21 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-017 — Give the Playwright harness a response-status probe (**CONTRACT TASK**)
-- **Scope:** `tests/e2e/conftest.py`, `tests/e2e/test_smoke.py`
-- **Accept:** `PageActivity` carries every non-2xx response with URL and integer status,
-  from a `page.on("response", ...)` in `observe()`; falsifiability proven by a known-missing
-  `/static` URL captured as 404, gated by a no-op-handler mutation; no existing nodeid dropped;
-  suite >= 592; scope exactly the two files by three-dot diff. **C1-C5, checks=5.**
-- **Why it exists:** F-002's "zero 404s" had no instrument. `conftest.py:82` records
-  `request.url` and nothing about the response, so a font 404 and a font 200 are the same data.
-  `conftest.py` is backend's file, so the probe splits out here. **F-002 consumes the attribute
-  name and type read-only and is blocked until this merges** — it runs before its consumer and
-  does not merge with an open finding against the shared name (§2, contract tasks).
-- **Depends on:** nothing.
-- **Branch / PR:** `task/b-017-response-probe` — not yet opened
-- **Status:** dispatched 2026-09-07 to `backend-coder`, cycle 1, own worktree.
-- **History:** [`archive/backend.md`](archive/backend.md)
+_none._
 
 ## Ready
 
@@ -61,6 +47,13 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-017** — response-status probe for the e2e harness (**CONTRACT TASK**) — #28, `aef697f`,
+  2 cycles + 1 re-spec, clean gate (`findings=1, verdict=approve`; F2 was a stale count in the
+  body, corrected before merge). checks=7. Suite floor → **594**.
+  **Contract, cited verbatim by F-002:** `PageActivity.bad_responses: list[tuple[str, int]]` in
+  `tests/e2e/conftest.py`, each entry `(url, status)`, collected iff
+  `is_bad_response_status(status)` — i.e. **status >= 400**, so redirects are not failures.
+  **F-002 is released by this merge.**
 - **B-015** — bounded the last live `compile()` in `engine/` — #26, `4761d9a`, 3 cycles +
   1 re-spec, clean gate at the §5.7 limit (`findings=3, verdict=approve`). checks=11. The dead
   call site at `analytical_loop.py:290` is removed and replaced by `_validate_sel_exprs`, called
@@ -118,8 +111,13 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **592 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
-  `4761d9a`, 2026-09-07. (580 at `db085dd`; 582 after B-016; 413 before B-008.)
+- Suite floor **594 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+  `aef697f`, 2026-09-07. (592 after B-015; 582 after B-016; 580 at `db085dd`.)
+- **e2e page observation** (`tests/e2e/conftest.py`, B-017): `PageActivity` carries
+  `console_errors`, `requested_urls`, and `bad_responses: list[tuple[str, int]]` — the last
+  populated by `page.on("response", ...)` in `observe()` and gated by `is_bad_response_status`,
+  **status >= 400**. Redirects are deliberately not failures. Fixtures: `live_server`, `browser`,
+  `page`, `index`. 25 nodeids under `tests/e2e/`.
 - `docs/api.md` at **13** `^##` headings, **30** schema rows, and its `Type`/`Nullable` columns
   are row-parity tested against the schema tuples with their own meta-test (B-014). An edit to
   either the doc or the schema that breaks agreement fails `tests/test_api_contract.py`.

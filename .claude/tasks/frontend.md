@@ -13,10 +13,6 @@ _none_
 
 ## Ready
 
-_none._
-
-## Blocked
-
 ### F-002 — Link the stylesheets into `base.html`
 - **Scope:** `src/fce_web/templates/base.html`
 - **Accept:** `<link rel="stylesheet">` for the design role's tokens and main stylesheet,
@@ -30,13 +26,19 @@ _none._
   Their `src:` URLs must resolve at the served path, not just on disk — a 404 on a font is
   exactly what this task's zero-404 assertion exists to catch.
 - **Branch / PR:** not yet opened
-- **Status:** **blocked on B-017.** The `scout` fact-find, 2026-09-07: `tests/e2e/conftest.py`
+- **Status:** **RELEASED — B-017 merged #28 `aef697f`, 2026-09-07.** Ready to dispatch.
+  History of the block: The `scout` fact-find, 2026-09-07: `tests/e2e/conftest.py`
   collects console errors (`PageActivity.console_errors`, `:51`) and **requested URLs only**
   (`:53`, `page.on("request", ...)` at `:82`). There is **no response-status collection anywhere
   under `tests/`**, so "zero 404s" has no instrument — a font 404 is indistinguishable from a 200
   in the data that exists. `conftest.py` is backend's file, so the probe was split off as
   **B-017** and this task consumes it read-only. Do not weaken the criterion to fit the old
   instrument; that is the D-001 failure shape.
+- **The contract to cite verbatim, do not re-derive:** `PageActivity.bad_responses:
+  list[tuple[str, int]]` in `tests/e2e/conftest.py`, each entry `(url, status)`, collected iff
+  `is_bad_response_status(status)` — **status >= 400**, so a redirect is not a failure. Fixtures
+  available: `live_server`, `browser`, `page`, `index`. `tests/e2e/` holds 25 nodeids at
+  `aef697f`; that floor may rise and must not fall.
 - **Facts for the dispatch, enumerated 2026-09-07, do not re-derive:** `base.html` is 16 lines
   with **zero** `<link rel="stylesheet">` and its `<head>` is lines 3-10. Static is mounted at
   `/static` from `src/fce_web/static` (`app.py:94-98`). `static/css/` holds exactly one file,
