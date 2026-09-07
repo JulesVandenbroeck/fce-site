@@ -60,6 +60,16 @@ half.
 
 ---
 
+## Always build the laziest thing that works
+
+**Every coder role invokes [`ponytail:ponytail`](.claude/shared/CLAUDE.md) before writing
+code**, ahead of any role-specific skill; the reviewer invokes `ponytail:ponytail-review`.
+Climb the ladder — does it need to exist, is it already in this codebase, does stdlib do it,
+does a native platform feature cover it, can it be one line — and stop at the first rung that
+holds. Non-trivial logic leaves **one** runnable check, not a suite. The ladder shortens the
+solution, never the reading. Full text, including what is never simplified away (validation,
+security, accessibility, and the physics): [`.claude/shared/CLAUDE.md`](.claude/shared/CLAUDE.md) §6.
+
 ## Always use `rtk`
 
 **Every shell command goes through [`rtk`](https://github.com/rtk-ai/rtk)** — a proxy that
@@ -78,8 +88,10 @@ This applies to every role, including sub-agents.
    needs a fact about the code, it dispatches `scout`. Roles stay real only if the boundary does.
 2. **File ownership is a hard boundary.** Backend owns Python, frontend owns markup and JS,
    design owns CSS. Checked on every review. See [`.claude/shared/CLAUDE.md`](.claude/shared/CLAUDE.md) §4.
-3. **Every task is reviewed before it is done.** Zero *required* and zero *suggested-major*
-   findings, or it goes back to the coder.
+3. **Every task is reviewed before it is done.** The reviewer's `VERDICT:` line says
+   `verdict=approve`, or it goes back to the coder. Since 2026-09-07 the reviewer runs
+   `ponytail:ponytail-review` and reports one flat `F<n>` list with no severity buckets —
+   [`.claude/orchestrator/CLAUDE.md`](.claude/orchestrator/CLAUDE.md) §0.
 4. **Nobody runs out of budget silently.** The budget is the account's **5-hour usage limit**,
    shared by the orchestrator and every sub-agent at once. At 50% every role writes an *anchor* —
    decisions, dead ends, next step, on disk where compaction cannot reach it. At 90% it stops,

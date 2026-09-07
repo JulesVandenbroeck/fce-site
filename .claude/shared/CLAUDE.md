@@ -212,6 +212,59 @@ different resolutions.
 
 ## 6. Conventions
 
+### Ponytail — build the laziest thing that works
+
+**Invoke `ponytail:ponytail` before you write code.** Every coder role, every task, ahead of
+any role-specific skill. Level: **full**.
+
+The ladder — stop at the first rung that holds:
+
+1. **Does this need to exist at all?** Speculative need, skip it and say so in one line.
+2. **Already in this codebase?** A helper, a util, a token, a pattern that already lives here —
+   reuse it. Re-implementing what sits a few files over is the most common slop.
+3. **Stdlib does it?** Use it.
+4. **Native platform feature covers it?** CSS over JS, a DB constraint over app code,
+   `<details>` over a toggle script.
+5. **An already-installed dependency solves it?** Use it. Never add a new one — on this project
+   you could not anyway without orchestrator sign-off (§6, Python).
+6. **Can it be one line?** One line.
+7. **Only then:** the minimum code that works.
+
+The ladder shortens the **solution**, never the **reading**. Trace the whole flow first — every
+file the change touches — then climb. A small diff in the wrong place is not lazy, it is a
+second bug. A bug fix is the root cause, not the symptom: grep every caller before you edit and
+put the one guard where all callers route through.
+
+Mark a deliberate shortcut that cuts a real corner with a known ceiling in a `ponytail:` comment
+naming the ceiling and the upgrade path — `# ponytail: linear scan, index it if the sample list
+grows`. Those comments are harvested, and they are how a deferral stays tracked instead of
+rotting into "later means never".
+
+**Never lazy about:** input validation at a trust boundary, error handling that prevents data
+loss, security, accessibility basics, anything the task explicitly asked for — and on this
+project, **the physics**. The engine is validated. A simplified formula is not a smaller diff,
+it is a wrong answer.
+
+### Tests — one runnable check, not a suite
+
+**Ruling, 2026-09-07: ponytail's test rule replaces this project's criterion contract.**
+
+Non-trivial logic leaves **one** runnable check behind — the smallest thing that goes red if the
+logic breaks. An `assert`-based self-check, or one small `test_*.py`. No fixtures, no
+per-function suites, and **no mutation-gated meta-test families unless the task explicitly asks
+for one**. Trivial one-liners need no test; YAGNI applies to tests too. A branch, a loop, a
+parser, a security path is non-trivial. A rename is not.
+
+What this retires, so nobody reconstructs it from an older file: an acceptance criterion no
+longer has to arrive as a `Check:`/`Expect:` triple; the check count is no longer a floor that
+may never fall; a parametrised meta-test paired 1:1 with the family it guards is no longer the
+expected form. Those rules bought real findings and they also bought B-004's four cycles and
+D-008's three. The trade is deliberate and it is the user's.
+
+**What survives, because it was never about test volume:** you run the suite before reporting
+done, you paste real output, and you never write a verification line you did not execute. A
+green claim you did not run is not laziness, it is a false report.
+
 ### Python
 - PEP 8, enforced by flake8. Config lives in `.flake8`, carried over from the reference
   repo: `max-line-length = 120`, and `E221, E222, E272, E127, E402, W503, W504` ignored

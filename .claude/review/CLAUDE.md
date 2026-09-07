@@ -26,7 +26,7 @@ be checked, not as facts.** The verification block in particular is the coder ma
 own homework; re-run it.
 
 If the PR body does not contain the task's file scope and acceptance criteria, you cannot
-do check 2 in §5. Say so as a `Required` finding, name what is missing, and review what you
+do check 2 in §5. Say so as a finding that sets `verdict=rework`, name what is missing, and review what you
 can. Do not go hunting through `.claude/tasks/` to reconstruct it, and do not ask the
 orchestrator to tell you — the gap is the finding.
 
@@ -54,7 +54,7 @@ flake8 src/ tests/             # for any task touching Python
 
 For frontend or design tasks, additionally launch the app and drive it with Playwright:
 screenshot the states the task touched, check the browser console, tab through the
-controls. If you cannot get the app running, that is a `Required` finding in itself — say
+controls. If you cannot get the app running, that sets `verdict=rework` in itself — say
 so rather than reviewing the markup in your head.
 
 Paste real command output into your review. If a check could not be run, say which and why.
@@ -73,7 +73,7 @@ fresh worktree needs its own venv.
 thing it claims to detect, confirm the check fails, restore it, confirm it passes, and paste
 both. Do it by monkeypatching, never by editing repo files.
 
-This is the highest-yield thing you do. Three `Required` findings on this project exist only
+This is the highest-yield thing you do. Three blocking findings on this project exist only
 because a reviewer broke an assertion instead of reading it:
 
 - `verify.py:767` — `parse_rgb` discarded the alpha channel, so every translucent colour was
@@ -84,12 +84,17 @@ because a reviewer broke an assertion instead of reading it:
 - `verify.py:2790` — `srgb_to_cam02ucs()` documented an "aesthetic chroma-context note below".
   There was no note below.
 
-**An assertion that cannot fail in the way that matters is `Required`, even when the page is
+**An assertion that cannot fail in the way that matters forces `verdict=rework`, even when the page is
 fine.** A broken instrument certifies everything after it.
 
 ---
 
 ## 3. Output format — exactly this
+
+**Changed 2026-09-07 by the user's ruling: the three severity buckets are retired in favour of
+`ponytail:ponytail-review`'s flat list.** Invoke that skill before writing findings. The old
+`Required` / `Suggested-major` / `Suggested-minor` shape is history; reviews already posted to
+PRs keep it and are read as written.
 
 ```markdown
 ## Review: <task ID> — <title>
@@ -101,20 +106,24 @@ fine.** A broken instrument certifies everything after it.
 ### Claims checked against the PR body
 - <number the PR body asserts> → reproduced / NOT reproduced (<what I got>) / could not run
 
-### Required
-- **R1** `file:line` — <what is wrong and why it must change>
+### Findings
+- **F1** `file:line` — <what is wrong, or what to cut> → <what replaces it>
+- **F2** `file:line` — <…>
 
-### Suggested-major
-- **M1** `file:line` — <what and why>
-
-### Suggested-minor
-- **m1** `file:line` — <what and why>
-
-VERDICT: pr=<n> cycle=<c> required=<n> major=<n> minor=<n> scope=pass|fail verdict=approve|rework
+VERDICT: pr=<n> cycle=<c> findings=<n> scope=pass|fail verdict=approve|rework
 ```
 
-All four headings appear every time, even when empty. Write `- none` under an empty one — and
+All three headings appear every time, even when empty. Write `- none` under an empty one — and
 under *Claims checked*, `- none asserted`, which is itself worth a second look.
+
+**One line per finding: where it is, what to cut or fix, what replaces it.** The third part is
+not optional — a finding that names a problem and no replacement is a complaint, and the coder
+cannot act on it. Deletion is a legitimate replacement, and often the right one.
+
+**Over-engineering is a finding.** That is the half `ponytail-review` adds, and on this project
+it has somewhere to bite: reinvented stdlib, an interface with one implementation, a factory for
+one product, config for a value that never changes, scaffolding "for later", a test family where
+one check would do. Cite it like any other finding.
 
 **The `VERDICT:` line is mandatory and goes last, on one line, exactly in that shape.** The
 orchestrator records that line rather than copying your prose into a task file, so a malformed
@@ -129,9 +138,9 @@ Findings are **concise constructive bullets**. Each one names a location, states
 problem, and says what would resolve it. Not paragraphs, not essays, not restating what
 the code does.
 
-**Number every finding** — `R1`, `R2`, `M1`, `m1` — allocated in order within the review and
-never reused across cycles of the same PR. The IDs are what let the next cycle say `R1 fixed,
-R2 still open` instead of describing the finding again, and what let the orchestrator's
+**Number every finding** — `F1`, `F2`, `F3` — allocated in order within the review and never
+reused across cycles of the same PR. The IDs are what let the next cycle say `F1 fixed,
+F2 still open` instead of describing the finding again, and what let the orchestrator's
 re-dispatch cite this review by URL rather than pasting it.
 
 **Cite, do not paste.** `file:line` and a sentence. The diff is attached to the PR you are
@@ -147,9 +156,9 @@ restate it.** Open with a resolution line per prior ID —
 
 ```
 ### Prior findings
-- R1 fixed — <the command that shows it>
-- R2 still open — <what is still wrong>
-- M1 overruled by the coder, accepted
+- F1 fixed — <the command that shows it>
+- F2 still open — <what is still wrong>
+- F3 overruled by the coder, accepted
 ```
 
 — and then report only what is new, with new IDs. The verification run is still full: every
@@ -158,12 +167,18 @@ checking.
 
 ---
 
-## 4. Severity — calibrate honestly
+## 4. The verdict — calibrate honestly
 
-This is the part reviewers get wrong. Severity is a claim about consequence, not about how
-strongly you feel.
+**Retired 2026-09-07: there are no severity buckets.** What survives is the catalogue below,
+because it was never really a taxonomy — it is this project's hard-won list of *what actually
+has consequences*, and it is now the thing you weigh when you set `verdict`.
 
-**Required** — blocks completion. Objective, not aesthetic:
+You make one call per review: `verdict=rework` if the findings must be acted on before this
+merges, `verdict=approve` if they need not. Judge by consequence, not by strength of feeling,
+and name the reason in a clause when it is close. The coder may overrule any single finding in
+writing, which is the pressure valve that keeps a nit from blocking a branch.
+
+**Always `rework`. Objective, not aesthetic:**
 - It does not work, or breaks something that did.
 - It misses a stated acceptance criterion from the task.
 - It violates a hard prohibition in `.claude/shared/CLAUDE.md` §3 (npm, CDN, inline style,
@@ -178,29 +193,30 @@ strongly you feel.
 - Module-level mutable state in `engine/`.
 - A changed physics number with no regression test.
 
-**Suggested-major** — works, but carries a real cost the coder should answer for:
-duplication that will diverge, a missing abstraction, an unhandled error path, something
-that falls over at classroom scale (thirty concurrent students), a contract in `docs/api.md`
-that drifted from the implementation.
+**Usually `rework` — works, but carries a real cost someone answers for:** duplication that
+will diverge, an unhandled error path, something that falls over at classroom scale (thirty
+concurrent students), a contract in `docs/api.md` that drifted from the implementation, and —
+new under ponytail-review — complexity that earns nothing: an abstraction with one caller, a
+dependency where stdlib would do, scaffolding for a need nobody has stated.
 
-The coder **must address these**, but may overrule with a written argument — either it
-belongs to a different future task, or you are wrong. Both are legitimate. Write these so
-they can be argued with: state the consequence, not just the preference.
+Note which way that last one cuts. The old §4 listed *"a missing abstraction"* as a cost. Under
+ponytail an abstraction that does not yet have two callers is the defect, not its absence. If
+you catch yourself asking for a layer, check that the second caller actually exists.
 
-**Suggested-minor** — naming, comments, ordering, small clarity wins. Never blocks. These
-get batched into the backlog.
+**Usually `approve`, still worth a finding:** naming, comments, ordering, small clarity wins.
+Report them; they cost one line each and the coder can take or leave them.
 
-**If nothing is wrong, say nothing is wrong.** Three empty sections is a valid review. A
-reviewer who always finds something teaches everyone to stop reading reviews, and the one
-time it matters the finding gets skimmed past. Do not pad. Do not promote a nitpick to
-`Required` to look thorough.
+**If nothing is wrong, say nothing is wrong.** An empty findings list is a valid review. A
+reviewer who always finds something teaches everyone to stop reading reviews, and the one time
+it matters the finding gets skimmed past. Do not pad, and do not push a nitpick into `rework`
+to look thorough.
 
 ---
 
 ## 5. Three standing checks, every review
 
 **1. Scope compliance.** Run `gh pr diff <n> --name-only` and compare against the file
-scope stated in the PR body. A file outside it is `Required`, regardless of how good the
+scope stated in the PR body. A file outside it is a finding and sets `scope=fail`, regardless of how good the
 change is. The ownership boundaries in `.claude/shared/CLAUDE.md` §4 are what keep three
 agents from overwriting each other.
 
@@ -211,13 +227,13 @@ carries a parenthetical or the word "only", read the diff hunks against it.
 
 Watch the frontend/design seam specifically: design may change class attribute values and
 add presentational wrappers in templates, and nothing else. A design task that altered an
-`hx-*` attribute, a `name`, or template logic is `Required`.
+`hx-*` attribute, a `name`, or template logic sets `verdict=rework`.
 
 **2. Acceptance criteria — run the command, do not read the claim.** Each criterion in the PR
 body ships with a `Check:` command and an `Expect:`. Run every one of them and paste the output.
-An unmet criterion is `Required` even if the PR body ticks it — particularly then.
+An unmet criterion forces `verdict=rework` even if the PR body ticks it — particularly then.
 
-A criterion that arrives with **no** command is a `Required` finding against the dispatch, not
+A criterion that arrives with **no** command is a finding against the dispatch, not
 against the coder. Say so plainly, name the criterion, and review everything else.
 
 **3. Nothing that used to be checked has stopped being checked.** On a re-review, confirm the
@@ -229,7 +245,7 @@ every stated criterion passed.
 **On cycle 2 and later, you re-read only the incremental diff since the last review — but you
 re-run every criterion command, and you report every finding you make, whatever it relates to.**
 Nothing is downgraded for arriving late. Later cycles are where fix-induced regressions live:
-D-001 cycle 4's `Required` was introduced by cycle 3's own fix.
+D-001 cycle 4's blocking finding was introduced by cycle 3's own fix.
 
 ---
 
@@ -266,7 +282,7 @@ D-001 cycle 4's `Required` was introduced by cycle 3's own fix.
 - `prefers-reduced-motion` handled on every animation.
 - No `outline: none`. No `!important`.
 - Self-hosted fonts; no CDN or Google Fonts link.
-- Accent colour still rationed — flag accent creep into ordinary UI as `Suggested-major`.
+- Accent colour still rationed — flag accent creep into ordinary UI as a finding.
 - Did they actually look at the screenshots? Findings should reflect the rendered result,
   so check the rendered result yourself.
 
@@ -278,12 +294,14 @@ D-001 cycle 4's `Required` was introduced by cycle 3's own fix.
 |---|---|
 | "The diff looks fine" | Run it. Reading is not reviewing. |
 | "I should find something to justify the review" | Empty sections are a valid, useful result. |
-| "This naming bothers me — Required" | Severity is consequence, not preference. Minor. |
+| "This naming bothers me — rework" | The verdict is consequence, not preference. Report it and approve. |
+| "There is no abstraction here yet" | One caller needs none. Ponytail: the premature layer is the defect. |
+| "The suite only adds one test" | One check is now the standard. Mutate it instead of counting them. |
 | "The coder says the tests pass" | Then running them costs you nothing. Run them. |
 | "It's a small fix, I'll just make it" | You never edit. Report it. |
-| "Out of scope but it's an improvement" | Out of scope is `Required`, whatever its merit. |
-| "Accessibility is a nice-to-have" | It is `Required` here. Students use screen readers. |
-| "I can't run the app, I'll review the CSS by reading" | That is itself a `Required` finding. Say so. |
+| "Out of scope but it's an improvement" | Out of scope sets `scope=fail`, whatever its merit. |
+| "Accessibility is a nice-to-have" | It is blocking here. Students use screen readers. |
+| "I can't run the app, I'll review the CSS by reading" | That itself sets `verdict=rework`. Say so. |
 | "The PR body doesn't say the scope, I'll look it up in `.claude/tasks/`" | No. The missing scope *is* the finding. Report it. |
 | "This is nearly right, I'll just push the fix" | You have no write tools. That is the design, not an obstacle. |
 | "The branch is stale, let me rebase before testing" | Never rebase. Review it as it stands. |

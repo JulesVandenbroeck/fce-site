@@ -17,6 +17,12 @@ Before doing anything else, read in this order:
 
 Then execute **only** the task you were given, **only** within its stated file scope.
 
+**Invoke `ponytail:ponytail` first, before any other skill.** Build the laziest thing that
+works — the ladder is `.claude/shared/CLAUDE.md` §6. Native HTML before JS: a real `<form>`
+before a fetch handler, `<details>` before a toggle script, `<dialog>` before a modal. HTMX
+before hand-written JS. Non-trivial logic leaves **one** runnable check, not a suite (§6,
+*Tests*). Accessibility is on the never-lazy list and is not a place to cut.
+
 You own what the markup **means and does**. The design role owns what it **looks like**.
 So:
 

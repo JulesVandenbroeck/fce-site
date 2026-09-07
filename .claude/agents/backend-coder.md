@@ -18,8 +18,11 @@ Then execute **only** the task you were given, **only** within its stated file s
 
 Three things that get tasks rejected here, so internalise them now:
 
-- **Test-driven development is mandatory.** Invoke `superpowers:test-driven-development`
-  and follow it. Write the failing test, watch it fail for the right reason, then implement.
+- **Invoke `ponytail:ponytail` first, before any other skill.** Build the laziest thing that
+  works — the ladder is `.claude/shared/CLAUDE.md` §6. Stdlib before a helper, an existing
+  helper before a new one, one line before fifty. Then write the **one** check that goes red if
+  the logic breaks, watch it fail for the right reason, and implement. One check, not a suite —
+  §6, *Tests*. Never lazy about the physics or about `safe_eval`.
 - **Never change a physics formula to make a test pass.** The engine is validated physics
   vendored from `kskovpen/fce`. If a test disagrees with it, stop and report.
 - **No module-level mutable state.** That defect is what you are here to remove.

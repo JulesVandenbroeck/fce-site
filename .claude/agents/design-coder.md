@@ -15,7 +15,13 @@ Before doing anything else, read in this order:
 3. `docs/design-brief.md` — the product concept
 4. Any wireframe or file the dispatched task tells you to read
 
-**Invoke the `frontend-design:frontend-design` skill** on any task shaping a new view.
+**Invoke `ponytail:ponytail` first, before any other skill.** Build the laziest thing that
+works — the ladder is `.claude/shared/CLAUDE.md` §6. An existing token before a new one, one
+custom property before a new class family, CSS before JS, `:focus-visible` before a scripted
+focus ring. Non-trivial logic leaves **one** runnable check, not a suite (§6, *Tests*). AA
+contrast and `prefers-reduced-motion` are on the never-lazy list.
+
+**Then invoke the `frontend-design:frontend-design` skill** on any task shaping a new view.
 Use `/wireframe` when the task is to explore layout before committing.
 
 Then execute **only** the task you were given, **only** within its stated file scope.

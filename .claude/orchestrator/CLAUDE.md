@@ -11,6 +11,56 @@ Read `.claude/shared/CLAUDE.md` and `docs/design-brief.md` before planning anyth
 
 ---
 
+## 0. The ponytail ruling, 2026-09-07 — what it supersedes
+
+The user integrated `ponytail` into the coder and reviewer roles and decided the two conflicts
+it raised. **Where this section and anything below disagree, this section wins.** Nothing below
+is deleted: it is the record of how those rules were earned, and several of them are still the
+best available account of *why* a check failed. Read them as history, not as instructions.
+
+**Ruling 1 — ponytail's test rule replaces the criterion contract.** A coder ships **one**
+runnable check for non-trivial logic (`.claude/shared/CLAUDE.md` §6, *Tests*). Consequently:
+
+- A criterion no longer has to arrive as a `Check:`/`Expect:` triple. Write the property and,
+  where a command is obvious, the command. §2's *"if you cannot write that command, the task is
+  not ready to dispatch"* is retired as a gate; it stays below as the diagnosis of five real
+  failures, and asking *"what would this print if the property were false?"* is still free.
+- The check count is no longer a floor. §5.3's *"record the criterion IDs and the check count;
+  a fall in that count is `Required`"* is retired, and with it the `checks=<n>` bookkeeping in
+  the task entries. Existing entries keep their counts as history.
+- Mutation-gated meta-test families are no longer the expected form and are not to be
+  specified unless a task genuinely turns on one.
+- §5.4's re-specification test — *did every unmet criterion ship with a command?* — loses its
+  first clause. What remains: a finding against a property you **dropped** from an earlier
+  cycle is still a re-specification (§5.4 clause 1); everything else is a cycle.
+
+**What Ruling 1 does not touch.** Criteria still accumulate across cycles and are still cited
+by ID (§5.3's substance). The suite floors already in `.claude/tasks/*.md` still hold — the
+ruling changes what a coder is *asked to build*, not a licence to delete tests that exist.
+`verify.py`'s registered sections remain append-only and `board-lane-fill` stays red on purpose.
+
+**Ruling 2 — `ponytail-review` replaces the three-bucket taxonomy.** The reviewer emits one
+flat numbered list (`F1`, `F2`, …) and sets the gate itself. So:
+
+- **Approval is `verdict=approve`.** Not "0 required and 0 suggested-major" — that phrase is
+  dead everywhere it appears below.
+- **You merge on `verdict=approve`.** On `verdict=rework` you re-dispatch the coder with the
+  review's PR-comment URL and the `F<n>` IDs to resolve.
+- The coder may still overrule any single finding in writing; record the argument in the task
+  entry, or backlog it if it belongs to a future task. That mechanism is unchanged and is what
+  keeps a nit from blocking a branch.
+- Record `<n> findings, verdict=<v>` in the task entry where you used to record `1R / 0M / 2m`.
+- The 3-cycle limit (§5.7) is unchanged.
+
+**The cost, recorded so it is not a surprise later.** The retired machinery is what produced
+B-006's unbounded `ast.Pow`, D-008's silent ΔE regression, D-001's `rgb(0,0,238)` tab stop, and
+B-015's three blind instruments — every one of them found by a check-count floor, a mutation
+family, or a severity that blocked a merge. The mitigation is that the reviewer's mutation test
+is now mandatory on the *one* check a PR adds, because that check is load-bearing in a way a
+family never was. Watch the first few tasks under these rules and tell the user what it costs.
+
+---
+
 ## 1. The one rule
 
 **You never edit a source file.** Not a typo, not a one-line CSS fix, not "just to unblock
@@ -247,16 +297,17 @@ Do not modify any other file. If you believe another file must change, stop and 
 - docs/design-explorations/** <except the one named above, if any>
 
 ## Acceptance criteria
-Every criterion below carries the command that decides it.
+State the property. Add the command where one is obvious — under §0 ruling 1 it is no longer
+required, and a criterion without one is the reviewer's to operationalise, not a finding.
 - [ ] C1 <property>
-      Check:  <command>
+      Check:  <command, if there is an obvious one>
       Expect: <exact output, or the exact predicate on it>
 - [ ] C2 <property>
-      Check:  <command>
-      Expect: <...>
 
 ## Verification
 Run: <command>. Expected: <result>.
+Invoke `ponytail:ponytail` before you write code — the ladder is `.claude/shared/CLAUDE.md` §6.
+Non-trivial logic leaves one runnable check, not a suite.
 Environment: this container's default Playwright browser cache (/cache) is not writable —
 export PLAYWRIGHT_BROWSERS_PATH=~/.cache/ms-playwright before running the suite. If you are
 working in a fresh worktree, it needs its own venv; the browser cache is shared.
@@ -399,7 +450,7 @@ you dispatch T-nnn
   → coder reports back, including the PR number
   → you dispatch code-reviewer with THE PR NUMBER AND NOTHING ELSE
   → review cycles land as further commits on the same branch and the same PR
-  → at 0 required + 0 suggested-major, YOU merge
+  → at `verdict=approve`, YOU merge
 ```
 
 ### The four rules
@@ -423,8 +474,8 @@ you dispatch T-nnn
    coder to fill in; do not fill it in yourself, and do not compensate by smuggling the
    task definition into the reviewer's prompt.
 
-4. **Only you merge, and only after approval.** Approval means 0 required and
-   0 suggested-major. Then you run the merge — not the coder, not the reviewer. Coders have
+4. **Only you merge, and only after approval.** Approval means the reviewer's
+   `VERDICT:` line says `verdict=approve` (§0, ruling 2). Then you run the merge — not the coder, not the reviewer. Coders have
    no authority to merge their own work; the reviewer has no write tools at all.
 
 ### Never
@@ -513,8 +564,8 @@ coder reports done, with a PR number
   → §5.1 free gate: re-run the verification block   (fails → back to coder, NOT a cycle)
   → check the PR body carries the task (§4 rule 3)
   → dispatch code-reviewer with the PR number, and nothing else
-  → reviewer returns Required / Suggested-major / Suggested-minor
-  → if Required > 0, or Suggested-major > 0 and not overruled:
+  → reviewer returns a flat F<n> findings list and a verdict
+  → if verdict=rework, and the findings are not overruled in writing:
         §5.4 diagnosis — did every unmet criterion ship with a command?
           no  → RE-SPECIFICATION: write the command, restate all prior
                 criteria, re-dispatch.  NOT a cycle.
@@ -655,7 +706,8 @@ review the PR already carries is the same waste as re-pasting criteria the PR bo
 cycle 2 recorded "two folded into cycle 3, one backlogged". The two folded ones were never named
 anywhere, and they are lost.
 
-**A task is approved when Required = 0 and Suggested-major = 0 (or all overruled). It is
+**A task is approved when the reviewer returns `verdict=approve` (or every blocking finding
+is overruled in writing). It is
 complete when you have merged its PR.**
 
 ### 5.7 Loop limit — 3 cycles, and re-specifications are not cycles
