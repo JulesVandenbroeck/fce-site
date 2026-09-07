@@ -92,10 +92,22 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   AST floors **79 registrations / 215 reporting calls** at `a059f34`, may rise, never fall;
   flake8 0; `pytest tests/ -q` >= 426.
 - **Depends on:** ~~D-010~~ merged `a059f34`.
-- **Branch / PR:** `task/d-014-shell-scroll-guard` — **#29**, head `6472598`
-- **Status:** in review (cycle 1) — **re-specification dispatched 2026-09-07**, §5.4 clause 2:
-  F1 is against C5 and F3 against C3, and neither shipped with a command. Cycle count stays
-  at 1. C3 and C5 re-specified with commands; C6 added for F2. checks=6.
+- **Branch / PR:** `task/d-014-shell-scroll-guard` — **#29**, head `e3c5b0f` (`main` merged in
+  at the pre-review gate, so the >=596 floor is reachable on the branch; the merge changed
+  nothing under `docs/design-explorations/`)
+- **Status:** in review (cycle 1) — re-specification delivered, **re-review dispatched**.
+  §5.4 clause 2: F1 was against C5 and F3 against C3, neither shipped with a command, so the
+  cycle count stays at 1. C3 and C5 re-specified with commands; C6 added for F2. checks=6.
+  One §5.1 gate return (branch behind `main`, suite floor unverifiable) — **not a cycle**.
+  Gate re-run clean at `e3c5b0f`: `verify.py --all` exits 1 with exactly `['board-lane-fill']`,
+  AST floors **80/216 -> 81/217**, flake8 clean, `pytest tests/ -q` **596**, scope exactly
+  `shell.css` + `verify.py` with `shell.html` untouched.
+- **Coder's F2 split, to check at merge:** F2 was not accepted wholesale. `.palette__toggle`'s
+  `position: relative` did not reproduce and is **deleted** with its comment;
+  `.mission-panel__toggle`'s **is** load-bearing — removing it alone reddens
+  `shell-page-no-h-scroll` at `panel=collapsed` by exactly 41px at all three widths
+  (1481>1440, 1065>1024, 809>768) — and is **kept** with a comment citing that measurement.
+  That is the written overrule C6 permitted.
 - **Review (cycle 1):** 3 findings, `verdict=rework` —
   [PR #29 comment](https://github.com/JulesVandenbroeck/fce-site/pull/29#issuecomment-5568675854).
   The gate passed cleanly first: `verify.py --all` exits 1 with exactly `['board-lane-fill']`,
