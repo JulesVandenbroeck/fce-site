@@ -113,6 +113,15 @@ button:focus-visible,
 }
 .palette[data-state="collapsed"] .palette__title { opacity: 0; }
 .palette__toggle {
+  /* Relative: its own `.sr-only` child is `position: absolute` with no
+   * offsets, so without a positioned ancestor here its containing block
+   * would be the initial containing block (D-014 root cause) -- its static
+   * position then escapes `.palette`'s own `overflow: hidden` clip
+   * entirely (a clip only bounds descendants whose containing block chain
+   * passes through it) and can widen `document.documentElement.
+   * scrollWidth`. This keeps the sr-only span's containing block inside
+   * the button that is itself inside the clipped rail. */
+  position: relative;
   flex: 0 0 auto;
   width: var(--space-5);
   height: var(--space-5);
@@ -190,9 +199,34 @@ button:focus-visible,
    * 1024 and 768 it is wider than this region's content box and this is
    * the container that scrolls. Design manual §4: wide content scrolls
    * inside its own container, the page body never scrolls horizontally
-   * (verify.py's `shell-page-no-h-scroll` half of C8 holds the page). */
+   * (verify.py's `shell-page-no-h-scroll`, D-014's C11, holds the page). */
   overflow: auto;
   background: var(--paper);
+  /* Containing block for the ::after edge fade just below (D-014, D-010
+   * review minor m9) -- positioned against this region's own padding box,
+   * not the page. */
+  position: relative;
+}
+/* D-014 (D-010 review minor m9): at 1024 and 768 the fixed 704px canvas
+ * surface is always wider than this region -- see the two breakpoints
+ * below, neither of which ever gives the row enough width to hold 704px --
+ * so a reader who never touches the region has no way to know it scrolls.
+ * A quiet ink-fade at the trailing edge, pinned to the region's own box
+ * rather than to the scrolled content (no `left`/`right` shift on scroll),
+ * says "more here" without a script watching scroll position -- it is
+ * always present at these two widths because the overflow it names is
+ * unconditional at them, so a static cue is honest, not a guess. */
+@media (max-width: 1024px) {
+  .canvas-region::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--space-3);
+    background: linear-gradient(to right, transparent, var(--ink-45));
+    pointer-events: none;
+  }
 }
 /* Fixed at the 11 x --space-7 = 704px design size, never scaled down.
  *
@@ -319,6 +353,10 @@ button:focus-visible,
   text-overflow: ellipsis;
 }
 .mission-panel__toggle {
+  /* position: relative -- see .palette__toggle's own comment; same
+   * sr-only-escapes-the-clip mechanism, on the side of the shell where the
+   * escaped static position lands past the viewport's right edge (D-014). */
+  position: relative;
   flex: 0 0 auto;
   width: var(--space-5);
   height: var(--space-5);
