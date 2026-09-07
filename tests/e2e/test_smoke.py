@@ -73,13 +73,6 @@ def test_index_page_has_no_bad_responses(index: LoadedPage) -> None:
     assert index.activity.bad_responses == []
 
 
-def test_tokens_stylesheet_is_served(live_server: str, page: Page) -> None:
-    """F-002 C2: the linked stylesheet resolves under /static with a real body."""
-    response = page.goto(f"{live_server}/static/css/tokens.css")
-    assert response is not None and response.status == 200
-    assert len(response.body()) > 0
-
-
 def test_tokens_stylesheet_is_applied(index: LoadedPage) -> None:
     """F-002 C3, the load-bearing check: --font-body is readable off <html> at
     runtime, proving tokens.css was requested, parsed, and applied -- not merely
