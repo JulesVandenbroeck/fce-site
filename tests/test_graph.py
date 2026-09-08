@@ -248,8 +248,8 @@ def test_mult_cut_count_as_json_string_is_a_graph_error():
 
 # ---- C13: the multi-path branch (chained Selections, sibling branches
 # sharing a prefix) is covered by a check that can fail. Digests
-# independently derived from the same formula as _MISSION1_H5 above, for
-# this exact payload -- see .claude/handoff/b-020-backend-3.md.
+# independently derived from the same formula documented above test_mission1_graph_produces_a_run_config
+# (tests/test_graph.py:185-190), for this exact payload.
 
 def test_chained_and_branching_selections_produce_two_histograms():
     payload = {
@@ -282,3 +282,25 @@ def test_chained_and_branching_selections_produce_two_histograms():
 
     assert chained.histograms[0].plot_idx == 0
     assert branch.histograms[0].plot_idx == 1
+
+
+# ---- C14: two Multiplicity roots feeding one shared Selection with
+# disagreeing cuts are rejected -- the digest formula has no per-selection
+# mult_cuts, so a silently-adopted first path would produce a wrong-but-
+# self-consistent RunConfig that from_dict accepts without complaint.
+
+def test_disagreeing_multiplicity_chains_into_shared_selection_are_rejected():
+    payload = {
+        "nodes": [
+            _mult_node("mult1"),
+            {**_mult_node("mult2"), "config": {**_mult_node()["config"], "nlep": 3}},
+            _sel_node("sel1"),
+            _obs_node(),
+            _hist_node(),
+        ],
+        "edges": [
+            ["mult1", "sel1"], ["mult2", "sel1"], ["sel1", "obs1"], ["obs1", "hist1"],
+        ],
+    }
+    with pytest.raises(GraphError, match="Multiplicity chain"):
+        build_run_config(payload, _dataset())
