@@ -9,49 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-018 — A committed fixture dataset the pipeline can run on
-- **Scope:** `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`,
-  `tests/fixtures/make_fixture.py`, `tests/fixtures/README.md`, `tests/test_fixture_dataset.py`
-- **Accept:** C1-C8 in the plan, C1 and C5 corrected at dispatch (below). checks=8; the coder
-  reports all 8 met. Suite floor **596 -> 605** (+9). Fixture is 4 files, ~0.72 MB, 2000 events
-  each, downsampled from the real datasets with every real branch name and dtype preserved
-  (30 branches: the 26 the engine's substring filter selects, plus 4 it never reads by name).
-  X1 modal bin **90.5 GeV** (C3, within 3 of 91.2); X3 modal bin **75.5 GeV** (C4, below the
-  peak as brief §3 describes).
-- **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
-- **Branch / PR:** `task/b-018-fixture-dataset` at `8a4ef27` — **#31, open**
-- **Status:** in review (cycle 1) — `code-reviewer` dispatched 2026-09-08. §5.1 free gate **PASSED** in
-  `~/fce-gate-b018` (a detached worktree off `origin/task/b-018-fixture-dataset`):
-  `605 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0. PR body carries scope, C1-C8 with
-  IDs and evidence, and the transcript — §4 rule 3 satisfied.
-  One immaterial discrepancy, recorded so the reviewer is not surprised: the PR reports
-  `du -sb tests/fixtures/` = **756272**; the gate worktree measures **751620**. A stale
-  `__pycache__` in the coder's tree. C6's 5 MB cap holds on either figure.
-- **Note:** rests on the user's 2026-09-07 carve-out to `shared/CLAUDE.md` §3 — a *fixture*
-  ROOT file may be committed; real datasets still may not.
-- **Two dispatch-time corrections, from `scout` 2026-09-07 — do not re-derive:**
-  1. The engine selects branches by **substring** match over tree keys
-     (`analytical_loop.py:156-159`), not exact name. Real names are `pt_lep`-shaped. The plan's
-     C1 "exactly the branches `pt, eta, ...`" was wrong; C1 now asks for the *enumerated* set.
-  2. `get_fce_home(env)` (`paths.py:50-57`) resolves **both** `datasets/` and `output/`
-     (`analytical_loop.py:274`, `path_final.py:22-26`). Pointing `env` at `tests/fixtures/`
-     writes `output/` into the committed tree. C5 now requires a tmp FCE_HOME and asserts
-     `tests/fixtures/output/` does not exist after the run.
-- **Approach changed mid-task, 2026-09-07, on the user's information.** Real 91 GeV datasets are
-  at `https://homepage.iihe.ac.be/~kskovpen/fce/datasets/IDEA/91GeV/` — X1 158M, X2 92M, X3 51M,
-  X4 19M, X5 5.3M, **X6 5.9M**, data 4.8M. The fixture is therefore **downsampled from real
-  simulation, not synthesised**: `make_fixture.py` is a downsampler, the real files land in
-  `~/.fce/datasets/IDEA/91GeV/` (outside the repo, never committed), and C7 becomes
-  "byte-identical given the same sources and the same N" — there is no seed. `make_fixture.py`
-  may fetch; the suite must not. X1 is what mission 1 needs for the Z peak.
-- **X6 exists.** `shared/CLAUDE.md` §5 documents X1-X5 and calls X4/X5 unknown. There are seven
-  files, not six. X4/X5/X6 are all still undocumented processes, so **mission 3 stays blocked on
-  the user identifying them** — but the files are now known to exist and are downloadable.
-- **No samples config.** The user asked for one; nothing in `src/fce_web/` reads one.
-  `driver.py:24` mentions `config/samples.json` only as a comment about the reference repo;
-  samples are discovered by scanning `<dataset_dir>/*.root` (`driver.py:82-95`). Adding one
-  would be a file with no reader — raised with the user rather than built.
-
 ### B-020 — Connection allowlist and graph -> RunConfig (**CONTRACT TASK**)
 - **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`, `docs/api.md` (`## Endpoints`, :27)
 - **Accept:** C1-C10 in the plan. Allowlist matches brief §4's five rows and the reference's
@@ -60,10 +17,46 @@ IDs are `B-nnn`, allocated in order and never reused.
   accepted by `RunConfig.from_dict` without raising.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
-- **Branch / PR:** `task/b-020-graph-allowlist` — not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-09-08, `isolation: "worktree"`. Criteria C1-C10
-  live in `docs/plan-m3-vertical-slice.md` `### B-020`; the coder copies them into the PR body.
-  **Raise the reviewer's effort when its turn comes** — contract task.
+- **Branch / PR:** `task/b-020-graph-allowlist` at `47a6cd5` — **#33, open**
+- **Status:** in progress (cycle 2) — re-dispatched 2026-09-08 with the review URL and F1-F8.
+  Review `findings=8, scope=pass, verdict=rework`
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582447530)).
+  **checks 10 → 12**: C11 pins the mission-1 digests, C12 makes client type errors `GraphError`.
+- **Review:** 8 findings, verdict=rework. **Raising the reviewer's effort paid, and this is the
+  evidence to cite next time the question comes up.** F1: `RunConfig.from_dict` checks only that
+  a payload's digests agree with its own fields, never that the fields are right — so swapping
+  two mult-cut fields left all 14 tests GREEN, a mistranslation that would silently change the
+  selection and permanently miss the content-addressed cache. F2: the purity check asserts only
+  that no module-level name is assigned twice, so a textbook `CACHE = {}` mutated in a function
+  passes. F3/F4: a client sending `"bins": 50` as a JSON int gets `TypeError`, and `"nlep": "2"`
+  gets `RunConfigError` — both 500s under this PR's own `api.md`, for ordinary client payloads.
+  F5/F6/F8 deletions (`graphlib.TopologicalSorter` replaces a hand-rolled tri-colour DFS).
+  **F7 backlogged, not fixed** — the digest formula is transcribed a third time, and exporting it
+  from `runconfig.py` is outside this PR's file scope. The reviewer said so itself.
+- **§5.4 diagnosis — a CYCLE, clause 3, and the drafting defect is mine, the same one as F-004's.**
+  Nothing was dropped (clause 1 no); C7 and C8 both shipped with commands and are met *as written*
+  (clause 2 no). But C7 said "accepted by `RunConfig.from_dict` without raising" — a **method**,
+  and the method became the ceiling. The property is that the translation is *correct*. Twice in
+  one wave, so it is not bad luck: §2's rule is to write the property in the sentence and the
+  method in the `Check:`, and I wrote only the method both times.
+- **Cycle-1 gate (still the record):** §5.1 free gate **PASSED** in `~/fce-gate-b020` (detached off
+  `origin/task/b-020-graph-allowlist`): `610 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0,
+  `pytest tests/test_graph.py -q` → 14 passed, and the reference test skips cleanly with
+  `FCE_PARITY_REFERENCE_ROOT=/nonexistent` (1 skipped, 13 deselected).
+  `git diff origin/main...HEAD --name-only` returns exactly the three scoped files. Every number
+  in the PR body reproduced; C1-C10 all carry IDs and evidence there — §4 rule 3 satisfied.
+  **Gate note, so it is not misread later:** my *first* full-suite run in this worktree reported
+  15 collection errors. That was my own environment — the wait loop started pytest before `pip
+  install -e .[dev]` had finished. Re-run after install completed: 610 passed. The branch was
+  never red. This is §5.1's own warning ("a check run in the same broken environment reproduces
+  the error and then certifies it") landing on the gate rather than the coder.
+  **The first dispatch of this task died producing nothing** (branch at `main`, clean worktree,
+  no PR); confirmed against git, so **this is cycle 1, not cycle 2.**
+- **Deviations reported:** `Dataset` is a plain value object the caller constructs — no
+  `missions.py` or `content/missions/*.yaml` exists yet to derive it from. Flagged in the PR
+  body: the digest formula imposes a global `mult_cuts` constraint on multi-branch graphs.
+- **Worktree:** `.claude/worktrees/agent-a9c0de01733f3ab0c`, reused from the dead dispatch — the
+  branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 
 ## Ready
 
@@ -108,6 +101,16 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-018** — a committed, downsampled ROOT fixture the pipeline can run on — #31, `9c4c98f`,
+  1 cycle, clean gate (`findings=6, verdict=approve`). checks=8, all 8 met. Suite floor → **605**.
+  4 files, ~0.72 MB, 2000 events each, **downsampled from the real 91 GeV datasets, not
+  synthesised** — branch names, element dtypes and values identical to the source for those
+  events. X1 modal bin **90.5 GeV**, X3 **75.5 GeV**. F1-F5 backlogged (two dead assertions,
+  three documentation-accuracy fixes; none touches a fixture byte or a physics number).
+  **F6 is against me, not the coder:** commits `3f3e4e2`/`ca8655c` put orchestrator bookkeeping
+  on the task branch, so eight `.claude/` and `docs/` files merged through this PR. The §4
+  carve-out says bookkeeping goes straight to `main`; it must not ride a task branch.
+  **B-019 and B-021 are released by this merge.**
 - **B-017** — response-status probe for the e2e harness (**CONTRACT TASK**) — #28, `aef697f`,
   2 cycles + 1 re-spec, clean gate (`findings=1, verdict=approve`; F2 was a stale count in the
   body, corrected before merge). checks=7. Suite floor → **594**.
@@ -172,8 +175,12 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **594 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
-  `aef697f`, 2026-09-07. (592 after B-015; 582 after B-016; 580 at `db085dd`.)
+- Suite floor **605 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+  `9c4c98f`, 2026-09-08. (596 after F-002; 594 after B-017; 592 after B-015; 582 after B-016.)
+- **Fixture dataset** (B-018): `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`, 2000
+  events each, 30 branches, regenerated byte-identically by `tests/fixtures/make_fixture.py`
+  (which may fetch; the suite must not). Point `FCE_HOME` at a tmp dir when running the engine
+  against it — `get_fce_home` resolves `output/` from the same root and would write into the tree.
 - **e2e page observation** (`tests/e2e/conftest.py`, B-017): `PageActivity` carries
   `console_errors`, `requested_urls`, and `bad_responses: list[tuple[str, int]]` — the last
   populated by `page.on("response", ...)` in `observe()` and gated by `is_bad_response_status`,
