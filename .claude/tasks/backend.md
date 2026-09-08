@@ -18,8 +18,43 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
 - **Branch / PR:** `task/b-020-graph-allowlist` at `0a6831a` — **#33, open**
-- **Status:** **in review — cycle 3 in flight (resumed 2026-09-08)**, from
-  [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md).
+- **Status:** **in review — cycle 3 re-review dispatched at raised effort**, head `5c38457`.
+  Resumed from [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md); the coder applied
+  F9 (option B — `_mission1_payload` uses both selection exprs, so the digests are
+  `fbb913c1…`/`c9873a70…` and C7's zpeak claim is true again) and F10 (**kept** the multi-path
+  branch, covered by one new payload test). **checks 12 → 13.**
+  **Cycle-3 gate PASSED** in `~/fce-gate-b020c3` at `5c38457`: `632 passed`, flake8 0,
+  `tests/test_graph.py` 17 passed, reference test skips cleanly, scope exactly the three files.
+  C13's mutation is evidenced in the PR body: reversing `_selection_exprs` moves the chained
+  `h5_sel` to `f44c25e3…` against the pinned `c9873a70…`.
+  **Cycle-3 review: `findings=2, scope=pass, verdict=rework`**
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5583713796)).
+  F9 and F11 **fixed and independently verified** — the reviewer re-derived all four digests by
+  hand from `runconfig.py:362-375` without calling `graph.py`, and confirmed the mission-1 pair
+  matches `content/analyses/zpeak-dilepton.json` bit-for-bit. F10's "keep" is **accepted as a
+  written overrule**. Two of C13's three sub-branches now go red under mutation.
+  **F12 (blocking):** `_shared_mult_cuts` (`graph.py:274-288`) — neutering `if cuts != first:`
+  leaves all 17 green, and the translator then silently adopts the first path's `mult_cuts`,
+  producing a wrong-but-self-consistent `RunConfig` that `from_dict` accepts. Cycle 3 promoted
+  that exact case to a documented 400 in `docs/api.md:64-69`, so it is contract with nothing
+  watching it. Fix named: one payload, two `Multiplicity` nodes with different `nlep` into one
+  shared `Selection`, `pytest.raises(GraphError, match="Multiplicity chain")`.
+  **F13 (nit):** the C13 comment points at a handoff file that gets archived; cite the formula at
+  `tests/test_graph.py:185-190` instead.
+  **§5.7 limit reached and escalated 2026-09-08. The user authorised a fourth cycle**, narrowly
+  scoped to F12 + F13, on the grounds that the code has not been in question for two cycles and
+  the fix is one test in a file already in scope. **Cycle 4 dispatched**; checks 13 → **14**
+  (C14 gates the `_shared_mult_cuts` guard by neutering `if cuts != first:`).
+  Scope this cycle is `tests/test_graph.py` only.
+- **§5.4 diagnosis, said out loud as §5.7 requires.** Clause 1 no — nothing was dropped.
+  Clause 2 no — C13 shipped with a command. So mechanically clause 3, a cycle. But the *defect is
+  mine and it is the same one for the third time on this task family*: C13's property was "every
+  branch that ships is covered by a check that can fail", and its `Check:` named exactly one
+  mutation (`_selection_exprs`). The coder satisfied the command; the reviewer applied the
+  property; the gap between them is `_shared_mult_cuts`. §2's rule — property in the sentence,
+  method in the `Check:` — was written for precisely this, and I wrote a single-branch method for
+  an all-branches property. The command C13 should have carried: mutate **each** guard in
+  `graph.py` in turn and require a red, not one named guard.
   The coder hit the 90% hard threshold mid-cycle and stopped cleanly. **Cycle 3 is the §5.7 limit
   and it is not yet spent** — the work was interrupted, not exhausted, so resuming it is finishing
   cycle 3, not opening a cycle 4.
@@ -91,22 +126,9 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Worktree:** `.claude/worktrees/agent-a9c0de01733f3ab0c`, reused from the dead dispatch — the
   branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 
-### B-019 — Engine output -> `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**)
-- **Scope:** create `src/fce_web/payload.py`, `tests/test_payload.py` — nothing else.
-  `docs/api.md`'s histogram section is already complete and row-parity tested.
-- **Accept:** C1-C9 in the plan. Valid against all 18 `HISTOGRAM_SCHEMA` rows; bins read the
-  reference's way (`uproot.open`/`f_res["h"]`/`.values()`/`.axes[0].edges()`); `systUp` keys
-  absent when there are no variations; `len(counts) == len(edges) - 1`; **C5 is the crux** —
-  `run_analysis` on B-018's fixture through this function peaks X1 at the Z mass within 3 GeV.
-- **Depends on:** B-018 (merged). **F-008 consumes it read-only** — not merged with an open
-  finding against the payload shape; reviewed at raised effort. Wave 2.
-- **Branch / PR:** `task/b-019-histogram-payload` — not yet opened
-- **Status:** dispatched 2026-09-08 (cycle 1), `isolation: worktree`, effort medium.
-  checks=9. Suite floor given as **615**.
-
 ## Ready
 
-_none — B-020 (wave 1) and B-019 (wave 2) are both in progress._
+_none — B-020 (wave 1, cycle 4) is the only backend task in flight. B-021 unblocks when it merges._
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Blocked
@@ -145,6 +167,22 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-019** — engine output -> the `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**) — #34,
+  `fff8ca3`, 2 cycles, clean gate (`findings=4, verdict=approve`; **all four folded in before
+  merge**). checks=10. Suite floor → **621**.
+  **Contract, verbatim in PR #34's body, which F-008 is dispatched read-only against:**
+  `build_histogram_payload(hdir, plot_idx, mc_samples, meta, data_sample="data",
+  lumi_unc=LUMI_UNC) -> dict`, plus `PayloadError`. `samples[].weightsSquared` is
+  **unconditionally `None`** — no stat error bars; `systSources` is **derived** from which
+  samples actually carried a template, not fixed; `systUp` is always present and may be `{}`,
+  and it is the per-source keys that are absent rather than empty arrays.
+  The bin-reading path is ported from the reference `plotter.py:51-63`, not invented.
+  **C5 is the milestone fact: `run_analysis` on B-018's fixture through this function peaks X1
+  within 3 GeV of the Z mass** — the first end-to-end run of the pipe in this repo.
+  F5-F8 folded in: the length check now reuses `test_api_contract`'s
+  `_check_sample_array_lengths_coherent`/`_check_data_length_matches_bins` (which also closed a
+  latent `KeyError`), and `_check_edges` was deleted in favour of one inline guard.
+  **B-021 is released by this merge, once B-020 lands.**
 - **B-018** — a committed, downsampled ROOT fixture the pipeline can run on — #31, `9c4c98f`,
   1 cycle, clean gate (`findings=6, verdict=approve`). checks=8, all 8 met. Suite floor → **605**.
   4 files, ~0.72 MB, 2000 events each, **downsampled from the real 91 GeV datasets, not
@@ -219,8 +257,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **605 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
-  `9c4c98f`, 2026-09-08. (596 after F-002; 594 after B-017; 592 after B-015; 582 after B-016.)
+- Suite floor **621 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+  `fff8ca3`, 2026-09-08. (605 after B-018; 615 after F-004; 621 after B-019.)
 - **Fixture dataset** (B-018): `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`, 2000
   events each, 30 branches, regenerated byte-identically by `tests/fixtures/make_fixture.py`
   (which may fetch; the suite must not). Point `FCE_HOME` at a tmp dir when running the engine
