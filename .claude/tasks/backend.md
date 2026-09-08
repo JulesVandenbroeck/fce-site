@@ -108,9 +108,15 @@ IDs are `B-nnn`, allocated in order and never reused.
   `run_analysis` on B-018's fixture through this function peaks X1 at the Z mass within 3 GeV.
 - **Depends on:** B-018 (merged). **F-008 consumes it read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort. Wave 2.
-- **Branch / PR:** `task/b-019-histogram-payload` — not yet opened
-- **Status:** dispatched 2026-09-08 (cycle 1), `isolation: worktree`, effort medium.
-  checks=9. Suite floor given as **615**.
+- **Branch / PR:** `task/b-019-histogram-payload` at `f9209ee` — **#34, open**
+- **Status:** **in review (cycle 1)**, reviewer at raised effort. checks=9, all 9 met per the body.
+  Ships `build_histogram_payload(hdir, plot_idx, mc_samples, meta, data_sample="data",
+  lumi_unc=LUMI_UNC)` and `PayloadError`; the read path is ported from the reference
+  `plotter.py:51-63`, not invented. **Cycle-1 gate PASSED** in `~/fce-gate-b019`:
+  `621 passed` (615 floor + 6), flake8 0, scope exactly the two files.
+- **Backlog candidate reported:** `run_physics_loop` resolves `get_fce_home()` with no `env`
+  argument, independently of `driver.run_analysis`'s `env=` — already documented by B-018, out of
+  this task's read-only scope.
 
 ## Ready
 
