@@ -71,6 +71,48 @@ A rejected graph returns `400` with `{"error": "<student-legible message>"}`. A 
 that the loader itself rejects (a translation bug, not a student mistake) is a `500` — that
 path should not be reachable from valid input.
 
+### `POST /api/run` response
+
+`200`, immediately — before the run finishes. It executes on a background thread, owned by
+`fce_web.jobs.JobRegistry` (task B-021); nothing about this response implies completion.
+
+```json
+{"runId": "3f9a...", "cacheHit": false}
+```
+
+- `runId` — opaque string, the id `GET /api/run/{id}/result` (and B-022's
+  `GET /api/run/{id}/events`) reads back.
+- `cacheHit` — `true` when this exact config (same graph, resolved through
+  `fce_web.graph.build_run_config`) already finished under an earlier run id in this
+  registry. A cache-hit run is already `"done"` the instant this response is sent — the UI may
+  say "recognised these cuts — reusing your earlier run" without polling first.
+
+### `GET /api/run/{id}/result`
+
+`404` with `{"error": "..."}` for an unknown `id` — including an id from a *different*
+`JobRegistry` (each app owns its own; nothing is shared, `.claude/shared/CLAUDE.md` §6).
+
+Otherwise `200` (or `202` while still running) with a `status` field:
+
+| `status` | HTTP | Body |
+|---|---|---|
+| `"running"` | `202` | `{"status": "running"}` — poll again. |
+| `"done"` | `200` | `{"status": "done", "cacheHit": bool, ...histogram payload}` — the [histogram payload](#histogram-payload) below, spread alongside `status`/`cacheHit`. |
+| `"error"` | `200` | `{"status": "error", "error": "<student-legible message>"}` — e.g. no dataset found for this mission's detector/energy. Not a `4xx`: the request was fine, the run itself didn't produce a result. |
+| `"cancelled"` | `200` | `{"status": "cancelled", "error": "<reason>"}` — `RunContext.cancel` (a `threading.Event`, one basket of granularity) was set before or during the run. |
+
+Cancellation itself has no endpoint yet in this task — B-021 reuses the existing
+`RunContext.cancel` seam (`fce_web.runs.RunContext`) rather than adding a new one; a future
+task wires a `POST` to set it on a running job's context.
+
+**Progress, for B-022.** Every job's `RunContext` callbacks feed a `queue.Queue[dict]`
+(`fce_web.jobs.Job.events`), not read by any endpoint in this task. Each item is one of
+`{"type": "progress", "value": <0..1>}`, `{"type": "log", "message": "..."}`,
+`{"type": "phase", "phase": "..."}`, `{"type": "node", "status": "active"|"completed", "nids": [...]}`,
+terminated by exactly one `{"type": "done", "status": "done"|"error"|"cancelled"}` sentinel. A
+cache-hit run's queue goes straight to that sentinel. B-022's SSE endpoint is expected to drain
+this queue with `queue.Queue.get()` in a loop until the sentinel.
+
 ---
 
 ## Fixed contracts
