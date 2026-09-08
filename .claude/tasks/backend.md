@@ -18,9 +18,18 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
 - **Branch / PR:** `task/b-020-graph-allowlist` at `47a6cd5` — **#33, open**
-- **Status:** coder reported done, PR #33 open. §5.1 free gate running in `~/fce-gate-b020`;
-  the reviewer is **not yet dispatched** and must go out at **raised effort** — contract task.
-  The coder reports `610 passed` (596 + 14 new), flake8 0, and C1-C10 all met.
+- **Status:** in review (cycle 1) — `code-reviewer` dispatched 2026-09-08 **at raised effort**
+  (contract task). §5.1 free gate **PASSED** in `~/fce-gate-b020` (detached off
+  `origin/task/b-020-graph-allowlist`): `610 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0,
+  `pytest tests/test_graph.py -q` → 14 passed, and the reference test skips cleanly with
+  `FCE_PARITY_REFERENCE_ROOT=/nonexistent` (1 skipped, 13 deselected).
+  `git diff origin/main...HEAD --name-only` returns exactly the three scoped files. Every number
+  in the PR body reproduced; C1-C10 all carry IDs and evidence there — §4 rule 3 satisfied.
+  **Gate note, so it is not misread later:** my *first* full-suite run in this worktree reported
+  15 collection errors. That was my own environment — the wait loop started pytest before `pip
+  install -e .[dev]` had finished. Re-run after install completed: 610 passed. The branch was
+  never red. This is §5.1's own warning ("a check run in the same broken environment reproduces
+  the error and then certifies it") landing on the gate rather than the coder.
   **The first dispatch of this task died producing nothing** (branch at `main`, clean worktree,
   no PR); confirmed against git, so **this is cycle 1, not cycle 2.**
 - **Deviations reported:** `Dataset` is a plain value object the caller constructs — no
