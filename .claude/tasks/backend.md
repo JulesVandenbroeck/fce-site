@@ -14,8 +14,17 @@ IDs are `B-nnn`, allocated in order and never reused.
   `tests/test_api_run.py`; modify `app.py`, `docs/api.md`
 - **Accept:** C1-C9 in the plan. checks=9. Suite floor 639.
 - **Depends on:** B-019, B-020 — both merged.
-- **Branch / PR:** `task/b-021-run-api` — PR not yet opened
-- **Status:** dispatched cycle 1, 2026-09-08 (worktree, `effort: medium`)
+- **Branch / PR:** `task/b-021-run-api` — #35, head `9b5527b`
+- **Status:** in review (cycle 1) — §5.1 gate passed in the primary checkout (649 passed, flake8 0,
+  reproduces the body exactly). Reviewer dispatched at raised effort: concurrency + it names the
+  progress-queue contract B-022 consumes read-only.
+- **Watch:** the coder serialised engine execution through `JobRegistry._run_lock` after finding
+  a real cross-run corruption (`output/hist{plot_idx}_{sample}.root` is addressed by `plot_idx`
+  alone and resolves `get_fce_home()` from the real process env, ignoring the registry's `env`).
+  Argued in writing in the PR body; the per-job output dir needs `analytical_loop.py`, out of scope.
+- **Against me:** the branch carries `.claude/handoff/b-021-backend.anchor.md` — bookkeeping on a
+  task branch again (B-018 F6). My dispatch said "primary checkout" to an agent that was in a
+  worktree. Say "the repo root of the primary checkout, not your worktree" next time.
 - **Note:** wave 3 is running **in series** on the user's instruction, not parallel.
 - Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
