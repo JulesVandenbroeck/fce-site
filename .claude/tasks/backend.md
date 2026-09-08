@@ -17,12 +17,15 @@ IDs are `B-nnn`, allocated in order and never reused.
   accepted by `RunConfig.from_dict` without raising.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
-- **Branch / PR:** `task/b-020-graph-allowlist` — not yet opened
-- **Status:** in progress (cycle 1) — **re-dispatched 2026-09-08**. The first dispatch died
-  producing nothing: branch sat at `main` (`39d73db`) with a clean worktree, no remote, no PR.
-  Confirmed against git, so **cycle 1 restarts from zero — this is not cycle 2.** Criteria C1-C10
-  live in `docs/plan-m3-vertical-slice.md` `### B-020` (:310); the coder copies them into the PR body.
-  **Raise the reviewer's effort when its turn comes** — contract task.
+- **Branch / PR:** `task/b-020-graph-allowlist` at `47a6cd5` — **#33, open**
+- **Status:** coder reported done, PR #33 open. §5.1 free gate running in `~/fce-gate-b020`;
+  the reviewer is **not yet dispatched** and must go out at **raised effort** — contract task.
+  The coder reports `610 passed` (596 + 14 new), flake8 0, and C1-C10 all met.
+  **The first dispatch of this task died producing nothing** (branch at `main`, clean worktree,
+  no PR); confirmed against git, so **this is cycle 1, not cycle 2.**
+- **Deviations reported:** `Dataset` is a plain value object the caller constructs — no
+  `missions.py` or `content/missions/*.yaml` exists yet to derive it from. Flagged in the PR
+  body: the digest formula imposes a global `mult_cuts` constraint on multi-branch graphs.
 - **Worktree:** `.claude/worktrees/agent-a9c0de01733f3ab0c`, reused from the dead dispatch — the
   branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 
