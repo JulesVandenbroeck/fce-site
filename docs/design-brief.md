@@ -390,6 +390,12 @@ Deliberate exclusions. Each is a candidate later; none is a gap to be helpfully 
    must be measured, not guessed. Needs the user.
 2. **Dataset distribution.** ROOT files come from `https://homepage.iihe.ac.be/~kskovpen/fce/datasets/`
    via a `files.txt` inventory. Total size for 91 GeV, and whether a teacher pre-downloads
-   or the server fetches on first run, is unresolved.
+   or the server fetches on first run, is **still unresolved for deployment**.
+   **Partially answered for development, 2026-09-07.** M3 needs a runnable pipeline and this
+   machine has no ROOT files at all, so the user ruled that a **small fixture dataset is
+   committed** under `tests/fixtures/` — enough events to produce a real peak, sized to keep
+   the clone cheap. It exists so every role can run and review the full pipe offline; it is a
+   test fixture and says nothing about how a classroom gets real data. `shared/CLAUDE.md` §3
+   carries the carve-out against the never-commit-ROOT rule.
 3. **Objective tolerances.** How close is close enough on the M-1 peak position, and how
    forgiving should M-2's purity threshold be. Set from real data, then playtested.

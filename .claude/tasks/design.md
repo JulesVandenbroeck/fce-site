@@ -77,6 +77,25 @@ _none._
 
 ## Blocked
 
+M3 tasks first; D-011/D-012 are unchanged below.
+Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+
+### D-015 — The shell, canvas and node stylesheets
+- **Scope:** `src/fce_web/static/css/`; in `templates/`, class attributes and presentational
+  wrappers **only**. Must not touch `docs/design-explorations/verify.py`.
+- **Accept:** C1-C9 in the plan. Tokens only, verified by enumerating **computed** styles in a
+  browser (not by grepping for `#` — D-001's four cycles); AA contrast in the running app,
+  `--ink-45` not used for text; D-008's six palette floors hold; no page h-scroll at
+  1440/1024/768 across all four palette/panel states; `verify.py` unmodified; file scope by
+  `git diff main...HEAD --name-only` (three-dot).
+- **Depends on:** F-004, F-005, F-006. **Releases F-003.** Wave 3, `effort: high`.
+- **Branch / PR:** not yet opened
+- **Note:** once ported, the app CSS is authoritative and the exploration copy is **frozen** —
+  the divergence D-002 backlogged as m5 is accepted here deliberately, not prevented.
+
+### D-016 — Results region and chart styling
+- **Depends on:** F-008. Wave 5. Sample identity colour identical in graph, legend and plot.
+
 ### D-011 — The completed-mission box on the canvas
 - **Scope:** the frozen-and-boxed treatment for a completed mission's graph.
 - **Accept:** on completion the graph is frozen in place and boxed, labelled with the mission it

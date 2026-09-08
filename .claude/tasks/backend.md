@@ -9,16 +9,56 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-018 — A committed fixture dataset the pipeline can run on
+- **Scope:** `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`,
+  `tests/fixtures/make_fixture.py`, `tests/fixtures/README.md`, `tests/test_fixture_dataset.py`
+- **Accept:** C1-C8 in the plan, C1 and C5 corrected at dispatch (below). checks=8.
+- **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
+- **Branch / PR:** `task/b-018-fixture-dataset` — PR not yet opened
+- **Status:** in review (cycle 1) — dispatched 2026-09-07, `isolation: "worktree"`, effort medium
+- **Note:** rests on the user's 2026-09-07 carve-out to `shared/CLAUDE.md` §3 — a *fixture*
+  ROOT file may be committed; real datasets still may not.
+- **Two dispatch-time corrections, from `scout` 2026-09-07 — do not re-derive:**
+  1. The engine selects branches by **substring** match over tree keys
+     (`analytical_loop.py:156-159`), not exact name. Real names are `pt_lep`-shaped. The plan's
+     C1 "exactly the branches `pt, eta, ...`" was wrong; C1 now asks for the *enumerated* set.
+  2. `get_fce_home(env)` (`paths.py:50-57`) resolves **both** `datasets/` and `output/`
+     (`analytical_loop.py:274`, `path_final.py:22-26`). Pointing `env` at `tests/fixtures/`
+     writes `output/` into the committed tree. C5 now requires a tmp FCE_HOME and asserts
+     `tests/fixtures/output/` does not exist after the run.
+- **No samples config.** The user asked for one; nothing in `src/fce_web/` reads one.
+  `driver.py:24` mentions `config/samples.json` only as a comment about the reference repo;
+  samples are discovered by scanning `<dataset_dir>/*.root` (`driver.py:82-95`). Adding one
+  would be a file with no reader — raised with the user rather than built.
+
 
 ## Ready
 
-_none — M2 is complete. B-017 is an M1 leftover, not M2. Next milestone is M3
-(first vertical slice), not yet decomposed._
+M3 wave 1. Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+B-018 is dispatched (see `## In progress`); B-020 is the remaining wave-1 task and is
+independent of it. Dispatch with `isolation: "worktree"`.
+
+### B-020 — Connection allowlist and graph -> RunConfig (**CONTRACT TASK**)
+- **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`, `docs/api.md` (`## Endpoints`, :27)
+- **Accept:** C1-C10 in the plan. Allowlist matches brief §4's five rows and the reference's
+  `_VALID_CONNECTIONS` when `FCE_PARITY_REFERENCE_ROOT` resolves (skips otherwise);
+  `DataSource` synthesised and rejected if submitted; `Observable` mode resolved; output
+  accepted by `RunConfig.from_dict` without raising.
+- **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
+  finding against the payload shape; reviewed at raised effort.
+- **Branch / PR:** not yet opened
+- **Status:** ready, not dispatched
 
 ## Blocked
 
-_none._ Plan: `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
+### B-019 — Engine output -> `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**)
+- **Depends on:** B-018. F-008 consumes it read-only. Wave 2.
+### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
+- **Depends on:** B-019, B-020. Wave 3.
+### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
+- **Depends on:** B-021. Wave 4, closes checkpoint 1.
+
+M2 plan (historical): `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
 
 #### M2 sequencing — RE-ORDERED 2026-08-22 on the user's ruling
 ```
