@@ -52,10 +52,11 @@ import json
 import queue
 import threading
 import uuid
+from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, Mapping, Optional
 
-from fce_web.engine.driver import _dataset_dir, _discover_active_samples, run_analysis
+from fce_web.engine.driver import run_analysis
 from fce_web.engine.runconfig import RunConfig
 from fce_web.graph import Dataset, build_run_config
 from fce_web.paths import get_fce_home
@@ -72,14 +73,7 @@ _V1_DATASET = Dataset(energy="91 GeV", detector="IDEA")
 
 
 def _config_digest(config: RunConfig) -> str:
-    """A cache key that changes iff any field of *config* does.
-
-    Every field ``compute_h5``/``compute_h5_sel`` hash, plus every field
-    they do not (e.g. a second selection branch's own cuts) -- the whole
-    config, not just its top-level digest, so two graphs that differ only
-    in a part the top-level ``h5`` does not cover are never confused for
-    the same run.
-    """
+    """A cache key that changes iff any field of *config* does."""
     return json.dumps(config.to_dict(), sort_keys=True)
 
 
@@ -87,12 +81,14 @@ def _config_digest(config: RunConfig) -> str:
 class Job:
     """One run's state, owned by exactly one ``JobRegistry``. Two ``Job``
     instances never share a ``RunContext``, an ``events`` queue, or a
-    ``lock`` -- each is built fresh in ``JobRegistry.submit`` (C3).
+    ``lock`` -- each is built fresh in ``JobRegistry.submit``, and *ctx* is
+    always set at construction time (never patched on afterwards -- a
+    ``get()`` caller must never observe a job with no context).
     """
 
     id: str
     mission_id: str
-    ctx: Optional[RunContext] = None
+    ctx: RunContext
     events: "queue.Queue" = field(default_factory=queue.Queue)
     lock: threading.Lock = field(default_factory=threading.Lock)
     status: str = "running"  # "running" | "done" | "error" | "cancelled"
@@ -102,17 +98,31 @@ class Job:
     error: Optional[str] = None
 
 
-def _make_ctx(job: Job) -> RunContext:
-    """A ``RunContext`` whose callbacks feed *job*'s own ``events`` queue --
-    nothing shared with any other job's context (C3, C6)."""
+def _make_ctx(events: "queue.Queue") -> RunContext:
+    """A ``RunContext`` whose callbacks feed *events* -- nothing shared with
+    any other job's context."""
     return RunContext(
-        on_progress=lambda f: job.events.put({"type": "progress", "value": f}),
-        on_log=lambda m: job.events.put({"type": "log", "message": m}),
-        on_phase=lambda p: job.events.put({"type": "phase", "phase": p}),
-        on_node=lambda status, nids: job.events.put(
+        on_progress=lambda f: events.put({"type": "progress", "value": f}),
+        on_log=lambda m: events.put({"type": "log", "message": m}),
+        on_phase=lambda p: events.put({"type": "phase", "phase": p}),
+        on_node=lambda status, nids: events.put(
             {"type": "node", "status": status, "nids": sorted(nids)}
         ),
     )
+
+
+def _retag_payload(payload: Optional[dict], mission_id: str) -> Optional[dict]:
+    """Shallow-copy *payload* and stamp ``meta.mission`` with *mission_id*.
+
+    A cache hit reuses another job's ``payload`` by reference; without this,
+    a student in mission B who submits mission A's exact cuts sees mission
+    A's ``meta.mission`` in their own result.
+    """
+    if payload is None:
+        return None
+    payload = dict(payload)
+    payload["meta"] = {**payload.get("meta", {}), "mission": mission_id}
+    return payload
 
 
 class JobRegistry:
