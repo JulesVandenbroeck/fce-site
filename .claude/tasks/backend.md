@@ -17,11 +17,18 @@ IDs are `B-nnn`, allocated in order and never reused.
   accepted by `RunConfig.from_dict` without raising.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
-- **Branch / PR:** `task/b-020-graph-allowlist` at `1ab1bf3` — **#33, open**
-- **Status:** in progress (**cycle 3 — the §5.7 limit; there is no cycle 4**). Re-dispatched
-  2026-09-08 with the cycle-2 review and F9/F10/F11. **checks 12 → 13** (C13: a shipped branch
-  with no failing check is either deleted or given one). If this does not converge I stop and
-  hand the argument to the user.
+- **Branch / PR:** `task/b-020-graph-allowlist` at `0a6831a` — **#33, open**
+- **Status:** **handed off (cycle 3)** — see [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md).
+  The coder hit the 90% hard threshold mid-cycle and stopped cleanly. **Cycle 3 is the §5.7 limit
+  and it is not yet spent** — the work was interrupted, not exhausted, so resuming it is finishing
+  cycle 3, not opening a cycle 4.
+  **Done at `0a6831a`:** F11 only (`docs/api.md:64-68`). **Not done:** F9, F10, C13.
+  The handoff carries both decisions already made — F9 **option B** (make `_mission1_payload` use
+  both selection expressions so the `zpeak-dilepton.json` comparison becomes true again) and F10
+  **keep the multi-path branch and add the one payload** — plus the exact digest literals and the
+  full re-derivation, so a cold successor recomputes nothing. There is no open question.
+  **The suite has not been re-run since `0a6831a`.** Verify before believing anything.
+  **checks 12 → 13** (C13: a shipped branch with no failing check is either deleted or given one).
 - **Cycle-2 review:** `findings=3, scope=pass, verdict=rework`
   ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582721933)).
   All eight cycle-1 findings confirmed fixed, none overruled. The reviewer **independently
