@@ -67,8 +67,10 @@ def test_shell_script_is_requested_as_its_own_file(index: LoadedPage) -> None:
 
 
 def test_shell_page_logs_no_console_errors(index: LoadedPage) -> None:
-    """C4."""
+    """C4/C8: console.error output, and uncaught exceptions (a broken module
+    import surfaces as a Playwright pageerror, not a console message)."""
     assert index.activity.console_errors == []
+    assert index.activity.page_errors == []
 
 
 def test_shell_page_has_no_bad_responses(index: LoadedPage) -> None:

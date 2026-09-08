@@ -5,16 +5,16 @@
    names and data-state values this partial ships (listed in the F-004 PR body).
 
    Two kinds of state stay apart, per docs/design-brief.md §4:
-     - the graph (nodes/edges) -- the engine's business, read by static/js/shell.js
-       and eventually serialised into the run payload by F-005's graph code.
+     - the graph (nodes/edges) -- the engine's business, F-005's to add and
+       serialise into the run payload. #nodes-layer is empty until then.
      - palette/panel collapsed-or-expanded -- UI state, carried only in each
        region's own `data-state` attribute, and never read by a run payload.
 #}
 <div class="shell" id="shell">
 
-  <aside class="palette" id="palette" data-state="expanded">
+  <aside class="palette" id="palette" data-state="expanded" aria-labelledby="palette-title">
     <div class="palette__head">
-      <span class="palette__title">Add a node</span>
+      <span class="palette__title" id="palette-title">Add a node</span>
       <button class="palette__toggle" id="palette-toggle" type="button"
               aria-expanded="true" aria-controls="palette-list">
         <span class="palette__toggle-glyph" id="palette-toggle-glyph" aria-hidden="true">&#8249;</span>
@@ -42,8 +42,7 @@
   </aside>
 
   <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
-    <div class="canvas-wrap" id="canvas-wrap" tabindex="0" role="group"
-         aria-label="Analysis canvas — open a node to see it stay fully visible above whatever it overlaps">
+    <div class="canvas-wrap" id="canvas-wrap">
       <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512">
         <rect x="0" y="0" width="704" height="512" class="canvas-bg"></rect>
         <g id="nodes-layer"></g>
@@ -51,7 +50,7 @@
     </div>
   </section>
 
-  <aside class="mission-panel" id="mission-panel" data-state="expanded">
+  <aside class="mission-panel" id="mission-panel" data-state="expanded" aria-label="Mission">
     <div class="mission-panel__head">
       <button class="mission-panel__pager" id="pager-back" type="button" aria-label="Previous mission">&#8249;</button>
       <span class="mission-panel__label" id="mission-label" data-mission-id="m3">M-3 · The Unknown</span>
