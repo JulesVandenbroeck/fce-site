@@ -17,8 +17,41 @@ IDs are `B-nnn`, allocated in order and never reused.
   accepted by `RunConfig.from_dict` without raising.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
-- **Branch / PR:** `task/b-020-graph-allowlist` at `47a6cd5` — **#33, open**
-- **Status:** in progress (cycle 2) — re-dispatched 2026-09-08 with the review URL and F1-F8.
+- **Branch / PR:** `task/b-020-graph-allowlist` at `0a6831a` — **#33, open**
+- **Status:** **in review — cycle 3 in flight (resumed 2026-09-08)**, from
+  [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md).
+  The coder hit the 90% hard threshold mid-cycle and stopped cleanly. **Cycle 3 is the §5.7 limit
+  and it is not yet spent** — the work was interrupted, not exhausted, so resuming it is finishing
+  cycle 3, not opening a cycle 4.
+  **Done at `0a6831a`:** F11 only (`docs/api.md:64-68`). **Not done:** F9, F10, C13.
+  The handoff carries both decisions already made — F9 **option B** (make `_mission1_payload` use
+  both selection expressions so the `zpeak-dilepton.json` comparison becomes true again) and F10
+  **keep the multi-path branch and add the one payload** — plus the exact digest literals and the
+  full re-derivation, so a cold successor recomputes nothing. There is no open question.
+  **The suite has not been re-run since `0a6831a`.** Verify before believing anything.
+  **checks 12 → 13** (C13: a shipped branch with no failing check is either deleted or given one).
+- **Cycle-2 review:** `findings=3, scope=pass, verdict=rework`
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582721933)).
+  All eight cycle-1 findings confirmed fixed, none overruled. The reviewer **independently
+  re-derived both digest literals** from `runconfig.py:362-375` without calling `graph.py` and
+  confirmed them, and the field-order mutation that was green on cycle 1 is now red. The code is
+  not what is in question. F9: C7's PR-body claim that the fixture matches
+  `content/analyses/zpeak-dilepton.json` bit-for-bit is **reproducibly false** — `_sel_node`
+  defaults to one expression, so the fixture yields `2b8e2826…`/`1d1f518b…` against the JSON's
+  `fbb913c1…`/`c9873a70…`. That body is the only verbatim contract record F-005/F-007 read.
+  F10: the multi-path half of the translator has no check that can fail — reversing
+  `_selection_exprs` leaves all 16 green — and mission 1 is single-histogram, so it is put to the
+  coder as a ladder rung-1 question, with deletion named as the preferred answer. F11: one
+  missing clause in `docs/api.md`.
+- **Do not confuse the two digest pairs.** `fbb913c1…`/`c9873a70…` in `## Contracts in force` are
+  B-010's, for the *reference* config; `2b8e2826…`/`1d1f518b…` are B-020's mission-1 fixture.
+  Different configs, no contradiction — F9 is a stale claim in a PR body, not a contract breach.
+- **Cycle-2 gate (still the record):** `code-reviewer` re-dispatched 2026-09-08 **at raised effort**
+  with the cycle-1 review URL and F1-F8. Cycle-2 head `1ab1bf3`. §5.1 gate **PASSED** in
+  `~/fce-gate-b020`: `621 passed` (605 floor + 16), flake8 0, `tests/test_graph.py` 16 passed,
+  reference test skips cleanly, scope exactly three files. Coder reports F1-F6 and F8 fixed,
+  **none overruled**, F7 backlogged. `graphlib.TopologicalSorter` replaced the hand-rolled DFS.
+- **Cycle-1 record:** re-dispatched 2026-09-08 with the review URL and F1-F8.
   Review `findings=8, scope=pass, verdict=rework`
   ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582447530)).
   **checks 10 → 12**: C11 pins the mission-1 digests, C12 makes client type errors `GraphError`.
@@ -58,15 +91,26 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Worktree:** `.claude/worktrees/agent-a9c0de01733f3ab0c`, reused from the dead dispatch — the
   branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 
+### B-019 — Engine output -> `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**)
+- **Scope:** create `src/fce_web/payload.py`, `tests/test_payload.py` — nothing else.
+  `docs/api.md`'s histogram section is already complete and row-parity tested.
+- **Accept:** C1-C9 in the plan. Valid against all 18 `HISTOGRAM_SCHEMA` rows; bins read the
+  reference's way (`uproot.open`/`f_res["h"]`/`.values()`/`.axes[0].edges()`); `systUp` keys
+  absent when there are no variations; `len(counts) == len(edges) - 1`; **C5 is the crux** —
+  `run_analysis` on B-018's fixture through this function peaks X1 at the Z mass within 3 GeV.
+- **Depends on:** B-018 (merged). **F-008 consumes it read-only** — not merged with an open
+  finding against the payload shape; reviewed at raised effort. Wave 2.
+- **Branch / PR:** `task/b-019-histogram-payload` — not yet opened
+- **Status:** dispatched 2026-09-08 (cycle 1), `isolation: worktree`, effort medium.
+  checks=9. Suite floor given as **615**.
+
 ## Ready
 
-_none — both wave-1 backend tasks (B-018, B-020) are in progress._
+_none — B-020 (wave 1) and B-019 (wave 2) are both in progress._
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Blocked
 
-### B-019 — Engine output -> `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**)
-- **Depends on:** B-018. F-008 consumes it read-only. Wave 2.
 ### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
 - **Depends on:** B-019, B-020. Wave 3.
 ### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
