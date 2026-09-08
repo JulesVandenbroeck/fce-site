@@ -25,6 +25,7 @@ This module is pure: no HTTP, no filesystem, no module-level mutable state.
 """
 from __future__ import annotations
 
+import graphlib
 import hashlib
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
@@ -158,21 +159,17 @@ def _children(nodes: Dict[str, _Node], edges: List[Tuple[str, str]]) -> Dict[str
 
 
 def _check_no_cycle(nodes: Dict[str, _Node], children: Dict[str, List[str]]) -> None:
-    WHITE, GREY, BLACK = 0, 1, 2
-    color = {node_id: WHITE for node_id in nodes}
-
-    def visit(node_id: str) -> None:
-        color[node_id] = GREY
-        for child in children[node_id]:
-            if color[child] == GREY:
-                raise GraphError(f"the graph is cyclic: {node_id!r} leads back to {child!r}")
-            if color[child] == WHITE:
-                visit(child)
-        color[node_id] = BLACK
-
-    for node_id in nodes:
-        if color[node_id] == WHITE:
-            visit(node_id)
+    # Predecessor map: TopologicalSorter wants "this node depends on these".
+    predecessors: Dict[str, List[str]] = {node_id: [] for node_id in nodes}
+    for src, kids in children.items():
+        for dst in kids:
+            predecessors[dst].append(src)
+    sorter = graphlib.TopologicalSorter(predecessors)
+    try:
+        sorter.prepare()
+    except graphlib.CycleError as exc:
+        cycle = exc.args[1]
+        raise GraphError(f"the graph is cyclic: {' -> '.join(repr(n) for n in cycle)}")
 
 
 def _check_connected(nodes: Dict[str, _Node], edges: List[Tuple[str, str]]) -> None:
@@ -231,11 +228,25 @@ def _check_terminals(nodes: Dict[str, _Node], children: Dict[str, List[str]]) ->
         )
 
 
+# Element types of the mult-cut tuple, in `_MULT_CUT_FIELDS` order -- mirrors
+# `runconfig._MULT_CUT_TYPES`, which enforces the same shape on the way back
+# out. Checked here too so a client type error surfaces as `GraphError` (a
+# 400), not as the engine's `RunConfigError` (a 500) -- F4.
+_MULT_CUT_TYPES = (int, str, int, str, str, int, str)
+
+
 def _mult_cut_tuple(node: _Node) -> tuple:
     config = node.config
     missing = [field for field in _MULT_CUT_FIELDS if field not in config]
     if missing:
         raise GraphError(f"node {node.id!r}: Multiplicity is missing {', '.join(missing)}")
+    for field, expected_type in zip(_MULT_CUT_FIELDS, _MULT_CUT_TYPES):
+        value = config[field]
+        # bool is a subclass of int; reject it explicitly, same as runconfig.
+        if expected_type is int and (not isinstance(value, int) or isinstance(value, bool)):
+            raise GraphError(f"node {node.id!r}: '{field}' must be an int, got {value!r}")
+        if expected_type is str and not isinstance(value, str):
+            raise GraphError(f"node {node.id!r}: '{field}' must be a string, got {value!r}")
     return tuple(config[field] for field in _MULT_CUT_FIELDS)
 
 
@@ -294,12 +305,21 @@ def _selection_exprs(path: List[str], nodes: Dict[str, _Node]) -> List[str]:
     return exprs
 
 
-def _histogram_dict(node: _Node, h5_sel: str, plot_idx: int) -> dict:
+def _histogram_dict(node: _Node, plot_idx: int) -> dict:
     config = node.config
     required = ("bins", "min", "max")
     missing = [field for field in required if field not in config]
     if missing:
         raise GraphError(f"node {node.id!r}: Histogram is missing {', '.join(missing)}")
+    for field in required:
+        if not isinstance(config[field], str):
+            raise GraphError(
+                f"node {node.id!r}: '{field}' must be a string, got {config[field]!r}"
+            )
+    if "target" in config and not isinstance(config["target"], str):
+        raise GraphError(
+            f"node {node.id!r}: 'target' must be a string, got {config['target']!r}"
+        )
     return {
         "observable": None,  # filled in by the caller, which knows the Observable node
         "x_label": config.get("x_label", ""),
@@ -368,7 +388,7 @@ def build_run_config(payload: dict, dataset: Dataset) -> RunConfig:
             }
 
         selection = grouped[key]
-        histogram = _histogram_dict(hist_node, selection["h5_sel"], plot_idx)
+        histogram = _histogram_dict(hist_node, plot_idx)
         histogram["observable"] = observable_expr
         histogram["x_label"] = histogram["x_label"] or obs_node.config.get("label", "")
         histogram["h5"] = hashlib.md5(

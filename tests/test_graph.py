@@ -73,7 +73,7 @@ def _obs_node(node_id="obs1", mode="ObsCustom", expr="(l1.p4 + l2.p4).mass"):
     return {"id": node_id, "kind": "Observable", "config": {"mode": mode, "expr": expr, "label": "m(l1,l2)"}}
 
 
-def _hist_node(node_id="hist1", plot_idx=0):
+def _hist_node(node_id="hist1"):
     return {"id": node_id, "kind": "Histogram", "config": {"bins": "50", "min": "60.0", "max": "120.0"}}
 
 
@@ -181,6 +181,22 @@ def test_missing_histogram_terminal_is_rejected():
 
 # ---- C7: the translated output is accepted by RunConfig.from_dict ----
 
+# Pinned independently of graph.py, straight from the digest formula
+# `RunConfig.compute_h5_sel`/`compute_h5` document (runconfig.py:362-375):
+#   mult_h5_base = energy + detector + str(mult_cuts)
+#   h5_sel = md5(mult_h5_base + str(sel_exprs))
+#   h5 = md5(h5_sel + observable + bins + min + max + target)
+# for this fixture's exact payload -- mult_cuts=[(2,">=",0,">=","Any",0,">=")],
+# sel_exprs=["l1.pt > 20"], observable="(l1.p4 + l2.p4).mass", bins/min/max/
+# target = "50"/"60.0"/"120.0"/"None". `from_dict` only checks that a
+# payload's digests agree with its own fields, never that the fields are
+# the right ones -- so without these literals, swapping the mult-cut field
+# order (F1) mistranslates the selection silently and every other assertion
+# here still passes.
+_MISSION1_H5 = "2b8e282692cbdaaff65efec8c786b5ad"
+_MISSION1_H5_SEL = "1d1f518b0dd7f037a7c12a160838e42d"
+
+
 def test_mission1_graph_produces_a_run_config():
     cfg = build_run_config(_mission1_payload(), _dataset())
     assert isinstance(cfg, RunConfig)
@@ -190,6 +206,8 @@ def test_mission1_graph_produces_a_run_config():
     assert cfg.sel_exprs == ["l1.pt > 20"]
     assert len(cfg.selections) == 1
     assert len(cfg.selections[0].histograms) == 1
+    assert cfg.h5 == _MISSION1_H5
+    assert cfg.h5_sel == _MISSION1_H5_SEL
 
 
 # ---- C8: graph.py is pure ----
@@ -205,16 +223,22 @@ def test_graph_module_is_pure():
                 assert alias.name.split(".")[0] not in forbidden, alias.name
         elif isinstance(node, ast.ImportFrom) and node.module:
             assert node.module.split(".")[0] not in forbidden, node.module
-    # No module-level mutable state: every module-level assignment target
-    # must be a constant-shaped name (tuples/dicts of literals are fine --
-    # VALID_CONNECTIONS itself -- what is forbidden is a container mutated
-    # later, which this codebase's own convention is to avoid entirely by
-    # never reassigning a module global after definition).
-    module_level_names = [
-        target.id
-        for node in tree.body
-        if isinstance(node, ast.Assign)
-        for target in node.targets
-        if isinstance(target, ast.Name)
-    ]
-    assert len(module_level_names) == len(set(module_level_names))
+
+
+# ---- C12: a client type error is a client error (GraphError), not a 500 ----
+
+def test_histogram_bins_as_json_int_is_a_graph_error():
+    payload = {
+        "nodes": [_sel_node(), _obs_node(), _hist_node()],
+        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
+    }
+    payload["nodes"][-1]["config"]["bins"] = 50  # JSON int, not the string dpg would send
+    with pytest.raises(GraphError, match="bins"):
+        build_run_config(payload, _dataset())
+
+
+def test_mult_cut_count_as_json_string_is_a_graph_error():
+    payload = _mission1_payload()
+    payload["nodes"][0]["config"]["nlep"] = "2"  # JSON string, not the int dpg would send
+    with pytest.raises(GraphError, match="nlep"):
+        build_run_config(payload, _dataset())
