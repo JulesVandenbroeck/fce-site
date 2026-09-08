@@ -20,7 +20,9 @@ IDs are `B-nnn`, allocated in order and never reused.
   peak as brief §3 describes).
 - **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
 - **Branch / PR:** `task/b-018-fixture-dataset` at `8a4ef27` — **#31, open**
-- **Status:** in review (cycle 1) — `code-reviewer` dispatched 2026-09-08. §5.1 free gate **PASSED** in
+- **Status:** in review (cycle 1) — `code-reviewer` **re-dispatched 2026-09-08** after the first
+  reviewer died with no output (no PR comment, branch head unmoved at `8a4ef27`; git checked, not
+  the list). §5.1 free gate **PASSED** in
   `~/fce-gate-b018` (a detached worktree off `origin/task/b-018-fixture-dataset`):
   `605 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0. PR body carries scope, C1-C8 with
   IDs and evidence, and the transcript — §4 rule 3 satisfied.
@@ -61,9 +63,13 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
 - **Branch / PR:** `task/b-020-graph-allowlist` — not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-09-08, `isolation: "worktree"`. Criteria C1-C10
-  live in `docs/plan-m3-vertical-slice.md` `### B-020`; the coder copies them into the PR body.
+- **Status:** in progress (cycle 1) — **re-dispatched 2026-09-08**. The first dispatch died
+  producing nothing: branch sat at `main` (`39d73db`) with a clean worktree, no remote, no PR.
+  Confirmed against git, so **cycle 1 restarts from zero — this is not cycle 2.** Criteria C1-C10
+  live in `docs/plan-m3-vertical-slice.md` `### B-020` (:310); the coder copies them into the PR body.
   **Raise the reviewer's effort when its turn comes** — contract task.
+- **Worktree:** `.claude/worktrees/agent-a9c0de01733f3ab0c`, reused from the dead dispatch — the
+  branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 
 ## Ready
 

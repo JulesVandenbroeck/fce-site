@@ -18,9 +18,13 @@ IDs are `F-nnn`, allocated in order and never reused.
   `style=`; `PageActivity.console_errors == []` and `bad_responses == []`.
 - **Depends on:** nothing. **Blocks F-005 and D-015.**
 - **Branch / PR:** `task/f-004-shell-port` — not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-09-08, `isolation: "worktree"`. Criteria
-  C1-C7 live in `docs/plan-m3-vertical-slice.md` `### F-004`; the coder copies them into the PR
-  body, which must also list the region class names and `data-state` attributes D-015 consumes.
+- **Status:** in progress (cycle 1) — **re-dispatched 2026-09-08**. The first dispatch died
+  producing nothing: branch sat at `main` (`39d73db`) with a clean worktree, no remote, no PR.
+  Confirmed against git, so **cycle 1 restarts from zero — this is not cycle 2.** Criteria
+  C1-C7 live in `docs/plan-m3-vertical-slice.md` `### F-004` (:377); the coder copies them into the
+  PR body, which must also list the region class names and `data-state` attributes D-015 consumes.
+- **Worktree:** `.claude/worktrees/agent-ac37115050f4366c3`, reused from the dead dispatch — the
+  branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 - **Note:** writes **no CSS** — the page is expected to look unstyled. D-015 styles it in wave 3.
   If a new route is needed, stop and report: `routes/pages.py` is backend's.
 
