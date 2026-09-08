@@ -62,8 +62,10 @@ is synthesised server-side from the mission's declared dataset (`docs/design-bri
     them raw, see `engine/runconfig.py`), `name` (optional), `x_label` (optional, else the
     `Observable` node's `label`).
 - `edges` — `[fromId, toId]` pairs. Illegal per `fce_web.graph.VALID_CONNECTIONS`, cyclic,
-  disconnected, or missing a `Histogram` terminal are all rejected with a
-  `fce_web.graph.GraphError` naming the offending node or edge.
+  disconnected, missing a `Histogram` terminal, or spanning branches whose `Multiplicity`
+  chains disagree (the digest formula has one `mult_cuts` for the whole run, not one per
+  branch) are all rejected with a `fce_web.graph.GraphError` naming the offending node or
+  edge.
 
 A rejected graph returns `400` with `{"error": "<student-legible message>"}`. A legal graph
 that the loader itself rejects (a translation bug, not a student mistake) is a `500` — that
