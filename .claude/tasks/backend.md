@@ -20,11 +20,10 @@ IDs are `B-nnn`, allocated in order and never reused.
   peak as brief §3 describes).
 - **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
 - **Branch / PR:** `task/b-018-fixture-dataset` at `8a4ef27` — **#31, open**
-- **Status:** cycle 1 complete, **awaiting reviewer dispatch**. §5.1 free gate **PASSED** in
+- **Status:** in review (cycle 1) — `code-reviewer` dispatched 2026-09-08. §5.1 free gate **PASSED** in
   `~/fce-gate-b018` (a detached worktree off `origin/task/b-018-fixture-dataset`):
   `605 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0. PR body carries scope, C1-C8 with
-  IDs and evidence, and the transcript — §4 rule 3 satisfied. **Next move: dispatch
-  `code-reviewer` with the PR number and nothing else.**
+  IDs and evidence, and the transcript — §4 rule 3 satisfied.
   One immaterial discrepancy, recorded so the reviewer is not surprised: the PR reports
   `du -sb tests/fixtures/` = **756272**; the gate worktree measures **751620**. A stale
   `__pycache__` in the coder's tree. C6's 5 MB cap holds on either figure.
@@ -53,13 +52,6 @@ IDs are `B-nnn`, allocated in order and never reused.
   samples are discovered by scanning `<dataset_dir>/*.root` (`driver.py:82-95`). Adding one
   would be a file with no reader — raised with the user rather than built.
 
-
-## Ready
-
-M3 wave 1. Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
-B-018 is dispatched (see `## In progress`); B-020 is the remaining wave-1 task and is
-independent of it. Dispatch with `isolation: "worktree"`.
-
 ### B-020 — Connection allowlist and graph -> RunConfig (**CONTRACT TASK**)
 - **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`, `docs/api.md` (`## Endpoints`, :27)
 - **Accept:** C1-C10 in the plan. Allowlist matches brief §4's five rows and the reference's
@@ -68,8 +60,15 @@ independent of it. Dispatch with `isolation: "worktree"`.
   accepted by `RunConfig.from_dict` without raising.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
-- **Branch / PR:** not yet opened
-- **Status:** ready, not dispatched
+- **Branch / PR:** `task/b-020-graph-allowlist` — not yet opened
+- **Status:** in progress (cycle 1) — dispatched 2026-09-08, `isolation: "worktree"`. Criteria C1-C10
+  live in `docs/plan-m3-vertical-slice.md` `### B-020`; the coder copies them into the PR body.
+  **Raise the reviewer's effort when its turn comes** — contract task.
+
+## Ready
+
+_none — both wave-1 backend tasks (B-018, B-020) are in progress._
+Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Blocked
 

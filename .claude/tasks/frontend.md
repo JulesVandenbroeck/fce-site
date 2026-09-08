@@ -9,12 +9,6 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none_
-
-## Ready
-
-M3 wave 1. Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
-
 ### F-004 — Port the three-region shell into the app
 - **Scope:** `src/fce_web/templates/` (the shell template, `base.html`),
   `src/fce_web/static/js/shell.js`, `tests/e2e/test_shell.py`
@@ -23,10 +17,17 @@ M3 wave 1. Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-
   keyboard-operable; `shell.html:90-310`'s inline script becomes a module file; zero inline
   `style=`; `PageActivity.console_errors == []` and `bad_responses == []`.
 - **Depends on:** nothing. **Blocks F-005 and D-015.**
-- **Branch / PR:** not yet opened
-- **Status:** ready, not dispatched
+- **Branch / PR:** `task/f-004-shell-port` — not yet opened
+- **Status:** in progress (cycle 1) — dispatched 2026-09-08, `isolation: "worktree"`. Criteria
+  C1-C7 live in `docs/plan-m3-vertical-slice.md` `### F-004`; the coder copies them into the PR
+  body, which must also list the region class names and `data-state` attributes D-015 consumes.
 - **Note:** writes **no CSS** — the page is expected to look unstyled. D-015 styles it in wave 3.
   If a new route is needed, stop and report: `routes/pages.py` is backend's.
+
+## Ready
+
+_none — F-004 is in progress; everything else is blocked behind it or behind M3 wave 2._
+Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Blocked
 
