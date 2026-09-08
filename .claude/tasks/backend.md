@@ -18,7 +18,27 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
 - **Branch / PR:** `task/b-020-graph-allowlist` at `1ab1bf3` — **#33, open**
-- **Status:** in review (cycle 2) — `code-reviewer` re-dispatched 2026-09-08 **at raised effort**
+- **Status:** in progress (**cycle 3 — the §5.7 limit; there is no cycle 4**). Re-dispatched
+  2026-09-08 with the cycle-2 review and F9/F10/F11. **checks 12 → 13** (C13: a shipped branch
+  with no failing check is either deleted or given one). If this does not converge I stop and
+  hand the argument to the user.
+- **Cycle-2 review:** `findings=3, scope=pass, verdict=rework`
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582721933)).
+  All eight cycle-1 findings confirmed fixed, none overruled. The reviewer **independently
+  re-derived both digest literals** from `runconfig.py:362-375` without calling `graph.py` and
+  confirmed them, and the field-order mutation that was green on cycle 1 is now red. The code is
+  not what is in question. F9: C7's PR-body claim that the fixture matches
+  `content/analyses/zpeak-dilepton.json` bit-for-bit is **reproducibly false** — `_sel_node`
+  defaults to one expression, so the fixture yields `2b8e2826…`/`1d1f518b…` against the JSON's
+  `fbb913c1…`/`c9873a70…`. That body is the only verbatim contract record F-005/F-007 read.
+  F10: the multi-path half of the translator has no check that can fail — reversing
+  `_selection_exprs` leaves all 16 green — and mission 1 is single-histogram, so it is put to the
+  coder as a ladder rung-1 question, with deletion named as the preferred answer. F11: one
+  missing clause in `docs/api.md`.
+- **Do not confuse the two digest pairs.** `fbb913c1…`/`c9873a70…` in `## Contracts in force` are
+  B-010's, for the *reference* config; `2b8e2826…`/`1d1f518b…` are B-020's mission-1 fixture.
+  Different configs, no contradiction — F9 is a stale claim in a PR body, not a contract breach.
+- **Cycle-2 gate (still the record):** `code-reviewer` re-dispatched 2026-09-08 **at raised effort**
   with the cycle-1 review URL and F1-F8. Cycle-2 head `1ab1bf3`. §5.1 gate **PASSED** in
   `~/fce-gate-b020`: `621 passed` (605 floor + 16), flake8 0, `tests/test_graph.py` 16 passed,
   reference test skips cleanly, scope exactly three files. Coder reports F1-F6 and F8 fixed,
