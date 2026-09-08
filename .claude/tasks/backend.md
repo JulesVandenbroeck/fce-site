@@ -18,8 +18,28 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
 - **Branch / PR:** `task/b-020-graph-allowlist` at `47a6cd5` — **#33, open**
-- **Status:** in review (cycle 1) — `code-reviewer` dispatched 2026-09-08 **at raised effort**
-  (contract task). §5.1 free gate **PASSED** in `~/fce-gate-b020` (detached off
+- **Status:** in progress (cycle 2) — re-dispatched 2026-09-08 with the review URL and F1-F8.
+  Review `findings=8, scope=pass, verdict=rework`
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582447530)).
+  **checks 10 → 12**: C11 pins the mission-1 digests, C12 makes client type errors `GraphError`.
+- **Review:** 8 findings, verdict=rework. **Raising the reviewer's effort paid, and this is the
+  evidence to cite next time the question comes up.** F1: `RunConfig.from_dict` checks only that
+  a payload's digests agree with its own fields, never that the fields are right — so swapping
+  two mult-cut fields left all 14 tests GREEN, a mistranslation that would silently change the
+  selection and permanently miss the content-addressed cache. F2: the purity check asserts only
+  that no module-level name is assigned twice, so a textbook `CACHE = {}` mutated in a function
+  passes. F3/F4: a client sending `"bins": 50` as a JSON int gets `TypeError`, and `"nlep": "2"`
+  gets `RunConfigError` — both 500s under this PR's own `api.md`, for ordinary client payloads.
+  F5/F6/F8 deletions (`graphlib.TopologicalSorter` replaces a hand-rolled tri-colour DFS).
+  **F7 backlogged, not fixed** — the digest formula is transcribed a third time, and exporting it
+  from `runconfig.py` is outside this PR's file scope. The reviewer said so itself.
+- **§5.4 diagnosis — a CYCLE, clause 3, and the drafting defect is mine, the same one as F-004's.**
+  Nothing was dropped (clause 1 no); C7 and C8 both shipped with commands and are met *as written*
+  (clause 2 no). But C7 said "accepted by `RunConfig.from_dict` without raising" — a **method**,
+  and the method became the ceiling. The property is that the translation is *correct*. Twice in
+  one wave, so it is not bad luck: §2's rule is to write the property in the sentence and the
+  method in the `Check:`, and I wrote only the method both times.
+- **Cycle-1 gate (still the record):** §5.1 free gate **PASSED** in `~/fce-gate-b020` (detached off
   `origin/task/b-020-graph-allowlist`): `610 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0,
   `pytest tests/test_graph.py -q` → 14 passed, and the reference test skips cleanly with
   `FCE_PARITY_REFERENCE_ROOT=/nonexistent` (1 skipped, 13 deselected).
