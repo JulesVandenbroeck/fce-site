@@ -18,7 +18,8 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
 - **Branch / PR:** `task/b-020-graph-allowlist` at `0a6831a` — **#33, open**
-- **Status:** **handed off (cycle 3)** — see [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md).
+- **Status:** **in review — cycle 3 in flight (resumed 2026-09-08)**, from
+  [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md).
   The coder hit the 90% hard threshold mid-cycle and stopped cleanly. **Cycle 3 is the §5.7 limit
   and it is not yet spent** — the work was interrupted, not exhausted, so resuming it is finishing
   cycle 3, not opening a cycle 4.
