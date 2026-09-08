@@ -9,14 +9,19 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none — M3 wave 1 and wave 2 are complete. Wave 3 is released and unstarted._
+### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
+- **Scope:** create `src/fce_web/jobs.py`, `routes/api.py`, `tests/test_jobs.py`,
+  `tests/test_api_run.py`; modify `app.py`, `docs/api.md`
+- **Accept:** C1-C9 in the plan. checks=9. Suite floor 639.
+- **Depends on:** B-019, B-020 — both merged.
+- **Branch / PR:** `task/b-021-run-api` — PR not yet opened
+- **Status:** dispatched cycle 1, 2026-09-08 (worktree, `effort: medium`)
+- **Note:** wave 3 is running **in series** on the user's instruction, not parallel.
+- Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Ready
 
-### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
-- **Depends on:** B-019, B-020 — **both merged, so this is READY.** Wave 3.
-- Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
-Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+_none — F-005 and F-006 are wave 3 but frontend; see `frontend.md`._
 
 ## Blocked
 
