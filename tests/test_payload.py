@@ -80,13 +80,20 @@ def test_counts_length_matches_edges_minus_one(fixture_payload):
     assert len(fixture_payload["data"]) == n_bins
     for sample in fixture_payload["samples"]:
         assert len(sample["counts"]) == n_bins
+        # C10: each systUp array must be exactly n_bins long -- docs/api.md:112
+        # requires it and docs/api.md:133's band formula divides by these
+        # sums, so key *presence* alone (C3, below) is not enough.
+        for variation in sample["systUp"].values():
+            assert len(variation) == n_bins
 
 
 # ---------------------------------------------------------------------------
 # C3: variations land under systUp, absent (not empty) when there are none.
+# Only mc_samples appear in samples[] -- data_sample never does, so this
+# test cannot and does not assert anything about it.
 # ---------------------------------------------------------------------------
 
-def test_mc_samples_carry_systup_data_sample_does_not(fixture_payload):
+def test_mc_samples_carry_systup(fixture_payload):
     by_name = {s["name"]: s for s in fixture_payload["samples"]}
     for name in MC_SAMPLES:
         assert set(by_name[name]["systUp"]) == {"jec", "lep", "btag"}

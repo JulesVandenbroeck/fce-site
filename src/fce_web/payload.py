@@ -71,6 +71,19 @@ def _read_nominal(path: str) -> Tuple[List[float], List[float]]:
     return nominal
 
 
+def _check_edges(path: str, sample_edges: List[float], edges: Optional[List[float]]) -> List[float]:
+    """Return *edges*, first-seen if *edges* is still ``None``, after
+    checking *sample_edges* agrees with it. One guard shared by every
+    sample read in :func:`build_histogram_payload` (F4, B-019 cycle 2) --
+    a single ``HistogramConfig`` produces one binning for a run, so this
+    can only fire on a malformed ``output/`` directory."""
+    if edges is None:
+        return sample_edges
+    if sample_edges != edges:
+        raise PayloadError(f"{path}: bin edges disagree with the other samples in this run")
+    return edges
+
+
 def build_histogram_payload(
     hdir: str,
     plot_idx: int,
@@ -117,10 +130,7 @@ def build_histogram_payload(
     for name in mc_samples:
         path = _hist_path(hdir, plot_idx, name)
         counts, sample_edges = _read_nominal(path)
-        if edges is None:
-            edges = sample_edges
-        elif sample_edges != edges:
-            raise PayloadError(f"{path}: bin edges disagree with the first sample read")
+        edges = _check_edges(path, sample_edges, edges)
 
         syst_up: Dict[str, List[float]] = {}
         for src in SYST_SOURCES:
@@ -137,10 +147,7 @@ def build_histogram_payload(
 
     data_path = _hist_path(hdir, plot_idx, data_sample)
     data_counts, data_edges = _read_nominal(data_path)
-    if edges is None:
-        edges = data_edges
-    elif data_edges != edges:
-        raise PayloadError(f"{data_path}: bin edges disagree with the MC samples")
+    edges = _check_edges(data_path, data_edges, edges)
 
     syst_sources = [
         src for src in SYST_SOURCES
