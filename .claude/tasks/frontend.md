@@ -18,7 +18,25 @@ IDs are `F-nnn`, allocated in order and never reused.
   `style=`; `PageActivity.console_errors == []` and `bad_responses == []`.
 - **Depends on:** nothing. **Blocks F-005 and D-015.**
 - **Branch / PR:** `task/f-004-shell-port` at `407de7a` — **#32, open**
-- **Status:** in review (cycle 1) — `code-reviewer` dispatched 2026-09-08. §5.1 free gate
+- **Status:** in progress (cycle 2) — re-dispatched 2026-09-08 with the review URL and F1-F7.
+  Cycle 1 gate PASSED; review `findings=7, scope=pass, verdict=rework`
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/32#issuecomment-5582424817)).
+  **checks 7 → 8**: C8 added for uncaught page errors.
+- **Review:** 7 findings, verdict=rework. F1 blocking — `test_shell_page_logs_no_console_errors`
+  passes when `shell.js` throws on load, because an uncaught module exception is a Playwright
+  `pageerror`, not a console error; the reviewer proved it by breaking an id and watching the
+  test stay green. F5/F6/F7 accessibility (unnamed `<aside>` landmarks; a dead `tabindex="0"`
+  canvas tab stop; collapsed regions left in the tab order). F2/F3/F4 deletions (~115 lines of
+  dead payload builder, untested exemplar node cards, and mission text duplicated between
+  template and JS).
+- **§5.4 diagnosis — this is a CYCLE, clause 3, and the drafting defect is mine.** Nothing was
+  dropped from a prior cycle (clause 1 does not apply), and C4 shipped *with* a command and is
+  *met as written* (clause 2 does not apply). F1 is against a property no criterion gated, so it
+  counts. But it is §2's *"state the property, not only the method — or the method becomes the
+  ceiling"*, the B-006 cycle-2 shape exactly: I wrote the mechanism (`console_errors == []`) and
+  got that mechanism and nothing else. C8 now states the property — no uncaught JS error on load
+  — and names `page_errors` as one instrument, not as the definition.
+- **Cycle-1 gate (still the record):** §5.1 free gate
   **PASSED** in `~/fce-gate-f004` (detached off `origin/task/f-004-shell-port`):
   `606 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0, `tests/e2e/` **27 → 37** nodeids,
   and `git diff origin/main...HEAD --name-only` returns exactly the four scoped files. Every
