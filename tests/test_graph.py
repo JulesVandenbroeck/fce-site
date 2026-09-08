@@ -79,7 +79,7 @@ def _hist_node(node_id="hist1"):
 
 def _mission1_payload():
     return {
-        "nodes": [_mult_node(), _sel_node(), _obs_node(), _hist_node()],
+        "nodes": [_mult_node(), _sel_node(exprs=["l1.pt > 20", "l2.pt > 10"]), _obs_node(), _hist_node()],
         "edges": [["mult1", "sel1"], ["sel1", "obs1"], ["obs1", "hist1"]],
     }
 
@@ -187,14 +187,16 @@ def test_missing_histogram_terminal_is_rejected():
 #   h5_sel = md5(mult_h5_base + str(sel_exprs))
 #   h5 = md5(h5_sel + observable + bins + min + max + target)
 # for this fixture's exact payload -- mult_cuts=[(2,">=",0,">=","Any",0,">=")],
-# sel_exprs=["l1.pt > 20"], observable="(l1.p4 + l2.p4).mass", bins/min/max/
-# target = "50"/"60.0"/"120.0"/"None". `from_dict` only checks that a
-# payload's digests agree with its own fields, never that the fields are
-# the right ones -- so without these literals, swapping the mult-cut field
-# order (F1) mistranslates the selection silently and every other assertion
-# here still passes.
-_MISSION1_H5 = "2b8e282692cbdaaff65efec8c786b5ad"
-_MISSION1_H5_SEL = "1d1f518b0dd7f037a7c12a160838e42d"
+# sel_exprs=["l1.pt > 20", "l2.pt > 10"], observable="(l1.p4 + l2.p4).mass", bins/min/max/
+# target = "50"/"60.0"/"120.0"/"None". These are also the exact digests in
+# content/analyses/zpeak-dilepton.json (F9) -- deliberately kept matching, since
+# the mission-1 fixture and the shipped mission-1 analysis have the same inputs.
+# `from_dict` only checks that a payload's digests agree with its own fields,
+# never that the fields are the right ones -- so without these literals,
+# swapping the mult-cut field order (F1) mistranslates the selection silently
+# and every other assertion here still passes.
+_MISSION1_H5 = "fbb913c18c34530d355fdd949974ac58"
+_MISSION1_H5_SEL = "c9873a70ca371612fc24cf976ff7fd5c"
 
 
 def test_mission1_graph_produces_a_run_config():
@@ -203,7 +205,7 @@ def test_mission1_graph_produces_a_run_config():
     assert cfg.energy == "91 GeV"
     assert cfg.detector == "IDEA"
     assert cfg.observable == "(l1.p4 + l2.p4).mass"
-    assert cfg.sel_exprs == ["l1.pt > 20"]
+    assert cfg.sel_exprs == ["l1.pt > 20", "l2.pt > 10"]
     assert len(cfg.selections) == 1
     assert len(cfg.selections[0].histograms) == 1
     assert cfg.h5 == _MISSION1_H5
@@ -242,3 +244,41 @@ def test_mult_cut_count_as_json_string_is_a_graph_error():
     payload["nodes"][0]["config"]["nlep"] = "2"  # JSON string, not the int dpg would send
     with pytest.raises(GraphError, match="nlep"):
         build_run_config(payload, _dataset())
+
+
+# ---- C13: the multi-path branch (chained Selections, sibling branches
+# sharing a prefix) is covered by a check that can fail. Digests
+# independently derived from the same formula as _MISSION1_H5 above, for
+# this exact payload -- see .claude/handoff/b-020-backend-3.md.
+
+def test_chained_and_branching_selections_produce_two_histograms():
+    payload = {
+        "nodes": [
+            _mult_node("mult1"),
+            _sel_node("sel1", exprs=["l1.pt > 20"]),
+            _sel_node("sel2", exprs=["l2.pt > 10"]),
+            _obs_node("obs1", mode="ObsCustom", expr="(l1.p4 + l2.p4).mass"),
+            _hist_node("hist1"),
+            _obs_node("obs2", mode="ObsCustom", expr="l1.pt"),
+            _hist_node("hist2"),
+        ],
+        "edges": [
+            ["mult1", "sel1"], ["sel1", "sel2"], ["sel2", "obs1"], ["obs1", "hist1"],
+            ["sel1", "obs2"], ["obs2", "hist2"],
+        ],
+    }
+    cfg = build_run_config(payload, _dataset())
+    assert len(cfg.selections) == 2
+
+    chained = next(s for s in cfg.selections if s.sel_exprs == ["l1.pt > 20", "l2.pt > 10"])
+    assert chained.h5_sel == "c9873a70ca371612fc24cf976ff7fd5c"
+    assert len(chained.histograms) == 1
+    assert chained.histograms[0].h5 == "fbb913c18c34530d355fdd949974ac58"
+
+    branch = next(s for s in cfg.selections if s.sel_exprs == ["l1.pt > 20"])
+    assert branch.h5_sel == "1d1f518b0dd7f037a7c12a160838e42d"
+    assert len(branch.histograms) == 1
+    assert branch.histograms[0].h5 == "2525f9e18ab8ad80c419640828167925"
+
+    assert chained.histograms[0].plot_idx == 0
+    assert branch.histograms[0].plot_idx == 1
