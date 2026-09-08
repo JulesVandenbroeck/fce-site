@@ -71,19 +71,6 @@ def _read_nominal(path: str) -> Tuple[List[float], List[float]]:
     return nominal
 
 
-def _check_edges(path: str, sample_edges: List[float], edges: Optional[List[float]]) -> List[float]:
-    """Return *edges*, first-seen if *edges* is still ``None``, after
-    checking *sample_edges* agrees with it. One guard shared by every
-    sample read in :func:`build_histogram_payload` (F4, B-019 cycle 2) --
-    a single ``HistogramConfig`` produces one binning for a run, so this
-    can only fire on a malformed ``output/`` directory."""
-    if edges is None:
-        return sample_edges
-    if sample_edges != edges:
-        raise PayloadError(f"{path}: bin edges disagree with the other samples in this run")
-    return edges
-
-
 def build_histogram_payload(
     hdir: str,
     plot_idx: int,
@@ -126,11 +113,24 @@ def build_histogram_payload(
     """
     edges: Optional[List[float]] = None
     samples_payload: List[Dict[str, object]] = []
+    data_counts: Optional[List[float]] = None
 
-    for name in mc_samples:
+    # F7 (B-019 cycle 3): the data sample is read in the same loop as the mc
+    # samples so the bin-edge-agreement guard exists once, not once per read
+    # site -- a single HistogramConfig produces one binning for a run, so
+    # this can only fire on a malformed output/ directory.
+    reads = [(name, False) for name in mc_samples] + [(data_sample, True)]
+    for name, is_data in reads:
         path = _hist_path(hdir, plot_idx, name)
         counts, sample_edges = _read_nominal(path)
-        edges = _check_edges(path, sample_edges, edges)
+        if edges is None:
+            edges = sample_edges
+        elif sample_edges != edges:
+            raise PayloadError(f"{path}: bin edges disagree with the other samples in this run")
+
+        if is_data:
+            data_counts = counts
+            continue
 
         syst_up: Dict[str, List[float]] = {}
         for src in SYST_SOURCES:
@@ -144,10 +144,6 @@ def build_histogram_payload(
             "weightsSquared": None,
             "systUp": syst_up,
         })
-
-    data_path = _hist_path(hdir, plot_idx, data_sample)
-    data_counts, data_edges = _read_nominal(data_path)
-    edges = _check_edges(data_path, data_edges, edges)
 
     syst_sources = [
         src for src in SYST_SOURCES

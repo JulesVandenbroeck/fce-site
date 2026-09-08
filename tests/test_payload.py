@@ -16,7 +16,14 @@ from fce_web.engine.driver import run_analysis
 from fce_web.engine.runconfig import RunConfig
 from fce_web.payload import PayloadError, build_histogram_payload
 from fce_web.runs import RunContext
-from tests.test_api_contract import ALL_SCHEMA, HISTOGRAM_SCHEMA, _MISSING, _resolve
+from tests.test_api_contract import (
+    ALL_SCHEMA,
+    HISTOGRAM_SCHEMA,
+    _MISSING,
+    _check_data_length_matches_bins,
+    _check_sample_array_lengths_coherent,
+    _resolve,
+)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIXTURE_DATASET_DIR = os.path.join(REPO_ROOT, "tests", "fixtures", "datasets", "IDEA", "91GeV")
@@ -76,15 +83,13 @@ def test_payload_conforms_to_histogram_schema(fixture_payload):
 
 
 def test_counts_length_matches_edges_minus_one(fixture_payload):
-    n_bins = len(fixture_payload["edges"]) - 1
-    assert len(fixture_payload["data"]) == n_bins
-    for sample in fixture_payload["samples"]:
-        assert len(sample["counts"]) == n_bins
-        # C10: each systUp array must be exactly n_bins long -- docs/api.md:112
-        # requires it and docs/api.md:133's band formula divides by these
-        # sums, so key *presence* alone (C3, below) is not enough.
-        for variation in sample["systUp"].values():
-            assert len(variation) == n_bins
+    # F5/F6 (B-019 cycle 3): reuse test_api_contract's own coherence checks
+    # instead of a hand-rolled loop -- they already cover counts,
+    # weightsSquared and systUp (C10: docs/api.md:112 requires every systUp
+    # array to match counts' length, docs/api.md:133's band formula divides
+    # by these sums), and are .get()-safe against a payload missing a key.
+    _check_data_length_matches_bins(fixture_payload)
+    _check_sample_array_lengths_coherent(fixture_payload)
 
 
 # ---------------------------------------------------------------------------
