@@ -24,16 +24,50 @@ during those milestones.
 
 ## Endpoints
 
-_To be defined in M3._
-
-Expected shape, subject to design during the milestone:
-
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/run` | Submit an analysis recipe; returns a run id |
 | `GET` | `/api/run/{id}/events` | SSE stream: progress, phase, completion |
 | `GET` | `/api/run/{id}/result` | Histogram data, cutflow, fit results |
 | `GET` | `/api/run/{id}/plot.png` | `mplhep` PNG export |
+
+### `POST /api/run` request body
+
+The student's graph, built with `fce_web.graph.build_run_config` (B-020) into the
+`RunConfig.from_dict` shape before the engine runs it. `DataSource` is never in this body — it
+is synthesised server-side from the mission's declared dataset (`docs/design-brief.md` §4).
+
+```json
+{
+  "missionId": "string",
+  "graph": {
+    "nodes": [
+      {"id": "string", "kind": "Multiplicity | Selection | Observable | Histogram", "config": {}}
+    ],
+    "edges": [["fromId", "toId"]]
+  }
+}
+```
+
+- `nodes[].kind` — the four palette kinds a student places (`docs/design-brief.md` §4,
+  2026-09-01/02 rulings). `DataSource` is rejected if present; it is a client bug, not a legal
+  input.
+- `nodes[].config` — kind-specific, validated by `fce_web.graph.build_run_config`:
+  - `Multiplicity`: `nlep`, `op_lep`, `njets`, `op_jet`, `ltype`, `nphot`, `op_phot` (the
+    7-tuple `engine/runconfig.py`'s `mult_cuts` expects, per node).
+  - `Selection`: `name`, `exprs` (list of strings, ANDed with any upstream `Selection`).
+  - `Observable`: `mode` (one of `ObsGlobal`, `ObsObject`, `ObsVectorSum`, `ObsCustom` — mode
+    is config, not identity), `expr`, `label`.
+  - `Histogram`: `bins`, `min`, `max`, `target` (all strings — the digest formula concatenates
+    them raw, see `engine/runconfig.py`), `name` (optional), `x_label` (optional, else the
+    `Observable` node's `label`).
+- `edges` — `[fromId, toId]` pairs. Illegal per `fce_web.graph.VALID_CONNECTIONS`, cyclic,
+  disconnected, or missing a `Histogram` terminal are all rejected with a
+  `fce_web.graph.GraphError` naming the offending node or edge.
+
+A rejected graph returns `400` with `{"error": "<student-legible message>"}`. A legal graph
+that the loader itself rejects (a translation bug, not a student mistake) is a `500` — that
+path should not be reachable from valid input.
 
 ---
 
