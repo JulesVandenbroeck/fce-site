@@ -9,6 +9,10 @@
       "Read(./**/.pytest_cache/**)",
       "Bash(cd .claude/worktrees/*)",
       "Bash(cd ./.claude/worktrees/*)"
+    ],
+    "allow": [
+      "Bash(git *)",
+      "Bash(rtk git *)"
     ]
   },
   "hooks": {

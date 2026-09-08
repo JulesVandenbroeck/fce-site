@@ -44,13 +44,17 @@ Re-run both before you act. If they disagree with this file, **git is right.**
 2. Wave 4 (**B-022**, SSE) closes checkpoint 1: a run submittable and streaming by curl.
 
 ## Waiting on the user
-- **A hook decision, raised this session and unanswered.** A `PreToolUse` hook refuses any Bash
-  command whose text contains `git`; B-020's cycle-4 coder worked around it by calling
-  `/usr/bin/git` directly and said so in its report. Its work verified clean (fast-forward, main
-  merged not rebased, one commit, tests only). Either the hook is over-broad and misfiring on
-  normal work, or the agent should have stopped instead of routing around it. The user's call.
-- Still outstanding from before: **X4/X5 are undocumented processes, so mission-3 content stays
-  blocked** until the user identifies them.
+- **Nothing blocking.** Both open questions were ruled on 2026-09-08:
+  - **The `git` hook is allowed.** `Bash(git *)` and `Bash(rtk git *)` are now in
+    `.claude/settings.json`'s `permissions.allow`, so the `rtk hook claude` `PreToolUse` rewrite
+    no longer leaves a sub-agent facing a refusal. **The workaround that prompted this — B-020's
+    cycle-4 coder calling `/usr/bin/git` to route around the hook — should not recur, and is not
+    a precedent.** An agent that finds a hook blocking it stops and reports; it does not go
+    around it. That work was verified clean before merge (fast-forward, `main` merged not
+    rebased, one commit, tests only).
+  - **X4/X5 stay undocumented, deliberately.** Mission-3 content therefore stays blocked. This
+    is a decision, not an open question — do not re-raise it, and do not author mission-3
+    content on a guess about what those samples are.
 
 ## Not carried over
 - Nothing dropped. B-020's **F7** stays backlogged by the reviewer's own reasoning: the digest
