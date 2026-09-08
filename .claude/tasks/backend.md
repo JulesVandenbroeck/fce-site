@@ -18,8 +18,16 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
 - **Branch / PR:** `task/b-020-graph-allowlist` at `0a6831a` — **#33, open**
-- **Status:** **in review — cycle 3 in flight (resumed 2026-09-08)**, from
-  [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md).
+- **Status:** **in review — cycle 3 re-review dispatched at raised effort**, head `5c38457`.
+  Resumed from [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md); the coder applied
+  F9 (option B — `_mission1_payload` uses both selection exprs, so the digests are
+  `fbb913c1…`/`c9873a70…` and C7's zpeak claim is true again) and F10 (**kept** the multi-path
+  branch, covered by one new payload test). **checks 12 → 13.**
+  **Cycle-3 gate PASSED** in `~/fce-gate-b020c3` at `5c38457`: `632 passed`, flake8 0,
+  `tests/test_graph.py` 17 passed, reference test skips cleanly, scope exactly the three files.
+  C13's mutation is evidenced in the PR body: reversing `_selection_exprs` moves the chained
+  `h5_sel` to `f44c25e3…` against the pinned `c9873a70…`.
+  **Cycle 3 is the §5.7 limit.** A `rework` verdict here goes to the user, not to a cycle 4.
   The coder hit the 90% hard threshold mid-cycle and stopped cleanly. **Cycle 3 is the §5.7 limit
   and it is not yet spent** — the work was interrupted, not exhausted, so resuming it is finishing
   cycle 3, not opening a cycle 4.
