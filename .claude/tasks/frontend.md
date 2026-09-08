@@ -17,8 +17,14 @@ IDs are `F-nnn`, allocated in order and never reused.
   keyboard-operable; `shell.html:90-310`'s inline script becomes a module file; zero inline
   `style=`; `PageActivity.console_errors == []` and `bad_responses == []`.
 - **Depends on:** nothing. **Blocks F-005 and D-015.**
-- **Branch / PR:** `task/f-004-shell-port` at `407de7a` — **#32, open**
-- **Status:** in progress (cycle 2) — re-dispatched 2026-09-08 with the review URL and F1-F7.
+- **Branch / PR:** `task/f-004-shell-port` at `66bf893` — **#32, open**
+- **Status:** in review (cycle 2) — `code-reviewer` re-dispatched 2026-09-08 with the cycle-1
+  review URL and F1-F7. Cycle-2 head `66bf893`. §5.1 gate **PASSED** in `~/fce-gate-f004`:
+  `615 passed` (605 floor + 10), flake8 0, `tests/e2e/` 37 nodeids, scope exactly four files.
+  Coder reports all seven findings fixed, **none overruled**, with a mutation proof on F1
+  (breaking `#palette-toggle`'s id now turns the test RED; it stayed green under exactly that
+  mutation on cycle 1). ~115 lines of JS deleted — `shell.js` keeps only the two toggles.
+- **Cycle-1 record:** re-dispatched 2026-09-08 with the review URL and F1-F7.
   Cycle 1 gate PASSED; review `findings=7, scope=pass, verdict=rework`
   ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/32#issuecomment-5582424817)).
   **checks 7 → 8**: C8 added for uncaught page errors.

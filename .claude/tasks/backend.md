@@ -17,8 +17,13 @@ IDs are `B-nnn`, allocated in order and never reused.
   accepted by `RunConfig.from_dict` without raising.
 - **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort.
-- **Branch / PR:** `task/b-020-graph-allowlist` at `47a6cd5` — **#33, open**
-- **Status:** in progress (cycle 2) — re-dispatched 2026-09-08 with the review URL and F1-F8.
+- **Branch / PR:** `task/b-020-graph-allowlist` at `1ab1bf3` — **#33, open**
+- **Status:** in review (cycle 2) — `code-reviewer` re-dispatched 2026-09-08 **at raised effort**
+  with the cycle-1 review URL and F1-F8. Cycle-2 head `1ab1bf3`. §5.1 gate **PASSED** in
+  `~/fce-gate-b020`: `621 passed` (605 floor + 16), flake8 0, `tests/test_graph.py` 16 passed,
+  reference test skips cleanly, scope exactly three files. Coder reports F1-F6 and F8 fixed,
+  **none overruled**, F7 backlogged. `graphlib.TopologicalSorter` replaced the hand-rolled DFS.
+- **Cycle-1 record:** re-dispatched 2026-09-08 with the review URL and F1-F8.
   Review `findings=8, scope=pass, verdict=rework`
   ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582447530)).
   **checks 10 → 12**: C11 pins the mission-1 digests, C12 makes client type errors `GraphError`.
