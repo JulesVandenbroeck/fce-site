@@ -9,132 +9,17 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-020 — Connection allowlist and graph -> RunConfig (**CONTRACT TASK**)
-- **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`, `docs/api.md` (`## Endpoints`, :27)
-- **Accept:** C1-C10 in the plan. Allowlist matches brief §4's five rows and the reference's
-  `_VALID_CONNECTIONS` when `FCE_PARITY_REFERENCE_ROOT` resolves (skips otherwise);
-  `DataSource` synthesised and rejected if submitted; `Observable` mode resolved; output
-  accepted by `RunConfig.from_dict` without raising.
-- **Depends on:** nothing. **F-005 and F-007 consume this read-only** — not merged with an open
-  finding against the payload shape; reviewed at raised effort.
-- **Branch / PR:** `task/b-020-graph-allowlist` at `0a6831a` — **#33, open**
-- **Status:** **in review — cycle 3 re-review dispatched at raised effort**, head `5c38457`.
-  Resumed from [`handoff/b-020-backend-3.md`](../handoff/b-020-backend-3.md); the coder applied
-  F9 (option B — `_mission1_payload` uses both selection exprs, so the digests are
-  `fbb913c1…`/`c9873a70…` and C7's zpeak claim is true again) and F10 (**kept** the multi-path
-  branch, covered by one new payload test). **checks 12 → 13.**
-  **Cycle-3 gate PASSED** in `~/fce-gate-b020c3` at `5c38457`: `632 passed`, flake8 0,
-  `tests/test_graph.py` 17 passed, reference test skips cleanly, scope exactly the three files.
-  C13's mutation is evidenced in the PR body: reversing `_selection_exprs` moves the chained
-  `h5_sel` to `f44c25e3…` against the pinned `c9873a70…`.
-  **Cycle-3 review: `findings=2, scope=pass, verdict=rework`**
-  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5583713796)).
-  F9 and F11 **fixed and independently verified** — the reviewer re-derived all four digests by
-  hand from `runconfig.py:362-375` without calling `graph.py`, and confirmed the mission-1 pair
-  matches `content/analyses/zpeak-dilepton.json` bit-for-bit. F10's "keep" is **accepted as a
-  written overrule**. Two of C13's three sub-branches now go red under mutation.
-  **F12 (blocking):** `_shared_mult_cuts` (`graph.py:274-288`) — neutering `if cuts != first:`
-  leaves all 17 green, and the translator then silently adopts the first path's `mult_cuts`,
-  producing a wrong-but-self-consistent `RunConfig` that `from_dict` accepts. Cycle 3 promoted
-  that exact case to a documented 400 in `docs/api.md:64-69`, so it is contract with nothing
-  watching it. Fix named: one payload, two `Multiplicity` nodes with different `nlep` into one
-  shared `Selection`, `pytest.raises(GraphError, match="Multiplicity chain")`.
-  **F13 (nit):** the C13 comment points at a handoff file that gets archived; cite the formula at
-  `tests/test_graph.py:185-190` instead.
-  **§5.7 limit reached and escalated 2026-09-08. The user authorised a fourth cycle**, narrowly
-  scoped to F12 + F13, on the grounds that the code has not been in question for two cycles and
-  the fix is one test in a file already in scope. **Cycle 4 dispatched**; checks 13 → **14**
-  (C14 gates the `_shared_mult_cuts` guard by neutering `if cuts != first:`).
-  Scope this cycle is `tests/test_graph.py` only.
-- **§5.4 diagnosis, said out loud as §5.7 requires.** Clause 1 no — nothing was dropped.
-  Clause 2 no — C13 shipped with a command. So mechanically clause 3, a cycle. But the *defect is
-  mine and it is the same one for the third time on this task family*: C13's property was "every
-  branch that ships is covered by a check that can fail", and its `Check:` named exactly one
-  mutation (`_selection_exprs`). The coder satisfied the command; the reviewer applied the
-  property; the gap between them is `_shared_mult_cuts`. §2's rule — property in the sentence,
-  method in the `Check:` — was written for precisely this, and I wrote a single-branch method for
-  an all-branches property. The command C13 should have carried: mutate **each** guard in
-  `graph.py` in turn and require a red, not one named guard.
-  The coder hit the 90% hard threshold mid-cycle and stopped cleanly. **Cycle 3 is the §5.7 limit
-  and it is not yet spent** — the work was interrupted, not exhausted, so resuming it is finishing
-  cycle 3, not opening a cycle 4.
-  **Done at `0a6831a`:** F11 only (`docs/api.md:64-68`). **Not done:** F9, F10, C13.
-  The handoff carries both decisions already made — F9 **option B** (make `_mission1_payload` use
-  both selection expressions so the `zpeak-dilepton.json` comparison becomes true again) and F10
-  **keep the multi-path branch and add the one payload** — plus the exact digest literals and the
-  full re-derivation, so a cold successor recomputes nothing. There is no open question.
-  **The suite has not been re-run since `0a6831a`.** Verify before believing anything.
-  **checks 12 → 13** (C13: a shipped branch with no failing check is either deleted or given one).
-- **Cycle-2 review:** `findings=3, scope=pass, verdict=rework`
-  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582721933)).
-  All eight cycle-1 findings confirmed fixed, none overruled. The reviewer **independently
-  re-derived both digest literals** from `runconfig.py:362-375` without calling `graph.py` and
-  confirmed them, and the field-order mutation that was green on cycle 1 is now red. The code is
-  not what is in question. F9: C7's PR-body claim that the fixture matches
-  `content/analyses/zpeak-dilepton.json` bit-for-bit is **reproducibly false** — `_sel_node`
-  defaults to one expression, so the fixture yields `2b8e2826…`/`1d1f518b…` against the JSON's
-  `fbb913c1…`/`c9873a70…`. That body is the only verbatim contract record F-005/F-007 read.
-  F10: the multi-path half of the translator has no check that can fail — reversing
-  `_selection_exprs` leaves all 16 green — and mission 1 is single-histogram, so it is put to the
-  coder as a ladder rung-1 question, with deletion named as the preferred answer. F11: one
-  missing clause in `docs/api.md`.
-- **Do not confuse the two digest pairs.** `fbb913c1…`/`c9873a70…` in `## Contracts in force` are
-  B-010's, for the *reference* config; `2b8e2826…`/`1d1f518b…` are B-020's mission-1 fixture.
-  Different configs, no contradiction — F9 is a stale claim in a PR body, not a contract breach.
-- **Cycle-2 gate (still the record):** `code-reviewer` re-dispatched 2026-09-08 **at raised effort**
-  with the cycle-1 review URL and F1-F8. Cycle-2 head `1ab1bf3`. §5.1 gate **PASSED** in
-  `~/fce-gate-b020`: `621 passed` (605 floor + 16), flake8 0, `tests/test_graph.py` 16 passed,
-  reference test skips cleanly, scope exactly three files. Coder reports F1-F6 and F8 fixed,
-  **none overruled**, F7 backlogged. `graphlib.TopologicalSorter` replaced the hand-rolled DFS.
-- **Cycle-1 record:** re-dispatched 2026-09-08 with the review URL and F1-F8.
-  Review `findings=8, scope=pass, verdict=rework`
-  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5582447530)).
-  **checks 10 → 12**: C11 pins the mission-1 digests, C12 makes client type errors `GraphError`.
-- **Review:** 8 findings, verdict=rework. **Raising the reviewer's effort paid, and this is the
-  evidence to cite next time the question comes up.** F1: `RunConfig.from_dict` checks only that
-  a payload's digests agree with its own fields, never that the fields are right — so swapping
-  two mult-cut fields left all 14 tests GREEN, a mistranslation that would silently change the
-  selection and permanently miss the content-addressed cache. F2: the purity check asserts only
-  that no module-level name is assigned twice, so a textbook `CACHE = {}` mutated in a function
-  passes. F3/F4: a client sending `"bins": 50` as a JSON int gets `TypeError`, and `"nlep": "2"`
-  gets `RunConfigError` — both 500s under this PR's own `api.md`, for ordinary client payloads.
-  F5/F6/F8 deletions (`graphlib.TopologicalSorter` replaces a hand-rolled tri-colour DFS).
-  **F7 backlogged, not fixed** — the digest formula is transcribed a third time, and exporting it
-  from `runconfig.py` is outside this PR's file scope. The reviewer said so itself.
-- **§5.4 diagnosis — a CYCLE, clause 3, and the drafting defect is mine, the same one as F-004's.**
-  Nothing was dropped (clause 1 no); C7 and C8 both shipped with commands and are met *as written*
-  (clause 2 no). But C7 said "accepted by `RunConfig.from_dict` without raising" — a **method**,
-  and the method became the ceiling. The property is that the translation is *correct*. Twice in
-  one wave, so it is not bad luck: §2's rule is to write the property in the sentence and the
-  method in the `Check:`, and I wrote only the method both times.
-- **Cycle-1 gate (still the record):** §5.1 free gate **PASSED** in `~/fce-gate-b020` (detached off
-  `origin/task/b-020-graph-allowlist`): `610 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0,
-  `pytest tests/test_graph.py -q` → 14 passed, and the reference test skips cleanly with
-  `FCE_PARITY_REFERENCE_ROOT=/nonexistent` (1 skipped, 13 deselected).
-  `git diff origin/main...HEAD --name-only` returns exactly the three scoped files. Every number
-  in the PR body reproduced; C1-C10 all carry IDs and evidence there — §4 rule 3 satisfied.
-  **Gate note, so it is not misread later:** my *first* full-suite run in this worktree reported
-  15 collection errors. That was my own environment — the wait loop started pytest before `pip
-  install -e .[dev]` had finished. Re-run after install completed: 610 passed. The branch was
-  never red. This is §5.1's own warning ("a check run in the same broken environment reproduces
-  the error and then certifies it") landing on the gate rather than the coder.
-  **The first dispatch of this task died producing nothing** (branch at `main`, clean worktree,
-  no PR); confirmed against git, so **this is cycle 1, not cycle 2.**
-- **Deviations reported:** `Dataset` is a plain value object the caller constructs — no
-  `missions.py` or `content/missions/*.yaml` exists yet to derive it from. Flagged in the PR
-  body: the digest formula imposes a global `mult_cuts` constraint on multi-branch graphs.
-- **Worktree:** `.claude/worktrees/agent-a9c0de01733f3ab0c`, reused from the dead dispatch — the
-  branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
+_none — M3 wave 1 and wave 2 are complete. Wave 3 is released and unstarted._
 
 ## Ready
 
-_none — B-020 (wave 1, cycle 4) is the only backend task in flight. B-021 unblocks when it merges._
+### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
+- **Depends on:** B-019, B-020 — **both merged, so this is READY.** Wave 3.
+- Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Blocked
 
-### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
-- **Depends on:** B-019, B-020. Wave 3.
 ### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
 - **Depends on:** B-021. Wave 4, closes checkpoint 1.
 
@@ -167,6 +52,21 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-020** — connection allowlist and graph -> `RunConfig` (**CONTRACT TASK**) — #33,
+  `1909046`, **4 cycles** (the 4th authorised by the user past the §5.7 limit) + 1 handoff mid
+  cycle 3, clean gate (`findings=0, verdict=approve`). checks=14. Suite floor → **639**.
+  Ships `src/fce_web/graph.py`: the connection allowlist as a single authoritative Python
+  definition — it previously existed only as prose in `docs/design-brief.md` §4 and as
+  `isLegal()` in `bench.html:258` — plus the student-graph -> `RunConfig` translation.
+  `DataSource` is synthesised at submit and rejected if a client sends one; `Observable`'s mode
+  is resolved to the engine subtype. **F-005 and F-007 are released by this merge.**
+  **The cost of raised-effort review, recorded because it was asked for:** across four cycles it
+  caught a field-swap mistranslation that left all 14 tests green, a purity check a `CACHE = {}`
+  would pass, two ordinary client payloads that 500'd, a false bit-for-bit claim in the contract
+  record, and finally F12 — a documented 400 with no check able to fail. Three guards are now
+  mutation-verified: `_shared_mult_cuts`, `_selection_exprs`, `_MULT_CUT_FIELDS`.
+  **F7 remains backlogged** — the digest formula is transcribed a third time; exporting it from
+  `runconfig.py` was outside this PR's file scope, as the reviewer itself said.
 - **B-019** — engine output -> the `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**) — #34,
   `fff8ca3`, 2 cycles, clean gate (`findings=4, verdict=approve`; **all four folded in before
   merge**). checks=10. Suite floor → **621**.
@@ -257,8 +157,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **621 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
-  `fff8ca3`, 2026-09-08. (605 after B-018; 615 after F-004; 621 after B-019.)
+- Suite floor **639 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+  `1909046`, 2026-09-08. (605 after B-018; 615 after F-004; 621 after B-019; 639 after B-020.)
 - **Fixture dataset** (B-018): `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`, 2000
   events each, 30 branches, regenerated byte-identically by `tests/fixtures/make_fixture.py`
   (which may fetch; the suite must not). Point `FCE_HOME` at a tmp dir when running the engine

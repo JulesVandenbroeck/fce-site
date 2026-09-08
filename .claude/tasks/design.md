@@ -72,7 +72,10 @@ _none._
 
 ## Ready
 
-_none._
+### D-015 — The shell, canvas and node stylesheets
+- **Depends on:** F-004 (merged), F-005 and F-006 (both wave 3, unstarted) — so it is **ready in
+  sequence, not yet dispatchable**: it styles markup F-005/F-006 have not shipped. Full entry
+  under `## Blocked` below, unchanged. `effort: high`. **Releases F-003.**
 
 
 ## Blocked

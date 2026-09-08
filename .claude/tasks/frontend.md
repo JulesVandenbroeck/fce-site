@@ -9,11 +9,14 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none — F-004 merged; F-005 is wave 2 and is the next frontend task._
+_none._
 
 ## Ready
 
-_none — F-004 is in progress; everything else is blocked behind it or behind M3 wave 2._
+### F-005 — Port the Bench canvas
+- **Depends on:** F-004 (merged) and B-020's payload shape read-only — **B-020 merged `1909046`,
+  so this is READY.** Wave 3. Criteria C1-C? in the plan; the four-kind palette (2026-09-02
+  ruling), full keyboard path, and client-side legality mirroring `graph.py`'s allowlist.
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Blocked
@@ -22,8 +25,6 @@ Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 - **Depends on:** **D-015** — the first task to apply `font-family: var(--font-body)` to a real
   selector in `src/fce_web/static/css/`. That task now exists; full entry below under
   `## Deferred`, unchanged. Wave 4.
-### F-005 — Port the Bench canvas
-- **Depends on:** F-004. Consumes B-020's payload shape read-only. Wave 2.
 ### F-006 — The merged `Observable` node interior
 - **Depends on:** F-005. Ports **`observable.html`** (D-013), *not* `interiors.html` (D-009,
   superseded by the 2026-09-02 one-node ruling). Wave 3.
