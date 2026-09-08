@@ -1963,3 +1963,72 @@ C3 first cited a `def test_` line diff and the number 22 (real: 23 → 24), and 
 the same block was stale again at 24 (real: 25). The instrument, not just the number, was the
 problem the first time: a line-oriented match over source is blind to class-scoped tests, which
 is the B-006 cycle-4 failure exactly. `--collect-only` is what sees what pytest collects.
+
+
+---
+
+## B-018 — post-mortem (merged 2026-09-08, PR #31, `9c4c98f`)
+
+### The active entry as it stood at merge
+
+### B-018 — A committed fixture dataset the pipeline can run on
+- **Scope:** `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`,
+  `tests/fixtures/make_fixture.py`, `tests/fixtures/README.md`, `tests/test_fixture_dataset.py`
+- **Accept:** C1-C8 in the plan, C1 and C5 corrected at dispatch (below). checks=8; the coder
+  reports all 8 met. Suite floor **596 -> 605** (+9). Fixture is 4 files, ~0.72 MB, 2000 events
+  each, downsampled from the real datasets with every real branch name and dtype preserved
+  (30 branches: the 26 the engine's substring filter selects, plus 4 it never reads by name).
+  X1 modal bin **90.5 GeV** (C3, within 3 of 91.2); X3 modal bin **75.5 GeV** (C4, below the
+  peak as brief §3 describes).
+- **Depends on:** nothing. **Blocks B-019, B-021 and every review after them.**
+- **Branch / PR:** `task/b-018-fixture-dataset` at `8a4ef27` — **#31, open**
+- **Status:** in review (cycle 1) — `code-reviewer` **re-dispatched 2026-09-08** after the first
+  reviewer died with no output (no PR comment, branch head unmoved at `8a4ef27`; git checked, not
+  the list). §5.1 free gate **PASSED** in
+  `~/fce-gate-b018` (a detached worktree off `origin/task/b-018-fixture-dataset`):
+  `605 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0. PR body carries scope, C1-C8 with
+  IDs and evidence, and the transcript — §4 rule 3 satisfied.
+  One immaterial discrepancy, recorded so the reviewer is not surprised: the PR reports
+  `du -sb tests/fixtures/` = **756272**; the gate worktree measures **751620**. A stale
+  `__pycache__` in the coder's tree. C6's 5 MB cap holds on either figure.
+- **Note:** rests on the user's 2026-09-07 carve-out to `shared/CLAUDE.md` §3 — a *fixture*
+  ROOT file may be committed; real datasets still may not.
+- **Two dispatch-time corrections, from `scout` 2026-09-07 — do not re-derive:**
+  1. The engine selects branches by **substring** match over tree keys
+     (`analytical_loop.py:156-159`), not exact name. Real names are `pt_lep`-shaped. The plan's
+     C1 "exactly the branches `pt, eta, ...`" was wrong; C1 now asks for the *enumerated* set.
+  2. `get_fce_home(env)` (`paths.py:50-57`) resolves **both** `datasets/` and `output/`
+     (`analytical_loop.py:274`, `path_final.py:22-26`). Pointing `env` at `tests/fixtures/`
+     writes `output/` into the committed tree. C5 now requires a tmp FCE_HOME and asserts
+     `tests/fixtures/output/` does not exist after the run.
+- **Approach changed mid-task, 2026-09-07, on the user's information.** Real 91 GeV datasets are
+  at `https://homepage.iihe.ac.be/~kskovpen/fce/datasets/IDEA/91GeV/` — X1 158M, X2 92M, X3 51M,
+  X4 19M, X5 5.3M, **X6 5.9M**, data 4.8M. The fixture is therefore **downsampled from real
+  simulation, not synthesised**: `make_fixture.py` is a downsampler, the real files land in
+  `~/.fce/datasets/IDEA/91GeV/` (outside the repo, never committed), and C7 becomes
+  "byte-identical given the same sources and the same N" — there is no seed. `make_fixture.py`
+  may fetch; the suite must not. X1 is what mission 1 needs for the Z peak.
+- **X6 exists.** `shared/CLAUDE.md` §5 documents X1-X5 and calls X4/X5 unknown. There are seven
+  files, not six. X4/X5/X6 are all still undocumented processes, so **mission 3 stays blocked on
+  the user identifying them** — but the files are now known to exist and are downloadable.
+- **No samples config.** The user asked for one; nothing in `src/fce_web/` reads one.
+  `driver.py:24` mentions `config/samples.json` only as a comment about the reference repo;
+  samples are discovered by scanning `<dataset_dir>/*.root` (`driver.py:82-95`). Adding one
+  would be a file with no reader — raised with the user rather than built.
+
+### Review, cycle 1 — `findings=6, verdict=approve`
+
+Full text: PR #31 comment. The reviewer reproduced all eight criteria independently, including
+regenerating the fixture twice from the real sources and matching the committed bytes, and it
+mutated the fixture (leptons scaled x1.3, `photon_pt` dropped, a whole sample removed) to show
+the Z-peak, X3-shift, schema and pipeline-run checks all go red when they should. Two findings
+were dead assertions the mutation exposed as unfailable (F1, F4); three were documentation
+accuracy (F2 branch split is 24+6 not 26+4; F3 the jagged branches change on-disk representation
+— `AsJagged(header_bytes=10)` vector in the real files, counter-branch `header_bytes=0` in the
+fixture, which the engine reads identically; F5 `BASE_SEED` names a UUID base in a module whose
+README says there is no seed).
+
+**F6 is the orchestrator's defect.** Two bookkeeping commits landed on `task/b-018-fixture-dataset`
+instead of `main`, so eight `.claude/` and `docs/` files merged through a coder's PR. The §4
+carve-out exists precisely so that does not happen. Nothing was lost, but the branch is no longer
+a clean record of what the coder wrote.
