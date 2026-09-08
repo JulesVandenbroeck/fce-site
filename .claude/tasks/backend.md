@@ -27,7 +27,30 @@ IDs are `B-nnn`, allocated in order and never reused.
   `tests/test_graph.py` 17 passed, reference test skips cleanly, scope exactly the three files.
   C13's mutation is evidenced in the PR body: reversing `_selection_exprs` moves the chained
   `h5_sel` to `f44c25e3…` against the pinned `c9873a70…`.
-  **Cycle 3 is the §5.7 limit.** A `rework` verdict here goes to the user, not to a cycle 4.
+  **Cycle-3 review: `findings=2, scope=pass, verdict=rework`**
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5583713796)).
+  F9 and F11 **fixed and independently verified** — the reviewer re-derived all four digests by
+  hand from `runconfig.py:362-375` without calling `graph.py`, and confirmed the mission-1 pair
+  matches `content/analyses/zpeak-dilepton.json` bit-for-bit. F10's "keep" is **accepted as a
+  written overrule**. Two of C13's three sub-branches now go red under mutation.
+  **F12 (blocking):** `_shared_mult_cuts` (`graph.py:274-288`) — neutering `if cuts != first:`
+  leaves all 17 green, and the translator then silently adopts the first path's `mult_cuts`,
+  producing a wrong-but-self-consistent `RunConfig` that `from_dict` accepts. Cycle 3 promoted
+  that exact case to a documented 400 in `docs/api.md:64-69`, so it is contract with nothing
+  watching it. Fix named: one payload, two `Multiplicity` nodes with different `nlep` into one
+  shared `Selection`, `pytest.raises(GraphError, match="Multiplicity chain")`.
+  **F13 (nit):** the C13 comment points at a handoff file that gets archived; cite the formula at
+  `tests/test_graph.py:185-190` instead.
+  **§5.7 LIMIT REACHED — ESCALATED TO THE USER 2026-09-08. No cycle 4 dispatched.**
+- **§5.4 diagnosis, said out loud as §5.7 requires.** Clause 1 no — nothing was dropped.
+  Clause 2 no — C13 shipped with a command. So mechanically clause 3, a cycle. But the *defect is
+  mine and it is the same one for the third time on this task family*: C13's property was "every
+  branch that ships is covered by a check that can fail", and its `Check:` named exactly one
+  mutation (`_selection_exprs`). The coder satisfied the command; the reviewer applied the
+  property; the gap between them is `_shared_mult_cuts`. §2's rule — property in the sentence,
+  method in the `Check:` — was written for precisely this, and I wrote a single-branch method for
+  an all-branches property. The command C13 should have carried: mutate **each** guard in
+  `graph.py` in turn and require a red, not one named guard.
   The coder hit the 90% hard threshold mid-cycle and stopped cleanly. **Cycle 3 is the §5.7 limit
   and it is not yet spent** — the work was interrupted, not exhausted, so resuming it is finishing
   cycle 3, not opening a cycle 4.
