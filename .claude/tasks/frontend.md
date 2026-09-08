@@ -17,12 +17,42 @@ IDs are `F-nnn`, allocated in order and never reused.
   keyboard-operable; `shell.html:90-310`'s inline script becomes a module file; zero inline
   `style=`; `PageActivity.console_errors == []` and `bad_responses == []`.
 - **Depends on:** nothing. **Blocks F-005 and D-015.**
-- **Branch / PR:** `task/f-004-shell-port` — not yet opened
-- **Status:** in progress (cycle 1) — dispatched 2026-09-08, `isolation: "worktree"`. Criteria
-  C1-C7 live in `docs/plan-m3-vertical-slice.md` `### F-004`; the coder copies them into the PR
-  body, which must also list the region class names and `data-state` attributes D-015 consumes.
+- **Branch / PR:** `task/f-004-shell-port` at `407de7a` — **#32, open**
+- **Status:** in progress (cycle 2) — re-dispatched 2026-09-08 with the review URL and F1-F7.
+  Cycle 1 gate PASSED; review `findings=7, scope=pass, verdict=rework`
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/32#issuecomment-5582424817)).
+  **checks 7 → 8**: C8 added for uncaught page errors.
+- **Review:** 7 findings, verdict=rework. F1 blocking — `test_shell_page_logs_no_console_errors`
+  passes when `shell.js` throws on load, because an uncaught module exception is a Playwright
+  `pageerror`, not a console error; the reviewer proved it by breaking an id and watching the
+  test stay green. F5/F6/F7 accessibility (unnamed `<aside>` landmarks; a dead `tabindex="0"`
+  canvas tab stop; collapsed regions left in the tab order). F2/F3/F4 deletions (~115 lines of
+  dead payload builder, untested exemplar node cards, and mission text duplicated between
+  template and JS).
+- **§5.4 diagnosis — this is a CYCLE, clause 3, and the drafting defect is mine.** Nothing was
+  dropped from a prior cycle (clause 1 does not apply), and C4 shipped *with* a command and is
+  *met as written* (clause 2 does not apply). F1 is against a property no criterion gated, so it
+  counts. But it is §2's *"state the property, not only the method — or the method becomes the
+  ceiling"*, the B-006 cycle-2 shape exactly: I wrote the mechanism (`console_errors == []`) and
+  got that mechanism and nothing else. C8 now states the property — no uncaught JS error on load
+  — and names `page_errors` as one instrument, not as the definition.
+- **Cycle-1 gate (still the record):** §5.1 free gate
+  **PASSED** in `~/fce-gate-f004` (detached off `origin/task/f-004-shell-port`):
+  `606 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0, `tests/e2e/` **27 → 37** nodeids,
+  and `git diff origin/main...HEAD --name-only` returns exactly the four scoped files. Every
+  number in the PR body reproduced. PR body carries scope, C1-C7 with IDs and evidence, the
+  region/`data-state` table for D-015, and the transcript — §4 rule 3 satisfied.
+  **The first dispatch of this task died producing nothing** (branch at `main`, clean worktree,
+  no PR); confirmed against git, so **this is cycle 1, not cycle 2.**
+- **Worktree:** `.claude/worktrees/agent-ac37115050f4366c3`, reused from the dead dispatch — the
+  branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 - **Note:** writes **no CSS** — the page is expected to look unstyled. D-015 styles it in wave 3.
-  If a new route is needed, stop and report: `routes/pages.py` is backend's.
+- **Deviations accepted at the gate:** shipped as an included partial `shell.html` rather than a
+  standalone `mission.html` (the plan left the choice to the coder), `base.html` untouched, and
+  the ported script's `window.buildRunPayload` global dropped per shared §6's no-globals rule.
+- **For D-015:** the region class names and `data-state` values are in PR #32's body under
+  *Region class names and `data-state` values*. It also introduces an `sr-only` class for the
+  toggles' screen-reader text, which needs a visually-hidden rule if the CSS has none.
 
 ## Ready
 

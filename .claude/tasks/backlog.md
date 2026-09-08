@@ -660,3 +660,10 @@ and are historical now that #6 is merged.
   it with `monkeypatch.setenv("FCE_HOME", ...)` — a legitimate test-only fix; the inconsistency is
   real and wants its own backend task. **Relevant to B-021**, which will run the engine on behalf
   of a web request and needs writes to land where it says.
+
+- **B-018 F1** — `tests/test_fixture_dataset.py:71` `assert ENGINE_READ_BRANCHES <= branches` cannot fail; line 68 already asserts equality against a superset built from it. Delete the line and the unused `ENGINE_READ_BRANCHES` constant (:40-48), keep the prose comment.
+- **B-018 F2** — `tests/fixtures/README.md:33` states the branch split as 26 engine-read + 4 others; it is **24 + 6**. Correct it there (the PR body's copy is history and stays).
+- **B-018 F3** — `tests/fixtures/README.md` schema section should record that the jagged branches change on-disk representation: real files store `std::vector<float>` as `AsJagged(AsDtype('>f4'), header_bytes=10)`, the fixture as counter-branch jagged arrays with `header_bytes=0`. Values and element dtypes are identical and the engine reads both.
+- **B-018 F4** — `tests/test_fixture_dataset.py:170-173` the "never wrote into the committed fixture tree" assertion cannot fail: the test points both `env` and `FCE_HOME` at `tmp_path`, so a misresolved home lands in `~/.fce`. Delete it, or assert `os.listdir(DATASET_DIR)` is unchanged after the run.
+- **B-018 F5** — `tests/fixtures/make_fixture.py:73` rename `BASE_SEED` to `BASE_UUID_INT`; it is a UUID base, and the README says there is no seed.
+- **B-020 F7** — the content-addressed digest formula is transcribed a third time at `src/fce_web/graph.py:341,357,374-379`, alongside `RunConfig.compute_h5_sel`/`compute_h5` and `_validate_nested_digests`. Export the two formulas from `runconfig.py` as module-level functions and call them from both places. `from_dict` makes a divergence loud rather than silent, so this is cleanup, not a defect. Out of B-020's file scope; backlogged on the reviewer's own recommendation.
