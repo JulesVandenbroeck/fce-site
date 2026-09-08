@@ -132,8 +132,16 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Depends on:** B-018 (merged). **F-008 consumes it read-only** — not merged with an open
   finding against the payload shape; reviewed at raised effort. Wave 2.
 - **Branch / PR:** `task/b-019-histogram-payload` at `f9209ee` — **#34, open**
-- **Status:** **cycle 2 dispatched 2026-09-08.** checks 9 → **10** (C10: each `systUp` array is
-  the same length as `counts`, gated by the mutation that was green on cycle 1).
+- **Status:** **in review — cycle 2, reviewer at raised effort**, head `7dcc5af`.
+  checks 9 → **10** (C10: each `systUp` array is the same length as `counts`, gated by the
+  mutation that was green on cycle 1). Coder reports F1-F4 all fixed, **none overruled**; F4
+  deduped the two bin-edge guards into one `_check_edges` helper.
+  **Cycle-2 gate PASSED** in `~/fce-gate-b019c2`: `621 passed`, flake8 0, `tests/test_payload.py`
+  6 passed, scope exactly the two files. The remote branch advanced by **fast-forward** —
+  the coder's own branch `task/b-019-histogram-payload` was already checked out in the cycle-1
+  worktree, so it worked on a local `work/b019-cycle2` and pushed to the same remote ref.
+  Verified: `f9209ee` is an ancestor of the new head, so no history was rewritten and no rule
+  broken. Worth noting as the pattern for any re-dispatch onto a branch a live worktree holds.
   Ships `build_histogram_payload(hdir, plot_idx, mc_samples, meta, data_sample="data",
   lumi_unc=LUMI_UNC)` and `PayloadError`; the read path is ported from the reference
   `plotter.py:51-63`, not invented. **Cycle-1 gate PASSED** in `~/fce-gate-b019`:
