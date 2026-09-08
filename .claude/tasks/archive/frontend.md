@@ -119,3 +119,94 @@ browser assertions about its own markup, and a missing fixture is reported rathe
 Written into `shared/CLAUDE.md` §4 and `frontend/CLAUDE.md` §1 on 2026-09-07. The rejected
 alternative was pairing every frontend task with a backend task, which would have made this
 one-line `<link>` two branches, two reviews and two merges, serialised.
+
+
+---
+
+## F-004 — post-mortem (merged 2026-09-08, PR #32, `30cceb3`)
+
+### The active entry as it stood at merge
+
+### F-004 — Port the three-region shell into the app
+- **Scope:** `src/fce_web/templates/` (the shell template, `base.html`),
+  `src/fce_web/static/js/shell.js`, `tests/e2e/test_shell.py`
+- **Accept:** C1-C7 in the plan. Three regions per the 2026-09-01 ruling (canvas always
+  present, palette left/collapsible, mission panel right/expandable); collapse and expand
+  keyboard-operable; `shell.html:90-310`'s inline script becomes a module file; zero inline
+  `style=`; `PageActivity.console_errors == []` and `bad_responses == []`.
+- **Depends on:** nothing. **Blocks F-005 and D-015.**
+- **Branch / PR:** `task/f-004-shell-port` at `66bf893` — **#32, open**
+- **Status:** in review (cycle 2) — `code-reviewer` re-dispatched 2026-09-08 with the cycle-1
+  review URL and F1-F7. Cycle-2 head `66bf893`. §5.1 gate **PASSED** in `~/fce-gate-f004`:
+  `615 passed` (605 floor + 10), flake8 0, `tests/e2e/` 37 nodeids, scope exactly four files.
+  Coder reports all seven findings fixed, **none overruled**, with a mutation proof on F1
+  (breaking `#palette-toggle`'s id now turns the test RED; it stayed green under exactly that
+  mutation on cycle 1). ~115 lines of JS deleted — `shell.js` keeps only the two toggles.
+- **Cycle-1 record:** re-dispatched 2026-09-08 with the review URL and F1-F7.
+  Cycle 1 gate PASSED; review `findings=7, scope=pass, verdict=rework`
+  ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/32#issuecomment-5582424817)).
+  **checks 7 → 8**: C8 added for uncaught page errors.
+- **Review:** 7 findings, verdict=rework. F1 blocking — `test_shell_page_logs_no_console_errors`
+  passes when `shell.js` throws on load, because an uncaught module exception is a Playwright
+  `pageerror`, not a console error; the reviewer proved it by breaking an id and watching the
+  test stay green. F5/F6/F7 accessibility (unnamed `<aside>` landmarks; a dead `tabindex="0"`
+  canvas tab stop; collapsed regions left in the tab order). F2/F3/F4 deletions (~115 lines of
+  dead payload builder, untested exemplar node cards, and mission text duplicated between
+  template and JS).
+- **§5.4 diagnosis — this is a CYCLE, clause 3, and the drafting defect is mine.** Nothing was
+  dropped from a prior cycle (clause 1 does not apply), and C4 shipped *with* a command and is
+  *met as written* (clause 2 does not apply). F1 is against a property no criterion gated, so it
+  counts. But it is §2's *"state the property, not only the method — or the method becomes the
+  ceiling"*, the B-006 cycle-2 shape exactly: I wrote the mechanism (`console_errors == []`) and
+  got that mechanism and nothing else. C8 now states the property — no uncaught JS error on load
+  — and names `page_errors` as one instrument, not as the definition.
+- **Cycle-1 gate (still the record):** §5.1 free gate
+  **PASSED** in `~/fce-gate-f004` (detached off `origin/task/f-004-shell-port`):
+  `606 passed, 0 failed`, `flake8 src/ tests/ scripts/` → 0, `tests/e2e/` **27 → 37** nodeids,
+  and `git diff origin/main...HEAD --name-only` returns exactly the four scoped files. Every
+  number in the PR body reproduced. PR body carries scope, C1-C7 with IDs and evidence, the
+  region/`data-state` table for D-015, and the transcript — §4 rule 3 satisfied.
+  **The first dispatch of this task died producing nothing** (branch at `main`, clean worktree,
+  no PR); confirmed against git, so **this is cycle 1, not cycle 2.**
+- **Worktree:** `.claude/worktrees/agent-ac37115050f4366c3`, reused from the dead dispatch — the
+  branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
+- **Note:** writes **no CSS** — the page is expected to look unstyled. D-015 styles it in wave 3.
+- **Deviations accepted at the gate:** shipped as an included partial `shell.html` rather than a
+  standalone `mission.html` (the plan left the choice to the coder), `base.html` untouched, and
+  the ported script's `window.buildRunPayload` global dropped per shared §6's no-globals rule.
+- **For D-015:** the region class names and `data-state` values are in PR #32's body under
+  *Region class names and `data-state` values*. It also introduces an `sr-only` class for the
+  toggles' screen-reader text, which needs a visually-hidden rule if the CSS has none.
+
+### Cycle 1 — `findings=7, verdict=rework`
+
+[Review](https://github.com/JulesVandenbroeck/fce-site/pull/32#issuecomment-5582424817).
+F1 blocked: `test_shell_page_logs_no_console_errors` stayed GREEN when `shell.js` threw on load,
+because an uncaught module exception is a Playwright `pageerror`, not a console error. The
+reviewer proved it by breaking an element id. F5/F6/F7 were accessibility (two unnamed `<aside>`
+landmarks; a `tabindex="0"` canvas tab stop that did nothing while narrating D-013's clamping
+behaviour to a screen-reader user; collapsed regions left in the tab order, which would have
+stranded focus once D-015 hid them with width or transform). F2/F3/F4 were deletions.
+
+**The §5.4 diagnosis, and the defect is the orchestrator's.** A cycle under clause 3 — nothing was
+dropped, and C4 shipped with a command and was met *as written*. But C4 said
+`console_errors == []`: a **mechanism**, not the property. §2's *"state the property, not only the
+method — or the method becomes the ceiling"*, which is B-006 cycle 2's shape exactly. C8 restated
+it as *the page raises no uncaught JavaScript error on load*, with `page_errors` named as one
+instrument rather than as the definition. **B-020 hit the identical defect in the same wave**
+(C7 named `RunConfig.from_dict` acceptance rather than translation correctness), so this is not
+bad luck — it is a drafting habit to watch for.
+
+### Cycle 2 — `findings=2, scope=pass, verdict=approve`
+
+[Review](https://github.com/JulesVandenbroeck/fce-site/pull/32#issuecomment-5582745493). All seven
+fixed, none overruled. The reviewer reproduced C8's mutation proof **independently** of the
+coder's method — a pytest plugin installing a `page.route` that rewrote the served `shell.js`,
+rather than the coder's `sed` — and confirmed the check now goes red on a load-time `TypeError`.
+It also ran a live tab sweep at three widths rather than reading attributes, confirming F7's
+`hidden` actually removes the collapsed regions from the tab order.
+
+F8 and F9 backlogged. F8 is the borderline one and the reviewer said so: the two mission-pager
+buttons are keyboard-reachable and announce "Previous mission"/"Next mission" while doing nothing.
+Approved because the shell ships unwired by design and F-005 owns the pager next wave — **so
+F-005's dispatch must either wire them or delete them.**
