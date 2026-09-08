@@ -91,15 +91,26 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Worktree:** `.claude/worktrees/agent-a9c0de01733f3ab0c`, reused from the dead dispatch — the
   branch is checked out there, so a fresh `worktree add` would fail. The coder is told not to.
 
+### B-019 — Engine output -> `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**)
+- **Scope:** create `src/fce_web/payload.py`, `tests/test_payload.py` — nothing else.
+  `docs/api.md`'s histogram section is already complete and row-parity tested.
+- **Accept:** C1-C9 in the plan. Valid against all 18 `HISTOGRAM_SCHEMA` rows; bins read the
+  reference's way (`uproot.open`/`f_res["h"]`/`.values()`/`.axes[0].edges()`); `systUp` keys
+  absent when there are no variations; `len(counts) == len(edges) - 1`; **C5 is the crux** —
+  `run_analysis` on B-018's fixture through this function peaks X1 at the Z mass within 3 GeV.
+- **Depends on:** B-018 (merged). **F-008 consumes it read-only** — not merged with an open
+  finding against the payload shape; reviewed at raised effort. Wave 2.
+- **Branch / PR:** `task/b-019-histogram-payload` — not yet opened
+- **Status:** dispatched 2026-09-08 (cycle 1), `isolation: worktree`, effort medium.
+  checks=9. Suite floor given as **615**.
+
 ## Ready
 
-_none — both wave-1 backend tasks (B-018, B-020) are in progress._
+_none — B-020 (wave 1) and B-019 (wave 2) are both in progress._
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Blocked
 
-### B-019 — Engine output -> `HISTOGRAM_SCHEMA` payload (**CONTRACT TASK**)
-- **Depends on:** B-018. F-008 consumes it read-only. Wave 2.
 ### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
 - **Depends on:** B-019, B-020. Wave 3.
 ### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
