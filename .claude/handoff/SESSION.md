@@ -1,62 +1,51 @@
 # Session handoff — 2026-09-08
 
-**Why:** the user asked to hand over once B-020 landed. Not a budget stop — ~55% of the 5-hour
-limit, which resets 17:00. No sub-agent was interrupted; nothing is mid-edit.
-**Milestone:** M3 — **waves 1 and 2 are complete and merged.** Wave 3 is released and unstarted.
+**Why:** 5-hour usage limit reached 90% (resets 17:00). One sub-agent handed off; none is running.
+**Milestone:** M3 — waves 1-2 merged. **Wave 3 running in series on the user's instruction**, not
+parallel. B-021 is mid-cycle-2 and RED. F-005, F-006, D-015 unstarted.
 
 ## Read first
 1. This file.
-2. `.claude/tasks/{backend,frontend,design}.md` — current as of this commit, and the wave-3
-   entries are already written up as `## Ready`.
-3. `docs/plan-m3-vertical-slice.md` — the criteria for every wave-3 task.
+2. `.claude/handoff/b-021-backend-2.md` — **it is on `task/b-021-run-api`, not on `main`.**
+   `git show origin/task/b-021-run-api:.claude/handoff/b-021-backend-2.md`
+3. `.claude/tasks/{backend,frontend,design}.md` — current as of this commit.
+4. PR #35's body (the criteria, verbatim) and its cycle-1 review comment
+   `https://github.com/JulesVandenbroeck/fce-site/pull/35#issuecomment-5584607751`.
 
 Do not load `.claude/tasks/archive/` or `backlog.md`. Same reason as always.
 
 ## In flight
 
-Nothing. No open PR, no running agent, no per-task handoff outstanding.
-`.claude/handoff/b-020-backend-3.md` is consumed — B-020 merged — and can be archived alongside
-this file when the next session tidies.
+| Task | Role | Branch | PR | Cycle | State | Handoff |
+|---|---|---|---|---|---|---|
+| B-021 | backend | `task/b-021-run-api` | #35 | 2 | **RED — `jobs.py` does not import** | `b-021-backend-2.md` (on the branch) |
+
+Cycle 1 closed `findings=11, verdict=rework`. Cycle 2 stopped at 90% with F6 committed, F10
+partial, `_retag_payload` (F2) written but unwired, and F9 half-applied — the
+`_dataset_dir`/`_discover_active_samples` imports are gone while `_mc_samples()` still calls them.
+F1/F7/F8/F3/F5/F4 are planned in the handoff and unwritten. **No suite or flake8 run since
+`9b5527b`.** Cycle 2 is not finished; resuming it is not a third cycle.
 
 ## Git as of this commit
 
-    main                          1909046  (PR #33, B-020)
-    gh pr list --state open   →   no open pull requests
+    main                      7cafdbc  (+ this commit)
+    task/b-021-run-api        73dc1de  pushed, red
+    gh pr list --state open   #35  B-021 — Job registry, POST /api/run, GET /api/run/{id}/result
 
-Re-run both before you act. If they disagree with this file, **git is right.**
-
-## What landed this session
-- **B-020** #33 `1909046` — connection allowlist + graph→`RunConfig`. 4 cycles, the 4th
-  authorised by the user past the §5.7 limit, closed `findings=0`. checks=14.
-- **B-019** #34 `fff8ca3` — engine output → `HISTOGRAM_SCHEMA` payload. 2 cycles, all four
-  non-blocking findings folded in before merge. checks=10.
-- Suite floor **605 → 639**, flake8 0.
-- **The pipe runs end to end for the first time:** B-019's C5 drives `run_analysis` on B-018's
-  committed fixture through `build_histogram_payload` and gets an X1 peak within 3 GeV of the
-  Z mass.
+Re-run both before you act. If they disagree with the table above, **git is right.**
 
 ## First moves, in order
-1. **Wave 3 is the milestone's biggest parallel batch and it is all released at once:**
-   **B-021** (job registry + `POST /api/run` + `GET /result`) and **F-005** (port the Bench
-   canvas) are independent and share no files — dispatch both, each with its own worktree.
-   **F-006** (Observable interior) follows F-005; **D-015** follows both and is `effort: high`.
-   Frontend and design on the same page are never parallel — D-015 waits.
-2. Wave 4 (**B-022**, SSE) closes checkpoint 1: a run submittable and streaming by curl.
+1. **Re-dispatch B-021 cycle 2 to `backend-coder`** with the resume block (§3), pointing at
+   `b-021-backend-2.md` on the branch. Its step 1 is finishing F9 so `jobs.py` imports again.
+   **Give it `isolation: "worktree"`** — see "Against me" in the B-021 entry.
+2. Then F-005 (Bench canvas), F-006, D-015 — still in series, still one at a time.
+3. Wave 4 (B-022, SSE) consumes the `Job.events` queue this PR defines. Do not merge #35 with F1
+   open: F1 is a permanent hang in exactly that contract.
 
 ## Waiting on the user
-- **Nothing blocking.** Both open questions were ruled on 2026-09-08:
-  - **The `git` hook is allowed.** `Bash(git *)` and `Bash(rtk git *)` are now in
-    `.claude/settings.json`'s `permissions.allow`, so the `rtk hook claude` `PreToolUse` rewrite
-    no longer leaves a sub-agent facing a refusal. **The workaround that prompted this — B-020's
-    cycle-4 coder calling `/usr/bin/git` to route around the hook — should not recur, and is not
-    a precedent.** An agent that finds a hook blocking it stops and reports; it does not go
-    around it. That work was verified clean before merge (fast-forward, `main` merged not
-    rebased, one commit, tests only).
-  - **X4/X5 stay undocumented, deliberately.** Mission-3 content therefore stays blocked. This
-    is a decision, not an open question — do not re-raise it, and do not author mission-3
-    content on a guess about what those samples are.
+- Nothing blocking. The X4/X5 hold and the `git`-hook permission both stand as decided 2026-09-08.
 
 ## Not carried over
-- Nothing dropped. B-020's **F7** stays backlogged by the reviewer's own reasoning: the digest
-  formula is transcribed a third time and exporting it from `runconfig.py` was outside that PR's
-  file scope.
+- Nothing dropped. B-020's F7 stays backlogged, unchanged.
+- `~/fce-bookkeeping` is a `main` worktree created this session for orchestrator bookkeeping while
+  a coder holds the primary checkout. Keep it or `git worktree remove` it; it holds no work.

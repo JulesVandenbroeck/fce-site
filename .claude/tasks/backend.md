@@ -15,8 +15,14 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Accept:** C1-C9 (cycle 1, verbatim in PR #35) + **C10** (cycle 2: the `Job.events` contract
   B-022 consumes is asserted, not only documented). checks=10. Suite floor 639 -> 649 on the branch.
 - **Depends on:** B-019, B-020 — both merged.
-- **Branch / PR:** `task/b-021-run-api` — #35, head `9b5527b`
-- **Status:** in rework (cycle 2). Cycle 1 review: `findings=11, verdict=rework`, posted to the PR
+- **Branch / PR:** `task/b-021-run-api` — #35, head `73dc1de` (pushed, **RED**)
+- **Status:** **handed off (cycle 2)** — see [`handoff/b-021-backend-2.md`](../handoff/b-021-backend-2.md),
+  which is **on the task branch, not on `main`**. The coder stopped at 90% of the 5h limit with
+  `src/fce_web/jobs.py` **not importing**: F9's `_dataset_dir`/`_discover_active_samples` imports
+  were removed while `_mc_samples()` still calls them. F6 is done and committed, F10 partial,
+  `_retag_payload` (F2) exists but is not wired in. F1/F7/F8/F3/F5/F4 are planned in the handoff
+  and not written. **No test or flake8 run since `9b5527b` — do not trust "649 passed" for cycle 2.**
+  Resume at the handoff's step 1. Cycle 1 review: `findings=11, verdict=rework`, posted to the PR
   (`#issuecomment-5584607751`). §5.1 gate passed (649 passed, flake8 0, reproduces the body).
 - **Review:** 11 findings. **F1 a permanent hang** — the worker's `try/except` wrapped only
   `run_analysis`, so a later exception left `status="running"` with **no sentinel**, hanging
