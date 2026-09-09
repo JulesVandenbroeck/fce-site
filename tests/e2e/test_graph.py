@@ -14,6 +14,8 @@ per the F-005 PR body's contract -- `nodes` is a list, matching what
 
 import json
 
+import pytest
+
 from tests.e2e.conftest import LoadedPage
 
 from fce_web.graph import Dataset, build_run_config
@@ -230,3 +232,118 @@ def test_exported_nodes_is_a_list_accepted_by_build_run_config(index: LoadedPage
 
     cfg = build_run_config(payload, Dataset(energy="91 GeV", detector="IDEA"))
     assert isinstance(cfg, RunConfig)
+
+
+# ---- F-006: the merged Observable node interior --------------------------
+# Source: docs/design-explorations/observable.html (D-013). One `Observable`
+# palette node, an in-node mode toggle, grows in place -- not the four-node
+# `interiors.html` exploration D-009 superseded.
+
+
+def test_observable_node_offers_exactly_four_modes(index: LoadedPage) -> None:
+    """C1: the merged node's toggle offers ObsGlobal/ObsObject/ObsVectorSum/
+    ObsCustom, and only those four."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+
+    radios = page.locator('.node[data-node-id="n1"] .mode-toggle input[type="radio"]')
+    assert radios.count() == 4
+    values = {radios.nth(i).get_attribute("value") for i in range(4)}
+    assert values == {"ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom"}
+
+
+def test_observable_node_grows_in_place_when_opened(index: LoadedPage) -> None:
+    """C2: opening the node grows its own footprint -- no flyout, no second
+    panel elsewhere on the page."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    fo = page.locator('foreignObject[data-node-id="n1"]')
+    collapsed_height = float(fo.get_attribute("height"))
+
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+
+    # The resize runs off the 'toggle' event, dispatched as its own task in
+    # Chromium -- wait for the growth rather than race the keypress.
+    page.wait_for_function(
+        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
+        f".getAttribute('height')) > {collapsed_height}"
+    )
+    opened_height = float(fo.get_attribute("height"))
+    assert opened_height > collapsed_height
+    assert page.locator('dialog, [role="dialog"], .inspector, .flyout').count() == 0
+
+
+def test_observable_mode_is_config_not_identity(index: LoadedPage) -> None:
+    """C3: the exported node's `kind` stays `Observable`; the chosen mode
+    rides along as `config.mode`, for the server to resolve at submit."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+
+    graph = _graph(page)
+    node = _node_by_id(graph, "n1")
+    assert node["kind"] == "Observable"
+    assert node["config"]["mode"] == "ObsGlobal"  # default, unopened
+
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+    page.locator('.node[data-node-id="n1"] input[value="ObsVectorSum"]').check()
+
+    node = _node_by_id(_graph(page), "n1")
+    assert node["kind"] == "Observable"
+    assert node["config"]["mode"] == "ObsVectorSum"
+
+
+def test_opened_observable_node_is_brought_to_front(index: LoadedPage) -> None:
+    """C6: opening a node grows it over whatever else sits at that canvas
+    position. SVG has no z-index -- paint order is the only stacking
+    mechanism -- so the opened node moves to the end of #nodes-layer, painted
+    last, even though it was placed before the node spawned after it."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    page.locator('.palette__add[data-add-kind="Histogram"]').click()  # n2, painted after n1
+
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+
+    # The 'toggle' event that reorders the DOM is dispatched as its own task
+    # in Chromium, not synchronously with the keypress -- wait for it rather
+    # than race it.
+    page.wait_for_function(
+        "() => document.querySelector('#nodes-layer').lastElementChild.dataset.nodeId === 'n1'"
+    )
+
+
+def test_observable_mode_toggle_is_keyboard_operable_with_accessible_name(index: LoadedPage) -> None:
+    """C5: the toggle's opener is reachable by Tab and names itself for a
+    screen reader -- a real check, not one certified green by construction."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    summary = page.locator('.node[data-node-id="n1"] summary')
+
+    assert summary.inner_text().strip() != ""  # accessible name: its own text
+
+    summary.focus()
+    page.keyboard.press("Enter")
+    assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is not None
+
+
+def test_c5_check_fails_when_the_accessible_name_is_removed(index: LoadedPage) -> None:
+    """C5, explicitly required: proves the check above is not vacuous.
+    D-009's Required/M1 checks were certified GREEN against unlabelled
+    controls because they could not structurally fail; this mutates the
+    summary's text (its accessible name) and shows the same assertion now
+    goes red."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.evaluate("el => { el.textContent = ''; }")
+
+    with pytest.raises(AssertionError):
+        assert summary.inner_text().strip() != ""

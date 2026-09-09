@@ -15,13 +15,21 @@
 //
 // Exported model (the contract F-007 serialises): the canvas container
 // (#canvas-wrap) carries one `data-graph` attribute, a JSON object
-//   { nodes: [ { id, kind, x, y }, ... ], edges: [ [from, to], ... ] }
+//   { nodes: [ { id, kind, x, y, config? }, ... ], edges: [ [from, to], ... ] }
 // `nodes` is a list, matching the shape `build_run_config` requires
 // (`src/fce_web/graph.py:120,122-123` -- a list of objects with `id` and
-// `kind`; `config` is optional and this client never sends node-interior
-// config, brief §4/D-009 is still open on that UI). `x`/`y` ride along as
-// keys the server does not read. Edges are an ordered [from, to] pair list,
-// same shape bench.html and graph.py both use.
+// `kind`; `config` is optional there and is only ever sent for `Observable`
+// nodes here, carrying `{ mode }` -- F-006, the merged node's in-node mode
+// toggle. `x`/`y` ride along as keys the server does not read. Edges are an
+// ordered [from, to] pair list, same shape bench.html and graph.py both use.
+//
+// F-006 also owns the `Observable` node's grow-in-place interior (source:
+// docs/design-explorations/observable.html): a native <details> holding a
+// radio-group mode toggle plus one <div class="mode-panel"> per mode, ported
+// as markup+behaviour only -- the CSS-only ":has()" panel/preview switch the
+// exploration used is design's to add later, so this file drives visibility
+// with the `hidden` attribute instead, and growNode() resizes the node's
+// foreignObject to its measured content box, no fixed numbers guessed.
 //
 // VALID_CONNECTIONS below is a courtesy check only, trimmed to the four
 // palette kinds. `src/fce_web/graph.py`'s `VALID_CONNECTIONS` is the
@@ -85,7 +93,9 @@ function nodeLabel(id) {
 function persistUI() {
   const nodes = [];
   graphState.nodes.forEach((n, id) => {
-    nodes.push({ id, kind: n.kind, x: n.x, y: n.y });
+    const out = { id, kind: n.kind, x: n.x, y: n.y };
+    if (n.config) out.config = n.config;
+    nodes.push(out);
   });
   els.wrap.setAttribute("data-graph", JSON.stringify({ nodes, edges: graphState.edges }));
 }
@@ -118,6 +128,23 @@ function clientToSvgPoint(clientX, clientY) {
 
 function foreignObjectFor(id) {
   return els.nodesLayer.querySelector(`foreignObject[data-node-id="${id}"]`);
+}
+
+// C2/C4: the node grows in place -- no flyout, no guessed pixel numbers.
+// D-013 measured the opened footprint against its own (not-yet-shipped) CSS
+// and found the width constant across modes, only height varies; here there
+// is no CSS yet, so height is resized to whatever the unstyled content
+// actually measures, every time that content changes. Width is left alone --
+// a block element's "auto" width fills its foreignObject container rather
+// than shrinking to its content, so measuring it would just read back
+// whatever width was set last, not the content's real size.
+function growNode(id) {
+  const fo = foreignObjectFor(id);
+  if (!fo) return;
+  const div = fo.querySelector(".node");
+  if (!div) return;
+  fo.setAttribute("height", Math.max(NODE_H, Math.ceil(div.scrollHeight)));
+  renderEdges();
 }
 
 function portCenterSvg(id, role) {
@@ -155,6 +182,130 @@ function moveNodeTo(id, x, y) {
     fo.setAttribute("y", clamped.y);
   }
   renderEdges();
+}
+
+// ---- Observable node interior (F-006, docs/design-explorations/observable.html) ----
+
+function h(tag, attrs = {}, children = []) {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => {
+    if (k === "text") node.textContent = v;
+    else node.setAttribute(k, v);
+  });
+  children.forEach((c) => node.appendChild(c));
+  return node;
+}
+
+function selectField(labelText, id, options) {
+  const select = h("select", { id, name: id });
+  options.forEach((opt) => select.appendChild(h("option", { text: opt })));
+  return h("div", { class: "obs-field" }, [h("label", { for: id, text: labelText }), select]);
+}
+
+function buildVectorSumPanel(uid) {
+  const panel = h("div", { class: "mode-panel", "data-mode": "ObsVectorSum" });
+  panel.appendChild(h("p", { class: "obs-field__group-label", text: "Add together" }));
+  [
+    ["l1", "lepton 1", true],
+    ["l2", "lepton 2", true],
+    ["photon", "photon", false],
+  ].forEach(([key, label, checked]) => {
+    const checkId = uid(`vecsum-${key}`);
+    const cb = h("input", { type: "checkbox", id: checkId, name: checkId });
+    cb.checked = checked;
+    panel.appendChild(h("div", { class: "obs-check" }, [cb, h("label", { for: checkId, text: label })]));
+  });
+  panel.appendChild(selectField("Then read off", uid("vecsum-field"), ["mass", "pt", "eta"]));
+  return panel;
+}
+
+function buildCustomPanel(uid) {
+  const panel = h("div", { class: "mode-panel", "data-mode": "ObsCustom" });
+  panel.appendChild(
+    h("p", {
+      class: "obs-field__note",
+      text: "No guided form here — a custom observable is, by definition, something the "
+        + "other three modes cannot already say.",
+    })
+  );
+  const exprId = uid("custom-expr");
+  const exprInput = h("input", {
+    id: exprId, name: exprId, class: "obs-field__mono", type: "text", spellcheck: "false",
+  });
+  exprInput.value = "(l1.p4 + l2.p4).mass";
+  panel.appendChild(h("div", { class: "obs-field" }, [h("label", { for: exprId, text: "Expression" }), exprInput]));
+  return panel;
+}
+
+// One `Observable` node, one in-node mode toggle -- the 2026-09-02 ruling
+// (docs/design-brief.md §4): ObsGlobal/ObsObject/ObsVectorSum/ObsCustom are
+// not four palette kinds, they are one node's `config.mode`. A native
+// <details> is the grow-in-place affordance (C2 -- no flyout), and a native
+// radio <fieldset> is the toggle (C1) -- both keyboard-operable and
+// self-naming for free, which is what C5 checks.
+function buildObservableInterior(id) {
+  const uid = (s) => `obs-${s}-${id}`;
+  const MODES = [
+    { value: "ObsGlobal", label: "Global" },
+    { value: "ObsObject", label: "Object" },
+    { value: "ObsVectorSum", label: "Vector sum" },
+    { value: "ObsCustom", label: "Custom" },
+  ];
+
+  const details = h("details", { class: "node__interior" });
+  details.appendChild(h("summary", { class: "node__interior-summary", text: "Configure observable" }));
+
+  const fieldset = h("fieldset", { class: "mode-toggle" });
+  fieldset.appendChild(h("legend", { class: "mode-toggle__legend", text: "Mode — what number am I plotting?" }));
+  const radios = MODES.map((m, i) => {
+    const radioId = uid(`mode-${m.value}`);
+    const input = h("input", { type: "radio", name: uid("mode"), id: radioId, value: m.value });
+    if (i === 0) input.checked = true;
+    fieldset.appendChild(h("span", { class: "mode-toggle__opt" }, [input, h("label", { for: radioId, text: m.label })]));
+    return input;
+  });
+  details.appendChild(fieldset);
+
+  const panels = {
+    ObsGlobal: h("div", { class: "mode-panel", "data-mode": "ObsGlobal" }, [
+      selectField("Event quantity", uid("global-qty"),
+        ["missing transverse energy", "number of leptons", "total visible energy"]),
+    ]),
+    ObsObject: h("div", { class: "mode-panel", "data-mode": "ObsObject" }, [
+      selectField("Object", uid("object-object"), ["lepton 1", "lepton 2", "jet 1"]),
+      selectField("Quantity", uid("object-field"), ["pt", "eta", "phi", "mass"]),
+    ]),
+    ObsVectorSum: buildVectorSumPanel(uid),
+    ObsCustom: buildCustomPanel(uid),
+  };
+  MODES.forEach((m) => details.appendChild(panels[m.value]));
+  MODES.slice(1).forEach((m) => { panels[m.value].hidden = true; });
+
+  const node = graphState.nodes.get(id);
+  if (node) node.config = { mode: MODES[0].value };
+
+  function applyMode(mode) {
+    MODES.forEach((m) => { panels[m.value].hidden = m.value !== mode; });
+    const n = graphState.nodes.get(id);
+    if (n) {
+      n.config = { mode };
+      persistUI();
+    }
+    const sub = els.wrap.querySelector(`.node[data-node-id="${id}"] .node__subtitle`);
+    if (sub) sub.textContent = MODES.find((m) => m.value === mode).label;
+    growNode(id);
+  }
+
+  radios.forEach((r) => r.addEventListener("change", () => applyMode(r.value)));
+  // C6: an opened node grows over whatever else sits at that canvas
+  // position -- SVG has no z-index, paint order is the only stacking
+  // mechanism, so bring it to the end of #nodes-layer (painted last) on open.
+  details.addEventListener("toggle", () => {
+    if (details.open) els.nodesLayer.appendChild(foreignObjectFor(id));
+    growNode(id);
+  });
+
+  return details;
 }
 
 function buildNodeEl(id, kind) {
@@ -214,6 +365,10 @@ function buildNodeEl(id, kind) {
   }
 
   div.appendChild(ports);
+
+  if (kind === "Observable") {
+    div.appendChild(buildObservableInterior(id));
+  }
 
   fo.appendChild(div);
 
