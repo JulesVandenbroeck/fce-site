@@ -130,6 +130,7 @@ def run_analysis(
         return RunResult(
             processed_any=False, cutflow_ready=False,
             cancelled=False, reason=reason,
+            active_samples=tuple(active_samples),
         )
 
     if ctx.cancel.is_set():
@@ -137,6 +138,7 @@ def run_analysis(
         return RunResult(
             processed_any=False, cutflow_ready=False,
             cancelled=True, reason=reason,
+            active_samples=tuple(active_samples),
         )
 
     ctx.on_phase("Reading events...")
@@ -166,6 +168,7 @@ def run_analysis(
             cutflow_ready=result.cutflow_ready,
             cancelled=True,
             reason="Run cancelled by request.",
+            active_samples=tuple(active_samples),
         )
 
     if result.processed_any:
@@ -182,4 +185,5 @@ def run_analysis(
         cutflow_ready=result.cutflow_ready,
         cancelled=False,
         reason=None,
+        active_samples=tuple(active_samples),
     )

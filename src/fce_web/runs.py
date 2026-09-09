@@ -51,7 +51,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Callable, FrozenSet, Iterable, Optional
+from typing import Callable, FrozenSet, Iterable, Optional, Tuple
 
 
 def _noop_progress(fraction: float) -> None:
@@ -133,9 +133,17 @@ class RunResult:
     skip such as a missing dataset directory -- and is always a plain
     sentence a caller can show a student, never a bare ``False``/``None``
     or an internal label.
+
+    ``active_samples`` is a B-021 addition: the sample names
+    ``fce_web.engine.driver.run_analysis`` actually discovered and ran
+    (``driver._discover_active_samples``), so a caller building the chart
+    payload (``fce_web.jobs.JobRegistry._build_payload``) reads them off the
+    result instead of re-deriving them by importing the driver's own
+    private helpers a second time.
     """
 
     processed_any: bool
     cutflow_ready: bool
     cancelled: bool = False
     reason: Optional[str] = None
+    active_samples: Tuple[str, ...] = ()

@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import os
 import shutil
+import threading
 import time
 
 import pytest
 
+import fce_web.jobs as jobs_module
 from fce_web.graph import GraphError
 from fce_web.jobs import JobRegistry
 
@@ -52,6 +54,34 @@ def registry(tmp_path, monkeypatch):
     return JobRegistry(env={"FCE_HOME": str(tmp_path)})
 
 
+def _block_run_analysis(monkeypatch):
+    """Monkeypatch ``fce_web.jobs.run_analysis`` to block until the test
+    releases it -- the seam F3/F5 need to observe a job mid-flight instead
+    of asserting on a status that would also pass if ``submit`` blocked."""
+    real_run_analysis = jobs_module.run_analysis
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking(config, ctx, env):
+        started.set()
+        release.wait(timeout=5)
+        return real_run_analysis(config, ctx, env)
+
+    monkeypatch.setattr(jobs_module, "run_analysis", blocking)
+    return started, release
+
+
+def _drain_to_sentinel(events, timeout=5.0):
+    """Read *events* until the terminal ``{"type": "done", ...}`` sentinel,
+    returning it. Progress/log/phase items land in the queue ahead of it on
+    a real run, so a caller after only the sentinel must drain, not read
+    the first item."""
+    while True:
+        item = events.get(timeout=timeout)
+        if item["type"] == "done":
+            return item
+
+
 def _wait_done(registry, run_id, timeout=60.0):
     job = registry.get(run_id)
     deadline = time.monotonic() + timeout
@@ -63,12 +93,20 @@ def _wait_done(registry, run_id, timeout=60.0):
 
 
 # ---- C1: submit returns before the run completes, and it actually runs ----
+# F3: `assert job.status in ("running", "done")` cannot fail even if `submit`
+# blocked until the run finished -- it accepts both outcomes. Block
+# `run_analysis` on an `Event` the test controls so the job is observably
+# still "running" *after* `submit` has returned, which a blocking `submit`
+# could not produce.
 
-def test_submit_returns_before_the_run_completes(registry):
+def test_submit_returns_before_the_run_completes(registry, monkeypatch):
+    started, release = _block_run_analysis(monkeypatch)
+
     job = registry.submit(_graph(), mission_id="M-1")
-    # The run takes long enough to process a ROOT file; the call above did
-    # not block for that -- if it had, the job would already be done here.
-    assert job.status in ("running", "done")
+    assert started.wait(timeout=5), "run_analysis was never called"
+    assert job.status == "running"
+
+    release.set()
     finished = _wait_done(registry, job.id)
     assert finished.status == "done", finished.error
     assert finished.payload["data"] is not None
@@ -114,6 +152,10 @@ def test_two_registries_share_nothing(registry, tmp_path, monkeypatch):
 
 
 # ---- C7: a repeated submission is a visible cache hit ----
+# F2: a cache hit reused `cached.payload` by reference, `meta.mission` and
+# all -- a second mission submitting the same cuts saw the first mission's
+# id. The `third` submission below, under a different mission id, is the
+# check that would fail on the original bug.
 
 def test_repeated_submission_is_a_cache_hit(registry):
     first = registry.submit(_graph(), mission_id="M-1")
@@ -124,6 +166,74 @@ def test_repeated_submission_is_a_cache_hit(registry):
     assert second.status == "done"
     assert second.id != first.id
     assert second.payload == registry.get(first.id).payload
+
+    third = registry.submit(_graph(), mission_id="M-2")
+    assert third.cache_hit is True
+    assert third.payload["meta"]["mission"] == "M-2"
+    assert registry.get(first.id).payload["meta"]["mission"] == "M-1"
+
+
+# ---- F5 / C6: cancellation reaches a queued job, not just a running one ----
+
+def test_cancelling_a_queued_job_reaches_cancelled_status(registry, monkeypatch):
+    started, release = _block_run_analysis(monkeypatch)
+
+    job_a = registry.submit(_graph(min_mass="60.0", max_mass="120.0"), mission_id="A")
+    assert started.wait(timeout=5)  # job_a now holds `_run_lock`
+
+    job_b = registry.submit(_graph(min_mass="0.0", max_mass="200.0"), mission_id="B")
+    job_b.ctx.cancel.set()  # cancelled while still queued behind job_a
+    release.set()
+
+    finished_a = _wait_done(registry, job_a.id)
+    finished_b = _wait_done(registry, job_b.id)
+    assert finished_a.status == "done", finished_a.error
+    assert finished_b.status == "cancelled"
+    assert _drain_to_sentinel(finished_b.events) == {"type": "done", "status": "cancelled"}
+
+
+# ---- F4 / C10: the events queue B-022 will drain ----
+
+def test_events_queue_carries_progress_then_one_terminal_sentinel(registry):
+    job = registry.submit(_graph(), mission_id="M-1")
+    finished = _wait_done(registry, job.id)
+    assert finished.status == "done", finished.error
+
+    items = []
+    while True:
+        item = finished.events.get(timeout=1)
+        items.append(item)
+        if item["type"] == "done":
+            break
+
+    assert any(item["type"] == "progress" for item in items)
+    assert items[-1] == {"type": "done", "status": "done"}
+    assert sum(1 for item in items if item["type"] == "done") == 1
+
+
+def test_cache_hit_events_queue_holds_only_the_sentinel(registry):
+    first = registry.submit(_graph(), mission_id="M-1")
+    _wait_done(registry, first.id)
+
+    second = registry.submit(_graph(), mission_id="M-1")
+    assert second.cache_hit is True
+    assert second.events.get(timeout=1) == {"type": "done", "status": "done"}
+    assert second.events.empty()
+
+
+# ---- F1: an unexpected (non-PayloadError) exception must still terminate ----
+
+def test_unexpected_exception_building_payload_still_reaches_terminal_status(registry, monkeypatch):
+    def boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(jobs_module, "build_histogram_payload", boom)
+
+    job = registry.submit(_graph(), mission_id="M-1")
+    finished = _wait_done(registry, job.id, timeout=10.0)
+    assert finished.status == "error"
+    assert finished.error == "boom"
+    assert _drain_to_sentinel(finished.events) == {"type": "done", "status": "error"}
 
 
 if __name__ == "__main__":

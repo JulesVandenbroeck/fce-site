@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import os
 import shutil
+import threading
 import time
 
 import pytest
 from fastapi.testclient import TestClient
 
+import fce_web.jobs as jobs_module
 from fce_web.app import create_app
 
 FIXTURE_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -56,13 +58,37 @@ def _poll_result(client, run_id, timeout=60.0):
 
 
 # ---- C1: submit returns a run id before the run completes ----
+# F3: neither original check here could fail even if `POST /api/run` blocked
+# until the run finished. Block `run_analysis` on an `Event` the test
+# controls so the result is observably still "running" right after the
+# response comes back.
 
-def test_submit_returns_a_run_id_immediately(client):
+def test_submit_returns_a_run_id_immediately(client, monkeypatch):
+    real_run_analysis = jobs_module.run_analysis
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking(config, ctx, env):
+        started.set()
+        release.wait(timeout=5)
+        return real_run_analysis(config, ctx, env)
+
+    monkeypatch.setattr(jobs_module, "run_analysis", blocking)
+
     resp = client.post("/api/run", json={"missionId": "M-1", "graph": _graph()})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert "runId" in body and isinstance(body["runId"], str)
     assert body["cacheHit"] is False
+    assert started.wait(timeout=5), "run_analysis was never called"
+
+    still_running = client.get(f"/api/run/{body['runId']}/result")
+    assert still_running.status_code == 202
+    assert still_running.json()["status"] == "running"
+
+    release.set()
+    resp2 = _poll_result(client, body["runId"])
+    assert resp2.json()["status"] == "done"
 
 
 # ---- C2: an invalid graph is a 4xx carrying B-020's message ----
