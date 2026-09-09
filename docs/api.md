@@ -105,13 +105,8 @@ Cancellation itself has no endpoint yet in this task — B-021 reuses the existi
 `RunContext.cancel` seam (`fce_web.runs.RunContext`) rather than adding a new one; a future
 task wires a `POST` to set it on a running job's context.
 
-**Progress, for B-022.** Every job's `RunContext` callbacks feed a `queue.Queue[dict]`
-(`fce_web.jobs.Job.events`), not read by any endpoint in this task. Each item is one of
-`{"type": "progress", "value": <0..1>}`, `{"type": "log", "message": "..."}`,
-`{"type": "phase", "phase": "..."}`, `{"type": "node", "status": "active"|"completed", "nids": [...]}`,
-terminated by exactly one `{"type": "done", "status": "done"|"error"|"cancelled"}` sentinel. A
-cache-hit run's queue goes straight to that sentinel. B-022's SSE endpoint is expected to drain
-this queue with `queue.Queue.get()` in a loop until the sentinel.
+**Progress.** See "Run progress event" below for the wire format read off
+`fce_web.jobs.Job.events`.
 
 ---
 
@@ -382,20 +377,26 @@ cutflow or fit data -- that is `GET /api/run/{id}/result`'s job; this stream is 
 Each frame's JSON body is one of:
 
 ```jsonc
-{"type": "progress", "value": 0.42}                          // 0..1
-{"type": "log", "message": "reading X1..."}
-{"type": "phase", "phase": "selecting"}
-{"type": "node", "status": "active", "nids": [3, 5]}          // or "completed"
-{"type": "done", "status": "done"}                            // "done" | "error" | "cancelled"
+{"type": "progress", "value": 0.42, "runId": "3f9a..."}                          // 0..1
+{"type": "log", "message": "reading X1...", "runId": "3f9a..."}
+{"type": "phase", "phase": "selecting", "runId": "3f9a..."}
+{"type": "node", "status": "active", "nids": [3, 5], "runId": "3f9a..."}         // or "completed"
+{"type": "done", "status": "done", "runId": "3f9a..."}                           // "done" | "error" | "cancelled"
 ```
 
-`done` is always the last frame and appears exactly once; the connection closes immediately
-after it. A cache-hit run's stream is a single `done` frame -- there is no synthesised
-progress sweep for a result that was already computed.
+`done` is always the last frame and appears exactly once per stream; the connection closes
+immediately after it. A cache-hit run's stream is a single `done` frame -- there is no
+synthesised progress sweep for a result that was already computed. So is a second stream, or
+the same client reconnecting, opened against a run that has already finished: the endpoint
+checks the job's status before touching the shared progress queue (which only ever yields its
+frames once, to whichever stream reads them first) and short-circuits straight to one `done`
+frame carrying that job's real terminal status, never blocking on a queue nothing will fill
+again.
 
 | Field | Type | Nullable | Meaning |
 |---|---|---|---|
 | `type` | string | no | One of `"progress"`, `"log"`, `"phase"`, `"node"`, `"done"`. |
+| `runId` | string | no | The run this frame belongs to -- lets a caller holding more than one open stream tell them apart. |
 | `value` | number | no (when `type` is `"progress"`) | Fraction complete, `0.0`-`1.0`. |
 | `message` | string | no (when `type` is `"log"`) | A student-legible status line. |
 | `phase` | string | no (when `type` is `"phase"`) | The run's current phase label. |

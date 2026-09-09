@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncIterator, Dict
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 from fce_web.graph import GraphError
@@ -77,7 +77,7 @@ def build_router() -> APIRouter:
         return {"status": status, "error": error}
 
     @router.get("/run/{run_id}/events")
-    async def stream_events(request: Request, run_id: str):
+    async def stream_events(request: Request, run_id: str) -> Response:
         """SSE progress for *run_id* -- ``text/event-stream``, terminated by
         a single ``done`` event. Never carries histogram data; that is
         ``GET /api/run/{id}/result``'s job. 404 (not an open stream) for an
@@ -94,6 +94,16 @@ def build_router() -> APIRouter:
 async def _drain(request: Request, job: Job) -> AsyncIterator[str]:
     """Yield ``job.events`` as SSE frames until the terminal sentinel.
 
+    ``job.events`` is a single, destructive queue shared by every stream on
+    this job -- the first client to read a frame off it is the only one who
+    ever sees it, and ``done`` is enqueued exactly once (F1). So before
+    touching the queue at all, check ``job.status`` under ``job.lock``: a
+    second client, or the same client reconnecting after the first drain
+    already consumed the sentinel, finds the run already terminal and gets
+    one synthesised ``done`` frame carrying the job's real status -- the
+    same shape a cache hit already produces -- instead of blocking on a
+    queue nothing will ever fill again.
+
     ``Job.events`` is a blocking ``queue.Queue``, so each read runs off the
     event loop, in a one-worker ``ThreadPoolExecutor`` scoped to this single
     stream -- not ``asyncio.to_thread``'s shared, process-wide default
@@ -104,9 +114,17 @@ async def _drain(request: Request, job: Job) -> AsyncIterator[str]:
     ``is_disconnected()`` between polls, bounded by the 0.5s timeout -- always
     leaves exactly zero threads behind for this stream. Two concurrent
     streams for two different jobs each own their own executor and queue, so
-    neither can see the other's events.
+    neither can see the other's events; each frame also carries this job's
+    own ``runId`` so a caller reading two streams at once can tell them
+    apart even without that isolation.
     """
-    loop = asyncio.get_event_loop()
+    with job.lock:
+        status = job.status
+    if status != "running":
+        yield f"data: {json.dumps({'type': 'done', 'status': status, 'runId': job.id})}\n\n"
+        return
+
+    loop = asyncio.get_running_loop()
     with ThreadPoolExecutor(max_workers=1) as pool:
         while True:
             if await request.is_disconnected():
@@ -115,6 +133,7 @@ async def _drain(request: Request, job: Job) -> AsyncIterator[str]:
                 item = await loop.run_in_executor(pool, job.events.get, True, 0.5)
             except queue.Empty:
                 continue
+            item = {**item, "runId": job.id}
             yield f"data: {json.dumps(item)}\n\n"
             if item["type"] == "done":
                 return
