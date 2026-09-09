@@ -9,15 +9,25 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-005 — Port the Bench canvas
+- **Scope:** `src/fce_web/static/js/graph.js` (create), `templates/shell.html` (canvas container
+  markup only, no CSS), `tests/e2e/test_graph.py` (create)
+- **Accept:** C1-C8 in the plan. Four kinds only (2026-09-02 ruling); pointer place/drag/connect
+  persisting `{id, x, y}` + an ordered edge list; **a full keyboard path** proven in Playwright;
+  client legality mirroring `graph.py`'s `VALID_CONNECTIONS`; no placeable `DataSource`; locked
+  kinds shown and inert; no console errors / `bad_responses` / globals / `innerHTML`;
+  floor >= 654, flake8 0, e2e nodeid count reported (37 at F-004).
+- **Depends on:** F-004 (merged `30cceb3`), B-020 (merged `1909046`). Wave 3.
+- **Branch / PR:** `task/f-005-bench-canvas` — not yet opened
+- **Status:** dispatched (cycle 1), `isolation: worktree`, in parallel with B-022
+- **Contract it must publish:** the exported graph model — `nodes` keyed by id holding
+  `{kind, x, y}`, `edges` as `[fromId, toId]` pairs. **F-007 is dispatched read-only against
+  F-005's PR body**, so a thin body blocks F-007.
+Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Ready
 
-### F-005 — Port the Bench canvas
-- **Depends on:** F-004 (merged) and B-020's payload shape read-only — **B-020 merged `1909046`,
-  so this is READY.** Wave 3. Criteria C1-C? in the plan; the four-kind palette (2026-09-02
-  ruling), full keyboard path, and client-side legality mirroring `graph.py`'s allowlist.
-Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+_none — F-006 follows F-005, F-007 follows both plus B-022._
 
 ## Blocked
 

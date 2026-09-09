@@ -9,12 +9,19 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none — B-021 merged. Wave 4 (B-022) is released._
+### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
+- **Scope:** `src/fce_web/routes/api.py`, `tests/test_api_events.py`, `docs/api.md`
+- **Accept:** C1-C8 in the plan. Terminates on one `done`; phase *and* fraction both stream;
+  a cache hit is an immediate `done`, not a fabricated sweep; unknown id 404s; a client
+  disconnect leaks neither thread nor registry entry; two streams do not interleave;
+  `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
+- **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
+- **Branch / PR:** `task/b-022-sse-events` — not yet opened
+- **Status:** dispatched (cycle 1), `isolation: worktree`, in parallel with F-005
 
 ## Ready
 
-### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
-- **Depends on:** B-021 — **merged `78ceb8d`, so this is READY.** Wave 4, closes checkpoint 1.
+_none — B-022 is the only released backend task and it is in progress._
 - **Consumes read-only:** `Job.events`, the contract written out once in `docs/api.md:108-114`
   and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
   `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
