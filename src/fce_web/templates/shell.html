@@ -38,15 +38,28 @@
             <span class="palette__add-swatch" aria-hidden="true"></span>
             <span class="palette__add-label">Histogram</span>
           </button></li>
+      <li class="palette__locked" aria-disabled="true">
+            <span class="lock-tag">locked</span> Node kind — opens in a later mission
+          </li>
     </ul>
   </aside>
 
   <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
     <div class="canvas-wrap" id="canvas-wrap">
-      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512">
+      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512"
+           role="group" aria-label="Analysis canvas -- drag nodes to arrange, drag between ports to connect">
+        <defs>
+          <marker id="canvas-arrowhead" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6"
+                  orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead"></path>
+          </marker>
+        </defs>
         <rect x="0" y="0" width="704" height="512" class="canvas-bg"></rect>
+        <g id="edges-layer"></g>
         <g id="nodes-layer"></g>
       </svg>
+      <p class="canvas-status" id="canvas-status" aria-live="polite">Add a node from the palette,
+        or Tab onto the canvas to move around it.</p>
     </div>
   </section>
 
@@ -69,3 +82,4 @@
 
 </div>
 <script type="module" src="/static/js/shell.js" defer></script>
+<script type="module" src="/static/js/graph.js" defer></script>
