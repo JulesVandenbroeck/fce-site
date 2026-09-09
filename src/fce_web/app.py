@@ -28,13 +28,15 @@ Run it with::
 """
 
 from pathlib import Path
+from typing import Mapping, Optional
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from fce_web import __version__
-from fce_web.routes import pages
+from fce_web.jobs import JobRegistry
+from fce_web.routes import api, pages
 
 #: Directory of the installed package; the anchor for every asset path below.
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -61,11 +63,19 @@ STATIC_MOUNT_NAME = "static"
 OPENAPI_URL = "/openapi.json"
 
 
-def create_app() -> FastAPI:
+def create_app(env: Optional[Mapping[str, str]] = None) -> FastAPI:
     """Build and return the FCE-site application.
 
     Every call yields an independent application: a new router, a new template
-    environment, and a new static-files app. Nothing is cached at module level.
+    environment, a new static-files app, and a new ``JobRegistry``. Nothing is
+    cached at module level -- two applications built in the same process share
+    no state, including no run registry (``.claude/shared/CLAUDE.md`` §6).
+
+    *env* is threaded to the ``JobRegistry`` -- the same optional environment
+    mapping ``fce_web.paths.get_fce_home`` accepts, for pointing a run's
+    dataset discovery and output at a test's tmp ``FCE_HOME`` instead of the
+    real one. ``None`` (the default, and what ``uvicorn --factory`` uses) means
+    the real process environment.
     """
     app = FastAPI(
         title="FCE-site",
@@ -90,6 +100,7 @@ def create_app() -> FastAPI:
     # Per-application, so nothing is shared between instances. Routes reach it
     # through ``request.app.state`` instead of importing a global.
     app.state.templates = Jinja2Templates(directory=TEMPLATES_DIR)
+    app.state.jobs = JobRegistry(env=env)
 
     app.mount(
         STATIC_URL_PATH,
@@ -97,5 +108,6 @@ def create_app() -> FastAPI:
         name=STATIC_MOUNT_NAME,
     )
     app.include_router(pages.build_router())
+    app.include_router(api.build_router())
 
     return app
