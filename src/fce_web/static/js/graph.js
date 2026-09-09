@@ -10,16 +10,18 @@
 // on -- Multiplicity, Selection, Observable, Histogram -- already the
 // buttons shell.html renders (`.palette__add[data-add-kind]`). `DataSource`
 // is never drawn; the server synthesises it at submit from the mission's
-// dataset (`src/fce_web/graph.py`, C4/C5 there). A fifth, locked tile is
-// appended here (not in the template) to keep this file's edit to shell.html
-// scoped to the canvas container, per the F-005 dispatch's file scope.
+// dataset (`src/fce_web/graph.py`, C4/C5 there). A fifth, locked tile lives
+// in shell.html next to the four palette buttons.
 //
 // Exported model (the contract F-007 serialises): the canvas container
 // (#canvas-wrap) carries one `data-graph` attribute, a JSON object
-//   { nodes: { <id>: { kind, x, y }, ... }, edges: [ [from, to], ... ] }
-// `nodes` is keyed by id and carries kind alongside position -- unlike
-// bench.html, which kept kind off the persisted object. Edges are an
-// ordered [from, to] pair list, same shape bench.html and graph.py both use.
+//   { nodes: [ { id, kind, x, y }, ... ], edges: [ [from, to], ... ] }
+// `nodes` is a list, matching the shape `build_run_config` requires
+// (`src/fce_web/graph.py:120,122-123` -- a list of objects with `id` and
+// `kind`; `config` is optional and this client never sends node-interior
+// config, brief §4/D-009 is still open on that UI). `x`/`y` ride along as
+// keys the server does not read. Edges are an ordered [from, to] pair list,
+// same shape bench.html and graph.py both use.
 //
 // VALID_CONNECTIONS below is a courtesy check only, trimmed to the four
 // palette kinds. `src/fce_web/graph.py`'s `VALID_CONNECTIONS` is the
@@ -81,9 +83,9 @@ function nodeLabel(id) {
 }
 
 function persistUI() {
-  const nodes = {};
+  const nodes = [];
   graphState.nodes.forEach((n, id) => {
-    nodes[id] = { kind: n.kind, x: n.x, y: n.y };
+    nodes.push({ id, kind: n.kind, x: n.x, y: n.y });
   });
   els.wrap.setAttribute("data-graph", JSON.stringify({ nodes, edges: graphState.edges }));
 }
@@ -104,9 +106,7 @@ function nextSpawnPoint() {
   const i = graphState.spawnIndex++;
   const col = i % perRow;
   const row = Math.floor(i / perRow);
-  const x = 16 + col * 172 + (row % 2) * 28;
-  const y = 16 + row * 132;
-  return clampToCanvas(x, y);
+  return clampToCanvas(16 + col * 172, 16 + row * 132);
 }
 
 function clientToSvgPoint(clientX, clientY) {
@@ -141,20 +141,6 @@ function renderEdges() {
     path.setAttribute("marker-end", "url(#canvas-arrowhead)");
     els.edgesLayer.appendChild(path);
   });
-}
-
-function renderLinksFor(id) {
-  const node = els.wrap.querySelector(`.node[data-node-id="${id}"]`);
-  if (!node) return;
-  const links = node.querySelector(".node__links");
-  links.textContent = "";
-  graphState.edges
-    .filter(([from]) => from === id)
-    .forEach(([, to]) => {
-      const li = document.createElement("li");
-      li.textContent = `→ ${nodeLabel(to)}`;
-      links.appendChild(li);
-    });
 }
 
 function moveNodeTo(id, x, y) {
@@ -213,11 +199,6 @@ function buildNodeEl(id, kind) {
     inPort.setAttribute("aria-label", `Connect in to ${meta.label} (${id})`);
     inPort.addEventListener("keydown", (ev) => handleInKey(id, ev));
     ports.appendChild(inPort);
-  } else {
-    const spacer = document.createElement("span");
-    spacer.className = "port port--absent";
-    spacer.setAttribute("aria-hidden", "true");
-    ports.appendChild(spacer);
   }
 
   if (meta.hasOut) {
@@ -230,18 +211,9 @@ function buildNodeEl(id, kind) {
     outPort.addEventListener("pointerdown", (ev) => startConnectDrag(id, outPort, ev));
     outPort.addEventListener("keydown", (ev) => handleOutKey(id, ev));
     ports.appendChild(outPort);
-  } else {
-    const spacer = document.createElement("span");
-    spacer.className = "port port--absent";
-    spacer.setAttribute("aria-hidden", "true");
-    ports.appendChild(spacer);
   }
 
   div.appendChild(ports);
-
-  const links = document.createElement("ul");
-  links.className = "node__links";
-  div.appendChild(links);
 
   fo.appendChild(div);
 
@@ -258,7 +230,6 @@ function addNode(kind) {
   graphState.nodes.set(id, { kind, x, y });
   const fo = buildNodeEl(id, kind);
   els.nodesLayer.appendChild(fo);
-  renderLinksFor(id);
   persistUI();
   return id;
 }
@@ -346,12 +317,16 @@ function startConnectDrag(id, portEl, ev) {
     }
   }
 
-  function onUp(upEv) {
+  function cleanup() {
     portEl.removeEventListener("pointermove", onMove);
     portEl.removeEventListener("pointerup", onUp);
     portEl.removeEventListener("pointercancel", onCancel);
     clearTargetHighlight();
     dragLine.remove();
+  }
+
+  function onUp(upEv) {
+    cleanup();
     const under = document.elementFromPoint(upEv.clientX, upEv.clientY);
     const targetPort = under ? under.closest(".port--in") : null;
     if (!targetPort) {
@@ -363,11 +338,7 @@ function startConnectDrag(id, portEl, ev) {
     attemptConnect(id, kind, toId);
   }
   function onCancel() {
-    portEl.removeEventListener("pointermove", onMove);
-    portEl.removeEventListener("pointerup", onUp);
-    portEl.removeEventListener("pointercancel", onCancel);
-    clearTargetHighlight();
-    dragLine.remove();
+    cleanup();
   }
 
   portEl.addEventListener("pointermove", onMove);
@@ -380,16 +351,15 @@ function attemptConnect(fromId, fromKind, toId) {
     setStatus("A node cannot connect to itself.");
     return;
   }
+  if (graphState.edges.some(([f, t]) => f === fromId && t === toId)) {
+    setStatus(`Already connected: ${nodeLabel(fromId)} → ${nodeLabel(toId)}.`);
+    return;
+  }
   const toKind = graphState.nodes.get(toId).kind;
   if (isLegal(fromKind, toKind)) {
     graphState.edges.push([fromId, toId]);
     persistUI();
-    renderLinksFor(fromId);
     renderEdges();
-    const node = els.wrap.querySelector(`.node[data-node-id="${toId}"]`);
-    node.classList.remove("node--flash");
-    void node.offsetWidth; // restart the flash animation on repeat connections
-    node.classList.add("node--flash");
     setStatus(`Connected: ${nodeLabel(fromId)} → ${nodeLabel(toId)}.`);
   } else {
     setStatus(`Refused: ${KIND_BY_NAME[fromKind].label} cannot connect to ${KIND_BY_NAME[toKind].label}.`);
@@ -452,22 +422,6 @@ function wirePalette() {
   });
 }
 
-// The palette's fifth tile: a locked node kind for a later mission, shown
-// but inert (brief §4, "complexity ramps"). Appended here rather than in
-// shell.html so this task's template edit stays inside the canvas
-// container, per the F-005 dispatch's file scope.
-function addLockedPaletteEntry() {
-  const li = document.createElement("li");
-  li.className = "palette__locked";
-  li.setAttribute("aria-disabled", "true");
-  const lock = document.createElement("span");
-  lock.className = "lock-tag";
-  lock.textContent = "locked";
-  li.appendChild(lock);
-  li.appendChild(document.createTextNode(" Node kind — opens in a later mission"));
-  els.paletteList.appendChild(li);
-}
-
 function init() {
   els = {
     wrap: document.getElementById("canvas-wrap"),
@@ -476,9 +430,7 @@ function init() {
     edgesLayer: document.getElementById("edges-layer"),
     status: document.getElementById("canvas-status"),
     paletteButtons: Array.from(document.querySelectorAll(".palette__add")),
-    paletteList: document.getElementById("palette-list"),
   };
-  addLockedPaletteEntry();
   wirePalette();
   persistUI();
   document.addEventListener("keydown", (ev) => {
