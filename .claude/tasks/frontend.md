@@ -18,8 +18,12 @@ IDs are `F-nnn`, allocated in order and never reused.
   kinds shown and inert; no console errors / `bad_responses` / globals / `innerHTML`;
   floor >= 654, flake8 0, e2e nodeid count reported (37 at F-004).
 - **Depends on:** F-004 (merged `30cceb3`), B-020 (merged `1909046`). Wave 3.
-- **Branch / PR:** `task/f-005-bench-canvas` — not yet opened
-- **Status:** dispatched (cycle 1), `isolation: worktree`, in parallel with B-022
+- **Branch / PR:** `task/f-005-bench-canvas` — #36
+- **Status:** in review (cycle 1). Gate re-run in the primary checkout: `662 passed`,
+  flake8 0, `tests/e2e/` **45** nodeids (37 at F-004) — all three reproduce the PR body.
+  **Gate note, and it is the second time this has bitten:** the primary checkout's system
+  `python` has no `fce_web` on its path, so `python -m pytest` collects nothing and reports
+  it as an empty run rather than an error. Use `.venv/bin/python`.
 - **Contract it must publish:** the exported graph model — `nodes` keyed by id holding
   `{kind, x, y}`, `edges` as `[fromId, toId]` pairs. **F-007 is dispatched read-only against
   F-005's PR body**, so a thin body blocks F-007.
