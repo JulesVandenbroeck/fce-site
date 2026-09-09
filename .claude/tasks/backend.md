@@ -16,29 +16,37 @@ IDs are `B-nnn`, allocated in order and never reused.
   disconnect leaks neither thread nor registry entry; two streams do not interleave;
   `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
 - **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
-- **Branch / PR:** `task/b-022-sse-events` — #37
-- **Status:** in rework (cycle 2). Cycle 1 gate reproduced `660 passed`, `test_api_contract.py`
-  286, flake8 0; branch one commit off `f72015e`, scope exactly the three files, no rebase.
+- **Branch / PR:** `task/b-022-sse-events` — #37, head `20d0e72`
+- **Status:** **cycle 2 complete, AWAITING REVIEW.** Not reviewed — the session was handed
+  over before a reviewer could be dispatched. Cycle-2 gate re-run in the primary checkout:
+  `662 passed` (660 − 1 F5 deletion + 3 new), `test_api_contract.py` **286**, flake8 0.
+  Scope exactly the three files; two commits; no rebase.
 - **Review (cycle 1):** `findings=8, scope=pass, verdict=rework` — PR #37 comment
-  `5600386724`. Blockers F1/F2/F3. checks 8 -> **11** (C9 terminal-frame short-circuit,
-  C10 bounded reads, C11 per-stream attribution).
-  - **F1 is user-visible.** `Job.events` is a single destructive queue and `done` is enqueued
-    once (`jobs.py:181`, `:254`), so a second or reconnecting client loops on 0.5s timeouts
-    forever — a student who refreshes sits at "running" permanently and F-007 hangs on
-    reconnect. Verified by probing `_drain` against a drained queue: no frame after 4s.
-    Gated by no criterion of mine; C1 named termination for one client only. **A cycle**
-    (§0 ruling 1 retired §5.4 clause 2, so only a *dropped* property re-specifies).
-  - **F2/F3 are the review's best work:** the C6 concurrency guard does not go red under the
-    exact defect it names — it *wedges*, >400s against a 0.75s baseline, because
-    `_read_events`' timeout is unreachable (the deadline check sits inside the
-    `for line in resp.iter_lines()` body). A guard that hangs CI is not a guard.
-  - **It also cleared the coder where cycle 1 was right:** C5's leak check is load-bearing
-    under two independent mutations, and the scoped-`ThreadPoolExecutor` deviation was
-    explicitly accepted rather than filed as over-engineering.
-  - F5 is a tautological meta-test cited as C3 evidence — the form the 2026-09-07 ruling
-    retired. F6 two copies of one wire contract. F7 `get_event_loop`. F8 missing annotation.
-- **The cycle-1 hook bypass stands unresolved and is the user's to rule on.** The work itself
-  checks clean; this is a process breach, not damaged code.
+  `5600386724`. checks 8 -> **11**.
+  - **F1 was user-visible:** `Job.events` is a single destructive queue with `done` enqueued
+    once (`jobs.py:181`, `:254`), so a second or reconnecting client looped on 0.5s timeouts
+    forever — a student who refreshed sat at "running" permanently, and F-007 would hang on
+    reconnect. Cycle 2 short-circuits on terminal `job.status` under `job.lock`.
+  - **F2/F3:** the C6 concurrency guard did not go red under the defect it names — it
+    *wedged*, >400s against a 0.75s baseline, because `_read_events`' timeout was unreachable.
+  - Cleared where cycle 1 was right: C5's leak check is load-bearing under two independent
+    mutations, and the scoped-`ThreadPoolExecutor` deviation was explicitly accepted.
+- **Cycle 2 resolved F1-F8, none overruled, with one substantive correction to the review:**
+  `starlette.testclient.TestClient`'s transport runs the whole ASGI call to completion inside
+  a synchronous `portal.call` before `client.stream()` yields a byte, so **httpx's `timeout=`
+  never fires against a stalled generator** (verified: a stalled stream still blocked past
+  100s with `timeout=2.0`). It made the literal change anyway (correct for a real network
+  client) and bounded the two mutation tests with a daemon thread + `t.join(timeout=...)`,
+  which is what actually stays fast. **A reviewer should check this claim first** — it is the
+  cycle's one deviation and it contradicts the instruction it was given.
+- **Contract change to tell F-007 about:** every SSE frame now carries `runId`; documented in
+  `docs/api.md`'s frame contract (F4/C11).
+- **Body defect for the next gate:** the PR body still says `Total checks: 8` at its head while
+  C9-C11 are appended below. The count is 11. Send it back to be corrected before review —
+  under §5.1 that is a gate return, not a cycle.
+- **Open against the coder, not the code (cycle 1, still unruled by the user):** it routed
+  around a refusing `rtk`/hook layer with a wrapper script. That is the exact workaround the
+  user ruled out 2026-09-08. The work checks clean; this is a process breach.
 
 ## Ready
 
