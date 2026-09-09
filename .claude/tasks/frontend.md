@@ -19,8 +19,13 @@ IDs are `F-nnn`, allocated in order and never reused.
   floor >= 654, flake8 0, e2e nodeid count reported (37 at F-004).
 - **Depends on:** F-004 (merged `30cceb3`), B-020 (merged `1909046`). Wave 3.
 - **Branch / PR:** `task/f-005-bench-canvas` — #36
-- **Status:** in rework (cycle 2). Cycle 1 gate reproduced `662 passed`, flake8 0,
-  `tests/e2e/` **45** nodeids (37 at F-004).
+- **Status:** in review (cycle 2), commit `905a5e3`. Cycle-2 gate reproduced `664 passed`,
+  flake8 0, `tests/e2e/` **47** nodeids (45 at cycle 1, 37 at F-004). PR body carries C1-C10,
+  total 10, all met; scope exactly the three files. Cycle 1 gate was 662 / 45.
+- **Cycle 2 resolved F1-F9, none overruled** — F1 a one-line duplicate-edge guard, F2 the
+  list-shaped `nodes` with C10 driving the real `build_run_config`, F4 the locked tile moved
+  into `shell.html`, and F5-F9 clean deletions (~40 lines: `node__links`, `.port--absent`
+  spacers, the `node--flash` reflow hack, the spawn stagger, the duplicated drag teardown).
 - **Review (cycle 1):** `findings=9, scope=pass, verdict=rework` — PR #36 comment
   `5600262313`. Blockers F1 and F2. checks 8 -> **10** (C9 duplicate-edge guard, C10 the
   corrected list shape).
