@@ -16,7 +16,7 @@ IDs are `B-nnn`, allocated in order and never reused.
   B-022 consumes is asserted, not only documented). checks=10. Suite floor 639 -> 649 on the branch.
 - **Depends on:** B-019, B-020 — both merged.
 - **Branch / PR:** `task/b-021-run-api` — #35, head `73dc1de` (pushed, **RED**)
-- **Status:** **handed off (cycle 2)** — see [`handoff/b-021-backend-2.md`](../handoff/b-021-backend-2.md),
+- **Status:** **in review loop — cycle 2 re-dispatched 2026-09-09** (worktree). Prior stop: see [`handoff/b-021-backend-2.md`](../handoff/b-021-backend-2.md),
   which is **on the task branch, not on `main`**. The coder stopped at 90% of the 5h limit with
   `src/fce_web/jobs.py` **not importing**: F9's `_dataset_dir`/`_discover_active_samples` imports
   were removed while `_mc_samples()` still calls them. F6 is done and committed, F10 partial,
