@@ -373,7 +373,34 @@ points with `sqrt(n)` error bars, which is the convention the physics community 
 
 ### Run progress event
 
-_To be defined in M3._
+`GET /api/run/{id}/events` -- task B-022. `404` with `{"error": "..."}` for an unknown `id`,
+returned before any stream opens (never an open connection that emits nothing). Otherwise
+`200 text/event-stream`, one SSE frame per item read off `fce_web.jobs.Job.events`
+(`data: <json>\n\n`), terminated by exactly one terminal frame. It never carries histogram,
+cutflow or fit data -- that is `GET /api/run/{id}/result`'s job; this stream is progress only.
+
+Each frame's JSON body is one of:
+
+```jsonc
+{"type": "progress", "value": 0.42}                          // 0..1
+{"type": "log", "message": "reading X1..."}
+{"type": "phase", "phase": "selecting"}
+{"type": "node", "status": "active", "nids": [3, 5]}          // or "completed"
+{"type": "done", "status": "done"}                            // "done" | "error" | "cancelled"
+```
+
+`done` is always the last frame and appears exactly once; the connection closes immediately
+after it. A cache-hit run's stream is a single `done` frame -- there is no synthesised
+progress sweep for a result that was already computed.
+
+| Field | Type | Nullable | Meaning |
+|---|---|---|---|
+| `type` | string | no | One of `"progress"`, `"log"`, `"phase"`, `"node"`, `"done"`. |
+| `value` | number | no (when `type` is `"progress"`) | Fraction complete, `0.0`-`1.0`. |
+| `message` | string | no (when `type` is `"log"`) | A student-legible status line. |
+| `phase` | string | no (when `type` is `"phase"`) | The run's current phase label. |
+| `status` | string | no (when `type` is `"node"` or `"done"`) | `"active"`/`"completed"` for a `node` frame, `"done"`/`"error"`/`"cancelled"` for the terminal `done` frame. |
+| `nids` | integer[] | no (when `type` is `"node"`) | Graph node ids whose status just changed. |
 
 ### Mission objective result
 

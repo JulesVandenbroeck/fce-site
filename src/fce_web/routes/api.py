@@ -3,19 +3,24 @@
 Documented in ``docs/api.md``: ``POST /api/run`` submits a graph and returns
 a run id immediately, before the run finishes (it executes on a background
 thread via ``fce_web.jobs.JobRegistry``); ``GET /api/run/{id}/result`` reads
-that run's outcome back. ``GET /api/run/{id}/events`` (SSE progress) is
-B-022's -- this router does not define it.
+that run's outcome back; ``GET /api/run/{id}/events`` (task B-022) streams
+that same run's progress as Server-Sent Events, draining ``Job.events`` --
+see ``docs/api.md``'s "Run progress event" section for the wire format.
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+import asyncio
+import json
+import queue
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, AsyncIterator, Dict
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from fce_web.graph import GraphError
-from fce_web.jobs import JobRegistry
+from fce_web.jobs import Job, JobRegistry
 
 
 class RunRequest(BaseModel):
@@ -71,4 +76,45 @@ def build_router() -> APIRouter:
         # "error" or "cancelled" -- a legitimate run outcome, not a bad request.
         return {"status": status, "error": error}
 
+    @router.get("/run/{run_id}/events")
+    async def stream_events(request: Request, run_id: str):
+        """SSE progress for *run_id* -- ``text/event-stream``, terminated by
+        a single ``done`` event. Never carries histogram data; that is
+        ``GET /api/run/{id}/result``'s job. 404 (not an open stream) for an
+        unknown id, checked before the response starts."""
+        registry: JobRegistry = request.app.state.jobs
+        job = registry.get(run_id)
+        if job is None:
+            return JSONResponse({"error": f"no such run: {run_id!r}"}, status_code=404)
+        return StreamingResponse(_drain(request, job), media_type="text/event-stream")
+
     return router
+
+
+async def _drain(request: Request, job: Job) -> AsyncIterator[str]:
+    """Yield ``job.events`` as SSE frames until the terminal sentinel.
+
+    ``Job.events`` is a blocking ``queue.Queue``, so each read runs off the
+    event loop, in a one-worker ``ThreadPoolExecutor`` scoped to this single
+    stream -- not ``asyncio.to_thread``'s shared, process-wide default
+    executor, whose worker threads live for the rest of the process and
+    would make "did this stream leak a thread" unanswerable from thread
+    count alone. The ``with`` block's exit joins that one worker
+    synchronously, so a client dropping mid-run -- caught by
+    ``is_disconnected()`` between polls, bounded by the 0.5s timeout -- always
+    leaves exactly zero threads behind for this stream. Two concurrent
+    streams for two different jobs each own their own executor and queue, so
+    neither can see the other's events.
+    """
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        while True:
+            if await request.is_disconnected():
+                return
+            try:
+                item = await loop.run_in_executor(pool, job.events.get, True, 0.5)
+            except queue.Empty:
+                continue
+            yield f"data: {json.dumps(item)}\n\n"
+            if item["type"] == "done":
+                return
