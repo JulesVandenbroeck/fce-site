@@ -9,46 +9,23 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
-- **Scope:** create `src/fce_web/jobs.py`, `routes/api.py`, `tests/test_jobs.py`,
-  `tests/test_api_run.py`; modify `app.py`, `docs/api.md`. **Widened in cycle 2 by cycle-1's F9**,
-  which directed the fix into `runs.py` + `engine/driver.py` — both backend-owned.
-- **Accept:** C1-C9 (cycle 1) + C10 (cycle 2) + **C11** (cycle 3: the payload's `samples` list is
-  asserted against the fixture's real MC samples). All verbatim in PR #35's body. **checks=11.**
-- **Depends on:** B-019, B-020 — both merged. **Releases B-022**, which consumes `Job.events`.
-- **Branch / PR:** `task/b-021-run-api` — #35. Cycle 2 head `3ef6176`, green (653 passed, flake8 0,
-  §5.1 gate reproduced in the primary checkout). `73dc1de` is an ancestor of it — nothing rebased.
-- **Status:** **in progress (cycle 3 — the §5.7 limit)**, dispatched 2026-09-09, `isolation: worktree`.
-  If it does not converge, escalate to the user; do not dispatch a fourth.
-- **Review:** cycle 1 `findings=11, verdict=rework` (`#issuecomment-5584607751`); cycle 2
-  `findings=5, verdict=rework` (`#issuecomment-5598674206`). **F1-F10 are all confirmed fixed by
-  mutation**, F11 ruled by me. Open: **F12** — the payload's `samples` can go empty, losing every
-  simulated process from the chart, with all 653 checks green (reviewer's Mutation G). That is C11.
-  F13 the scope record, F14-F16 cheap deletions riding the same cycle.
-- **Watch:** the coder serialises engine execution through `JobRegistry._run_lock` after finding a
-  real cross-run corruption — `output/hist{plot_idx}_{sample}.root` is keyed on `plot_idx` alone and
-  resolves `get_fce_home()` from the real process env, ignoring the registry's `env`. Argued in
-  writing and accepted; the per-job output dir needs `analytical_loop.py`, out of scope.
-- **Against me, 2026-09-09 — the §5.1 gate can be defeated by a dirty checkout.** I returned cycle 3
-  claiming F14's test was missing and "654 passed" did not reproduce. It was there. My primary
-  checkout had **staged reverts** of the four files, byte-identical to `3ef6176`, so every grep and
-  count read cycle-2 content while `git log` correctly showed the cycle-3 HEAD. The coder refused
-  the return, proved it three ways including the GitHub API, and refused to write the false line
-  into the PR body — correct on both counts. **Rule added: `git status --porcelain` must be empty
-  before any §5.1 count, and read contested files with `git show <sha>:<path>`, never the working
-  tree.** Not a cycle; nothing was consumed but time.
-- **Do not merge with F12 open**, and do not merge before B-022 has the `Job.events` contract it
-  needs asserted rather than documented.
-- **History:** [`archive/backend.md`](archive/backend.md)
+_none — B-021 merged. Wave 4 (B-022) is released._
 
 ## Ready
+
+### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
+- **Depends on:** B-021 — **merged `78ceb8d`, so this is READY.** Wave 4, closes checkpoint 1.
+- **Consumes read-only:** `Job.events`, the contract written out once in `docs/api.md:108-114`
+  and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
+  `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
+  The sentinel is put unconditionally in a `finally`, so a drain loop cannot hang on an exception.
+- Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 _none — F-005 and F-006 are wave 3 but frontend; see `frontend.md`._
 
 ## Blocked
 
-### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
-- **Depends on:** B-021. Wave 4, closes checkpoint 1.
+_none for backend — B-022 moved to `## Ready`._
 
 M2 plan (historical): `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
 
@@ -79,6 +56,21 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-021** — job registry, `POST /api/run`, `GET /api/run/{id}/result` (**CONTRACT TASK**) — #35,
+  `78ceb8d`, **3 cycles + 1 handoff mid cycle 2 + 1 false gate return by me**, clean gate
+  (`findings=1, verdict=approve`, F17 a comment nit → backlogged). checks=11. Suite floor → **654**.
+  Ships `src/fce_web/jobs.py` (`JobRegistry`, `Job`), `routes/api.py`, and the two `docs/api.md`
+  endpoint sections. **`Job.events` is the contract B-022 consumes** — see its Ready entry.
+  Three defects the review caught that all passed a green suite: a **permanent hang** (the worker's
+  `try/except` wrapped only `run_analysis`, so a later exception left `status="running"` with no
+  sentinel), a **cache hit returning the first submitter's `meta.mission` to a different student**,
+  and an **empty `samples` list** — every simulated process vanishing from the chart with
+  `status: "done"` and all 653 checks green. C1, C3, C6, C10 and C11 are all mutation-verified.
+  **Deviation accepted in writing:** engine execution is serialised through `JobRegistry._run_lock`
+  after the coder found real cross-run corruption — `output/hist{plot_idx}_{sample}.root` is keyed
+  on `plot_idx` alone and resolves `get_fce_home()` from the real process env, ignoring the
+  registry's `env`. The per-job output dir needs `analytical_loop.py`; out of scope, backlogged.
+  Scope widened by cycle-1's F9 into `runs.py` + `engine/driver.py`, both backend-owned.
 - **B-020** — connection allowlist and graph -> `RunConfig` (**CONTRACT TASK**) — #33,
   `1909046`, **4 cycles** (the 4th authorised by the user past the §5.7 limit) + 1 handoff mid
   cycle 3, clean gate (`findings=0, verdict=approve`). checks=14. Suite floor → **639**.
@@ -184,7 +176,22 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   engine. **The engine is not modified.** The student's graph and the engine's graph are
   deliberately not the same object; M3 owns writing this into `docs/api.md:29-34`, which still
   marks that endpoint undefined. Full ruling: `design.md` `## Decisions in force`.
-- Suite floor **639 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+- **Job registry** (B-021): `JobRegistry.submit(mission_id, graph) -> Job`, held on
+  `app.state.jobs`, built in `create_app()`. `Job` carries `id`, `mission_id`, `ctx: RunContext`
+  (non-Optional), `events: queue.Queue`, `lock`, `status`, `error`, `payload`. Statuses:
+  `running` / `done` / `error` / `cancelled`. The registry is bounded — `_MAX_JOBS = 500`,
+  oldest non-running job evicted first, guarded by a check that reddens if either the cap or the
+  running-job guard breaks. Cancellation goes through `RunContext.cancel`; no new seam.
+- **`Job.events` queue** (B-021, **B-022 consumes this read-only**): written out once in
+  `docs/api.md:108-114`. At least one `{"type": "progress"}` item, then **exactly one** terminal
+  `{"type": "done", ...}` as the last item. The sentinel is put unconditionally in a `finally`, so
+  a drain loop cannot hang when the worker raises. A cache-hit job's queue holds only the sentinel.
+- **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
+  independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
+  path are in a `ponytail:` comment in `jobs.py`.
+- Suite floor **654 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
+  `78ceb8d`, 2026-09-09. (639 after B-020; 653 after B-021 cycle 2; 654 after cycle 3.)
+- Superseded: suite floor **639 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
   `1909046`, 2026-09-08. (605 after B-018; 615 after F-004; 621 after B-019; 639 after B-020.)
 - **Fixture dataset** (B-018): `tests/fixtures/datasets/IDEA/91GeV/{X1,X2,X3,data}.root`, 2000
   events each, 30 branches, regenerated byte-identically by `tests/fixtures/make_fixture.py`

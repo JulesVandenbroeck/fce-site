@@ -669,3 +669,11 @@ and are historical now that #6 is merged.
 - **B-020 F7** — the content-addressed digest formula is transcribed a third time at `src/fce_web/graph.py:341,357,374-379`, alongside `RunConfig.compute_h5_sel`/`compute_h5` and `_validate_nested_digests`. Export the two formulas from `runconfig.py` as module-level functions and call them from both places. `from_dict` makes a divergence loud rather than silent, so this is cleanup, not a defect. Out of B-020's file scope; backlogged on the reviewer's own recommendation.
 - **F-004 F8** — `src/fce_web/templates/shell.html:56,58` the `#pager-back`/`#pager-forward` mission-pager buttons are in the tab order and announce "Previous mission"/"Next mission" but do nothing; the mission title/brief at :57,:68 are hardcoded placeholders. **F-005 owns the pager and must either wire these or delete them** — do not let this ship to a student as a control that announces an action and performs none.
 - **F-004 F9** — `src/fce_web/static/js/shell.js:12-48` `wirePaletteToggle` and `wirePanelToggle` are the same nine-line body with five ids and two glyphs swapped. One `wireToggle(regionId, btnId, glyphId, srId, bodyId, noun)` called twice, ~20 lines shorter.
+
+- **B-021 F17** — `src/fce_web/jobs.py:67` and `:202` carry two `(F8)` review-comment pointers that
+  survived cycle 3's sweep of the other files. They name a finding ID that lives only in a GitHub
+  comment. Replace with what the code does; the `ponytail:` ceiling text on those lines stays.
+- **B-021 per-job output directory** — `engine/analytical_loop.py` addresses
+  `output/hist{plot_idx}_{sample}.root` by `plot_idx` alone and resolves `get_fce_home()` with no
+  argument, ignoring the caller's `env`. That is why `JobRegistry._run_lock` serialises every
+  engine run. A per-job output dir removes the lock and lets concurrent students run in parallel.

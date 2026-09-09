@@ -2081,3 +2081,41 @@ a clean record of what the coder wrote.
 - **Note:** wave 3 is running **in series** on the user's instruction, not parallel.
 - Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
+
+
+---
+
+## B-021 — final active entry at merge (2026-09-09)
+
+### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
+- **Scope:** create `src/fce_web/jobs.py`, `routes/api.py`, `tests/test_jobs.py`,
+  `tests/test_api_run.py`; modify `app.py`, `docs/api.md`. **Widened in cycle 2 by cycle-1's F9**,
+  which directed the fix into `runs.py` + `engine/driver.py` — both backend-owned.
+- **Accept:** C1-C9 (cycle 1) + C10 (cycle 2) + **C11** (cycle 3: the payload's `samples` list is
+  asserted against the fixture's real MC samples). All verbatim in PR #35's body. **checks=11.**
+- **Depends on:** B-019, B-020 — both merged. **Releases B-022**, which consumes `Job.events`.
+- **Branch / PR:** `task/b-021-run-api` — #35. Cycle 2 head `3ef6176`, green (653 passed, flake8 0,
+  §5.1 gate reproduced in the primary checkout). `73dc1de` is an ancestor of it — nothing rebased.
+- **Status:** **in progress (cycle 3 — the §5.7 limit)**, dispatched 2026-09-09, `isolation: worktree`.
+  If it does not converge, escalate to the user; do not dispatch a fourth.
+- **Review:** cycle 1 `findings=11, verdict=rework` (`#issuecomment-5584607751`); cycle 2
+  `findings=5, verdict=rework` (`#issuecomment-5598674206`). **F1-F10 are all confirmed fixed by
+  mutation**, F11 ruled by me. Open: **F12** — the payload's `samples` can go empty, losing every
+  simulated process from the chart, with all 653 checks green (reviewer's Mutation G). That is C11.
+  F13 the scope record, F14-F16 cheap deletions riding the same cycle.
+- **Watch:** the coder serialises engine execution through `JobRegistry._run_lock` after finding a
+  real cross-run corruption — `output/hist{plot_idx}_{sample}.root` is keyed on `plot_idx` alone and
+  resolves `get_fce_home()` from the real process env, ignoring the registry's `env`. Argued in
+  writing and accepted; the per-job output dir needs `analytical_loop.py`, out of scope.
+- **Against me, 2026-09-09 — the §5.1 gate can be defeated by a dirty checkout.** I returned cycle 3
+  claiming F14's test was missing and "654 passed" did not reproduce. It was there. My primary
+  checkout had **staged reverts** of the four files, byte-identical to `3ef6176`, so every grep and
+  count read cycle-2 content while `git log` correctly showed the cycle-3 HEAD. The coder refused
+  the return, proved it three ways including the GitHub API, and refused to write the false line
+  into the PR body — correct on both counts. **Rule added: `git status --porcelain` must be empty
+  before any §5.1 count, and read contested files with `git show <sha>:<path>`, never the working
+  tree.** Not a cycle; nothing was consumed but time.
+- **Do not merge with F12 open**, and do not merge before B-022 has the `Job.events` contract it
+  needs asserted rather than documented.
+- **History:** [`archive/backend.md`](archive/backend.md)
+
