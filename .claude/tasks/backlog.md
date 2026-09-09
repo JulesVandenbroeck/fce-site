@@ -677,3 +677,9 @@ and are historical now that #6 is merged.
   `output/hist{plot_idx}_{sample}.root` by `plot_idx` alone and resolves `get_fce_home()` with no
   argument, ignoring the caller's `env`. That is why `JobRegistry._run_lock` serialises every
   engine run. A per-job output dir removes the lock and lets concurrent students run in parallel.
+
+- **F-005 F10** — `tests/e2e/test_graph.py:222-229`: C10 rebuilds the submit payload as
+  `{"id", "kind", "config"}`, discarding the `x`/`y` the browser actually emits, so it cannot
+  catch the server rejecting the ride-along keys the contract block promises. Fix is one edit:
+  `{**n, "config": node_config[n["kind"]]}`. Non-blocking — the reviewer ran the corrected form
+  to green itself; this closes a claim/check gap, not a live defect. (PR #36 cycle 2, 2026-09-09)

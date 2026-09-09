@@ -9,51 +9,22 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-005 — Port the Bench canvas
-- **Scope:** `src/fce_web/static/js/graph.js` (create), `templates/shell.html` (canvas container
-  markup only, no CSS), `tests/e2e/test_graph.py` (create)
-- **Accept:** C1-C8 in the plan. Four kinds only (2026-09-02 ruling); pointer place/drag/connect
-  persisting `{id, x, y}` + an ordered edge list; **a full keyboard path** proven in Playwright;
-  client legality mirroring `graph.py`'s `VALID_CONNECTIONS`; no placeable `DataSource`; locked
-  kinds shown and inert; no console errors / `bad_responses` / globals / `innerHTML`;
-  floor >= 654, flake8 0, e2e nodeid count reported (37 at F-004).
-- **Depends on:** F-004 (merged `30cceb3`), B-020 (merged `1909046`). Wave 3.
-- **Branch / PR:** `task/f-005-bench-canvas` — #36
-- **Status:** in review (cycle 2), commit `905a5e3`. Cycle-2 gate reproduced `664 passed`,
-  flake8 0, `tests/e2e/` **47** nodeids (45 at cycle 1, 37 at F-004). PR body carries C1-C10,
-  total 10, all met; scope exactly the three files. Cycle 1 gate was 662 / 45.
-- **Cycle 2 resolved F1-F9, none overruled** — F1 a one-line duplicate-edge guard, F2 the
-  list-shaped `nodes` with C10 driving the real `build_run_config`, F4 the locked tile moved
-  into `shell.html`, and F5-F9 clean deletions (~40 lines: `node__links`, `.port--absent`
-  spacers, the `node--flash` reflow hack, the spawn stagger, the duplicated drag teardown).
-- **Review (cycle 1):** `findings=9, scope=pass, verdict=rework` — PR #36 comment
-  `5600262313`. Blockers F1 and F2. checks 8 -> **10** (C9 duplicate-edge guard, C10 the
-  corrected list shape).
-  - **F1** `graph.js:385` — no duplicate-edge guard, and the reviewer confirmed the server
-    does not reject one: `build_run_config` emits **two identical `HistogramConfig`s**, so a
-    double-press silently runs and plots the analysis twice. Gated by no criterion of mine ->
-    §5.4 clause 3, **a cycle, not a re-specification**.
-  - **F2 is my defect.** I published `nodes` keyed by id, copied from the plan. `scout`
-    confirms `build_run_config` (`graph.py:338`) reads `nodes` as a **list** of
-    `{id, kind, config?}` (`:120,122-123,135`) and `edges` as `[from, to]` (`:144-146`), via
-    `registry.submit` (`routes/api.py:53`) -> `jobs.py:163`.
-    `docs/plan-m3-vertical-slice.md:494` corrected in place with the reason.
-  - **F3/F4 are also mine** — "canvas container only" made the module `<script>` tag
-    out of scope and pushed the locked palette tile into runtime JS injection, where it
-    vanishes with JS off. Scope widened for cycle 2 to the container, the tag and the
-    palette list. The coder had flagged exactly this at report time.
-  - F5-F9 are trims (~40 lines of deletion), individually overrulable in writing.
-  **Gate note, and it is the second time this has bitten:** the primary checkout's system
-  `python` has no `fce_web` on its path, so `python -m pytest` collects nothing and reports
-  it as an empty run rather than an error. Use `.venv/bin/python`.
-- **Contract it must publish (corrected, cycle 2):** the exported graph model — `nodes` as a
-  **list** of `{id, kind, x, y}`, `edges` as `[fromId, toId]` pairs. **F-007 is dispatched
-  read-only against F-005's PR body**, so a thin body blocks F-007.
-Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+### F-006 — The merged `Observable` node interior
+- **Scope:** `static/js/graph.js`, `templates/shell.html` (node markup, no CSS),
+  `tests/e2e/test_graph.py`
+- **Accept:** C1-C7 in the plan. One `Observable` node, four modes, **`observable.html`
+  (D-013) is the source — `interiors.html` (D-009) is superseded and using it is a defect**;
+  the node grows in place, no flyout; mode is `config` not identity, `kind` stays
+  `Observable` in the exported model; D-013's footprint contract reported, not invented;
+  a keyboard/accessible-name check **that can go red**; floor >= 664, flake8 0, e2e count
+  reported (47 at F-005).
+- **Depends on:** F-005 (merged `b7fdfdf`). Wave 3.
+- **Branch / PR:** `task/f-006-observable-interior` — not yet opened
+- **Status:** dispatched (cycle 1), `isolation: worktree`
 
 ## Ready
 
-_none — F-006 follows F-005, F-007 follows both plus B-022._
+_none — D-015 follows F-006, F-007 follows F-006 plus B-022._
 
 ## Blocked
 
@@ -61,9 +32,6 @@ _none — F-006 follows F-005, F-007 follows both plus B-022._
 - **Depends on:** **D-015** — the first task to apply `font-family: var(--font-body)` to a real
   selector in `src/fce_web/static/css/`. That task now exists; full entry below under
   `## Deferred`, unchanged. Wave 4.
-### F-006 — The merged `Observable` node interior
-- **Depends on:** F-005. Ports **`observable.html`** (D-013), *not* `interiors.html` (D-009,
-  superseded by the 2026-09-02 one-node ruling). Wave 3.
 ### F-007 — Serialise, submit, stream, show progress
 - **Depends on:** F-005, F-006, B-020, B-021, B-022. Wave 5.
 ### F-008 — The interactive SVG histogram
@@ -75,6 +43,24 @@ _none — F-006 follows F-005, F-007 follows both plus B-022._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-005** — port the Bench canvas — #36, `b7fdfdf`, 2 cycles, clean gate
+  (`findings=1, verdict=approve`; F10 backlogged). checks=10. Suite floor → **664**;
+  `tests/e2e/` 45 → **47** nodeids. Ships `static/js/graph.js` and the canvas markup:
+  four-kind palette, pointer place/drag/connect, **a full keyboard path**, and a client
+  legality table the reviewer verified against `graph.py` behaviourally — all 16 ordered
+  pairs driven through the real keyboard path, `mismatches: []`.
+  **Contract for F-007, verbatim in PR #36's body:** the exported graph model is
+  `nodes` as a **list** of `{id, kind, x, y}` and `edges` as `[fromId, toId]` pairs.
+  Cycle 1 published it keyed by id — **my error, corrected at
+  `docs/plan-m3-vertical-slice.md:494`**; `build_run_config` (`graph.py:338`) reads a list,
+  and `_parse_nodes` ignores the ride-along `x`/`y`.
+  **The cycle-1 defect worth remembering:** no duplicate-edge guard, and the server does not
+  reject one — `build_run_config` emitted **two identical `HistogramConfig`s**, so a student
+  double-pressing would silently run and plot the analysis twice. Now guarded at the client
+  and mutation-verified red on both keyboard and pointer.
+  Cycle 2 also deleted ~40 lines of speculative markup (`node__links`, `.port--absent`
+  spacers, a `node--flash` reflow hack, a spawn stagger, a duplicated drag teardown).
+  **F-006 and D-015 are released by this merge.**
 - **F-004** — ported the three-region shell into the app — #32, `30cceb3`, 2 cycles, clean gate
   (`findings=2, verdict=approve`). checks=8 (C8 added on cycle 2 for uncaught page errors).
   Suite floor → **615**; `tests/e2e/` 27 → **37** nodeids. Ships `templates/shell.html` (included
