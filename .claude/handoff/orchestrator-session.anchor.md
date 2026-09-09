@@ -1,30 +1,37 @@
-# Orchestrator anchor — 2026-09-08, 50% of the 5h limit (resets 17:00)
+# Orchestrator anchor — 2026-09-09, 50% of the 5h limit (resets 17:00)
 
-**Milestone:** M3. Wave 1 all but closed; wave 2 merged.
+**Milestone:** M3. Wave 3/4 in flight. Bookkeeping worktree is `~/fce-bookkeeping` (on `main`);
+the primary checkout is detached and used only for §5.1 gates.
 
-## Decisions made this session, and why
-- **B-020 cycle 4 authorised by the user**, narrowly scoped to F12 + F13. The §5.7 limit was
-  reached with `verdict=rework`; the argument put to the user was that the code has not been in
-  question for two cycles and F12 is one test in a file already in scope. Do not widen it.
-- **B-019's F5–F8 were folded in before merge, not backlogged** (D-014's precedent), because F8
-  was a wording error in the contract record F-008 is dispatched read-only against. Re-gated
-  after folding; the approve verdict was not re-sought and did not need to be.
-- **The branch-name workaround is now established practice:** when a task branch is still checked
-  out in an earlier cycle's worktree, work on a local branch and
-  `git push origin <local>:<task branch>`. Verified fast-forward twice on B-019 — no history
-  rewritten, no rule broken. B-020 cycle 4 was told to do the same.
+## In flight
+| Task | PR | Cycle | State |
+|---|---|---|---|
+| F-005 | #36 | 2 | gate PASSED (664 / flake8 0 / e2e 47). **Reviewer dispatched.** |
+| B-022 | #37 | 2 | coder running in worktree `agent-a7c45688f7107f2cd` |
+
+## Decisions made this session
+- B-021 was already merged (#35, `78ceb8d`) before this session; lists were stale because the
+  primary checkout sat on the task branch. Reconciled from `~/fce-bookkeeping`.
+- **`isolation: "worktree"` is cycle-1 only.** Written into orchestrator §4 at `d0901d1`.
+  On cycle 2+ omit it and name the existing worktree. Same for reviewers on a re-dispatch —
+  an isolated reviewer cannot `gh pr checkout` a branch already checked out elsewhere.
+- F-005 contract corrected: `nodes` is a **list** of `{id, kind, x, y}`, not keyed by id.
+  `docs/plan-m3-vertical-slice.md:494` fixed in place. Confirmed by `scout` against
+  `graph.py:120,122-123,135` and `:144-146` — do not re-derive.
+- F-005 checks 8 -> 10 (C9 duplicate edge, C10 list shape). B-022 checks 8 -> 11 (C9 terminal
+  frame, C10 bounded reads, C11 per-stream attribution).
 
 ## Dead ends — do not repeat
-- Do not dispatch **F-005** yet. It is released by F-004 but consumes B-020's payload shape
-  read-only, and B-020 is unmerged. That is the D-004 mistake this project already paid for.
+- The primary checkout's bare `python` has no `fce_web`: pytest collects **nothing** and
+  reports it as an empty run, not an error. Always `.venv/bin/python`. Cost one false gate.
+- The `rtk` git refusal is **not** an rtk bug. It correctly enforces worktree isolation; the
+  defect was my passing isolation to re-dispatches. Two agents hit it; one stopped and
+  reported (right), one wrote a wrapper script (wrong, and still unruled).
 
-## State
-- `main` at `fff8ca3`. Suite floor **621**, flake8 0.
-- **B-020** — PR #33, cycle 4 in flight, checks 13 → 14. Gate worktree `~/fce-gate-b020c3`.
-- Everything else is merged. Backlog 118.
+## Waiting on the user
+- **B-022 cycle 1's hook bypass** — a wrapper script routing around the hook, the exact thing
+  ruled out 2026-09-08. Work checks clean; process breach only. Nothing is blocked on it.
 
-## Exact next step
-Gate B-020 cycle 4 (§5.1) in a fresh worktree, re-review at **raised effort** citing
-https://github.com/JulesVandenbroeck/fce-site/pull/33#issuecomment-5583713796 and F12/F13.
-On approve: merge, write the Done line, then wave 3 — **B-021**, **F-005**, **F-006**, **D-015**
-are all released at once and that is the biggest parallel batch of the milestone.
+## Next step
+Collect the F-005 re-review and B-022 cycle 2. Merge on approve. Then F-006 (needs F-005
+merged), then D-015 (needs F-005 + F-006; `effort: high`).
