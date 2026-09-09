@@ -435,6 +435,30 @@ decision has to be made *before* you dispatch, never after.
 A worktree is not a branch: removing one with `git worktree remove` is permitted and is
 not covered by the never-delete-a-branch rule. The branch it was checked out on stays.
 
+### `isolation: "worktree"` is for cycle 1 only. Never pass it on a re-dispatch.
+
+**Found 2026-09-09, F-005 cycle 2, and it cost a whole dispatch.** `isolation: "worktree"`
+creates a **fresh** worktree on a generic `worktree-agent-*` branch, checked out from the
+primary checkout's current `HEAD`. That is exactly right for a cycle-1 coder, which branches
+from `main` and has nothing to inherit. It is **wrong for every re-dispatch**, because the
+work it must continue lives on `task/<id>-<slug>`, which the new worktree is not on.
+
+What the agent actually got: an empty tree with no `graph.js` and no `tests/e2e/test_graph.py`,
+sitting on `worktree-agent-<id>`, while every `git` command it tried to fix that with was
+refused by the `rtk` hook — whose rule is that a worktree-isolated agent's git must target its
+own worktree, which is the one place the work was not. The coder stopped and reported rather
+than routing around the hook, which is the behaviour the 2026-09-08 ruling asks for and is the
+only reason this cost one dispatch instead of a corrupted branch.
+
+**So, on any cycle 2+:** omit `isolation`, and name the existing worktree in the dispatch —
+`git worktree list | grep task/<id>` finds it; cycle 1's is still checked out on the branch.
+Tell the agent to `cd` there, confirm with `git symbolic-ref --short HEAD`, and **not** to run
+`git worktree add`. It will need its own `.venv` there.
+
+**Do not read the hook's refusal as the bug.** The hook was enforcing worktree isolation
+correctly; the defect was passing isolation to a task that needed the opposite. An agent that
+reports a hook refusal is doing the right thing, and the fix is upstream in the dispatch.
+
 ---
 
 ## 4. Git and branch policy
