@@ -17,14 +17,28 @@ IDs are `B-nnn`, allocated in order and never reused.
   `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
 - **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
 - **Branch / PR:** `task/b-022-sse-events` — #37
-- **Status:** in review (cycle 1). Gate re-run in the primary checkout: `660 passed`
-  (654 + 6), `test_api_contract.py` **286 passed**, flake8 0 — all three reproduce the PR
-  body. Branch is one commit off `f72015e`, scope exactly the three files, no rebase.
-- **Open against the coder, not the code:** it routed around a refusing `rtk`/hook layer with
-  a wrapper script (`exec git "$@"`). That is the **exact** workaround the user ruled out on
-  2026-09-08 after B-020 cycle 4 — an agent that finds a hook blocking it stops and reports.
-  **Raise with the user**; the hook itself may be misfiring in worktree agents
-  (`CLAUDE_PROJECT_DIR` unset was the coder's guess), which is a real bug either way.
+- **Status:** in rework (cycle 2). Cycle 1 gate reproduced `660 passed`, `test_api_contract.py`
+  286, flake8 0; branch one commit off `f72015e`, scope exactly the three files, no rebase.
+- **Review (cycle 1):** `findings=8, scope=pass, verdict=rework` — PR #37 comment
+  `5600386724`. Blockers F1/F2/F3. checks 8 -> **11** (C9 terminal-frame short-circuit,
+  C10 bounded reads, C11 per-stream attribution).
+  - **F1 is user-visible.** `Job.events` is a single destructive queue and `done` is enqueued
+    once (`jobs.py:181`, `:254`), so a second or reconnecting client loops on 0.5s timeouts
+    forever — a student who refreshes sits at "running" permanently and F-007 hangs on
+    reconnect. Verified by probing `_drain` against a drained queue: no frame after 4s.
+    Gated by no criterion of mine; C1 named termination for one client only. **A cycle**
+    (§0 ruling 1 retired §5.4 clause 2, so only a *dropped* property re-specifies).
+  - **F2/F3 are the review's best work:** the C6 concurrency guard does not go red under the
+    exact defect it names — it *wedges*, >400s against a 0.75s baseline, because
+    `_read_events`' timeout is unreachable (the deadline check sits inside the
+    `for line in resp.iter_lines()` body). A guard that hangs CI is not a guard.
+  - **It also cleared the coder where cycle 1 was right:** C5's leak check is load-bearing
+    under two independent mutations, and the scoped-`ThreadPoolExecutor` deviation was
+    explicitly accepted rather than filed as over-engineering.
+  - F5 is a tautological meta-test cited as C3 evidence — the form the 2026-09-07 ruling
+    retired. F6 two copies of one wire contract. F7 `get_event_loop`. F8 missing annotation.
+- **The cycle-1 hook bypass stands unresolved and is the user's to rule on.** The work itself
+  checks clean; this is a process breach, not damaged code.
 
 ## Ready
 
