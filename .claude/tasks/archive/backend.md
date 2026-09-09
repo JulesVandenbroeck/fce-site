@@ -2032,3 +2032,52 @@ README says there is no seed).
 instead of `main`, so eight `.claude/` and `docs/` files merged through a coder's PR. The §4
 carve-out exists precisely so that does not happen. Nothing was lost, but the branch is no longer
 a clean record of what the coder wrote.
+
+
+---
+
+## B-021 — cycle-by-cycle record (moved from the active list 2026-09-09)
+
+### B-021 — Job registry + `POST /api/run` + `GET /api/run/{id}/result`
+- **Scope:** create `src/fce_web/jobs.py`, `routes/api.py`, `tests/test_jobs.py`,
+  `tests/test_api_run.py`; modify `app.py`, `docs/api.md`
+- **Accept:** C1-C9 (cycle 1, verbatim in PR #35) + **C10** (cycle 2: the `Job.events` contract
+  B-022 consumes is asserted, not only documented). checks=10. Suite floor 639 -> 649 on the branch.
+- **Depends on:** B-019, B-020 — both merged.
+- **Branch / PR:** `task/b-021-run-api` — #35, head `73dc1de` (pushed, **RED**)
+- **Status:** **in review (cycle 2)**, dispatched 2026-09-09. The branch is green again:
+  head `3ef6176`, F1-F10 resolved (F11 ruled by me), C10 added. §5.1 gate passed in the primary
+  checkout — **653 passed**, flake8 0. History intact: `73dc1de` is an ancestor of the new head,
+  nothing rebased or force-pushed. Prior stop: see [`handoff/b-021-backend-2.md`](../handoff/b-021-backend-2.md),
+  which is **on the task branch, not on `main`**. The coder stopped at 90% of the 5h limit with
+  `src/fce_web/jobs.py` **not importing**: F9's `_dataset_dir`/`_discover_active_samples` imports
+  were removed while `_mc_samples()` still calls them. F6 is done and committed, F10 partial,
+  `_retag_payload` (F2) exists but is not wired in. F1/F7/F8/F3/F5/F4 are planned in the handoff
+  and not written. **No test or flake8 run since `9b5527b` — do not trust "649 passed" for cycle 2.**
+  Resume at the handoff's step 1. Cycle 1 review: `findings=11, verdict=rework`, posted to the PR
+  (`#issuecomment-5584607751`). §5.1 gate passed (649 passed, flake8 0, reproduces the body).
+- **Review:** 11 findings. **F1 a permanent hang** — the worker's `try/except` wrapped only
+  `run_analysis`, so a later exception left `status="running"` with **no sentinel**, hanging
+  B-022's drain loop forever. **F2** a cache-hit job returned the *first* submitter's
+  `meta.mission` to a different student. **F3/F5** C1 and C6 were certified by checks that
+  structurally could not fail (the reviewer's Mutation C passed against C1's checks). **F4** the
+  progress-queue contract was documented in three places and asserted in none -> **C10**.
+  F6-F10 cheap, riding cycle 2. **This is a cycle, not a re-specification** (§0 ruling 1: a
+  missing `Check:` no longer makes one, and nothing was dropped from an earlier cycle).
+- **Watch:** the coder serialised engine execution through `JobRegistry._run_lock` after finding
+  a real cross-run corruption (`output/hist{plot_idx}_{sample}.root` is addressed by `plot_idx`
+  alone and resolves `get_fce_home()` from the real process env, ignoring the registry's `env`).
+  Argued in writing in the PR body; the per-job output dir needs `analytical_loop.py`, out of scope.
+- **Ruling on F11, 2026-09-08:** an anchor written by a coder working in a **worktree** may ride
+  the task branch. Shared §8 mandates writing it, and it cannot reach the primary checkout from
+  inside a worktree without reaching outside its own tree, which is worse. The §4 carve-out still
+  forbids everything else on a task branch. Add `.claude/handoff/<id>-<role>.anchor.md` to the
+  standard dispatch file scope.
+- **Against me, 2026-09-08:** I dispatched cycle 2 into the **primary working directory**, so the
+  coder checked the branch out there and my next bookkeeping edit landed on the task branch's
+  HEAD instead of `main`. Recovered with a `main` worktree at `~/fce-bookkeeping`, which is where
+  bookkeeping is written for the rest of this session. **A serial dispatch still needs a worktree
+  — the primary checkout is the orchestrator's, not a free workspace.**
+- **Note:** wave 3 is running **in series** on the user's instruction, not parallel.
+- Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+
