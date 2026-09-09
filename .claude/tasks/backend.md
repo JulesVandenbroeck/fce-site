@@ -29,6 +29,14 @@ IDs are `B-nnn`, allocated in order and never reused.
   real cross-run corruption — `output/hist{plot_idx}_{sample}.root` is keyed on `plot_idx` alone and
   resolves `get_fce_home()` from the real process env, ignoring the registry's `env`. Argued in
   writing and accepted; the per-job output dir needs `analytical_loop.py`, out of scope.
+- **Against me, 2026-09-09 — the §5.1 gate can be defeated by a dirty checkout.** I returned cycle 3
+  claiming F14's test was missing and "654 passed" did not reproduce. It was there. My primary
+  checkout had **staged reverts** of the four files, byte-identical to `3ef6176`, so every grep and
+  count read cycle-2 content while `git log` correctly showed the cycle-3 HEAD. The coder refused
+  the return, proved it three ways including the GitHub API, and refused to write the false line
+  into the PR body — correct on both counts. **Rule added: `git status --porcelain` must be empty
+  before any §5.1 count, and read contested files with `git show <sha>:<path>`, never the working
+  tree.** Not a cycle; nothing was consumed but time.
 - **Do not merge with F12 open**, and do not merge before B-022 has the `Job.events` contract it
   needs asserted rather than documented.
 - **History:** [`archive/backend.md`](archive/backend.md)
