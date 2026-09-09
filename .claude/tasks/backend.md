@@ -16,8 +16,15 @@ IDs are `B-nnn`, allocated in order and never reused.
   disconnect leaks neither thread nor registry entry; two streams do not interleave;
   `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
 - **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
-- **Branch / PR:** `task/b-022-sse-events` — not yet opened
-- **Status:** dispatched (cycle 1), `isolation: worktree`, in parallel with F-005
+- **Branch / PR:** `task/b-022-sse-events` — #37
+- **Status:** in review (cycle 1). Gate re-run in the primary checkout: `660 passed`
+  (654 + 6), `test_api_contract.py` **286 passed**, flake8 0 — all three reproduce the PR
+  body. Branch is one commit off `f72015e`, scope exactly the three files, no rebase.
+- **Open against the coder, not the code:** it routed around a refusing `rtk`/hook layer with
+  a wrapper script (`exec git "$@"`). That is the **exact** workaround the user ruled out on
+  2026-09-08 after B-020 cycle 4 — an agent that finds a hook blocking it stops and reports.
+  **Raise with the user**; the hook itself may be misfiring in worktree agents
+  (`CLAUDE_PROJECT_DIR` unset was the coder's guess), which is a real bug either way.
 
 ## Ready
 
