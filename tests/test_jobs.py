@@ -16,7 +16,8 @@ import pytest
 
 import fce_web.jobs as jobs_module
 from fce_web.graph import GraphError
-from fce_web.jobs import JobRegistry
+from fce_web.jobs import Job, JobRegistry
+from fce_web.runs import RunContext
 
 FIXTURE_ROOT = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(FIXTURE_ROOT, "fixtures", "datasets", "IDEA", "91GeV")
@@ -56,8 +57,9 @@ def registry(tmp_path, monkeypatch):
 
 def _block_run_analysis(monkeypatch):
     """Monkeypatch ``fce_web.jobs.run_analysis`` to block until the test
-    releases it -- the seam F3/F5 need to observe a job mid-flight instead
-    of asserting on a status that would also pass if ``submit`` blocked."""
+    releases it -- the seam a check needs to observe a job mid-flight
+    instead of asserting on a status that would also pass if ``submit``
+    blocked."""
     real_run_analysis = jobs_module.run_analysis
     started = threading.Event()
     release = threading.Event()
@@ -92,8 +94,8 @@ def _wait_done(registry, run_id, timeout=60.0):
     return job
 
 
-# ---- C1: submit returns before the run completes, and it actually runs ----
-# F3: `assert job.status in ("running", "done")` cannot fail even if `submit`
+# ---- submit returns before the run completes, and it actually runs ----
+# `assert job.status in ("running", "done")` cannot fail even if `submit`
 # blocked until the run finished -- it accepts both outcomes. Block
 # `run_analysis` on an `Event` the test controls so the job is observably
 # still "running" *after* `submit` has returned, which a blocking `submit`
@@ -113,7 +115,7 @@ def test_submit_returns_before_the_run_completes(registry, monkeypatch):
     assert finished.payload["meta"]["mission"] == "M-1"
 
 
-# ---- C2: an invalid graph never starts a run ----
+# ---- an invalid graph never starts a run ----
 
 def test_invalid_graph_raises_before_any_job_exists(registry):
     bad_graph = {"nodes": [{"id": "ds1", "kind": "DataSource", "config": {}}], "edges": []}
@@ -122,7 +124,7 @@ def test_invalid_graph_raises_before_any_job_exists(registry):
     assert registry._jobs == {}
 
 
-# ---- C3: two concurrent runs keep separate state ----
+# ---- two concurrent runs keep separate state ----
 
 def test_two_concurrent_runs_keep_separate_state(registry):
     job_a = registry.submit(_graph(min_mass="60.0", max_mass="120.0"), mission_id="A")
@@ -141,7 +143,7 @@ def test_two_concurrent_runs_keep_separate_state(registry):
     assert finished_a.payload["edges"] != finished_b.payload["edges"]
 
 
-# ---- C4: no module-level mutable state -- two registries share nothing ----
+# ---- no module-level mutable state -- two registries share nothing ----
 
 def test_two_registries_share_nothing(registry, tmp_path, monkeypatch):
     other = JobRegistry(env={"FCE_HOME": str(tmp_path)})
@@ -151,11 +153,11 @@ def test_two_registries_share_nothing(registry, tmp_path, monkeypatch):
     assert other._cache == {}
 
 
-# ---- C7: a repeated submission is a visible cache hit ----
-# F2: a cache hit reused `cached.payload` by reference, `meta.mission` and
+# ---- a repeated submission is a visible cache hit ----
+# A cache hit reused `cached.payload` by reference, `meta.mission` and
 # all -- a second mission submitting the same cuts saw the first mission's
 # id. The `third` submission below, under a different mission id, is the
-# check that would fail on the original bug.
+# check that would fail on that bug.
 
 def test_repeated_submission_is_a_cache_hit(registry):
     first = registry.submit(_graph(), mission_id="M-1")
@@ -173,7 +175,7 @@ def test_repeated_submission_is_a_cache_hit(registry):
     assert registry.get(first.id).payload["meta"]["mission"] == "M-1"
 
 
-# ---- F5 / C6: cancellation reaches a queued job, not just a running one ----
+# ---- cancellation reaches a queued job, not just a running one ----
 
 def test_cancelling_a_queued_job_reaches_cancelled_status(registry, monkeypatch):
     started, release = _block_run_analysis(monkeypatch)
@@ -192,7 +194,7 @@ def test_cancelling_a_queued_job_reaches_cancelled_status(registry, monkeypatch)
     assert _drain_to_sentinel(finished_b.events) == {"type": "done", "status": "cancelled"}
 
 
-# ---- F4 / C10: the events queue B-022 will drain ----
+# ---- the events queue B-022 will drain ----
 
 def test_events_queue_carries_progress_then_one_terminal_sentinel(registry):
     job = registry.submit(_graph(), mission_id="M-1")
@@ -221,7 +223,7 @@ def test_cache_hit_events_queue_holds_only_the_sentinel(registry):
     assert second.events.empty()
 
 
-# ---- F1: an unexpected (non-PayloadError) exception must still terminate ----
+# ---- an unexpected (non-PayloadError) exception must still terminate ----
 
 def test_unexpected_exception_building_payload_still_reaches_terminal_status(registry, monkeypatch):
     def boom(*args, **kwargs):
@@ -234,6 +236,22 @@ def test_unexpected_exception_building_payload_still_reaches_terminal_status(reg
     assert finished.status == "error"
     assert finished.error == "boom"
     assert _drain_to_sentinel(finished.events) == {"type": "done", "status": "error"}
+
+
+# ---- _evict_over_cap drops the oldest non-"running" job, keeps every
+# "running" job, and stops once nothing evictable is left ----
+
+def test_evict_over_cap_keeps_running_jobs_and_caps_the_rest():
+    reg = JobRegistry()
+    for i in range(jobs_module._MAX_JOBS + 2):
+        status = "running" if i < 5 else "done"
+        job = Job(id=str(i), mission_id="M-1", ctx=RunContext(), status=status)
+        reg._jobs[job.id] = job
+
+    reg._evict_over_cap()
+
+    assert len(reg._jobs) == jobs_module._MAX_JOBS
+    assert all(reg._jobs[str(i)].status == "running" for i in range(5))
 
 
 if __name__ == "__main__":

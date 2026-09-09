@@ -57,8 +57,8 @@ def _poll_result(client, run_id, timeout=60.0):
         time.sleep(0.02)
 
 
-# ---- C1: submit returns a run id before the run completes ----
-# F3: neither original check here could fail even if `POST /api/run` blocked
+# ---- submit returns a run id before the run completes ----
+# Neither original check here could fail even if `POST /api/run` blocked
 # until the run finished. Block `run_analysis` on an `Event` the test
 # controls so the result is observably still "running" right after the
 # response comes back.
@@ -91,7 +91,7 @@ def test_submit_returns_a_run_id_immediately(client, monkeypatch):
     assert resp2.json()["status"] == "done"
 
 
-# ---- C2: an invalid graph is a 4xx carrying B-020's message ----
+# ---- an invalid graph is a 4xx carrying B-020's message ----
 
 def test_invalid_graph_is_a_400_with_graph_error_message(client):
     bad_graph = {"nodes": [{"id": "ds1", "kind": "DataSource", "config": {}}], "edges": []}
@@ -100,7 +100,7 @@ def test_invalid_graph_is_a_400_with_graph_error_message(client):
     assert "DataSource" in resp.json()["error"]
 
 
-# ---- C5: result is fetchable by id, "running" while in flight, 404 unknown ----
+# ---- result is fetchable by id, "running" while in flight, 404 unknown ----
 
 def test_unknown_run_id_is_404(client):
     resp = client.get("/api/run/does-not-exist/result")
@@ -117,9 +117,13 @@ def test_result_reaches_done_with_the_histogram_payload(client):
     assert body["meta"]["mission"] == "M-1"
     assert body["data"] is not None
     assert len(body["edges"]) == 51  # 50 bins
+    # The fixture dataset's actual MC samples, independently known from
+    # tests/fixtures/datasets/IDEA/91GeV/*.root -- guards against `samples`
+    # silently going empty (see driver.py's `active_samples`).
+    assert [s["name"] for s in body["samples"]] == ["X1", "X2", "X3"]
 
 
-# ---- C7: a repeated submission is a visible cache hit ----
+# ---- a repeated submission is a visible cache hit ----
 
 def test_repeated_submission_reports_a_cache_hit(client):
     first_id = client.post("/api/run", json={"missionId": "M-1", "graph": _graph()}).json()["runId"]

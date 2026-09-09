@@ -21,7 +21,7 @@ from fce_web.jobs import JobRegistry
 class RunRequest(BaseModel):
     """``POST /api/run``'s body -- see ``docs/api.md``. ``graph`` is handed
     to ``fce_web.graph.build_run_config`` unvalidated beyond "is an object";
-    that function is the actual boundary validation (C2)."""
+    that function is the actual boundary validation."""
 
     missionId: str
     graph: Dict[str, Any]
@@ -40,8 +40,8 @@ def build_router() -> APIRouter:
     async def submit_run(request: Request, body: RunRequest) -> Dict[str, Any]:
         """Validate and submit *body*'s graph. Returns before the run
         completes -- ``JobRegistry.submit`` starts it on a background
-        thread and returns the job's id immediately (C1). An invalid graph
-        never starts a run at all (C2).
+        thread and returns the job's id immediately. An invalid graph
+        never starts a run at all.
         """
         registry: JobRegistry = request.app.state.jobs
         try:
@@ -53,7 +53,7 @@ def build_router() -> APIRouter:
     @router.get("/run/{run_id}/result")
     async def get_result(request: Request, run_id: str) -> Dict[str, Any]:
         """The histogram payload for a finished run, a "still running"
-        status for one in flight, or 404 for an unknown id (C5)."""
+        status for one in flight, or 404 for an unknown id."""
         registry: JobRegistry = request.app.state.jobs
         job = registry.get(run_id)
         if job is None:

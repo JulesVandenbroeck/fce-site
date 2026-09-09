@@ -16,24 +16,10 @@ Two ``JobRegistry`` instances share nothing -- not a dict, not a lock, not a
 cache.
 
 **The progress queue, named for B-022.** Every ``Job`` carries ``events``, a
-``queue.Queue[dict]`` fed by the run's ``RunContext`` callbacks. Each item is
-one of::
-
-    {"type": "progress", "value": 0.42}
-    {"type": "log", "message": "..."}
-    {"type": "phase", "phase": "Reading events..."}
-    {"type": "node", "status": "active"|"completed", "nids": [1, 2]}
-
-and the queue is terminated by exactly one sentinel::
-
-    {"type": "done", "status": "done"|"error"|"cancelled"}
-
-after which nothing more is ever put on it -- ``_run`` puts it unconditionally
-after its single ``try/except``, so a run that dies unexpectedly still
-terminates the queue instead of leaving a caller blocked on ``get()``
-forever. A cache-hit job (see below) skips straight to the sentinel -- there
-is no run to report progress for. B-022's SSE endpoint drains this queue
-with ``queue.Queue.get()`` in a loop until it sees the sentinel.
+``queue.Queue[dict]`` fed by the run's ``RunContext`` callbacks. Full item
+shapes and the exactly-one-sentinel contract are in ``docs/api.md``'s
+"Progress, for B-022" note -- this is the one place that contract is
+written out; do not restate it here.
 
 **The content-addressed cache, at the job-registry layer.** The engine
 already caches on disk per histogram digest (``engine/analytical_loop.py``,
@@ -227,9 +213,10 @@ class JobRegistry:
         body -- the engine call and the payload build alike -- lives inside
         one ``try/except Exception``, so *any* failure (an engine bug, a
         bad histogram file, anything) still lands ``job`` in a terminal
-        status and still puts the sentinel on ``job.events``; nothing here
-        may leave a job stuck at ``"running"`` with a caller blocked on the
-        queue forever.
+        status and still puts the sentinel on ``job.events`` (see
+        ``docs/api.md``'s "Progress, for B-022" note for the queue's
+        contract); nothing here may leave a job stuck at ``"running"`` with
+        a caller blocked on the queue forever.
         """
         # Serialized: see the `_run_lock` note in `__init__`. A job waiting
         # its turn is still `"running"` and its cancellation still works --
