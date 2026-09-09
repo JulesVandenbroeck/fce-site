@@ -491,9 +491,15 @@ diff against — but it is **not** authoritative; `HISTOGRAM_SCHEMA` is.
 
 **Interfaces**
 - Consumes: F-004's canvas container; `bench.html:200-725`'s 27 functions as the source to port.
-- Produces: the client-side graph model — `nodes` keyed by id holding `{kind, x, y}`, and
+- Produces: the client-side graph model — **`nodes` as a *list* of `{id, kind, x, y}`**, and
   `edges` as `[fromId, toId]` pairs (`bench.html:289-292`). F-007 serialises exactly this.
   **Record the exported shape in the PR body**; F-007 is dispatched against it.
+  **Corrected 2026-09-09, F-005 cycle 1 F2.** This line originally said "`nodes` keyed by id
+  holding `{kind, x, y}`", and that was wrong: the only consumer, `build_run_config`
+  (`graph.py:338`), reads `nodes` as a **list** of `{id, kind, config?}` — `id`/`kind` at
+  `graph.py:120,122-123`, optional `config` at `:135`; `edges` as `[from, to]` pairs at
+  `:144-146` (confirmed by `scout`, not inferred). Keying by id would have made F-007 inherit a
+  shape translation for no gain. `x`/`y` ride along as extra keys the server does not read.
 
 **Acceptance criteria**
 - [ ] **C1** The palette offers exactly **four** kinds — `Multiplicity`, `Selection`,

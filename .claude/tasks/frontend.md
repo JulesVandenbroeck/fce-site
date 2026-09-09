@@ -19,14 +19,31 @@ IDs are `F-nnn`, allocated in order and never reused.
   floor >= 654, flake8 0, e2e nodeid count reported (37 at F-004).
 - **Depends on:** F-004 (merged `30cceb3`), B-020 (merged `1909046`). Wave 3.
 - **Branch / PR:** `task/f-005-bench-canvas` — #36
-- **Status:** in review (cycle 1). Gate re-run in the primary checkout: `662 passed`,
-  flake8 0, `tests/e2e/` **45** nodeids (37 at F-004) — all three reproduce the PR body.
+- **Status:** in rework (cycle 2). Cycle 1 gate reproduced `662 passed`, flake8 0,
+  `tests/e2e/` **45** nodeids (37 at F-004).
+- **Review (cycle 1):** `findings=9, scope=pass, verdict=rework` — PR #36 comment
+  `5600262313`. Blockers F1 and F2. checks 8 -> **10** (C9 duplicate-edge guard, C10 the
+  corrected list shape).
+  - **F1** `graph.js:385` — no duplicate-edge guard, and the reviewer confirmed the server
+    does not reject one: `build_run_config` emits **two identical `HistogramConfig`s**, so a
+    double-press silently runs and plots the analysis twice. Gated by no criterion of mine ->
+    §5.4 clause 3, **a cycle, not a re-specification**.
+  - **F2 is my defect.** I published `nodes` keyed by id, copied from the plan. `scout`
+    confirms `build_run_config` (`graph.py:338`) reads `nodes` as a **list** of
+    `{id, kind, config?}` (`:120,122-123,135`) and `edges` as `[from, to]` (`:144-146`), via
+    `registry.submit` (`routes/api.py:53`) -> `jobs.py:163`.
+    `docs/plan-m3-vertical-slice.md:494` corrected in place with the reason.
+  - **F3/F4 are also mine** — "canvas container only" made the module `<script>` tag
+    out of scope and pushed the locked palette tile into runtime JS injection, where it
+    vanishes with JS off. Scope widened for cycle 2 to the container, the tag and the
+    palette list. The coder had flagged exactly this at report time.
+  - F5-F9 are trims (~40 lines of deletion), individually overrulable in writing.
   **Gate note, and it is the second time this has bitten:** the primary checkout's system
   `python` has no `fce_web` on its path, so `python -m pytest` collects nothing and reports
   it as an empty run rather than an error. Use `.venv/bin/python`.
-- **Contract it must publish:** the exported graph model — `nodes` keyed by id holding
-  `{kind, x, y}`, `edges` as `[fromId, toId]` pairs. **F-007 is dispatched read-only against
-  F-005's PR body**, so a thin body blocks F-007.
+- **Contract it must publish (corrected, cycle 2):** the exported graph model — `nodes` as a
+  **list** of `{id, kind, x, y}`, `edges` as `[fromId, toId]` pairs. **F-007 is dispatched
+  read-only against F-005's PR body**, so a thin body blocks F-007.
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Ready
