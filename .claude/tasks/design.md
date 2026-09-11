@@ -69,9 +69,13 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Status:** **in review (cycle 1)**, PR #39 head `86ed41b`. Gate reproduced in the primary checkout:
-  `677 passed`, flake8 0, scope 3 CSS files + `base.html` (links) + `shell.html` (one span), MERGEABLE,
-  `Total checks: 11`. C10 footprint deviates >10% from D-013, argued in the body. C1-C9 from the plan + **C10** (F-006's footprint) + **C11** (fonts on
+- **Status:** **in rework (cycle 2)**, dispatched 2026-09-11 into the existing worktree, head `86ed41b`.
+- **Review (cycle 1):** `findings=5, scope=pass, verdict=rework` — PR #39 comment `5631916694`. 677 /
+  flake8 0 reproduced; C2-C9/C11 reproduced; radio fix mutation-verified. **F1 blocks:** opened
+  Observable widens to 300px but `graph.js` clamps with `NODE_W=160`, so right-side nodes clip off
+  the canvas. F2 hard-coded lengths (C1 covers spacing). F3 collapsed card 105 in a 104 box. F4/F5
+  comment trims. checks 11 -> **13** (C12 node stays on canvas, C13 token lengths + no overflow).
+  If the coder keeps 300px, a frontend task to clamp by live width follows. C1-C9 from the plan + **C10** (F-006's footprint) + **C11** (fonts on
   real selectors, for F-003). Total 11. Full entry under `## Blocked` (historical position).
 
 ## Ready
