@@ -79,6 +79,7 @@ _none._
   C2 at 768 the expanded mission panel is not cut off at the viewport edge (PR #40 review saw it clipped); C6/C14
   of D-015 still hold in 12 layouts. **Serialise after F-009** (same page).
 - **Depends on:** F-010 (`57a42a5`). From PR #40 review F2.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/d-017-disabled-pagers`. checks=5. Runs while B-023 is in review; F-007 waits for it (same page).
 
 ## Blocked
 

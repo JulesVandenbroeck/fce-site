@@ -13,7 +13,7 @@ _none._
 
 ## Ready
 
-**Wave 5 go-ahead given by the user, 2026-09-11.** F-007 (waits for B-023, #43) → F-008 → D-016, serialised on the page. D-017 slots in after F-007.
+**Wave 5 go-ahead given by the user, 2026-09-11.** D-017 (in flight) → F-007 (also waits for B-023, #43) → F-008 → D-016, serialised on the page.
 
 ## Blocked
 
