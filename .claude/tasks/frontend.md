@@ -13,20 +13,7 @@ _none._
 
 ## Ready
 
-Order: F-010, then F-009, then F-003 (serialised — same page). F-007 waits for the user's wave-5 go-ahead.
-
-### F-010 — Mission panel shows mission 3's text instead of mission 1's
-- **Found by the user, 2026-09-11** (PDF of `main` at `8f094a6`): the panel reads "M-3 · The Unknown — A signal
-  sample is hiding in the data. Find cuts that expose it and run a fit." — carried over from the D-010
-  exploration's demo copy. Mission 3 is **blocked** (X4/X5 unidentified, shared §5: no mission-3 content), and
-  M3 runs mission 1's dataset. Also claims a fit, which M3 does not build.
-- **Scope:** `src/fce_web/templates/shell.html` (mission panel text only), `tests/e2e/test_shell.py`
-- **Accept:** the panel shows **M-1 · First Light** with brief §3's M-1 objective in plain student English
-  (`docs/design-brief.md:86-91`); no M-2/M-3 text anywhere in the rendered page; the pager does not offer
-  missions that do not exist yet. Hardcoded is fine — mission loading is M5.
-- **Depends on:** nothing — D-015 merged `0eded93`. Serialise with F-009.
-- **Branch / PR:** `task/f-010-mission-one-text` — #40
-- **Status:** in review (cycle 1) — head `cff7e54`, gate passed (679 / flake8 0). checks=5.
+Order: F-009, then F-003 (serialised — same page). F-007 waits for the user's wave-5 go-ahead.
 
 ### F-009 — An opened node is re-clamped onto the canvas by its measured size
 - **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
@@ -34,6 +21,7 @@ Order: F-010, then F-009, then F-003 (serialised — same page). F-007 waits for
   the canvas (vertical and horizontal); dragging an opened node clamps by its live size, not `NODE_W`/`NODE_H`.
   Carries D-015's C12 vertical half (PR #39 cycle-2 review F6). Proven in Playwright at the bottom edge.
 - **Depends on:** D-015 — merged `0eded93`. Wave 3 fix, before F-007.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-009-clamp-opened-node`. checks=5.
 
 ### F-003 — Prove the four woff2 are actually served
 - **Depends on:** D-015 — merged `0eded93`. Full entry under `## Deferred`.
@@ -52,6 +40,9 @@ Order: F-010, then F-009, then F-003 (serialised — same page). F-007 waits for
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-010** — mission panel shows M-1, not M-3 — #40, `57a42a5`, 1 cycle, clean gate (`findings=2, verdict=approve`).
+  checks=5. Suite floor → **679**. Pagers `disabled`, classes kept. F1 (two tests where one asked) backlogged;
+  F2 (disabled pagers look live) → **D-017**. Reviewer also saw the right panel cut off at 768 → D-017 C2.
 - **F-005** — port the Bench canvas — #36, `b7fdfdf`, 2 cycles, clean gate
   (`findings=1, verdict=approve`; F10 backlogged). checks=10. Suite floor → **664**;
   `tests/e2e/` 45 → **47** nodeids. Ships `static/js/graph.js` and the canvas markup:

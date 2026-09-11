@@ -72,7 +72,13 @@ _none._
 
 ## Ready
 
-_none._
+### D-017 — Disabled mission pagers look disabled; right panel at 768
+- **Scope:** `src/fce_web/static/css/shell.css` (tokens read-only).
+- **Accept:** C1 `.mission-panel__pager:disabled` computes default cursor, no hover background change, muted
+  ink that still meets AA for a disabled control or is exempt per WCAG 1.4.3 (say which); `--ink-45` not for text.
+  C2 at 768 the expanded mission panel is not cut off at the viewport edge (PR #40 review saw it clipped); C6/C14
+  of D-015 still hold in 12 layouts. **Serialise after F-009** (same page).
+- **Depends on:** F-010 (`57a42a5`). From PR #40 review F2.
 
 ## Blocked
 
