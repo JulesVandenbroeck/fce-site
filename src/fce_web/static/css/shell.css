@@ -1,0 +1,316 @@
+/* shell.css — D-015, porting docs/design-explorations/shell.html + shell.css
+ * (D-010/D-014) into the running app. This is the base page reset, the
+ * three-region app shell (palette / canvas-region / mission-panel) around
+ * templates/shell.html, and the page header above it in index.html.
+ *
+ * Every colour, spacing, type and radius value is a var() into tokens.css.
+ * The exploration copy this was ported from is frozen — this file, not
+ * that one, is authoritative from here on (docs/plan-m3-vertical-slice.md,
+ * D-015 notes).
+ *
+ * Deviation from the exploration: shell.html there IS the whole page, so
+ * `.shell { height: 100% }` stretched it to the viewport. Here index.html
+ * puts a page header (h1 + .page-intro) above the shell, so forcing 100%
+ * height would fight that header's own box. The shell instead sizes to its
+ * content — the canvas-wrap's fixed 704x512 design surface decides the
+ * row's height — which keeps the same layout without the viewport-height
+ * assumption.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--space-rule) - var(--border-hairline)),
+    var(--paper-line) calc(var(--space-rule) - var(--border-hairline)),
+    var(--paper-line) var(--space-rule)
+  );
+}
+
+button, input, select, textarea, label { font: inherit; color: inherit; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- focus — visible everywhere, never removed -------------------------- */
+button:focus-visible,
+.canvas-wrap:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---- page header (index.html, above the shell) --------------------------- */
+main {
+  padding: var(--space-3) 0 0;
+}
+main > h1 {
+  margin: 0 var(--space-4) var(--space-2);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+}
+.page-intro {
+  margin: 0 var(--space-4) var(--space-3);
+  max-width: 70ch;
+  color: var(--ink-70);
+}
+
+/* ---- shell: three regions, one flex row ---------------------------------- */
+.shell {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* ---- palette (left, collapses) ------------------------------------------- */
+.palette {
+  flex: 0 1 auto;
+  min-width: var(--space-7);
+  width: var(--space-7);
+  border-right: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-settle);
+}
+@media (prefers-reduced-motion: reduce) {
+  .palette { transition: none; }
+}
+.palette[data-state="expanded"] {
+  width: calc(328.0px + var(--space-3) * 2 + var(--space-2));
+}
+.palette__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: var(--border-hairline) solid var(--paper-line);
+}
+.palette__title {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--ink-70);
+  white-space: nowrap;
+}
+.palette[data-state="collapsed"] .palette__title { opacity: 0; }
+.palette__toggle {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.palette__toggle:hover { background: var(--hover-bg); }
+
+.palette__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.palette__add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.palette__add:hover { border-color: var(--graphite-blue); }
+.palette__add-swatch {
+  flex: 0 0 auto;
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+/* One hue per placeable kind, the same everywhere it appears (design manual
+ * §2): the four the 2026-09-02 ruling leaves in the palette. */
+.palette__add--multiplicity .palette__add-swatch { background: var(--node-multiplicity); }
+.palette__add--selection .palette__add-swatch { background: var(--node-selection); }
+.palette__add--observable .palette__add-swatch { background: var(--node-observable); }
+.palette__add--histogram .palette__add-swatch { background: var(--node-histogram); }
+
+.palette__locked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: var(--border-hairline) dashed var(--locked-border);
+  background: var(--locked-fill);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+}
+.lock-tag {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  /* Sits on --locked-fill; --ink-70 falls under AA there (tokens.css's own
+   * lock-state comment), so this stays full --ink. */
+  color: var(--ink);
+}
+
+/* ---- canvas region (middle, always present, never covered) -------------- */
+.canvas-region {
+  flex: 1 1 0;
+  min-width: calc(var(--space-7) * 6);
+  display: flex;
+  padding: var(--space-3);
+  overflow: auto;
+  background: var(--paper);
+  position: relative;
+}
+/* The exploration's .canvas-wrap holds only the svg, at a fixed 704x512.
+ * Ours also holds .canvas-status (F-004's addition, a real region this
+ * markup needs styled) below it, so height is left to content instead of
+ * forced to 512 -- the svg keeps its own 704x512 intrinsic size (attributes
+ * in shell.html) and the status line adds its own height beneath it. Width
+ * stays the fixed 11 x --space-7 = 704px design surface. */
+.canvas-wrap {
+  flex: 0 0 auto;
+  margin: auto;
+  width: calc(var(--space-7) * 11);
+  border: var(--border-hairline) solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.canvas-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.canvas-status {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-70);
+  border-top: var(--border-hairline) solid var(--paper-line);
+}
+
+/* ---- mission panel (right, expands + pages back through missions) ------- */
+.mission-panel {
+  flex: 0 1 auto;
+  min-width: var(--space-7);
+  width: var(--space-7);
+  border-left: var(--border-hairline) solid var(--paper-line);
+  background: var(--panel);
+  overflow: hidden;
+  transition: width var(--duration-base) var(--ease-settle);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mission-panel { transition: none; }
+}
+.mission-panel[data-state="expanded"] {
+  width: calc(var(--space-7) * 5);
+}
+.mission-panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: var(--border-hairline) solid var(--paper-line);
+}
+.mission-panel__pager {
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.mission-panel__pager:hover { background: var(--hover-bg); }
+.mission-panel__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The mission code (M-3) is an identifier, not prose — set in the mono
+ * face like every other physics identifier and measured number
+ * (`.claude/design/CLAUDE.md` §2, tokens.css's own type comment). */
+.mission-panel__code {
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-numeric);
+}
+.mission-panel__toggle {
+  /* Load-bearing `position: relative` — see shell.css's own exploration
+   * history: without it the toggle's .sr-only child escapes the panel's
+   * `overflow: hidden` clip and widens the page past shell-page-no-h-scroll
+   * at every width. */
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--chrome-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.mission-panel__toggle:hover { background: var(--hover-bg); }
+
+.mission-panel__body {
+  padding: var(--space-3);
+}
+.mission-panel__brief {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-70);
+}
+
+/* ---- narrow widths — the canvas keeps its floor, the panels step down ---
+ * Same arithmetic as the exploration: at 1024 only the mission panel steps
+ * down (1024 - 368 palette - 256 panel = 400 > 384 floor); at 768 both
+ * sides drop to 3 x --space-7 = 192 (768 - 192 - 192 = exactly 384). Holds
+ * here because .shell still spans the full viewport width — main carries
+ * no horizontal padding of its own. */
+@media (max-width: 1024px) {
+  .mission-panel[data-state="expanded"] {
+    width: calc(var(--space-7) * 4);
+  }
+}
+@media (max-width: 768px) {
+  .palette[data-state="expanded"],
+  .mission-panel[data-state="expanded"] {
+    width: calc(var(--space-7) * 3);
+  }
+  main > h1,
+  .page-intro {
+    margin-left: var(--space-3);
+    margin-right: var(--space-3);
+  }
+}
