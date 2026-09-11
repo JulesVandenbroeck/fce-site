@@ -31,7 +31,9 @@ Use a detached worktree for bookkeeping or gates again.
 ## First moves, in order
 1. Re-dispatch `code-reviewer` on PR #39 with the resume block, pointing at `handoff/d-015-review-2.md`.
    Its PR-comment history: cycle 1 `5631916694`, cycle 2 `5632419260`. Post its review, merge on approve.
-2. After D-015 merges: dispatch **F-009** (frontend.md `## Blocked`) — opened node re-clamped by measured size.
+   **Tell it to check the collapsed palette/panel states at 1440/1024/768** — see design.md D-015 "Verify before merge".
+2. After D-015 merges: dispatch **F-010** (mission panel shows M-3 text; user-found) and **F-009**, serialised.
+   Was: dispatch **F-009** (frontend.md `## Blocked`) — opened node re-clamped by measured size.
    Then F-003 (released by D-015).
 3. **F-007 only after the user's wave-5 go-ahead.** F-007 and F-009 touch the same page: serialise.
 

@@ -73,6 +73,11 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   Head `9e8fbf1`. Reviewer verified F5-F8 fixed, restated C12 holds at both edges (red under a 300px
   mutation), no new findings; **only its own pytest+flake8 run was unfinished** (my gate had 677 / 0).
   Next: re-dispatch the reviewer to finish; merge on approve; then F-009.
+- **Verify before merge (user's layout check, 2026-09-11):** the expanded styled page (`~/fce-demo/d015-styled-1440.png`)
+  matches the three-region design. But a 1440 screenshot with the palette collapsed / panel collapsed
+  (`~/fce-demo/d015-collapsed-1440.png`) shows the palette list still visible and clipped in a ~64px rail and the
+  mission panel reduced to a clipped toggle at the right edge. May be a mid-transition capture; the reviewer
+  must check the collapsed states explicitly (C6's 12 layouts were not re-toggled on cycle 2).
 - **Review (cycle 2):** `findings=3, scope=pass, verdict=rework`. F1-F4 fixed, F5 half. **F6:** an opened
   Observable placed low on the canvas spills off the bottom — `graph.js` clamps with fixed `NODE_H=104`,
   opened card is 232px. **Diagnosis: my C12 said "anywhere", which design's file scope cannot satisfy**

@@ -17,6 +17,18 @@ _F-007 is released (all five deps merged) but **waits for D-015** — same page,
 
 ## Blocked
 
+### F-010 — Mission panel shows mission 3's text instead of mission 1's
+- **Found by the user, 2026-09-11** (PDF of `main` at `8f094a6`): the panel reads "M-3 · The Unknown — A signal
+  sample is hiding in the data. Find cuts that expose it and run a fit." — carried over from the D-010
+  exploration's demo copy. Mission 3 is **blocked** (X4/X5 unidentified, shared §5: no mission-3 content), and
+  M3 runs mission 1's dataset. Also claims a fit, which M3 does not build.
+- **Scope:** `src/fce_web/templates/shell.html` (mission panel text only), `tests/e2e/test_shell.py`
+- **Accept:** the panel shows **M-1 · First Light** with brief §3's M-1 objective in plain student English
+  (`docs/design-brief.md:86-91`); no M-2/M-3 text anywhere in the rendered page; the pager does not offer
+  missions that do not exist yet. Hardcoded is fine — mission loading is M5.
+- **Depends on:** nothing (text only). Same template as D-015's one `<span>` wrapper: dispatch after D-015
+  merges, or rebase-free merge of `main` into its branch. Serialise with F-009.
+
 ### F-009 — An opened node is re-clamped onto the canvas by its measured size
 - **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
 - **Accept:** after `growNode()` resizes an opened node, it is moved so its measured box lies fully inside
