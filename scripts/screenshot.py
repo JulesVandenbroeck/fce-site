@@ -33,6 +33,7 @@ import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Mapping, Optional
 
 import uvicorn
 from playwright.sync_api import (
@@ -115,18 +116,29 @@ class RouteNotServedError(ScreenshotError):
 
 
 @contextmanager
-def serve_app(startup_timeout: float = STARTUP_TIMEOUT) -> Iterator[str]:
+def serve_app(
+    startup_timeout: float = STARTUP_TIMEOUT,
+    env: Optional[Mapping[str, str]] = None,
+) -> Iterator[str]:
     """Run the real application on an ephemeral port; yield its base URL.
 
     The port is chosen by the kernel (``bind`` to port 0) and read back from
     the bound socket, so concurrent harnesses never collide and nothing
     depends on a port being free.
+
+    *env* is forwarded to ``fce_web.app.create_app`` unchanged -- the same
+    optional environment mapping ``fce_web.paths.get_fce_home`` accepts, for
+    a caller (task B-023's e2e ``live_server``) that wants the served app's
+    ``FCE_HOME`` pointed somewhere other than the real process environment.
+    ``None``, the default, is what every existing caller (this module's own
+    ``capture``, and the ``live_server`` fixture before B-023) keeps getting:
+    the real process environment, unchanged.
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.bind((HOST, 0))
         port = sock.getsockname()[1]
-        config = uvicorn.Config(create_app(), log_level="warning", access_log=False)
+        config = uvicorn.Config(create_app(env=env), log_level="warning", access_log=False)
         server = uvicorn.Server(config)
         thread = threading.Thread(
             target=server.run,

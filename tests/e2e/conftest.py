@@ -12,7 +12,9 @@ never ran is worse than no harness, because the next person believes it.
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -29,6 +31,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.screenshot import ChromiumUnavailableError, launch_chromium, serve_app  # noqa: E402
+
+#: The committed fixture dataset (task B-018), copied into ``live_server``'s
+#: own ``FCE_HOME`` so a run submitted to it never touches a developer's real
+#: ``~/.fce`` (task B-023).
+FIXTURE_DATASET_DIR = REPO_ROOT / "tests" / "fixtures" / "datasets" / "IDEA" / "91GeV"
 
 #: URL schemes that carry their payload inside the document and so cannot
 #: reach another machine: ``data:`` inlines the bytes, ``blob:`` names an
@@ -116,9 +123,32 @@ def _origin(url: str) -> tuple[str, str | None, int | None]:
 
 @pytest.fixture(name="live_server", scope="session")
 def _live_server() -> Iterator[str]:
-    """Serve the real application on an ephemeral port for the whole session."""
-    with serve_app() as base_url:
-        yield base_url
+    """Serve the real application on an ephemeral port for the whole session,
+    against a hermetic ``FCE_HOME`` seeded with the fixture dataset (task
+    B-023) -- never the real ``~/.fce``.
+
+    Session-scoped ``monkeypatch`` doesn't exist (the fixture is
+    function-scoped), so ``FCE_HOME`` is set directly via
+    ``pytest.MonkeyPatch``, undone on teardown. Setting the real process
+    environment variable, not just the ``env`` mapping threaded into
+    ``create_app``, matters because ``engine.analytical_loop.run_physics_loop``
+    resolves its cache/output directory with ``get_fce_home()`` taking no
+    argument -- it always reads ``os.environ`` (a known, out-of-scope
+    inconsistency, see ``fce_web.jobs`` module docstring) regardless of what
+    ``env`` was passed to ``create_app``.
+    """
+    with tempfile.TemporaryDirectory(prefix="fce-e2e-home-") as fce_home:
+        dataset_dir = Path(fce_home, "datasets", "IDEA", "91GeV")
+        dataset_dir.parent.mkdir(parents=True)
+        os.symlink(FIXTURE_DATASET_DIR, dataset_dir)
+
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setenv("FCE_HOME", fce_home)
+        try:
+            with serve_app(env=os.environ) as base_url:
+                yield base_url
+        finally:
+            monkeypatch.undo()
 
 
 @pytest.fixture(name="browser", scope="session")
