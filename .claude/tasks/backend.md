@@ -17,11 +17,20 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Why:** scout 2026-09-11 — `live_server` sets no `FCE_HOME`, so a browser-submitted run (F-007/F-008) would use
   `~/.fce`. Prerequisite for F-007's e2e checks.
 - **Branch / PR:** `task/b-023-e2e-fixture-runs` — #43
-- **Status:** at gate (cycle 1). Deviation: also sets real process `FCE_HOME` — `analytical_loop.py:272` ignores `env` (backlog).
+- **Status:** cycle 2 dispatched, worktree `.claude/worktrees/agent-aeabe6cf7540d2d34`. Scope widened to
+  `engine/analytical_loop.py` (thread `env` at :272 — the root cause; makes `serve_app(env=)` load-bearing, resolves F1/F2).
+- **Review (cycle 1):** `findings=3, scope=pass, verdict=rework` — PR #43. **F1** session-scoped process `FCE_HOME`
+  leaks into all 623 unit tests; F2 `env=` param inert (mutation green); F3 dead assert. **Diagnosis: a cycle** —
+  nothing dropped. New C6 (no env leak past e2e), C7 (ignoring `env` reddens the test). checks 5 -> **7**.
+  Reviewer also found **pre-existing writers into the real `~/.fce`**: `test_jobs.py:148`, `test_driver.py:340`,
+  `test_engine_parity.py` → **B-024**.
 
 ## Ready
 
-_none — B-022 is the only released backend task and it is in progress._
+### B-024 — Unit tests never write into the real `~/.fce`
+- **Scope:** `tests/test_jobs.py`, `tests/test_driver.py`, `tests/test_engine_parity.py` (tmp `FCE_HOME` / `env`).
+- **Accept:** `pytest tests/ --ignore=tests/e2e -q` leaves `~/.fce/output` and `~/.fce/cache` mtimes unchanged; floors hold.
+- **Depends on:** B-023 (its `analytical_loop.py:272` env threading). Found by PR #43's review.
 - **Consumes read-only:** `Job.events`, the contract written out once in `docs/api.md:108-114`
   and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
   `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
