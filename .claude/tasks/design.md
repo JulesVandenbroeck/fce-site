@@ -69,10 +69,13 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Status:** **handed off mid-review (re-spec after cycle 2)** — see [`handoff/d-015-review-2.md`](../handoff/d-015-review-2.md).
-  Head `9e8fbf1`. Reviewer verified F5-F8 fixed, restated C12 holds at both edges (red under a 300px
-  mutation), no new findings; **only its own pytest+flake8 run was unfinished** (my gate had 677 / 0).
-  Next: re-dispatch the reviewer to finish; merge on approve; then F-009.
+- **Status:** **cycle 3 dispatched (last before §5.7 limit)** to design-coder in worktree `.claude/worktrees/agent-ad7927e0c748beb14`. Head was `9e8fbf1`.
+- **Review (cycle 2, finished from handoff):** `findings=3, scope=pass, verdict=rework` — PR #39 comment `5632891506`.
+  F5-F8 fixed; 677 / flake8 0. **F9** collapsed `#palette-list` still painted (`display:flex` beats `[hidden]`);
+  **F10** collapsed palette toggle clipped outside the 64px rail; **F11** collapsed panel toggle 21-53px past the
+  viewport. Confirms the user's screenshot, not a transition artefact. **Diagnosis: a cycle** — C6 only ever gated
+  h-scroll; nothing dropped; reachable controls are shared §6. New **C14** (collapsed body not painted, both
+  toggles fully in viewport and hit, 12 layouts). checks 13 -> **14**.
 - **Verify before merge (user's layout check, 2026-09-11):** the expanded styled page (`~/fce-demo/d015-styled-1440.png`)
   matches the three-region design. But a 1440 screenshot with the palette collapsed / panel collapsed
   (`~/fce-demo/d015-collapsed-1440.png`) shows the palette list still visible and clipped in a ~64px rail and the
