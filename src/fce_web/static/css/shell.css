@@ -1,20 +1,7 @@
-/* shell.css — D-015, porting docs/design-explorations/shell.html + shell.css
- * (D-010/D-014) into the running app. This is the base page reset, the
- * three-region app shell (palette / canvas-region / mission-panel) around
- * templates/shell.html, and the page header above it in index.html.
- *
- * Every colour, spacing, type and radius value is a var() into tokens.css.
- * The exploration copy this was ported from is frozen — this file, not
- * that one, is authoritative from here on (docs/plan-m3-vertical-slice.md,
- * D-015 notes).
- *
- * Deviation from the exploration: shell.html there IS the whole page, so
- * `.shell { height: 100% }` stretched it to the viewport. Here index.html
- * puts a page header (h1 + .page-intro) above the shell, so forcing 100%
- * height would fight that header's own box. The shell instead sizes to its
- * content — the canvas-wrap's fixed 704x512 design surface decides the
- * row's height — which keeps the same layout without the viewport-height
- * assumption.
+/* shell.css — D-015. Base page reset, the three-region app shell (palette /
+ * canvas-region / mission-panel) around templates/shell.html, and the page
+ * header above it in index.html. Every colour, spacing, type and radius
+ * value is a var() into tokens.css. Rationale and measurements: PR #39.
  */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -92,7 +79,7 @@ main > h1 {
   .palette { transition: none; }
 }
 .palette[data-state="expanded"] {
-  width: calc(328.0px + var(--space-3) * 2 + var(--space-2));
+  width: calc(var(--space-7) * 5 + var(--space-6));
 }
 .palette__head {
   display: flex;

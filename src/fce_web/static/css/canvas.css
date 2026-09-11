@@ -52,7 +52,7 @@
   color: var(--node-label-on-fill);
   text-align: left;
   padding: 0;
-  margin-bottom: 2px;
+  margin-bottom: var(--border-hairline);
   cursor: grab;
   /* A dashed "grip" affordance communicates draggable without a glow --
    * texture, not brightness (design manual §3). */
@@ -98,12 +98,12 @@
  * gets a dashed ring instead of a solid one, so the two stay visually
  * distinct from each other as well as from plain hover. */
 .port--armed {
-  border-width: 3px;
+  border-width: calc(var(--border-heavy) + var(--border-hairline));
   border-color: var(--graphite-blue-strong);
   transform: scale(1.15);
 }
 .port--drag-target {
-  border-width: 3px;
+  border-width: calc(var(--border-heavy) + var(--border-hairline));
   border-style: dashed;
   border-color: var(--graphite-blue-strong);
   transform: scale(1.2);

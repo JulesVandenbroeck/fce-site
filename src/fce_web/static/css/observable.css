@@ -4,25 +4,13 @@
  * <fieldset>, static/js/graph.js:buildObservableInterior). Every colour is
  * a var() into tokens.css.
  *
- * Sizing: `graph.js` never rewrites the foreignObject's `width` attribute
- * (only `height`, via growNode()'s scrollHeight measurement) -- SVG
- * geometry attributes are CSS-overridable (SVG2 presentation properties),
- * so the opened footprint is set here, in CSS, by selecting on the
- * <details> being [open], with no JS change (the note in the dispatch
- * about paint order applies the same way: this is achievable in CSS
- * alone). 300px is D-013's own settled opened width less its ObsVectorSum
- * outlier (328.0px, the widest of its four measured modes) -- the built
- * interior here is the toggle only (see graph.js's own comment: the
- * per-mode forms were never built, their values never reached `config`),
- * so there is one footprint, not four, and it is sized to what that
- * toggle actually needs rather than to a per-mode contract this markup
- * does not yet carry. See the PR body for the measured numbers against
- * D-013's contract.
+ * Sizing: the interior wraps inside `graph.js`'s own NODE_W (160px, shared
+ * by all four node kinds) rather than overriding the foreignObject width —
+ * a node opened near the canvas edge must stay reachable (PR #39 review,
+ * F1). `.mode-toggle`'s flex-wrap already lets the four mode pills stack
+ * to more than one line at that width; growNode()'s live scrollHeight
+ * measurement (unmodified) grows the card to fit.
  */
-
-#nodes-layer foreignObject:has(.node__interior[open]) {
-  width: 300px;
-}
 
 .node__interior {
   margin-top: var(--space-1);
@@ -65,16 +53,8 @@
   margin-bottom: var(--space-1);
   padding: 0;
 }
-/* Positioned, not clipped-to-1px: an input clipped to 1x1 sits at its
- * static position, a hair's width from its own label, and a real pointer
- * click there hits the label on top of it rather than the input --
- * invisible to a student's mouse and to Playwright's own actionability
- * check alike, which is exactly what test_graph.py's
- * test_observable_mode_is_config_not_identity caught (label "intercepts
- * pointer events"). Layered exactly over its label instead, at zero
- * opacity, so a click or a tap anywhere on the pill reaches the real radio
- * -- the label stays the visible pill, pointer-events: none hands every
- * click straight through to the input beneath it. */
+/* Input layered over its label so pointer actionability checks reach the
+ * radio (test_observable_mode_is_config_not_identity). */
 .mode-toggle__opt {
   position: relative;
   display: inline-flex;
