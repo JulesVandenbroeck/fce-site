@@ -248,7 +248,16 @@ main > h1 {
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
-.mission-panel__pager:hover { background: var(--hover-bg); }
+.mission-panel__pager:hover:not(:disabled) { background: var(--hover-bg); }
+/* Both pagers are `disabled` until a mission 2 exists to page to (F-010).
+ * `--ink-45` is named for exactly this in tokens.css's own comment -- "a
+ * disabled glyph" -- and relies on WCAG 1.4.3's exemption for inactive
+ * controls rather than the 4.5:1 text floor: this is an icon glyph a
+ * student cannot activate, not prose they are meant to read. */
+.mission-panel__pager:disabled {
+  cursor: default;
+  color: var(--ink-45);
+}
 .mission-panel__label {
   flex: 1 1 auto;
   min-width: 0;
@@ -280,9 +289,7 @@ main > h1 {
   cursor: pointer;
 }
 .mission-panel__toggle:hover { background: var(--hover-bg); }
-/* Collapsed: the pagers and the label are removed from flow so the head
- * shrinks to just the toggle, which stays inside the 64px clipped rail
- * instead of being pushed past the viewport's right edge (F11). */
+/* Collapsed: pagers and label leave flow so the head shrinks to the toggle (F11). */
 .mission-panel[data-state="collapsed"] :is(.mission-panel__pager, .mission-panel__label) {
   display: none;
 }
@@ -299,9 +306,8 @@ main > h1 {
 /* ---- narrow widths — the canvas keeps its floor, the panels step down ---
  * Same arithmetic as the exploration: at 1024 only the mission panel steps
  * down (1024 - 368 palette - 256 panel = 400 > 384 floor); at 768 both
- * sides drop to 3 x --space-7 = 192 (768 - 192 - 192 = exactly 384). Holds
- * here because .shell still spans the full viewport width — main carries
- * no horizontal padding of its own. */
+ * sides drop to 3 x --space-7 = 192 (768 - 192 - 192 = exactly 384 floor,
+ * confirmed flush against the viewport edge with no h-scroll — D-017). */
 @media (max-width: 1024px) {
   .mission-panel[data-state="expanded"] {
     width: calc(var(--space-7) * 4);
