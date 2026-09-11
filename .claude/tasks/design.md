@@ -69,9 +69,12 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Status:** **in review (cycle 2)**, head `636562b`. Gate reproduced in the primary checkout: `677 passed`,
-  flake8 0, scope unchanged, MERGEABLE, `Total checks: 13`. F1 took option 1 (no 300px override;
-  opened Observable now 159.5x232.3) — **no frontend task needed**.
+- **Status:** **re-specification after cycle 2 (not a cycle)**, dispatched 2026-09-11, head `636562b`.
+- **Review (cycle 2):** `findings=3, scope=pass, verdict=rework`. F1-F4 fixed, F5 half. **F6:** an opened
+  Observable placed low on the canvas spills off the bottom — `graph.js` clamps with fixed `NODE_H=104`,
+  opened card is 232px. **Diagnosis: my C12 said "anywhere", which design's file scope cannot satisfy**
+  (the B-005 shape). C12 restated as horizontal-only; the vertical half **moves to F-009**, not dropped.
+  F7 `translateY(6px)` literal, F8 header comment. Cycle count stays 2.
 - **Review (cycle 1):** `findings=5, scope=pass, verdict=rework` — PR #39 comment `5631916694`. 677 /
   flake8 0 reproduced; C2-C9/C11 reproduced; radio fix mutation-verified. **F1 blocks:** opened
   Observable widens to 300px but `graph.js` clamps with `NODE_W=160`, so right-side nodes clip off

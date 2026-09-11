@@ -17,6 +17,14 @@ _F-007 is released (all five deps merged) but **waits for D-015** — same page,
 
 ## Blocked
 
+### F-009 — An opened node is re-clamped onto the canvas by its measured size
+- **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
+- **Accept:** after `growNode()` resizes an opened node, it is moved so its measured box lies fully inside
+  the canvas (vertical and horizontal); dragging an opened node clamps by its live size, not `NODE_W`/`NODE_H`.
+  Carries D-015's C12 vertical half (PR #39 cycle-2 review F6). Proven in Playwright at the bottom edge.
+- **Depends on:** D-015 merged (same page; its CSS sets the opened size). Wave 3 fix, before F-007.
+
+
 ### F-003 — Prove the four woff2 are actually served
 - **Depends on:** **D-015** — the first task to apply `font-family: var(--font-body)` to a real
   selector in `src/fce_web/static/css/`. That task now exists; full entry below under
