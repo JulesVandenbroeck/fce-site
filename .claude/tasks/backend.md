@@ -17,10 +17,12 @@ IDs are `B-nnn`, allocated in order and never reused.
   `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
 - **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
 - **Branch / PR:** `task/b-022-sse-events` — #37, head `20d0e72`
-- **Status:** **in rework (cycle 3 of 3 — next rework escalates to the user)**, dispatched
-  2026-09-11 into the existing worktree. Scope widened to `src/fce_web/jobs.py` (F6, F11).
-  checks 11 -> **14** (C12 guards fail not hang under both mutations, C13 `runId` stamped at
-  production, C14 F9/F10 tests gone + no review IDs in source).
+- **Status:** **cycle 3 complete, gate returned (body only)**, head `26e642c`. Gate reproduced in
+  the primary checkout: `660 passed` (662 − F9/F10's 2 tests), `test_api_contract.py` 286, flake8 0,
+  scope the four files, MERGEABLE. Body said `Total checks: 11` with C12-C14 present -> back for the
+  count, not a cycle. Coder reports mutation (a) FAILS in 6.0s, (b) FAILS in 0.9s.
+  **Deviation to review:** `runId` via `JobRegistry.owner_of` (queue-id -> job id map in `submit()`)
+  instead of stamping in `_make_ctx`, which broke 4 exact-dict asserts in out-of-scope `test_jobs.py`.
 - **Review (cycle 2):** `findings=12, scope=pass, verdict=rework` — PR #37 comment `5631295445`.
   F1/F5/F7/F8 fixed. **F2/F3 still open:** under both mutations the C6/C9 tests still *hang*
   (>60s, >100s) — the `TestClient` stream is unbounded, as the coder's own deviation said.
