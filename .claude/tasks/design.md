@@ -80,7 +80,7 @@ _none._
   of D-015 still hold in 12 layouts. **Serialise after F-009** (same page).
 - **Depends on:** F-010 (`57a42a5`). From PR #40 review F2.
 - **Branch / PR:** `task/d-017-disabled-pagers` — #44, worktree `.claude/worktrees/agent-a5106434c9bbf4667`
-- **Status:** re-spec dispatched (still cycle 1) — same worktree.
+- **Status:** re-review (after re-spec) — head `562f724`, gate passed (test_shell 12 / flake8 0; diff since e898c32 +3 −13).
 - **Review (cycle 1):** `findings=3, scope=pass, verdict=rework` — PR #44. Pager half correct (4 properties flip under
   mutation; `--ink-45` accepted under WCAG 1.4.3's inactive-control exemption). **F1** the 768 `.shell` width rule fixes an
   overflow nobody reproduces and adds an 8px gap. **Diagnosis: re-specification** — my C2 was written from two
