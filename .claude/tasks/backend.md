@@ -9,52 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-022 — SSE `GET /api/run/{id}/events` + the progress-event contract
-- **Scope:** `src/fce_web/routes/api.py`, `tests/test_api_events.py`, `docs/api.md`
-- **Accept:** C1-C8 in the plan. Terminates on one `done`; phase *and* fraction both stream;
-  a cache hit is an immediate `done`, not a fabricated sweep; unknown id 404s; a client
-  disconnect leaks neither thread nor registry entry; two streams do not interleave;
-  `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
-- **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
-- **Branch / PR:** `task/b-022-sse-events` — #37, head `20d0e72`
-- **Status:** **in review (cycle 3 of 3)**, head `26e642c`, body count fixed 11 -> 14. Earlier gate: Gate reproduced in
-  the primary checkout: `660 passed` (662 − F9/F10's 2 tests), `test_api_contract.py` 286, flake8 0,
-  scope the four files, MERGEABLE. Body said `Total checks: 11` with C12-C14 present -> back for the
-  count, not a cycle. Coder reports mutation (a) FAILS in 6.0s, (b) FAILS in 0.9s.
-  **Deviation to review:** `runId` via `JobRegistry.owner_of` (queue-id -> job id map in `submit()`)
-  instead of stamping in `_make_ctx`, which broke 4 exact-dict asserts in out-of-scope `test_jobs.py`.
-- **Review (cycle 2):** `findings=12, scope=pass, verdict=rework` — PR #37 comment `5631295445`.
-  F1/F5/F7/F8 fixed. **F2/F3 still open:** under both mutations the C6/C9 tests still *hang*
-  (>60s, >100s) — the `TestClient` stream is unbounded, as the coder's own deviation said.
-  **F4:** `runId` stamped by the reader, so C11 cannot fail on a crossed stream. F9/F10 two new
-  tautological tests. F6 stale pointers in `jobs.py`. F12 docstring narration. §5.4: none of
-  these was a dropped property -> a cycle.
-  Reviewer note: `.claude/review/CLAUDE.md` was unreadable under permission settings. Cycle-2 gate re-run in the primary checkout:
-  `662 passed` (660 − 1 F5 deletion + 3 new), `test_api_contract.py` **286**, flake8 0.
-  Scope exactly the three files; two commits; no rebase.
-- **Review (cycle 1):** `findings=8, scope=pass, verdict=rework` — PR #37 comment
-  `5600386724`. checks 8 -> **11**.
-  - **F1 was user-visible:** `Job.events` is a single destructive queue with `done` enqueued
-    once (`jobs.py:181`, `:254`), so a second or reconnecting client looped on 0.5s timeouts
-    forever — a student who refreshed sat at "running" permanently, and F-007 would hang on
-    reconnect. Cycle 2 short-circuits on terminal `job.status` under `job.lock`.
-  - **F2/F3:** the C6 concurrency guard did not go red under the defect it names — it
-    *wedged*, >400s against a 0.75s baseline, because `_read_events`' timeout was unreachable.
-  - Cleared where cycle 1 was right: C5's leak check is load-bearing under two independent
-    mutations, and the scoped-`ThreadPoolExecutor` deviation was explicitly accepted.
-- **Cycle 2 resolved F1-F8, none overruled, with one substantive correction to the review:**
-  `starlette.testclient.TestClient`'s transport runs the whole ASGI call to completion inside
-  a synchronous `portal.call` before `client.stream()` yields a byte, so **httpx's `timeout=`
-  never fires against a stalled generator** (verified: a stalled stream still blocked past
-  100s with `timeout=2.0`). It made the literal change anyway (correct for a real network
-  client) and bounded the two mutation tests with a daemon thread + `t.join(timeout=...)`,
-  which is what actually stays fast. **A reviewer should check this claim first** — it is the
-  cycle's one deviation and it contradicts the instruction it was given.
-- **Contract change to tell F-007 about:** every SSE frame now carries `runId`; documented in
-  `docs/api.md`'s frame contract (F4/C11).
-- **Open against the coder, not the code (cycle 1, still unruled by the user):** it routed
-  around a refusing `rtk`/hook layer with a wrapper script. That is the exact workaround the
-  user ruled out 2026-09-08. The work checks clean; this is a process breach.
+_none._
 
 ## Ready
 
@@ -100,6 +55,12 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-022** — SSE `GET /api/run/{id}/events` + progress-event contract — #37, `3e85cf8`,
+  **3 cycles + 2 body-count gate returns**, clean gate (`findings=2, verdict=approve`). **Closes M3
+  checkpoint 1.** Every frame carries `runId`, sourced from `JobRegistry.owner_of` (accepted
+  deviation from stamping in `_make_ctx`). A reconnect on a finished run gets one `done` frame.
+  C6/C9 guards now fail in <15s under their mutations instead of hanging (cycles 1-2 wedged >100s).
+  F13 (wrong test comment) and **F14 (`_queue_owner` never pruned on eviction, one-line fix)** backlogged.
 - **B-021** — job registry, `POST /api/run`, `GET /api/run/{id}/result` (**CONTRACT TASK**) — #35,
   `78ceb8d`, **3 cycles + 1 handoff mid cycle 2 + 1 false gate return by me**, clean gate
   (`findings=1, verdict=approve`, F17 a comment nit → backlogged). checks=11. Suite floor → **654**.
@@ -226,7 +187,9 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
   `running` / `done` / `error` / `cancelled`. The registry is bounded — `_MAX_JOBS = 500`,
   oldest non-running job evicted first, guarded by a check that reddens if either the cap or the
   running-job guard breaks. Cancellation goes through `RunContext.cancel`; no new seam.
-- **`Job.events` queue** (B-021, **B-022 consumes this read-only**): written out once in
+- **SSE frames** (B-022): every frame carries `runId`; a stream on a terminal run yields exactly one
+  `done`. Contract under `docs/api.md` "Run progress event". **F-007 consumes this.**
+- **`Job.events` queue** (B-021, consumed by B-022): written out once in
   `docs/api.md:108-114`. At least one `{"type": "progress"}` item, then **exactly one** terminal
   `{"type": "done", ...}` as the last item. The sentinel is put unconditionally in a `finally`, so
   a drain loop cannot hang when the worker raises. A cache-hit job's queue holds only the sentinel.

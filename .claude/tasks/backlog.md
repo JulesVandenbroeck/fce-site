@@ -686,3 +686,6 @@ and are historical now that #6 is merged.
 
 - **F-006 F7** `tests/e2e/test_graph.py:372` — `button:not(summary)`: the `:not` is dead; use `"input, select, textarea, button"`.
 - **F-006 F8** `graph.js:28-31` duplicates the comment at `:215-220` on why per-mode forms were dropped; delete the header copy.
+
+- **B-022 F14** `src/fce_web/jobs.py:165,180` — `_queue_owner` gains an entry per `submit()` and `_evict_over_cap` never prunes it (probe: 2000 submits -> 500 jobs, 1041 entries). Fix: `self._queue_owner.pop(id(old_job.events), None)` beside `del self._jobs[old_id]`.
+- **B-022 F13** `tests/test_api_events.py:173-178` — section comment says `runId` is stamped in `_make_ctx`; it is read from `registry.owner_of`. One-line replacement, drop criterion IDs.
