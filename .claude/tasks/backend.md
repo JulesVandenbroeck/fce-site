@@ -165,6 +165,12 @@ One line per task. Full entries — scope, criteria, the cycle-by-cycle review r
 
 ## Contracts in force
 
+**M3 checkpoint 1 verified by the orchestrator on `main` at `3e85cf8`, 2026-09-11:** real uvicorn
+server, fixture copied under `FCE_HOME/datasets/IDEA/91GeV`, `curl` POST -> 16 SSE frames ending in
+one `done` -> `/result` status done; X1 modal bin 90.0 GeV, X3 74.4 GeV, X2 empty after 2 leptons.
+Resubmit -> `cacheHit: true` and a single `done` frame. Reported to the user; wave 5 (F-007) waits
+for their go-ahead. Note: `missionId` is not validated yet — dataset hardcoded IDEA/91 GeV (`jobs.py:61-66`).
+
 The facts a future dispatch consumes. Everything else about these tasks is in the archive.
 
 - `run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> RunResult` (B-009)
