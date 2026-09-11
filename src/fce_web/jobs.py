@@ -161,7 +161,7 @@ class JobRegistry:
         # id(events queue) -> the job id `submit()` created it for. Read by
         # `fce_web.routes.api._drain` via `owner_of` so a frame's `runId` on
         # the wire is sourced from who actually produced it, not from
-        # whichever `Job` the reading stream happens to hold (F4/C11).
+        # whichever `Job` the reading stream happens to hold.
         self._queue_owner: Dict[int, str] = {}
 
     def submit(self, graph: dict, mission_id: str) -> Job:
