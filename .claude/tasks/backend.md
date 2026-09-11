@@ -17,8 +17,17 @@ IDs are `B-nnn`, allocated in order and never reused.
   `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
 - **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
 - **Branch / PR:** `task/b-022-sse-events` — #37, head `20d0e72`
-- **Status:** **in review (cycle 2)**, reviewer dispatched 2026-09-11. Body count fixed 8 -> 11
-  by gate return (head unchanged `20d0e72`). Cycle-2 gate re-run in the primary checkout:
+- **Status:** **in rework (cycle 3 of 3 — next rework escalates to the user)**, dispatched
+  2026-09-11 into the existing worktree. Scope widened to `src/fce_web/jobs.py` (F6, F11).
+  checks 11 -> **14** (C12 guards fail not hang under both mutations, C13 `runId` stamped at
+  production, C14 F9/F10 tests gone + no review IDs in source).
+- **Review (cycle 2):** `findings=12, scope=pass, verdict=rework` — PR #37 comment `5631295445`.
+  F1/F5/F7/F8 fixed. **F2/F3 still open:** under both mutations the C6/C9 tests still *hang*
+  (>60s, >100s) — the `TestClient` stream is unbounded, as the coder's own deviation said.
+  **F4:** `runId` stamped by the reader, so C11 cannot fail on a crossed stream. F9/F10 two new
+  tautological tests. F6 stale pointers in `jobs.py`. F12 docstring narration. §5.4: none of
+  these was a dropped property -> a cycle.
+  Reviewer note: `.claude/review/CLAUDE.md` was unreadable under permission settings. Cycle-2 gate re-run in the primary checkout:
   `662 passed` (660 − 1 F5 deletion + 3 new), `test_api_contract.py` **286**, flake8 0.
   Scope exactly the three files; two commits; no rebase.
 - **Review (cycle 1):** `findings=8, scope=pass, verdict=rework` — PR #37 comment

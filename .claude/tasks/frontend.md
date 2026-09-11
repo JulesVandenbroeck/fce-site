@@ -15,10 +15,15 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Accept:** C1-C7 in the plan. **Total checks: 7.**
 - **Depends on:** F-005 (merged `b7fdfdf`). Wave 3.
 - **Branch / PR:** `task/f-006-observable-interior` — #38, head `8cb14ab`
-- **Status:** **in review (cycle 1)**, reviewer dispatched 2026-09-11. PR #38 opened by the
-  coder 2026-09-11 (re-ran: 670 passed, flake8 0, e2e 53, test_graph 16; C4 unmet-by-design).
-  Gate re-run in the primary checkout: `670 passed`, flake8 0, `tests/e2e/` **53** nodeids
-  (47 at F-005). Scope exactly the two files, based on `b7fdfdf`.
+- **Status:** **in rework (cycle 2)**, dispatched 2026-09-11 into the existing worktree.
+- **Review (cycle 1):** `findings=5, scope=pass, verdict=rework` — PR #38 comment `5631301455`.
+  670 / flake8 0 / 16 reproduced; C1/C2/C3/C6 mutation-verified. **F1 blocks:** Enter on the
+  summary drops focus to `<body>` (bring-to-front `appendChild` moves the focused element).
+  F2 tautological C5 meta-test. F3 per-mode panel fields reach no `config` — delete unless a
+  C1-C7 text requires them. F4 subtitle says "not configured" while config is ObsGlobal.
+  **F5 against me: C4 (styled footprint) moved to D-015** — not dropped, relocated.
+  checks 7 -> **10** (C8 focus kept, C9 subtitle matches config, C10 no discarded control,
+  C11 meta-test deleted; C4 counted as moved).
 - **Why there is no PR, and what the next session must do first:** the coder was refused by
   the `rtk`/worktree-isolation hook at `git add`/`commit`/`push` time — `checkout -b` and
   `rev-parse` succeeded, the mutating commands did not. It **stopped and reported rather than

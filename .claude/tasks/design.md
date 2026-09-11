@@ -93,6 +93,10 @@ Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
   `git diff main...HEAD --name-only` (three-dot).
 - **Depends on:** F-004, F-005, F-006. **Releases F-003.** Wave 3, `effort: high`.
 - **Branch / PR:** not yet opened
+- **Inherits F-006's C4 (2026-09-11):** the opened Observable footprint in the running app is
+  consistent with D-013's styled contract (ObsVectorSum 328x300 tallest; ObsCustom 301.5,
+  ObsObject 290.5, ObsGlobal 237.0; collapsed 80.5), measured on the node, not the foreignObject.
+  F-006 cycle 1 could not meet it without CSS (PR #38 review F5).
 - **Note:** once ported, the app CSS is authoritative and the exploration copy is **frozen** —
   the divergence D-002 backlogged as m5 is accepted here deliberately, not prevented.
 
