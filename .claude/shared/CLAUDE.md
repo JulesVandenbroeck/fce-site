@@ -310,8 +310,8 @@ green claim you did not run is not laziness, it is a false report.
 
 ### Shell commands
 Always run commands through **`rtk`** — a proxy that filters verbose tool output down to
-what matters, cutting 60–90% of the tokens a raw command would cost. `rtk git status`,
-`rtk pytest tests/`, `rtk gh pr view 12`. A hook rewrites most commands automatically, so
+what matters, cutting 60–90% of the tokens a raw command would cost.
+`rtk pytest tests/`, `rtk gh pr view 12`. **Except `git`:** excluded from rewriting since 2026-09-11 (`exclude_commands = ["git"]` in `~/.config/rtk/config.toml`), because Claude Code's worktree isolation refuses a rewritten `rtk git`. Write plain `git`. A hook rewrites most commands automatically, so
 in practice you write the command normally and `rtk` is applied for you; write it
 explicitly when you are unsure. Two escape hatches: `rtk proxy <cmd>` runs a command with
 no filtering, for when you need the raw output to debug something, and `rtk gain` reports

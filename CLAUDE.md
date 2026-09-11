@@ -74,7 +74,7 @@ security, accessibility, and the physics): [`.claude/shared/CLAUDE.md`](.claude/
 
 **Every shell command goes through [`rtk`](https://github.com/rtk-ai/rtk)** — a proxy that
 filters verbose tool output down to what matters, saving 60–90% of the tokens the raw
-command would cost. `rtk git status`, `rtk pytest tests/`, `rtk gh pr diff 12`.
+command would cost. `rtk pytest tests/`, `rtk gh pr diff 12`. **Except `git`:** excluded from rewriting since 2026-09-11 (`exclude_commands = ["git"]` in `~/.config/rtk/config.toml`), because Claude Code's worktree isolation refuses a rewritten `rtk git`. Write plain `git`.
 
 A hook rewrites most commands automatically, so normally you just write the command and
 `rtk` is applied for you. Write it explicitly when unsure. `rtk proxy <cmd>` runs something
