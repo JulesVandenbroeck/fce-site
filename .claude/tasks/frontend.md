@@ -13,7 +13,8 @@ _none._
 
 ## Ready
 
-**Wave 5 go-ahead given by the user, 2026-09-11.** D-017 (in flight) → F-007 (also waits for B-023, #43) → F-008 → D-016, serialised on the page.
+**Wave 5 go-ahead given by the user, 2026-09-11.** D-017 (#44, in review) → F-007 (also waits for B-023, #43, cycle 2) → F-008 → D-016, serialised on the page.
+**Held at the 75% usage soft threshold (2026-09-11, resets 17:00):** F-007 is not dispatched this window.
 
 ## Blocked
 
