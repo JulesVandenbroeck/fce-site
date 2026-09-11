@@ -104,11 +104,30 @@ function setStatus(text) {
   els.status.textContent = text;
 }
 
-function clampToCanvas(x, y) {
+// w/h default to the collapsed footprint (spawn placement, before the node
+// has any rendered box to measure); moveNodeTo passes the live measured
+// size instead -- the one clamp both opening and dragging route through
+// (F-009), so an opened Observable's real 159.5x232.3px box never relies on
+// the collapsed NODE_H to know where the bottom edge is.
+function clampToCanvas(x, y, w = NODE_W, h = NODE_H) {
   return {
-    x: Math.max(0, Math.min(CANVAS_W - NODE_W, x)),
-    y: Math.max(0, Math.min(CANVAS_H - NODE_H, y)),
+    x: Math.max(0, Math.min(CANVAS_W - w, x)),
+    y: Math.max(0, Math.min(CANVAS_H - h, y)),
   };
+}
+
+// The node element's own rendered box (getBoundingClientRect), converted
+// from screen pixels to the SVG's user-unit space via the same CTM
+// clientToSvgPoint already uses -- not the foreignObject, which D-015 never
+// resizes past its collapsed width/height for an opened node.
+function measuredSize(id) {
+  const fo = foreignObjectFor(id);
+  const div = fo && fo.querySelector(".node");
+  if (!div) return { w: NODE_W, h: NODE_H };
+  const r = div.getBoundingClientRect();
+  const p1 = clientToSvgPoint(r.left, r.top);
+  const p2 = clientToSvgPoint(r.right, r.bottom);
+  return { w: p2.x - p1.x, h: p2.y - p1.y };
 }
 
 function nextSpawnPoint() {
@@ -144,7 +163,13 @@ function growNode(id) {
   const div = fo.querySelector(".node");
   if (!div) return;
   fo.setAttribute("height", Math.max(NODE_H, Math.ceil(div.scrollHeight)));
-  renderEdges();
+  // Re-clamp against the freshly measured box -- growing near an edge (not
+  // just dragging into one) must not spill the node off the canvas either.
+  const node = graphState.nodes.get(id);
+  if (node) {
+    moveNodeTo(id, node.x, node.y);
+    persistUI();
+  }
 }
 
 function portCenterSvg(id, role) {
@@ -173,7 +198,8 @@ function renderEdges() {
 function moveNodeTo(id, x, y) {
   const n = graphState.nodes.get(id);
   if (!n) return;
-  const clamped = clampToCanvas(x, y);
+  const { w, h } = measuredSize(id);
+  const clamped = clampToCanvas(x, y, w, h);
   n.x = clamped.x;
   n.y = clamped.y;
   const fo = foreignObjectFor(id);

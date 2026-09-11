@@ -373,3 +373,103 @@ def test_observable_interior_has_no_dead_controls(index: LoadedPage) -> None:
     assert controls.count() == 4  # the four mode radios, nothing else
     kinds = {controls.nth(i).get_attribute("type") for i in range(4)}
     assert kinds == {"radio"}
+
+
+# ---- F-009: an opened node is re-clamped by its measured size, not the
+# collapsed NODE_W/NODE_H -------------------------------------------------
+
+
+def _inside(inner: dict, outer: dict, eps: float = 0.5) -> bool:
+    return (
+        inner["x"] >= outer["x"] - eps
+        and inner["y"] >= outer["y"] - eps
+        and inner["x"] + inner["width"] <= outer["x"] + outer["width"] + eps
+        and inner["y"] + inner["height"] <= outer["y"] + outer["height"] + eps
+    )
+
+
+def _await_settled(page, node_id: str) -> None:
+    """C6's reparent-on-open restarts the node's CSS entrance animation
+    (translateY) -- measure the settled box, not one still mid-transform."""
+    page.evaluate(
+        "async (id) => {"
+        " const el = document.querySelector(`.node[data-node-id=\"${id}\"]`);"
+        " await Promise.all(el.getAnimations().map((a) => a.finished));"
+        "}",
+        node_id,
+    )
+
+
+def test_opened_node_near_bottom_edge_stays_inside_canvas_in_every_mode(index: LoadedPage) -> None:
+    """C1: an Observable dragged low on the canvas, then opened, keeps its
+    measured box (`.node`'s own `getBoundingClientRect`, not the
+    foreignObject) fully inside the canvas SVG -- in every one of the four
+    modes, since switching modes re-measures and re-clamps too."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    svg_box = page.locator("#canvas-svg").bounding_box()
+
+    handle = page.locator('.node[data-node-id="n1"] .node__handle')
+    handle_box = handle.bounding_box()
+    start = (handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
+    target = (svg_box["x"] + svg_box["width"] / 2, svg_box["y"] + svg_box["height"] - 5)
+    page.mouse.move(*start)
+    page.mouse.down()
+    page.mouse.move(*target, steps=5)
+    page.mouse.up()
+
+    fo = page.locator('foreignObject[data-node-id="n1"]')
+    collapsed_height = float(fo.get_attribute("height"))
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
+        f".getAttribute('height')) > {collapsed_height}"
+    )
+    _await_settled(page, "n1")
+
+    for mode in ("ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom"):
+        page.locator(f'.node[data-node-id="n1"] input[value="{mode}"]').check()
+        node_box = page.locator('.node[data-node-id="n1"]').bounding_box()
+        assert _inside(node_box, svg_box), f"mode {mode}: {node_box} not inside {svg_box}"
+
+
+def test_dragging_opened_node_past_edges_clamps_by_measured_size(index: LoadedPage) -> None:
+    """C2: dragging an opened node past the bottom and right edges clamps by
+    the live measured box, not the collapsed NODE_W/NODE_H -- revert the
+    clamp in graph.js to use NODE_H and this goes red, since an opened
+    Observable's real height (~232px) is well over NODE_H (104px), leaving
+    its bottom edge outside the SVG. C3: closing it afterwards still holds."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+
+    fo = page.locator('foreignObject[data-node-id="n1"]')
+    collapsed_height = float(fo.get_attribute("height"))
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
+        f".getAttribute('height')) > {collapsed_height}"
+    )
+    _await_settled(page, "n1")
+
+    svg_box = page.locator("#canvas-svg").bounding_box()
+    handle = page.locator('.node[data-node-id="n1"] .node__handle')
+    handle_box = handle.bounding_box()
+    start = (handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
+    target = (svg_box["x"] + svg_box["width"] + 200, svg_box["y"] + svg_box["height"] + 200)
+    page.mouse.move(*start)
+    page.mouse.down()
+    page.mouse.move(*target, steps=5)
+    page.mouse.up()
+
+    node_box = page.locator('.node[data-node-id="n1"]').bounding_box()
+    assert _inside(node_box, svg_box)
+
+    summary.focus()
+    page.keyboard.press("Enter")  # close it
+    assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is None
+    closed_box = page.locator('.node[data-node-id="n1"]').bounding_box()
+    assert _inside(closed_box, svg_box)
