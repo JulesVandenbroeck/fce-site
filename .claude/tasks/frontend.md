@@ -25,7 +25,8 @@ Order: F-010, then F-009, then F-003 (serialised — same page). F-007 waits for
   (`docs/design-brief.md:86-91`); no M-2/M-3 text anywhere in the rendered page; the pager does not offer
   missions that do not exist yet. Hardcoded is fine — mission loading is M5.
 - **Depends on:** nothing — D-015 merged `0eded93`. Serialise with F-009.
-- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-010-mission-one-text`. checks=5.
+- **Branch / PR:** `task/f-010-mission-one-text` — #40
+- **Status:** in review (cycle 1) — head `cff7e54`, gate passed (679 / flake8 0). checks=5.
 
 ### F-009 — An opened node is re-clamped onto the canvas by its measured size
 - **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
