@@ -96,7 +96,14 @@ main > h1 {
   color: var(--ink-70);
   white-space: nowrap;
 }
-.palette[data-state="collapsed"] .palette__title { opacity: 0; }
+/* Collapsed: the title is removed from flow (not merely hidden) so the
+ * head shrinks to just the toggle, which stays centred inside the 64px
+ * clipped rail instead of being pushed out of it (F10). */
+.palette[data-state="collapsed"] .palette__title { display: none; }
+.palette[data-state="collapsed"] .palette__head {
+  padding: var(--space-2);
+  justify-content: center;
+}
 .palette__toggle {
   flex: 0 0 auto;
   width: var(--space-5);
@@ -119,6 +126,10 @@ main > h1 {
   flex-direction: column;
   gap: var(--space-2);
 }
+/* shell.js sets the [hidden] attribute on collapse; without this the
+ * display: flex above wins over the UA [hidden]{display:none} rule and the
+ * list keeps painting, clipped, in the collapsed rail (F9). */
+.palette__list[hidden] { display: none; }
 
 .palette__add {
   display: flex;
@@ -269,6 +280,12 @@ main > h1 {
   cursor: pointer;
 }
 .mission-panel__toggle:hover { background: var(--hover-bg); }
+/* Collapsed: the pagers and the label are removed from flow so the head
+ * shrinks to just the toggle, which stays inside the 64px clipped rail
+ * instead of being pushed past the viewport's right edge (F11). */
+.mission-panel[data-state="collapsed"] :is(.mission-panel__pager, .mission-panel__label) {
+  display: none;
+}
 
 .mission-panel__body {
   padding: var(--space-3);
