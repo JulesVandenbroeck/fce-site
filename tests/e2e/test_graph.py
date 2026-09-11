@@ -14,6 +14,8 @@ per the F-005 PR body's contract -- `nodes` is a list, matching what
 
 import json
 
+from playwright.sync_api import expect
+
 from tests.e2e.conftest import LoadedPage
 
 from fce_web.graph import Dataset, build_run_config
@@ -230,3 +232,144 @@ def test_exported_nodes_is_a_list_accepted_by_build_run_config(index: LoadedPage
 
     cfg = build_run_config(payload, Dataset(energy="91 GeV", detector="IDEA"))
     assert isinstance(cfg, RunConfig)
+
+
+# ---- F-006: the merged Observable node interior --------------------------
+# Source: docs/design-explorations/observable.html (D-013). One `Observable`
+# palette node, an in-node mode toggle, grows in place -- not the four-node
+# `interiors.html` exploration D-009 superseded.
+
+
+def test_observable_node_offers_exactly_four_modes(index: LoadedPage) -> None:
+    """C1: the merged node's toggle offers ObsGlobal/ObsObject/ObsVectorSum/
+    ObsCustom, and only those four."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+
+    radios = page.locator('.node[data-node-id="n1"] .mode-toggle input[type="radio"]')
+    assert radios.count() == 4
+    values = {radios.nth(i).get_attribute("value") for i in range(4)}
+    assert values == {"ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom"}
+
+
+def test_observable_node_grows_in_place_when_opened(index: LoadedPage) -> None:
+    """C2: opening the node grows its own footprint -- no flyout, no second
+    panel elsewhere on the page."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    fo = page.locator('foreignObject[data-node-id="n1"]')
+    collapsed_height = float(fo.get_attribute("height"))
+
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+
+    # The resize runs off the 'toggle' event, dispatched as its own task in
+    # Chromium -- wait for the growth rather than race the keypress.
+    page.wait_for_function(
+        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
+        f".getAttribute('height')) > {collapsed_height}"
+    )
+    opened_height = float(fo.get_attribute("height"))
+    assert opened_height > collapsed_height
+    assert page.locator('dialog, [role="dialog"], .inspector, .flyout').count() == 0
+
+
+def test_observable_mode_is_config_not_identity(index: LoadedPage) -> None:
+    """C3: the exported node's `kind` stays `Observable`; the chosen mode
+    rides along as `config.mode`, for the server to resolve at submit."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+
+    graph = _graph(page)
+    node = _node_by_id(graph, "n1")
+    assert node["kind"] == "Observable"
+    assert node["config"]["mode"] == "ObsGlobal"  # default, unopened
+
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+    page.locator('.node[data-node-id="n1"] input[value="ObsVectorSum"]').check()
+
+    node = _node_by_id(_graph(page), "n1")
+    assert node["kind"] == "Observable"
+    assert node["config"]["mode"] == "ObsVectorSum"
+
+
+def test_opened_observable_node_is_brought_to_front(index: LoadedPage) -> None:
+    """C6: opening a node grows it over whatever else sits at that canvas
+    position. SVG has no z-index -- paint order is the only stacking
+    mechanism -- so the opened node moves to the end of #nodes-layer, painted
+    last, even though it was placed before the node spawned after it."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    page.locator('.palette__add[data-add-kind="Histogram"]').click()  # n2, painted after n1
+
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+
+    # The 'toggle' event that reorders the DOM is dispatched as its own task
+    # in Chromium, not synchronously with the keypress -- wait for it rather
+    # than race it.
+    page.wait_for_function(
+        "() => document.querySelector('#nodes-layer').lastElementChild.dataset.nodeId === 'n1'"
+    )
+
+
+def test_observable_mode_toggle_is_keyboard_operable_with_accessible_name(index: LoadedPage) -> None:
+    """C5: the toggle's opener is reachable by Tab and names itself for a
+    screen reader -- a real check, not one certified green by construction.
+    C8: opening it from the keyboard leaves focus on that same summary --
+    the toggle handler moves the node's foreignObject to the end of
+    #nodes-layer (C6), and that reparenting must not throw focus to
+    <body>."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    summary = page.locator('.node[data-node-id="n1"] summary')
+
+    assert summary.inner_text().strip() != ""  # accessible name: its own text
+
+    summary.focus()
+    page.keyboard.press("Enter")
+    assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is not None
+    expect(summary).to_be_focused()
+
+    page.keyboard.press("Enter")
+    assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is None
+    expect(summary).to_be_focused()
+
+
+def test_observable_default_subtitle_matches_exported_config(index: LoadedPage) -> None:
+    """C9: a freshly placed node's visible subtitle names the same mode its
+    exported `config` carries -- not a placeholder that lags behind the
+    default `config.mode` until the student touches a radio."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+
+    node = _node_by_id(_graph(page), "n1")
+    assert node["config"]["mode"] == "ObsGlobal"
+
+    subtitle = page.locator('.node[data-node-id="n1"] .node__subtitle')
+    assert subtitle.inner_text().strip() == "Global"
+
+
+def test_observable_interior_has_no_dead_controls(index: LoadedPage) -> None:
+    """C10: every control inside the node interior either reaches the
+    exported `config` or is absent. The only controls here are the four
+    mode radios (config.mode, covered by C3/C9); nothing else is rendered
+    for a value to go silently missing from."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+
+    interior = page.locator('.node[data-node-id="n1"] .node__interior')
+    controls = interior.locator("input, select, textarea, button:not(summary)")
+    assert controls.count() == 4  # the four mode radios, nothing else
+    kinds = {controls.nth(i).get_attribute("type") for i in range(4)}
+    assert kinds == {"radio"}

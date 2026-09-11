@@ -15,13 +15,21 @@
 //
 // Exported model (the contract F-007 serialises): the canvas container
 // (#canvas-wrap) carries one `data-graph` attribute, a JSON object
-//   { nodes: [ { id, kind, x, y }, ... ], edges: [ [from, to], ... ] }
+//   { nodes: [ { id, kind, x, y, config? }, ... ], edges: [ [from, to], ... ] }
 // `nodes` is a list, matching the shape `build_run_config` requires
 // (`src/fce_web/graph.py:120,122-123` -- a list of objects with `id` and
-// `kind`; `config` is optional and this client never sends node-interior
-// config, brief §4/D-009 is still open on that UI). `x`/`y` ride along as
-// keys the server does not read. Edges are an ordered [from, to] pair list,
-// same shape bench.html and graph.py both use.
+// `kind`; `config` is optional there and is only ever sent for `Observable`
+// nodes here, carrying `{ mode }` -- F-006, the merged node's in-node mode
+// toggle. `x`/`y` ride along as keys the server does not read. Edges are an
+// ordered [from, to] pair list, same shape bench.html and graph.py both use.
+//
+// F-006 also owns the `Observable` node's grow-in-place interior (source:
+// docs/design-explorations/observable.html): a native <details> holding a
+// radio-group mode toggle, ported as markup+behaviour only. The
+// exploration's per-mode forms are not built -- their values never reached
+// `config`, see buildObservableInterior's own comment -- so there is no
+// panel to switch visibility on; growNode() resizes the node's
+// foreignObject to its measured content box, no fixed numbers guessed.
 //
 // VALID_CONNECTIONS below is a courtesy check only, trimmed to the four
 // palette kinds. `src/fce_web/graph.py`'s `VALID_CONNECTIONS` is the
@@ -85,7 +93,9 @@ function nodeLabel(id) {
 function persistUI() {
   const nodes = [];
   graphState.nodes.forEach((n, id) => {
-    nodes.push({ id, kind: n.kind, x: n.x, y: n.y });
+    const out = { id, kind: n.kind, x: n.x, y: n.y };
+    if (n.config) out.config = n.config;
+    nodes.push(out);
   });
   els.wrap.setAttribute("data-graph", JSON.stringify({ nodes, edges: graphState.edges }));
 }
@@ -118,6 +128,23 @@ function clientToSvgPoint(clientX, clientY) {
 
 function foreignObjectFor(id) {
   return els.nodesLayer.querySelector(`foreignObject[data-node-id="${id}"]`);
+}
+
+// C2/C4: the node grows in place -- no flyout, no guessed pixel numbers.
+// D-013 measured the opened footprint against its own (not-yet-shipped) CSS
+// and found the width constant across modes, only height varies; here there
+// is no CSS yet, so height is resized to whatever the unstyled content
+// actually measures, every time that content changes. Width is left alone --
+// a block element's "auto" width fills its foreignObject container rather
+// than shrinking to its content, so measuring it would just read back
+// whatever width was set last, not the content's real size.
+function growNode(id) {
+  const fo = foreignObjectFor(id);
+  if (!fo) return;
+  const div = fo.querySelector(".node");
+  if (!div) return;
+  fo.setAttribute("height", Math.max(NODE_H, Math.ceil(div.scrollHeight)));
+  renderEdges();
 }
 
 function portCenterSvg(id, role) {
@@ -157,6 +184,93 @@ function moveNodeTo(id, x, y) {
   renderEdges();
 }
 
+// ---- Observable node interior (F-006, docs/design-explorations/observable.html) ----
+
+function h(tag, attrs = {}, children = []) {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => {
+    if (k === "text") node.textContent = v;
+    else node.setAttribute(k, v);
+  });
+  children.forEach((c) => node.appendChild(c));
+  return node;
+}
+
+// Module scope: both buildObservableInterior (the toggle) and buildNodeEl
+// (the initial subtitle, C9) need the same four modes and labels.
+const MODES = [
+  { value: "ObsGlobal", label: "Global" },
+  { value: "ObsObject", label: "Object" },
+  { value: "ObsVectorSum", label: "Vector sum" },
+  { value: "ObsCustom", label: "Custom" },
+];
+
+// One `Observable` node, one in-node mode toggle -- the 2026-09-02 ruling
+// (docs/design-brief.md §4): ObsGlobal/ObsObject/ObsVectorSum/ObsCustom are
+// not four palette kinds, they are one node's `config.mode`. A native
+// <details> is the grow-in-place affordance (C2 -- no flyout), and a native
+// radio <fieldset> is the toggle (C1) -- both keyboard-operable and
+// self-naming for free, which is what C5 checks.
+//
+// docs/design-explorations/observable.html also mocks up a per-mode form
+// (event quantity, object+field, vector-sum checkboxes, a custom-expression
+// input). None of C1-C11 asks for those fields, and their values never
+// reached `config` -- a student filling one in got nothing back -- so they
+// are not built here. They return in the task that wires them into
+// `config`.
+function buildObservableInterior(id) {
+  const uid = (s) => `obs-${s}-${id}`;
+
+  const details = h("details", { class: "node__interior" });
+  const summary = h("summary", { class: "node__interior-summary", text: "Configure observable" });
+  details.appendChild(summary);
+
+  const fieldset = h("fieldset", { class: "mode-toggle" });
+  fieldset.appendChild(h("legend", { class: "mode-toggle__legend", text: "Mode — what number am I plotting?" }));
+  const radios = MODES.map((m, i) => {
+    const radioId = uid(`mode-${m.value}`);
+    const input = h("input", { type: "radio", name: uid("mode"), id: radioId, value: m.value });
+    if (i === 0) input.checked = true;
+    fieldset.appendChild(h("span", { class: "mode-toggle__opt" }, [input, h("label", { for: radioId, text: m.label })]));
+    return input;
+  });
+  details.appendChild(fieldset);
+
+  // C9: the default mode (ObsGlobal) is already what `config` exports, so
+  // the subtitle says so from the start too -- buildNodeEl sets the same
+  // MODES[0].label before this node is even appended to the page.
+  const node = graphState.nodes.get(id);
+  if (node) node.config = { mode: MODES[0].value };
+
+  function applyMode(mode) {
+    const n = graphState.nodes.get(id);
+    if (n) {
+      n.config = { mode };
+      persistUI();
+    }
+    const sub = els.wrap.querySelector(`.node[data-node-id="${id}"] .node__subtitle`);
+    if (sub) sub.textContent = MODES.find((m) => m.value === mode).label;
+    growNode(id);
+  }
+
+  radios.forEach((r) => r.addEventListener("change", () => applyMode(r.value)));
+  // C6: an opened node grows over whatever else sits at that canvas
+  // position -- SVG has no z-index, paint order is the only stacking
+  // mechanism, so bring it to the end of #nodes-layer (painted last) on open.
+  // C8: that reparenting (`appendChild` on an already-attached node) drops
+  // DOM focus to <body> even though the summary itself never moved logically
+  // -- refocus it once the move is done.
+  details.addEventListener("toggle", () => {
+    if (details.open) {
+      els.nodesLayer.appendChild(foreignObjectFor(id));
+      summary.focus();
+    }
+    growNode(id);
+  });
+
+  return details;
+}
+
 function buildNodeEl(id, kind) {
   const meta = KIND_BY_NAME[kind];
   const { x, y } = graphState.nodes.get(id);
@@ -185,7 +299,7 @@ function buildNodeEl(id, kind) {
 
   const sub = document.createElement("p");
   sub.className = "node__subtitle";
-  sub.textContent = "not configured yet";
+  sub.textContent = kind === "Observable" ? MODES[0].label : "not configured yet";
   div.appendChild(sub);
 
   const ports = document.createElement("div");
@@ -214,6 +328,10 @@ function buildNodeEl(id, kind) {
   }
 
   div.appendChild(ports);
+
+  if (kind === "Observable") {
+    div.appendChild(buildObservableInterior(id));
+  }
 
   fo.appendChild(div);
 
