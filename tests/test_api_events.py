@@ -181,8 +181,9 @@ def test_reconnect_after_drain_gets_one_done_frame(client):
     run_id = client.post("/api/run", json={"missionId": "M-1", "graph": _graph()}).json()["runId"]
     _read_events(client, run_id)  # first client drains the queue fully, including "done"
 
-    job = client.app.state.jobs.get(run_id)
-    result = _run_bounded(_collect(api_module._drain(_FakeRequest(), job)), timeout=5.0)
+    registry = client.app.state.jobs
+    job = registry.get(run_id)
+    result = _run_bounded(_collect(api_module._drain(_FakeRequest(), job, registry)), timeout=5.0)
     assert result != "timed out", "a reconnect after drain must return promptly, not hang"
     assert result == [{"type": "done", "status": "done", "runId": run_id}]
 
@@ -190,13 +191,14 @@ def test_reconnect_after_drain_gets_one_done_frame(client):
 def test_two_concurrent_streams_do_not_interleave(client):
     ids = {"a": client.post("/api/run", json={"missionId": "A", "graph": _graph("0.0", "200.0")}).json()["runId"],
            "b": client.post("/api/run", json={"missionId": "B", "graph": _graph("60.0", "120.0")}).json()["runId"]}
-    jobs = {key: client.app.state.jobs.get(run_id) for key, run_id in ids.items()}
+    registry = client.app.state.jobs
+    jobs = {key: registry.get(run_id) for key, run_id in ids.items()}
 
     results = {}
 
     def read(key):
         try:
-            results[key] = asyncio.run(_collect(api_module._drain(_FakeRequest(), jobs[key])))
+            results[key] = asyncio.run(_collect(api_module._drain(_FakeRequest(), jobs[key], registry)))
         except BaseException:
             pass  # left unset; the join-timeout assertion below still catches a hang
 

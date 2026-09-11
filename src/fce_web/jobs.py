@@ -19,9 +19,11 @@ cache.
 ``queue.Queue[dict]`` fed by the run's ``RunContext`` callbacks. Full item
 shapes and the exactly-one-sentinel contract are in ``docs/api.md``'s
 "Run progress event" section -- this is the one place that contract is
-written out; do not restate it here. Every item put on ``events`` already
-carries its own ``runId`` (stamped here, where the frame is produced -- see
-``_make_ctx``), not added later by whichever stream happens to read it.
+written out; do not restate it here. ``submit()`` also records, by object
+identity, which job each ``events`` queue was created for (``owner_of``) --
+the SSE layer sources a frame's ``runId`` from that record rather than from
+whichever ``Job`` it was handed to read, so a bug that ever points two jobs
+at the same queue is still detectable instead of self-consistently wrong.
 
 **The content-addressed cache, at the job-registry layer.** The engine
 already caches on disk per histogram digest (``engine/analytical_loop.py``,
@@ -97,18 +99,15 @@ class Job:
     error: Optional[str] = None
 
 
-def _make_ctx(events: "queue.Queue", run_id: str) -> RunContext:
+def _make_ctx(events: "queue.Queue") -> RunContext:
     """A ``RunContext`` whose callbacks feed *events* -- nothing shared with
-    any other job's context. Every item stamps its own ``runId`` here, at
-    the point the frame is produced, so a bug that ever crosses two jobs'
-    queues still yields frames tagged with the job that actually produced
-    them, not the job whichever stream happens to be reading."""
+    any other job's context."""
     return RunContext(
-        on_progress=lambda f: events.put({"type": "progress", "value": f, "runId": run_id}),
-        on_log=lambda m: events.put({"type": "log", "message": m, "runId": run_id}),
-        on_phase=lambda p: events.put({"type": "phase", "phase": p, "runId": run_id}),
+        on_progress=lambda f: events.put({"type": "progress", "value": f}),
+        on_log=lambda m: events.put({"type": "log", "message": m}),
+        on_phase=lambda p: events.put({"type": "phase", "phase": p}),
         on_node=lambda status, nids: events.put(
-            {"type": "node", "status": status, "nids": sorted(nids), "runId": run_id}
+            {"type": "node", "status": status, "nids": sorted(nids)}
         ),
     )
 
@@ -159,6 +158,11 @@ class JobRegistry:
         # only their disk I/O queues up. Upgrade to a per-job output
         # directory if `run_physics_loop` ever accepts an explicit `hdir`.
         self._run_lock = threading.Lock()
+        # id(events queue) -> the job id `submit()` created it for. Read by
+        # `fce_web.routes.api._drain` via `owner_of` so a frame's `runId` on
+        # the wire is sourced from who actually produced it, not from
+        # whichever `Job` the reading stream happens to hold (F4/C11).
+        self._queue_owner: Dict[int, str] = {}
 
     def submit(self, graph: dict, mission_id: str) -> Job:
         """Validate *graph* and start (or instantly resolve, on a cache
@@ -170,9 +174,10 @@ class JobRegistry:
 
         job_id = uuid.uuid4().hex
         events: "queue.Queue" = queue.Queue()
-        ctx = _make_ctx(events, job_id)
+        ctx = _make_ctx(events)
 
         with self._lock:
+            self._queue_owner[id(events)] = job_id
             cached_id = self._cache.get(digest)
             cached = self._jobs.get(cached_id) if cached_id else None
             if cached is not None:
@@ -184,7 +189,7 @@ class JobRegistry:
                 )
                 self._jobs[job.id] = job
                 self._evict_over_cap()
-                job.events.put({"type": "done", "status": "done", "runId": job_id})
+                job.events.put({"type": "done", "status": "done"})
                 return job
 
             job = Job(id=job_id, mission_id=mission_id, ctx=ctx, events=events)
@@ -202,6 +207,13 @@ class JobRegistry:
         registry -- a second app's registry never has it either."""
         with self._lock:
             return self._jobs.get(run_id)
+
+    def owner_of(self, events: "queue.Queue") -> Optional[str]:
+        """The job id whose ``submit()`` call created *events*, looked up by
+        object identity -- independent of which ``Job`` a caller is holding.
+        ``None`` only if *events* was never created by this registry."""
+        with self._lock:
+            return self._queue_owner.get(id(events))
 
     def _evict_over_cap(self) -> None:
         """Drop the oldest non-``"running"`` job once ``self._jobs`` exceeds
@@ -257,7 +269,7 @@ class JobRegistry:
         if status == "done":
             with self._lock:
                 self._cache[digest] = job.id
-        job.events.put({"type": "done", "status": status, "runId": job.id})
+        job.events.put({"type": "done", "status": status})
 
     def _build_payload(self, job: Job, config: RunConfig, result: RunResult) -> dict:
         """Read the finished run's histogram files into the chart payload.

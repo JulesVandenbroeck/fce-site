@@ -86,12 +86,12 @@ def build_router() -> APIRouter:
         job = registry.get(run_id)
         if job is None:
             return JSONResponse({"error": f"no such run: {run_id!r}"}, status_code=404)
-        return StreamingResponse(_drain(request, job), media_type="text/event-stream")
+        return StreamingResponse(_drain(request, job, registry), media_type="text/event-stream")
 
     return router
 
 
-async def _drain(request: Request, job: Job) -> AsyncIterator[str]:
+async def _drain(request: Request, job: Job, registry: JobRegistry) -> AsyncIterator[str]:
     """Yield ``job.events`` as SSE frames until the terminal sentinel.
 
     ``job.events`` is a single, destructive queue shared by every stream on
@@ -102,9 +102,11 @@ async def _drain(request: Request, job: Job) -> AsyncIterator[str]:
     instead. Each blocking read runs off the event loop in a one-worker
     ``ThreadPoolExecutor`` scoped to this single stream (joined on exit, so
     a disconnecting client leaves no thread behind) rather than
-    ``asyncio.to_thread``'s shared, process-wide default executor. Every
-    frame already carries the ``runId`` of the job that produced it
-    (``fce_web.jobs._make_ctx``); this function forwards it, it does not add it.
+    ``asyncio.to_thread``'s shared, process-wide default executor. A frame's
+    ``runId`` is sourced from ``registry.owner_of(job.events)`` -- who
+    actually created that queue -- not from ``job.id``, so a bug that ever
+    points two jobs at the same queue still tags the wrong id instead of
+    quietly reporting the reading stream's own.
     """
     with job.lock:
         status = job.status
@@ -121,6 +123,7 @@ async def _drain(request: Request, job: Job) -> AsyncIterator[str]:
                 item = await loop.run_in_executor(pool, job.events.get, True, 0.5)
             except queue.Empty:
                 continue
+            item = {**item, "runId": registry.owner_of(job.events) or job.id}
             yield f"data: {json.dumps(item)}\n\n"
             if item["type"] == "done":
                 return
