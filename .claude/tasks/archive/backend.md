@@ -2169,3 +2169,26 @@ a clean record of what the coder wrote.
   user ruled out 2026-09-08. The work checks clean; this is a process breach.
 - **Review (cycle 3):** `findings=2, verdict=approve` — PR #37 comment `5631646485`. All prior fixed;
   reviewer ran noshort/cross/sharedq mutations + an owner_of-disabled control. Merged `3e85cf8` 2026-09-11.
+
+
+## B-023 — post-mortem (merged `5bcccd8`, 2026-09-11)
+
+Reviews: PR #43 `5633850118` (rework), ruling `5634042625`, cycle-2 approve.
+
+### B-023 — The e2e live server runs analyses against the fixture dataset
+- **Scope:** `tests/e2e/conftest.py`, `scripts/screenshot.py` (`serve_app` env), new `tests/e2e/test_run_harness.py`
+- **Accept:** `live_server`'s app resolves `FCE_HOME` to a session tmp dir holding B-018's fixture under
+  `datasets/IDEA/91GeV`; a mission-1 graph POSTed to it streams to `done` and X1 peaks within 3 GeV of the Z;
+  nothing under the real `~/.fce` is read or written. checks=5.
+- **Why:** scout 2026-09-11 — `live_server` sets no `FCE_HOME`, so a browser-submitted run (F-007/F-008) would use
+  `~/.fce`. Prerequisite for F-007's e2e checks.
+- **Branch / PR:** `task/b-023-e2e-fixture-runs` — #43
+- **Status:** cycle 2 done, head `976807c`, at gate → re-review. F1 fixed by function-scoped autouse `monkeypatch`
+  (fallback), F3 fixed. **C7 unmet and moved to B-024 by my ruling** (PR #43 comment): threading `env` needs
+  `driver.py:162`, which my scope forbade. F2 deferred with it.
+- **Review (cycle 1):** `findings=3, scope=pass, verdict=rework` — PR #43. **F1** session-scoped process `FCE_HOME`
+  leaks into all 623 unit tests; F2 `env=` param inert (mutation green); F3 dead assert. **Diagnosis: a cycle** —
+  nothing dropped. New C6 (no env leak past e2e), C7 (ignoring `env` reddens the test). checks 5 -> **7**.
+  Reviewer also found **pre-existing writers into the real `~/.fce`**: `test_jobs.py:148`, `test_driver.py:340`,
+  `test_engine_parity.py` → **B-024**.
+

@@ -13,7 +13,7 @@ _none._
 
 ## Ready
 
-**Wave 5 go-ahead given by the user, 2026-09-11.** D-017 merged `8ab7964`. F-007 (waits for B-023, #43, cycle 2) → F-008 → D-016, serialised on the page.
+**Wave 5 go-ahead given by the user, 2026-09-11.** D-017 merged `8ab7964`. B-023 merged `5bcccd8`. **F-007 is released** → F-008 → D-016, serialised on the page.
 **Held at the 75% usage soft threshold (2026-09-11, resets 17:00):** F-007 is not dispatched this window.
 
 ## Blocked

@@ -9,22 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-023 — The e2e live server runs analyses against the fixture dataset
-- **Scope:** `tests/e2e/conftest.py`, `scripts/screenshot.py` (`serve_app` env), new `tests/e2e/test_run_harness.py`
-- **Accept:** `live_server`'s app resolves `FCE_HOME` to a session tmp dir holding B-018's fixture under
-  `datasets/IDEA/91GeV`; a mission-1 graph POSTed to it streams to `done` and X1 peaks within 3 GeV of the Z;
-  nothing under the real `~/.fce` is read or written. checks=5.
-- **Why:** scout 2026-09-11 — `live_server` sets no `FCE_HOME`, so a browser-submitted run (F-007/F-008) would use
-  `~/.fce`. Prerequisite for F-007's e2e checks.
-- **Branch / PR:** `task/b-023-e2e-fixture-runs` — #43
-- **Status:** cycle 2 done, head `976807c`, at gate → re-review. F1 fixed by function-scoped autouse `monkeypatch`
-  (fallback), F3 fixed. **C7 unmet and moved to B-024 by my ruling** (PR #43 comment): threading `env` needs
-  `driver.py:162`, which my scope forbade. F2 deferred with it.
-- **Review (cycle 1):** `findings=3, scope=pass, verdict=rework` — PR #43. **F1** session-scoped process `FCE_HOME`
-  leaks into all 623 unit tests; F2 `env=` param inert (mutation green); F3 dead assert. **Diagnosis: a cycle** —
-  nothing dropped. New C6 (no env leak past e2e), C7 (ignoring `env` reddens the test). checks 5 -> **7**.
-  Reviewer also found **pre-existing writers into the real `~/.fce`**: `test_jobs.py:148`, `test_driver.py:340`,
-  `test_engine_parity.py` → **B-024**.
+_none._
 
 ## Ready
 
@@ -34,7 +19,7 @@ IDs are `B-nnn`, allocated in order and never reused.
   (retire `_e2e_process_fce_home`), `scripts/screenshot.py`.
 - **Inherits B-023's C7:** ignoring the app's `env` turns `test_run_harness.py` red; and B-023's F2 (make `serve_app(env=)` real or revert).
 - **Accept:** `pytest tests/ --ignore=tests/e2e -q` leaves `~/.fce/output` and `~/.fce/cache` mtimes unchanged; floors hold.
-- **Depends on:** B-023 (its `analytical_loop.py:272` env threading). Found by PR #43's review.
+- **Depends on:** B-023 — merged `5bcccd8`. Found by PR #43's review. Also fold in B-023 F4 (trim ~22 lines of history comments in `tests/e2e/conftest.py`).
 - **Consumes read-only:** `Job.events`, the contract written out once in `docs/api.md:108-114`
   and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
   `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
@@ -76,6 +61,10 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-023** — e2e `live_server` runs on the fixture dataset — #43, `5bcccd8`, 2 cycles, clean gate (`findings=1, verdict=approve`).
+  checks=7, **C7 + F2 moved to B-024 by my ruling** (my scope forbade `driver.py`). Suite floor **680** (+1 test, pre-F-003/F-009
+  base). Session tmp `FCE_HOME` symlinks the fixture; a function-scoped autouse fixture sets process `FCE_HOME` per e2e test
+  only — no leak into unit tests (probe + mutation). **Releases F-007.**
 - **B-022** — SSE `GET /api/run/{id}/events` + progress-event contract — #37, `3e85cf8`,
   **3 cycles + 2 body-count gate returns**, clean gate (`findings=2, verdict=approve`). **Closes M3
   checkpoint 1.** Every frame carries `runId`, sourced from `JobRegistry.owner_of` (accepted
