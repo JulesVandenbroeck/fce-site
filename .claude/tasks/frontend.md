@@ -13,20 +13,12 @@ _none._
 
 ## Ready
 
-**Wave 5 go-ahead given by the user, 2026-09-11.** F-009 (#42, in review) → F-007 (also waits for B-023, #43) → F-008 → D-016, serialised on the page.
-
-### F-009 — An opened node is re-clamped onto the canvas by its measured size
-- **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
-- **Accept:** after `growNode()` resizes an opened node, it is moved so its measured box lies fully inside
-  the canvas (vertical and horizontal); dragging an opened node clamps by its live size, not `NODE_W`/`NODE_H`.
-  Carries D-015's C12 vertical half (PR #39 cycle-2 review F6). Proven in Playwright at the bottom edge.
-- **Depends on:** D-015 — merged `0eded93`. Wave 3 fix, before F-007.
-- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-009-clamp-opened-node` — #42, head `6507db0`, gate passed (681 / flake8 0), in review. checks=5.
+**Wave 5 go-ahead given by the user, 2026-09-11.** F-007 (waits for B-023, #43) → F-008 → D-016, serialised on the page. D-017 slots in after F-007.
 
 ## Blocked
 
 ### F-007 — Serialise, submit, stream, show progress
-- **Depends on:** F-005, F-006, B-020, B-021, B-022 (all merged); go-ahead given 2026-09-11. **Waits for F-009 to merge** (same page). Wave 5.
+- **Depends on:** F-005, F-006, B-020, B-021, B-022 (all merged); go-ahead given 2026-09-11. F-009 merged `ad36dd9`. Wave 5.
 - **User ruling 2026-09-11 — client mission-1 defaults.** `build_run_config` rejects nodes without config and F-006
   removed the fields, so `run.js` fills each node's missing config at submit with the mission-1 recipe from
   `tests/test_api_run.py:24-38` (nlep 2 `>=`, `l1.pt > 20`, ObsCustom `(l1.p4 + l2.p4).mass`, 50 bins 60-120).
@@ -40,6 +32,9 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-009** — opened node clamped by its measured size — #42, `ad36dd9`, 1 cycle, clean gate (`findings=4, verdict=approve`;
+  F1-F4 cleanups backlogged, ~−16 lines). checks=5. Suite floor → **681**. `moveNodeTo` clamps by live box; `growNode`
+  re-clamps. Two tests, each mutation-verified against its own path. Closes D-015's C12 vertical half.
 - **F-003** — the four woff2 proven served — #41, `1f9d344`, 1 cycle, clean gate (`findings=2, verdict=approve`;
   F1/F2 readability nits backlogged). checks=5. Suite floor → **680**. Roman + mono 500 are painted by the page;
   italic + mono 400 are forced with `document.fonts.load` because nothing renders them yet. Red on 404, abort, no forcing.

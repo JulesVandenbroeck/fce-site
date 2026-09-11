@@ -296,3 +296,17 @@ Review: PR #41, `findings=2, verdict=approve`.
   selector in `src/fce_web/static/css/`. No such task exists yet; it arrives with the app's
   first main stylesheet, which is M6 work or whenever M3 needs one.
 - **Branch / PR:** not yet opened
+
+
+## F-009 — post-mortem (merged `ad36dd9`, 2026-09-11)
+
+Review: PR #42, `findings=4, verdict=approve`.
+
+### F-009 — An opened node is re-clamped onto the canvas by its measured size
+- **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
+- **Accept:** after `growNode()` resizes an opened node, it is moved so its measured box lies fully inside
+  the canvas (vertical and horizontal); dragging an opened node clamps by its live size, not `NODE_W`/`NODE_H`.
+  Carries D-015's C12 vertical half (PR #39 cycle-2 review F6). Proven in Playwright at the bottom edge.
+- **Depends on:** D-015 — merged `0eded93`. Wave 3 fix, before F-007.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-009-clamp-opened-node` — #42, head `6507db0`, gate passed (681 / flake8 0), in review. checks=5.
+
