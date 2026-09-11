@@ -14,8 +14,9 @@ IDs are `F-nnn`, allocated in order and never reused.
   proved unnecessary)
 - **Accept:** C1-C7 in the plan. **Total checks: 7.**
 - **Depends on:** F-005 (merged `b7fdfdf`). Wave 3.
-- **Branch / PR:** `task/f-006-observable-interior` — **branch pushed at `8cb14ab`, NO PR OPEN**
-- **Status:** **code complete and gate-verified, but NO PR and NOT REVIEWED.**
+- **Branch / PR:** `task/f-006-observable-interior` — #38, head `8cb14ab`
+- **Status:** **in review (cycle 1)**, reviewer dispatched 2026-09-11. PR #38 opened by the
+  coder 2026-09-11 (re-ran: 670 passed, flake8 0, e2e 53, test_graph 16; C4 unmet-by-design).
   Gate re-run in the primary checkout: `670 passed`, flake8 0, `tests/e2e/` **53** nodeids
   (47 at F-005). Scope exactly the two files, based on `b7fdfdf`.
 - **Why there is no PR, and what the next session must do first:** the coder was refused by
