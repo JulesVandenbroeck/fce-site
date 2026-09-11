@@ -68,7 +68,10 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none._
+### D-015 — The shell, canvas and node stylesheets
+- **Status:** **in progress (cycle 1)**, dispatched 2026-09-11 with `isolation: worktree`, branch
+  `task/d-015-app-stylesheets`. C1-C9 from the plan + **C10** (F-006's footprint) + **C11** (fonts on
+  real selectors, for F-003). Total 11. Full entry under `## Blocked` (historical position).
 
 ## Ready
 
