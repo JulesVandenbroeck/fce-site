@@ -13,7 +13,7 @@ _none._
 
 ## Ready
 
-_none — F-007 follows B-022. D-015 is design's._
+_F-007 is released (all five deps merged) but **waits for D-015** — same page, not parallel._
 
 ## Blocked
 
