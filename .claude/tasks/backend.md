@@ -17,7 +17,7 @@ IDs are `B-nnn`, allocated in order and never reused.
   `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
 - **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
 - **Branch / PR:** `task/b-022-sse-events` — #37, head `20d0e72`
-- **Status:** **cycle 3 complete, gate returned (body only)**, head `26e642c`. Gate reproduced in
+- **Status:** **in review (cycle 3 of 3)**, head `26e642c`, body count fixed 11 -> 14. Earlier gate: Gate reproduced in
   the primary checkout: `660 passed` (662 − F9/F10's 2 tests), `test_api_contract.py` 286, flake8 0,
   scope the four files, MERGEABLE. Body said `Total checks: 11` with C12-C14 present -> back for the
   count, not a cycle. Coder reports mutation (a) FAILS in 6.0s, (b) FAILS in 0.9s.
