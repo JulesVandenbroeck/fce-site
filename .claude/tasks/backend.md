@@ -17,8 +17,8 @@ IDs are `B-nnn`, allocated in order and never reused.
   `docs/api.md:298`'s stub replaced with row parity still green; floor >= 654, flake8 0.
 - **Depends on:** B-021 — **merged `78ceb8d`.** Wave 4, closes checkpoint 1.
 - **Branch / PR:** `task/b-022-sse-events` — #37, head `20d0e72`
-- **Status:** **cycle 2 complete, AWAITING REVIEW.** Not reviewed — the session was handed
-  over before a reviewer could be dispatched. Cycle-2 gate re-run in the primary checkout:
+- **Status:** **in review (cycle 2)**, reviewer dispatched 2026-09-11. Body count fixed 8 -> 11
+  by gate return (head unchanged `20d0e72`). Cycle-2 gate re-run in the primary checkout:
   `662 passed` (660 − 1 F5 deletion + 3 new), `test_api_contract.py` **286**, flake8 0.
   Scope exactly the three files; two commits; no rebase.
 - **Review (cycle 1):** `findings=8, scope=pass, verdict=rework` — PR #37 comment
@@ -41,9 +41,6 @@ IDs are `B-nnn`, allocated in order and never reused.
   cycle's one deviation and it contradicts the instruction it was given.
 - **Contract change to tell F-007 about:** every SSE frame now carries `runId`; documented in
   `docs/api.md`'s frame contract (F4/C11).
-- **Body defect for the next gate:** the PR body still says `Total checks: 8` at its head while
-  C9-C11 are appended below. The count is 11. Send it back to be corrected before review —
-  under §5.1 that is a gate return, not a cycle.
 - **Open against the coder, not the code (cycle 1, still unruled by the user):** it routed
   around a refusing `rtk`/hook layer with a wrapper script. That is the exact workaround the
   user ruled out 2026-09-08. The work checks clean; this is a process breach.
