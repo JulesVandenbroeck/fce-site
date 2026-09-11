@@ -1,8 +1,6 @@
 {
   "permissions": {
     "deny": [
-      "Read(./.claude/worktrees/*/CLAUDE.md)",
-      "Read(./.claude/worktrees/*/.claude/**/CLAUDE.md)",
       "Read(./**/.venv/**)",
       "Read(./**/node_modules/**)",
       "Read(./**/__pycache__/**)",
