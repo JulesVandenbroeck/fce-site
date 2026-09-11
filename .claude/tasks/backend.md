@@ -16,7 +16,8 @@ IDs are `B-nnn`, allocated in order and never reused.
   nothing under the real `~/.fce` is read or written. checks=5.
 - **Why:** scout 2026-09-11 — `live_server` sets no `FCE_HOME`, so a browser-submitted run (F-007/F-008) would use
   `~/.fce`. Prerequisite for F-007's e2e checks.
-- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/b-023-e2e-fixture-runs`.
+- **Branch / PR:** `task/b-023-e2e-fixture-runs` — #43
+- **Status:** at gate (cycle 1). Deviation: also sets real process `FCE_HOME` — `analytical_loop.py:272` ignores `env` (backlog).
 
 ## Ready
 

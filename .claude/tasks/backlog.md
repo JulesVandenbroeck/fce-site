@@ -691,3 +691,5 @@ and are historical now that #6 is merged.
 - **B-022 F13** `tests/test_api_events.py:173-178` — section comment says `runId` is stamped in `_make_ctx`; it is read from `registry.owner_of`. One-line replacement, drop criterion IDs.
 - **D-015 F12** — `shell.css:99-101, :129-131, :283-285`: three 3-line comments restate their rules and cite review IDs; cut to one line, no ID (PR #39 comment `5633052547`).
 - **F-010 F1** — `tests/e2e/test_shell.py:81-101`: fold `test_mission_pager_has_nothing_to_page_to` into `test_mission_panel_shows_m1_not_a_later_mission`, drop class asserts :98-99 (PR #40 comment `5633215745`).
+- **F-003 F1/F2** — `tests/e2e/test_fonts.py:36-41` lambda listener → `def on_response`; `:60` → `set(matches.values()) == {200}` (PR #41).
+- **B-023 candidate** — `engine/analytical_loop.py:272` bare `get_fce_home()` ignores the threaded `env` (unlike `driver.py`/`jobs.py`); thread it so e2e hermeticity needs no process-env mutation.

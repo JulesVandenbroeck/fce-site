@@ -267,3 +267,32 @@ Review: PR #40 comment `5633215745`, `findings=2, verdict=approve`.
 - **Branch / PR:** `task/f-010-mission-one-text` — #40
 - **Status:** in review (cycle 1) — head `cff7e54`, gate passed (679 / flake8 0). checks=5.
 
+
+
+## F-003 — post-mortem (merged `1f9d344`, 2026-09-11)
+
+Review: PR #41, `findings=2, verdict=approve`.
+
+### F-003 — Prove the four woff2 are actually served
+- **Depends on:** D-015 — merged `0eded93`. Full entry under `## Deferred`.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-003-woff2-served` — #41, scope `tests/e2e/test_fonts.py` only. checks=5. Gate running.
+
+
+
+## Deferred
+
+### F-003 — Prove the four woff2 are actually served
+- **Why:** F-002 links `tokens.css` but cannot exercise the fonts — `tokens.css` applies
+  `font-family` to nothing, so no face is ever fetched, and "no font 404s" passes vacuously.
+  The four files under `src/fce_web/static/fonts/` have therefore **never been served**, and
+  their `src:` URLs are all relative (`url("../fonts/<name>.woff2")` at `tokens.css:54, :62,
+  :70, :78`), resolving against `/static/css/` — so they work only if the sheet is served from
+  that exact path. Nothing has tested that.
+- **Accept:** loading a page whose CSS actually uses `var(--font-body)` and `var(--font-mono)`
+  requests all four woff2 and every one returns 200. Falsifiability shown by breaking one
+  `src:` path and watching the named test go red. **The check must assert the four are
+  requested, not merely that nothing failed** — the vacuity is the whole point of this task.
+- **Depends on:** the first design task that applies `font-family: var(--font-body)` to a real
+  selector in `src/fce_web/static/css/`. No such task exists yet; it arrives with the app's
+  first main stylesheet, which is M6 work or whenever M3 needs one.
+- **Branch / PR:** not yet opened
