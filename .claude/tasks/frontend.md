@@ -13,9 +13,7 @@ _none._
 
 ## Ready
 
-_F-007 is released (all five deps merged) but **waits for D-015** — same page, not parallel._
-
-## Blocked
+Order: F-010, then F-009, then F-003 (serialised — same page). F-007 waits for the user's wave-5 go-ahead.
 
 ### F-010 — Mission panel shows mission 3's text instead of mission 1's
 - **Found by the user, 2026-09-11** (PDF of `main` at `8f094a6`): the panel reads "M-3 · The Unknown — A signal
@@ -26,23 +24,24 @@ _F-007 is released (all five deps merged) but **waits for D-015** — same page,
 - **Accept:** the panel shows **M-1 · First Light** with brief §3's M-1 objective in plain student English
   (`docs/design-brief.md:86-91`); no M-2/M-3 text anywhere in the rendered page; the pager does not offer
   missions that do not exist yet. Hardcoded is fine — mission loading is M5.
-- **Depends on:** nothing (text only). Same template as D-015's one `<span>` wrapper: dispatch after D-015
-  merges, or rebase-free merge of `main` into its branch. Serialise with F-009.
+- **Depends on:** nothing — D-015 merged `0eded93`. Serialise with F-009.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-010-mission-one-text`. checks=5.
 
 ### F-009 — An opened node is re-clamped onto the canvas by its measured size
 - **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
 - **Accept:** after `growNode()` resizes an opened node, it is moved so its measured box lies fully inside
   the canvas (vertical and horizontal); dragging an opened node clamps by its live size, not `NODE_W`/`NODE_H`.
   Carries D-015's C12 vertical half (PR #39 cycle-2 review F6). Proven in Playwright at the bottom edge.
-- **Depends on:** D-015 merged (same page; its CSS sets the opened size). Wave 3 fix, before F-007.
-
+- **Depends on:** D-015 — merged `0eded93`. Wave 3 fix, before F-007.
 
 ### F-003 — Prove the four woff2 are actually served
-- **Depends on:** **D-015** — the first task to apply `font-family: var(--font-body)` to a real
-  selector in `src/fce_web/static/css/`. That task now exists; full entry below under
-  `## Deferred`, unchanged. Wave 4.
+- **Depends on:** D-015 — merged `0eded93`. Full entry under `## Deferred`.
+
+
+## Blocked
+
 ### F-007 — Serialise, submit, stream, show progress
-- **Depends on:** F-005, F-006, B-020, B-021, B-022. Wave 5.
+- **Depends on:** F-005, F-006, B-020, B-021, B-022 (all merged) — **the user's wave-5 go-ahead**. Wave 5.
 ### F-008 — The interactive SVG histogram
 - **Depends on:** B-019, F-007. Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge
   are explicitly out of scope by the user's 2026-09-07 ruling. Wave 5.

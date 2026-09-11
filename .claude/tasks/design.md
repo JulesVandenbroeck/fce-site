@@ -68,63 +68,16 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-### D-015 — The shell, canvas and node stylesheets
-- **Status:** **in review (cycle 3, last before §5.7)** — head `68d2605`, gate passed (677 / flake8 0, C14 in body). Worktree `.claude/worktrees/agent-ad7927e0c748beb14`.
-- **Review (cycle 2, finished from handoff):** `findings=3, scope=pass, verdict=rework` — PR #39 comment `5632891506`.
-  F5-F8 fixed; 677 / flake8 0. **F9** collapsed `#palette-list` still painted (`display:flex` beats `[hidden]`);
-  **F10** collapsed palette toggle clipped outside the 64px rail; **F11** collapsed panel toggle 21-53px past the
-  viewport. Confirms the user's screenshot, not a transition artefact. **Diagnosis: a cycle** — C6 only ever gated
-  h-scroll; nothing dropped; reachable controls are shared §6. New **C14** (collapsed body not painted, both
-  toggles fully in viewport and hit, 12 layouts). checks 13 -> **14**.
-- **Verify before merge (user's layout check, 2026-09-11):** the expanded styled page (`~/fce-demo/d015-styled-1440.png`)
-  matches the three-region design. But a 1440 screenshot with the palette collapsed / panel collapsed
-  (`~/fce-demo/d015-collapsed-1440.png`) shows the palette list still visible and clipped in a ~64px rail and the
-  mission panel reduced to a clipped toggle at the right edge. May be a mid-transition capture; the reviewer
-  must check the collapsed states explicitly (C6's 12 layouts were not re-toggled on cycle 2).
-- **Review (cycle 2):** `findings=3, scope=pass, verdict=rework`. F1-F4 fixed, F5 half. **F6:** an opened
-  Observable placed low on the canvas spills off the bottom — `graph.js` clamps with fixed `NODE_H=104`,
-  opened card is 232px. **Diagnosis: my C12 said "anywhere", which design's file scope cannot satisfy**
-  (the B-005 shape). C12 restated as horizontal-only; the vertical half **moves to F-009**, not dropped.
-  F7 `translateY(6px)` literal, F8 header comment. Cycle count stays 2.
-- **Review (cycle 1):** `findings=5, scope=pass, verdict=rework` — PR #39 comment `5631916694`. 677 /
-  flake8 0 reproduced; C2-C9/C11 reproduced; radio fix mutation-verified. **F1 blocks:** opened
-  Observable widens to 300px but `graph.js` clamps with `NODE_W=160`, so right-side nodes clip off
-  the canvas. F2 hard-coded lengths (C1 covers spacing). F3 collapsed card 105 in a 104 box. F4/F5
-  comment trims. checks 11 -> **13** (C12 node stays on canvas, C13 token lengths + no overflow).
-  If the coder keeps 300px, a frontend task to clamp by live width follows. C1-C9 from the plan + **C10** (F-006's footprint) + **C11** (fonts on
-  real selectors, for F-003). Total 11. Full entry under `## Blocked` (historical position).
+_none._
 
 ## Ready
 
-### D-015 — The shell, canvas and node stylesheets
-- **Depends on:** F-004 (`30cceb3`), F-005 (`b7fdfdf`), F-006 (`eb4f420`) — **all merged, dispatchable.** Full entry
-  under `## Blocked` below, unchanged. `effort: high`. **Releases F-003.**
-
+_none._
 
 ## Blocked
 
 M3 tasks first; D-011/D-012 are unchanged below.
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
-
-### D-015 — The shell, canvas and node stylesheets
-- **Scope:** `src/fce_web/static/css/`; in `templates/`, class attributes and presentational
-  wrappers **only**. Must not touch `docs/design-explorations/verify.py`.
-- **Accept:** C1-C9 in the plan. Tokens only, verified by enumerating **computed** styles in a
-  browser (not by grepping for `#` — D-001's four cycles); AA contrast in the running app,
-  `--ink-45` not used for text; D-008's six palette floors hold; no page h-scroll at
-  1440/1024/768 across all four palette/panel states; `verify.py` unmodified; file scope by
-  `git diff main...HEAD --name-only` (three-dot).
-- **Depends on:** F-004, F-005, F-006. **Releases F-003.** Wave 3, `effort: high`.
-- **Branch / PR:** not yet opened
-- **Inherits F-006's C4 (2026-09-11):** the opened Observable footprint in the running app is
-  consistent with D-013's styled contract (ObsVectorSum 328x300 tallest; ObsCustom 301.5,
-  ObsObject 290.5, ObsGlobal 237.0; collapsed 80.5), measured on the node, not the foreignObject.
-  F-006 cycle 1 could not meet it without CSS (PR #38 review F5).
-- **Also from F-006 (PR #38 F6):** opening a node moves it to the end of `#nodes-layer` for paint
-  order, which also moves it to the end of Tab order. Accepted in M3; if D-015 can achieve stacking
-  without the DOM move, say so and raise a frontend task — do not change `graph.js`.
-- **Note:** once ported, the app CSS is authoritative and the exploration copy is **frozen** —
-  the divergence D-002 backlogged as m5 is accepted here deliberately, not prevented.
 
 ### D-016 — Results region and chart styling
 - **Depends on:** F-008. Wave 5. Sample identity colour identical in graph, legend and plot.
@@ -163,6 +116,11 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-015** — the shell, canvas and node stylesheets — #39, `0eded93`, **3 cycles + 1 re-spec + 1 reviewer handoff**,
+  clean gate (`findings=1, verdict=approve`; F12 comment trim backlogged). checks=14. Suite floor **677** unchanged.
+  Ships `shell.css`, `canvas.css`, `observable.css` + 3 `<link>`s and one `<span>` wrapper. First real use of
+  `--font-body` → **releases F-003**. Cycle 3 fixed the user-found collapsed states (list still painted, both
+  toggles unreachable) — C6 had gated only h-scroll. C12 vertical half → **F-009**. Releases F-009, F-010.
 - **D-014** — closed D-010's open findings: the horizontal-scroll guard — #29, `63a6fd8`,
   2 cycles + 1 re-spec + 1 gate return, clean gate (`findings=5, verdict=approve`, all five
   folded in before merge). checks=6. Ships the real `shell-page-no-h-scroll` section the CSS and

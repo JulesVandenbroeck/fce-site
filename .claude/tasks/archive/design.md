@@ -1971,3 +1971,59 @@ unconditional 1024 media query reddens it naming the exact state
 
 **Floors moved:** AST 79/215 (`a059f34`) -> 80/216 (cycle 1) -> **81/217** (`63a6fd8`).
 `board-lane-fill` remains the one deliberate red section.
+
+
+## D-015 — post-mortem (merged `0eded93`, 2026-09-11)
+
+Cycle 3 review: PR #39 comment `5633052547`, `findings=1, verdict=approve`.
+
+### Active entry at merge
+
+### D-015 — The shell, canvas and node stylesheets
+- **Status:** **in review (cycle 3, last before §5.7)** — head `68d2605`, gate passed (677 / flake8 0, C14 in body). Worktree `.claude/worktrees/agent-ad7927e0c748beb14`.
+- **Review (cycle 2, finished from handoff):** `findings=3, scope=pass, verdict=rework` — PR #39 comment `5632891506`.
+  F5-F8 fixed; 677 / flake8 0. **F9** collapsed `#palette-list` still painted (`display:flex` beats `[hidden]`);
+  **F10** collapsed palette toggle clipped outside the 64px rail; **F11** collapsed panel toggle 21-53px past the
+  viewport. Confirms the user's screenshot, not a transition artefact. **Diagnosis: a cycle** — C6 only ever gated
+  h-scroll; nothing dropped; reachable controls are shared §6. New **C14** (collapsed body not painted, both
+  toggles fully in viewport and hit, 12 layouts). checks 13 -> **14**.
+- **Verify before merge (user's layout check, 2026-09-11):** the expanded styled page (`~/fce-demo/d015-styled-1440.png`)
+  matches the three-region design. But a 1440 screenshot with the palette collapsed / panel collapsed
+  (`~/fce-demo/d015-collapsed-1440.png`) shows the palette list still visible and clipped in a ~64px rail and the
+  mission panel reduced to a clipped toggle at the right edge. May be a mid-transition capture; the reviewer
+  must check the collapsed states explicitly (C6's 12 layouts were not re-toggled on cycle 2).
+- **Review (cycle 2):** `findings=3, scope=pass, verdict=rework`. F1-F4 fixed, F5 half. **F6:** an opened
+  Observable placed low on the canvas spills off the bottom — `graph.js` clamps with fixed `NODE_H=104`,
+  opened card is 232px. **Diagnosis: my C12 said "anywhere", which design's file scope cannot satisfy**
+  (the B-005 shape). C12 restated as horizontal-only; the vertical half **moves to F-009**, not dropped.
+  F7 `translateY(6px)` literal, F8 header comment. Cycle count stays 2.
+- **Review (cycle 1):** `findings=5, scope=pass, verdict=rework` — PR #39 comment `5631916694`. 677 /
+  flake8 0 reproduced; C2-C9/C11 reproduced; radio fix mutation-verified. **F1 blocks:** opened
+  Observable widens to 300px but `graph.js` clamps with `NODE_W=160`, so right-side nodes clip off
+  the canvas. F2 hard-coded lengths (C1 covers spacing). F3 collapsed card 105 in a 104 box. F4/F5
+  comment trims. checks 11 -> **13** (C12 node stays on canvas, C13 token lengths + no overflow).
+  If the coder keeps 300px, a frontend task to clamp by live width follows. C1-C9 from the plan + **C10** (F-006's footprint) + **C11** (fonts on
+  real selectors, for F-003). Total 11. Full entry under `## Blocked` (historical position).
+
+
+### Original entry
+### D-015 — The shell, canvas and node stylesheets
+- **Scope:** `src/fce_web/static/css/`; in `templates/`, class attributes and presentational
+  wrappers **only**. Must not touch `docs/design-explorations/verify.py`.
+- **Accept:** C1-C9 in the plan. Tokens only, verified by enumerating **computed** styles in a
+  browser (not by grepping for `#` — D-001's four cycles); AA contrast in the running app,
+  `--ink-45` not used for text; D-008's six palette floors hold; no page h-scroll at
+  1440/1024/768 across all four palette/panel states; `verify.py` unmodified; file scope by
+  `git diff main...HEAD --name-only` (three-dot).
+- **Depends on:** F-004, F-005, F-006. **Releases F-003.** Wave 3, `effort: high`.
+- **Branch / PR:** not yet opened
+- **Inherits F-006's C4 (2026-09-11):** the opened Observable footprint in the running app is
+  consistent with D-013's styled contract (ObsVectorSum 328x300 tallest; ObsCustom 301.5,
+  ObsObject 290.5, ObsGlobal 237.0; collapsed 80.5), measured on the node, not the foreignObject.
+  F-006 cycle 1 could not meet it without CSS (PR #38 review F5).
+- **Also from F-006 (PR #38 F6):** opening a node moves it to the end of `#nodes-layer` for paint
+  order, which also moves it to the end of Tab order. Accepted in M3; if D-015 can achieve stacking
+  without the DOM move, say so and raise a frontend task — do not change `graph.js`.
+- **Note:** once ported, the app CSS is authoritative and the exploration copy is **frozen** —
+  the divergence D-002 backlogged as m5 is accepted here deliberately, not prevented.
+
