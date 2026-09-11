@@ -69,7 +69,8 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Status:** **re-specification after cycle 2 (not a cycle)**, dispatched 2026-09-11, head `636562b`.
+- **Status:** **in review (re-spec after cycle 2)**, head `9e8fbf1`. Gate reproduced: `677 passed`, flake8 0,
+  scope unchanged, MERGEABLE, `Total checks: 13`, C12 restated with original struck through, F-009 named.
 - **Review (cycle 2):** `findings=3, scope=pass, verdict=rework`. F1-F4 fixed, F5 half. **F6:** an opened
   Observable placed low on the canvas spills off the bottom — `graph.js` clamps with fixed `NODE_H=104`,
   opened card is 232px. **Diagnosis: my C12 said "anywhere", which design's file scope cannot satisfy**
