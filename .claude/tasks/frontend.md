@@ -25,13 +25,17 @@ _none._
 
 ### F-003 — Prove the four woff2 are actually served
 - **Depends on:** D-015 — merged `0eded93`. Full entry under `## Deferred`.
-- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-003-woff2-served`, scope `tests/e2e/test_fonts.py` only. checks=5.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-003-woff2-served` — #41, scope `tests/e2e/test_fonts.py` only. checks=5. Gate running.
 
 
 ## Blocked
 
 ### F-007 — Serialise, submit, stream, show progress
 - **Depends on:** F-005, F-006, B-020, B-021, B-022 (all merged); go-ahead given 2026-09-11. **Waits for F-009 to merge** (same page). Wave 5.
+- **User ruling 2026-09-11 — client mission-1 defaults.** `build_run_config` rejects nodes without config and F-006
+  removed the fields, so `run.js` fills each node's missing config at submit with the mission-1 recipe from
+  `tests/test_api_run.py:24-38` (nlep 2 `>=`, `l1.pt > 20`, ObsCustom `(l1.p4 + l2.p4).mass`, 50 bins 60-120).
+  Editable node fields are M4. **Also waits for B-023** (e2e `live_server` on the fixture; it sets no `FCE_HOME`).
 ### F-008 — The interactive SVG histogram
 - **Depends on:** B-019, F-007. Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge
   are explicitly out of scope by the user's 2026-09-07 ruling. Wave 5.
