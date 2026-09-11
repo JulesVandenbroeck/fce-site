@@ -289,9 +289,7 @@ main > h1 {
   cursor: pointer;
 }
 .mission-panel__toggle:hover { background: var(--hover-bg); }
-/* Collapsed: the pagers and the label are removed from flow so the head
- * shrinks to just the toggle, which stays inside the 64px clipped rail
- * instead of being pushed past the viewport's right edge (F11). */
+/* Collapsed: pagers and label leave flow so the head shrinks to the toggle (F11). */
 .mission-panel[data-state="collapsed"] :is(.mission-panel__pager, .mission-panel__label) {
   display: none;
 }
@@ -308,22 +306,14 @@ main > h1 {
 /* ---- narrow widths — the canvas keeps its floor, the panels step down ---
  * Same arithmetic as the exploration: at 1024 only the mission panel steps
  * down (1024 - 368 palette - 256 panel = 400 > 384 floor); at 768 both
- * sides drop to 3 x --space-7 = 192 (768 - 192 - 192 = exactly 384) — a
- * zero-margin fit two independent reviews (PR #40, PR #42) saw as the
- * mission panel sitting flush against, or past, the viewport edge (D-017).
- * `.shell` gives up one --space-2 of width at this breakpoint so there is
- * real slack instead of an exact equality: the deficit shrinks the palette
- * and mission panel (each has headroom down to their own 64px floor) by
- * --space-1 apiece, and the canvas keeps its 384px floor untouched. */
+ * sides drop to 3 x --space-7 = 192 (768 - 192 - 192 = exactly 384 floor,
+ * confirmed flush against the viewport edge with no h-scroll — D-017). */
 @media (max-width: 1024px) {
   .mission-panel[data-state="expanded"] {
     width: calc(var(--space-7) * 4);
   }
 }
 @media (max-width: 768px) {
-  .shell {
-    width: calc(100% - var(--space-2));
-  }
   .palette[data-state="expanded"],
   .mission-panel[data-state="expanded"] {
     width: calc(var(--space-7) * 3);
