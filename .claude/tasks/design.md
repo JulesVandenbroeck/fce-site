@@ -73,8 +73,7 @@ _none._
 ## Ready
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Depends on:** F-004 (merged), F-005 and F-006 (both wave 3, unstarted) — so it is **ready in
-  sequence, not yet dispatchable**: it styles markup F-005/F-006 have not shipped. Full entry
+- **Depends on:** F-004 (`30cceb3`), F-005 (`b7fdfdf`), F-006 (`eb4f420`) — **all merged, dispatchable.** Full entry
   under `## Blocked` below, unchanged. `effort: high`. **Releases F-003.**
 
 
@@ -97,6 +96,9 @@ Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
   consistent with D-013's styled contract (ObsVectorSum 328x300 tallest; ObsCustom 301.5,
   ObsObject 290.5, ObsGlobal 237.0; collapsed 80.5), measured on the node, not the foreignObject.
   F-006 cycle 1 could not meet it without CSS (PR #38 review F5).
+- **Also from F-006 (PR #38 F6):** opening a node moves it to the end of `#nodes-layer` for paint
+  order, which also moves it to the end of Tab order. Accepted in M3; if D-015 can achieve stacking
+  without the DOM move, say so and raise a frontend task — do not change `graph.js`.
 - **Note:** once ported, the app CSS is authoritative and the exploration copy is **frozen** —
   the divergence D-002 backlogged as m5 is accepted here deliberately, not prevented.
 

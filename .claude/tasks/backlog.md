@@ -683,3 +683,6 @@ and are historical now that #6 is merged.
   catch the server rejecting the ride-along keys the contract block promises. Fix is one edit:
   `{**n, "config": node_config[n["kind"]]}`. Non-blocking — the reviewer ran the corrected form
   to green itself; this closes a claim/check gap, not a live defect. (PR #36 cycle 2, 2026-09-09)
+
+- **F-006 F7** `tests/e2e/test_graph.py:372` — `button:not(summary)`: the `:not` is dead; use `"input, select, textarea, button"`.
+- **F-006 F8** `graph.js:28-31` duplicates the comment at `:215-220` on why per-mode forms were dropped; delete the header copy.
