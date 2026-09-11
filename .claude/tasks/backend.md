@@ -17,8 +17,9 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Why:** scout 2026-09-11 — `live_server` sets no `FCE_HOME`, so a browser-submitted run (F-007/F-008) would use
   `~/.fce`. Prerequisite for F-007's e2e checks.
 - **Branch / PR:** `task/b-023-e2e-fixture-runs` — #43
-- **Status:** cycle 2 dispatched, worktree `.claude/worktrees/agent-aeabe6cf7540d2d34`. Scope widened to
-  `engine/analytical_loop.py` (thread `env` at :272 — the root cause; makes `serve_app(env=)` load-bearing, resolves F1/F2).
+- **Status:** cycle 2 done, head `976807c`, at gate → re-review. F1 fixed by function-scoped autouse `monkeypatch`
+  (fallback), F3 fixed. **C7 unmet and moved to B-024 by my ruling** (PR #43 comment): threading `env` needs
+  `driver.py:162`, which my scope forbade. F2 deferred with it.
 - **Review (cycle 1):** `findings=3, scope=pass, verdict=rework` — PR #43. **F1** session-scoped process `FCE_HOME`
   leaks into all 623 unit tests; F2 `env=` param inert (mutation green); F3 dead assert. **Diagnosis: a cycle** —
   nothing dropped. New C6 (no env leak past e2e), C7 (ignoring `env` reddens the test). checks 5 -> **7**.
@@ -28,7 +29,10 @@ IDs are `B-nnn`, allocated in order and never reused.
 ## Ready
 
 ### B-024 — Unit tests never write into the real `~/.fce`
-- **Scope:** `tests/test_jobs.py`, `tests/test_driver.py`, `tests/test_engine_parity.py` (tmp `FCE_HOME` / `env`).
+- **Scope:** `src/fce_web/engine/analytical_loop.py` + `engine/driver.py:162` (thread `env` into `run_physics_loop`'s
+  `get_fce_home` at :272), `tests/test_jobs.py`, `tests/test_driver.py`, `tests/test_engine_parity.py`, `tests/e2e/conftest.py`
+  (retire `_e2e_process_fce_home`), `scripts/screenshot.py`.
+- **Inherits B-023's C7:** ignoring the app's `env` turns `test_run_harness.py` red; and B-023's F2 (make `serve_app(env=)` real or revert).
 - **Accept:** `pytest tests/ --ignore=tests/e2e -q` leaves `~/.fce/output` and `~/.fce/cache` mtimes unchanged; floors hold.
 - **Depends on:** B-023 (its `analytical_loop.py:272` env threading). Found by PR #43's review.
 - **Consumes read-only:** `Job.events`, the contract written out once in `docs/api.md:108-114`
