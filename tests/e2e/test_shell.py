@@ -76,3 +76,26 @@ def test_shell_page_logs_no_console_errors(index: LoadedPage) -> None:
 def test_shell_page_has_no_bad_responses(index: LoadedPage) -> None:
     """C4."""
     assert index.activity.bad_responses == []
+
+
+def test_mission_panel_shows_m1_not_a_later_mission(index: LoadedPage) -> None:
+    """F-010 C1/C2: the panel is hardcoded to M-1 until mission loading (M5)
+    arrives -- no mission-2 or mission-3 text, and no fit talk (M-1 has none).
+    Goes red if the M-3 demo copy comes back."""
+    body_text = index.page.inner_text("body")
+    assert "M-1" in body_text
+    assert "First Light" in body_text
+    for forbidden in ("M-2", "M-3", "The Unknown", "run a fit"):
+        assert forbidden not in body_text
+
+
+def test_mission_pager_has_nothing_to_page_to(index: LoadedPage) -> None:
+    """F-010 C3: only M-1 exists, so both pager buttons are disabled but
+    still present with their classes for D-015's CSS to style."""
+    page = index.page
+    back = page.locator("#pager-back")
+    forward = page.locator("#pager-forward")
+    assert back.get_attribute("class") == "mission-panel__pager"
+    assert forward.get_attribute("class") == "mission-panel__pager"
+    assert back.is_disabled()
+    assert forward.is_disabled()
