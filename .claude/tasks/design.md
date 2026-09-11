@@ -69,8 +69,10 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Status:** **in review (re-spec after cycle 2)**, head `9e8fbf1`. Gate reproduced: `677 passed`, flake8 0,
-  scope unchanged, MERGEABLE, `Total checks: 13`, C12 restated with original struck through, F-009 named.
+- **Status:** **handed off mid-review (re-spec after cycle 2)** — see [`handoff/d-015-review-2.md`](../handoff/d-015-review-2.md).
+  Head `9e8fbf1`. Reviewer verified F5-F8 fixed, restated C12 holds at both edges (red under a 300px
+  mutation), no new findings; **only its own pytest+flake8 run was unfinished** (my gate had 677 / 0).
+  Next: re-dispatch the reviewer to finish; merge on approve; then F-009.
 - **Review (cycle 2):** `findings=3, scope=pass, verdict=rework`. F1-F4 fixed, F5 half. **F6:** an opened
   Observable placed low on the canvas spills off the bottom — `graph.js` clamps with fixed `NODE_H=104`,
   opened card is 232px. **Diagnosis: my C12 said "anywhere", which design's file scope cannot satisfy**
