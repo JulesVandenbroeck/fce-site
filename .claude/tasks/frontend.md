@@ -13,7 +13,7 @@ _none._
 
 ## Ready
 
-Order: F-009, then F-003 (serialised — same page). F-007 waits for the user's wave-5 go-ahead.
+**Wave 5 go-ahead given by the user, 2026-09-11.** F-009 (in flight) → F-007 → F-008 → D-016, serialised on graph.js/the page. F-003 is test-only and runs in parallel.
 
 ### F-009 — An opened node is re-clamped onto the canvas by its measured size
 - **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
@@ -25,12 +25,13 @@ Order: F-009, then F-003 (serialised — same page). F-007 waits for the user's 
 
 ### F-003 — Prove the four woff2 are actually served
 - **Depends on:** D-015 — merged `0eded93`. Full entry under `## Deferred`.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-003-woff2-served`, scope `tests/e2e/test_fonts.py` only. checks=5.
 
 
 ## Blocked
 
 ### F-007 — Serialise, submit, stream, show progress
-- **Depends on:** F-005, F-006, B-020, B-021, B-022 (all merged) — **the user's wave-5 go-ahead**. Wave 5.
+- **Depends on:** F-005, F-006, B-020, B-021, B-022 (all merged); go-ahead given 2026-09-11. **Waits for F-009 to merge** (same page). Wave 5.
 ### F-008 — The interactive SVG histogram
 - **Depends on:** B-019, F-007. Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge
   are explicitly out of scope by the user's 2026-09-07 ruling. Wave 5.
