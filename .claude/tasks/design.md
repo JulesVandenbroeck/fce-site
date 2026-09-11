@@ -69,8 +69,9 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Status:** **in progress (cycle 1)**, dispatched 2026-09-11 with `isolation: worktree`, branch
-  `task/d-015-app-stylesheets`. C1-C9 from the plan + **C10** (F-006's footprint) + **C11** (fonts on
+- **Status:** **in review (cycle 1)**, PR #39 head `86ed41b`. Gate reproduced in the primary checkout:
+  `677 passed`, flake8 0, scope 3 CSS files + `base.html` (links) + `shell.html` (one span), MERGEABLE,
+  `Total checks: 11`. C10 footprint deviates >10% from D-013, argued in the body. C1-C9 from the plan + **C10** (F-006's footprint) + **C11** (fonts on
   real selectors, for F-003). Total 11. Full entry under `## Blocked` (historical position).
 
 ## Ready
