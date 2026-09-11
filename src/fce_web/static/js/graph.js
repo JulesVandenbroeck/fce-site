@@ -25,10 +25,10 @@
 //
 // F-006 also owns the `Observable` node's grow-in-place interior (source:
 // docs/design-explorations/observable.html): a native <details> holding a
-// radio-group mode toggle plus one <div class="mode-panel"> per mode, ported
-// as markup+behaviour only -- the CSS-only ":has()" panel/preview switch the
-// exploration used is design's to add later, so this file drives visibility
-// with the `hidden` attribute instead, and growNode() resizes the node's
+// radio-group mode toggle, ported as markup+behaviour only. The
+// exploration's per-mode forms are not built -- their values never reached
+// `config`, see buildObservableInterior's own comment -- so there is no
+// panel to switch visibility on; growNode() resizes the node's
 // foreignObject to its measured content box, no fixed numbers guessed.
 //
 // VALID_CONNECTIONS below is a courtesy check only, trimmed to the four
@@ -196,46 +196,14 @@ function h(tag, attrs = {}, children = []) {
   return node;
 }
 
-function selectField(labelText, id, options) {
-  const select = h("select", { id, name: id });
-  options.forEach((opt) => select.appendChild(h("option", { text: opt })));
-  return h("div", { class: "obs-field" }, [h("label", { for: id, text: labelText }), select]);
-}
-
-function buildVectorSumPanel(uid) {
-  const panel = h("div", { class: "mode-panel", "data-mode": "ObsVectorSum" });
-  panel.appendChild(h("p", { class: "obs-field__group-label", text: "Add together" }));
-  [
-    ["l1", "lepton 1", true],
-    ["l2", "lepton 2", true],
-    ["photon", "photon", false],
-  ].forEach(([key, label, checked]) => {
-    const checkId = uid(`vecsum-${key}`);
-    const cb = h("input", { type: "checkbox", id: checkId, name: checkId });
-    cb.checked = checked;
-    panel.appendChild(h("div", { class: "obs-check" }, [cb, h("label", { for: checkId, text: label })]));
-  });
-  panel.appendChild(selectField("Then read off", uid("vecsum-field"), ["mass", "pt", "eta"]));
-  return panel;
-}
-
-function buildCustomPanel(uid) {
-  const panel = h("div", { class: "mode-panel", "data-mode": "ObsCustom" });
-  panel.appendChild(
-    h("p", {
-      class: "obs-field__note",
-      text: "No guided form here — a custom observable is, by definition, something the "
-        + "other three modes cannot already say.",
-    })
-  );
-  const exprId = uid("custom-expr");
-  const exprInput = h("input", {
-    id: exprId, name: exprId, class: "obs-field__mono", type: "text", spellcheck: "false",
-  });
-  exprInput.value = "(l1.p4 + l2.p4).mass";
-  panel.appendChild(h("div", { class: "obs-field" }, [h("label", { for: exprId, text: "Expression" }), exprInput]));
-  return panel;
-}
+// Module scope: both buildObservableInterior (the toggle) and buildNodeEl
+// (the initial subtitle, C9) need the same four modes and labels.
+const MODES = [
+  { value: "ObsGlobal", label: "Global" },
+  { value: "ObsObject", label: "Object" },
+  { value: "ObsVectorSum", label: "Vector sum" },
+  { value: "ObsCustom", label: "Custom" },
+];
 
 // One `Observable` node, one in-node mode toggle -- the 2026-09-02 ruling
 // (docs/design-brief.md §4): ObsGlobal/ObsObject/ObsVectorSum/ObsCustom are
@@ -243,17 +211,19 @@ function buildCustomPanel(uid) {
 // <details> is the grow-in-place affordance (C2 -- no flyout), and a native
 // radio <fieldset> is the toggle (C1) -- both keyboard-operable and
 // self-naming for free, which is what C5 checks.
+//
+// docs/design-explorations/observable.html also mocks up a per-mode form
+// (event quantity, object+field, vector-sum checkboxes, a custom-expression
+// input). None of C1-C11 asks for those fields, and their values never
+// reached `config` -- a student filling one in got nothing back -- so they
+// are not built here. They return in the task that wires them into
+// `config`.
 function buildObservableInterior(id) {
   const uid = (s) => `obs-${s}-${id}`;
-  const MODES = [
-    { value: "ObsGlobal", label: "Global" },
-    { value: "ObsObject", label: "Object" },
-    { value: "ObsVectorSum", label: "Vector sum" },
-    { value: "ObsCustom", label: "Custom" },
-  ];
 
   const details = h("details", { class: "node__interior" });
-  details.appendChild(h("summary", { class: "node__interior-summary", text: "Configure observable" }));
+  const summary = h("summary", { class: "node__interior-summary", text: "Configure observable" });
+  details.appendChild(summary);
 
   const fieldset = h("fieldset", { class: "mode-toggle" });
   fieldset.appendChild(h("legend", { class: "mode-toggle__legend", text: "Mode — what number am I plotting?" }));
@@ -266,26 +236,13 @@ function buildObservableInterior(id) {
   });
   details.appendChild(fieldset);
 
-  const panels = {
-    ObsGlobal: h("div", { class: "mode-panel", "data-mode": "ObsGlobal" }, [
-      selectField("Event quantity", uid("global-qty"),
-        ["missing transverse energy", "number of leptons", "total visible energy"]),
-    ]),
-    ObsObject: h("div", { class: "mode-panel", "data-mode": "ObsObject" }, [
-      selectField("Object", uid("object-object"), ["lepton 1", "lepton 2", "jet 1"]),
-      selectField("Quantity", uid("object-field"), ["pt", "eta", "phi", "mass"]),
-    ]),
-    ObsVectorSum: buildVectorSumPanel(uid),
-    ObsCustom: buildCustomPanel(uid),
-  };
-  MODES.forEach((m) => details.appendChild(panels[m.value]));
-  MODES.slice(1).forEach((m) => { panels[m.value].hidden = true; });
-
+  // C9: the default mode (ObsGlobal) is already what `config` exports, so
+  // the subtitle says so from the start too -- buildNodeEl sets the same
+  // MODES[0].label before this node is even appended to the page.
   const node = graphState.nodes.get(id);
   if (node) node.config = { mode: MODES[0].value };
 
   function applyMode(mode) {
-    MODES.forEach((m) => { panels[m.value].hidden = m.value !== mode; });
     const n = graphState.nodes.get(id);
     if (n) {
       n.config = { mode };
@@ -300,8 +257,14 @@ function buildObservableInterior(id) {
   // C6: an opened node grows over whatever else sits at that canvas
   // position -- SVG has no z-index, paint order is the only stacking
   // mechanism, so bring it to the end of #nodes-layer (painted last) on open.
+  // C8: that reparenting (`appendChild` on an already-attached node) drops
+  // DOM focus to <body> even though the summary itself never moved logically
+  // -- refocus it once the move is done.
   details.addEventListener("toggle", () => {
-    if (details.open) els.nodesLayer.appendChild(foreignObjectFor(id));
+    if (details.open) {
+      els.nodesLayer.appendChild(foreignObjectFor(id));
+      summary.focus();
+    }
     growNode(id);
   });
 
@@ -336,7 +299,7 @@ function buildNodeEl(id, kind) {
 
   const sub = document.createElement("p");
   sub.className = "node__subtitle";
-  sub.textContent = "not configured yet";
+  sub.textContent = kind === "Observable" ? MODES[0].label : "not configured yet";
   div.appendChild(sub);
 
   const ports = document.createElement("div");

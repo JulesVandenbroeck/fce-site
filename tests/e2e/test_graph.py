@@ -14,7 +14,7 @@ per the F-005 PR body's contract -- `nodes` is a list, matching what
 
 import json
 
-import pytest
+from playwright.sync_api import expect
 
 from tests.e2e.conftest import LoadedPage
 
@@ -322,7 +322,11 @@ def test_opened_observable_node_is_brought_to_front(index: LoadedPage) -> None:
 
 def test_observable_mode_toggle_is_keyboard_operable_with_accessible_name(index: LoadedPage) -> None:
     """C5: the toggle's opener is reachable by Tab and names itself for a
-    screen reader -- a real check, not one certified green by construction."""
+    screen reader -- a real check, not one certified green by construction.
+    C8: opening it from the keyboard leaves focus on that same summary --
+    the toggle handler moves the node's foreignObject to the end of
+    #nodes-layer (C6), and that reparenting must not throw focus to
+    <body>."""
     page = index.page
     page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
     summary = page.locator('.node[data-node-id="n1"] summary')
@@ -332,18 +336,40 @@ def test_observable_mode_toggle_is_keyboard_operable_with_accessible_name(index:
     summary.focus()
     page.keyboard.press("Enter")
     assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is not None
+    expect(summary).to_be_focused()
+
+    page.keyboard.press("Enter")
+    assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is None
+    expect(summary).to_be_focused()
 
 
-def test_c5_check_fails_when_the_accessible_name_is_removed(index: LoadedPage) -> None:
-    """C5, explicitly required: proves the check above is not vacuous.
-    D-009's Required/M1 checks were certified GREEN against unlabelled
-    controls because they could not structurally fail; this mutates the
-    summary's text (its accessible name) and shows the same assertion now
-    goes red."""
+def test_observable_default_subtitle_matches_exported_config(index: LoadedPage) -> None:
+    """C9: a freshly placed node's visible subtitle names the same mode its
+    exported `config` carries -- not a placeholder that lags behind the
+    default `config.mode` until the student touches a radio."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+
+    node = _node_by_id(_graph(page), "n1")
+    assert node["config"]["mode"] == "ObsGlobal"
+
+    subtitle = page.locator('.node[data-node-id="n1"] .node__subtitle')
+    assert subtitle.inner_text().strip() == "Global"
+
+
+def test_observable_interior_has_no_dead_controls(index: LoadedPage) -> None:
+    """C10: every control inside the node interior either reaches the
+    exported `config` or is absent. The only controls here are the four
+    mode radios (config.mode, covered by C3/C9); nothing else is rendered
+    for a value to go silently missing from."""
     page = index.page
     page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
     summary = page.locator('.node[data-node-id="n1"] summary')
-    summary.evaluate("el => { el.textContent = ''; }")
+    summary.focus()
+    page.keyboard.press("Enter")
 
-    with pytest.raises(AssertionError):
-        assert summary.inner_text().strip() != ""
+    interior = page.locator('.node[data-node-id="n1"] .node__interior')
+    controls = interior.locator("input, select, textarea, button:not(summary)")
+    assert controls.count() == 4  # the four mode radios, nothing else
+    kinds = {controls.nth(i).get_attribute("type") for i in range(4)}
+    assert kinds == {"radio"}
