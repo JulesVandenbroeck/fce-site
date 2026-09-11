@@ -1,16 +1,4 @@
-/* observable.css — D-015, porting docs/design-explorations/observable.css's
- * (D-013) mode-toggle styling onto the Observable node's grow-in-place
- * interior (F-006's `.node__interior` <details> + `.mode-toggle`
- * <fieldset>, static/js/graph.js:buildObservableInterior). Every colour is
- * a var() into tokens.css.
- *
- * Sizing: the interior wraps inside `graph.js`'s own NODE_W (160px, shared
- * by all four node kinds) rather than overriding the foreignObject width —
- * a node opened near the canvas edge must stay reachable (PR #39 review,
- * F1). `.mode-toggle`'s flex-wrap already lets the four mode pills stack
- * to more than one line at that width; growNode()'s live scrollHeight
- * measurement (unmodified) grows the card to fit.
- */
+/* Opened interior wraps inside NODE_W; growNode() sets the height. */
 
 .node__interior {
   margin-top: var(--space-1);

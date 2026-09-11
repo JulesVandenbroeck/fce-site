@@ -122,6 +122,6 @@
 }
 
 @keyframes node-enter {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(calc(var(--space-1) + var(--border-heavy))); }
   to { opacity: 1; transform: translateY(0); }
 }
