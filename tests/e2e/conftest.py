@@ -121,34 +121,57 @@ def _origin(url: str) -> tuple[str, str | None, int | None]:
     return parts.scheme, parts.hostname, parts.port
 
 
-@pytest.fixture(name="live_server", scope="session")
-def _live_server() -> Iterator[str]:
-    """Serve the real application on an ephemeral port for the whole session,
-    against a hermetic ``FCE_HOME`` seeded with the fixture dataset (task
-    B-023) -- never the real ``~/.fce``.
+@pytest.fixture(name="_fce_home", scope="session")
+def _fce_home_dir() -> Iterator[Path]:
+    """Session tmp dir seeded with the fixture dataset (task B-023), so the
+    server and every e2e test share one tree without touching the real
+    ``~/.fce``.
 
-    Session-scoped ``monkeypatch`` doesn't exist (the fixture is
-    function-scoped), so ``FCE_HOME`` is set directly via
-    ``pytest.MonkeyPatch``, undone on teardown. Setting the real process
-    environment variable, not just the ``env`` mapping threaded into
-    ``create_app``, matters because ``engine.analytical_loop.run_physics_loop``
-    resolves its cache/output directory with ``get_fce_home()`` taking no
-    argument -- it always reads ``os.environ`` (a known, out-of-scope
-    inconsistency, see ``fce_web.jobs`` module docstring) regardless of what
-    ``env`` was passed to ``create_app``.
+    Split out of ``live_server`` (which now only starts the server) so the
+    per-test env fixture below can depend on the path without also pulling
+    in a full server restart.
     """
     with tempfile.TemporaryDirectory(prefix="fce-e2e-home-") as fce_home:
         dataset_dir = Path(fce_home, "datasets", "IDEA", "91GeV")
         dataset_dir.parent.mkdir(parents=True)
         os.symlink(FIXTURE_DATASET_DIR, dataset_dir)
+        yield Path(fce_home)
 
-        monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setenv("FCE_HOME", fce_home)
-        try:
-            with serve_app(env=os.environ) as base_url:
-                yield base_url
-        finally:
-            monkeypatch.undo()
+
+@pytest.fixture(name="live_server", scope="session")
+def _live_server(_fce_home: Path) -> Iterator[str]:
+    """Serve the real application on an ephemeral port for the whole session,
+    against a hermetic ``FCE_HOME`` seeded with the fixture dataset (task
+    B-023) -- never the real ``~/.fce``.
+    """
+    with serve_app(env=os.environ) as base_url:
+        yield base_url
+
+
+@pytest.fixture(autouse=True)
+def _e2e_process_fce_home(_fce_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the real process ``FCE_HOME`` at the fixture tmp dir for exactly
+    the duration of one e2e test (task B-023 cycle 2, F1).
+
+    Required because ``engine.analytical_loop.run_physics_loop`` resolves its
+    cache/output directory with ``get_fce_home()`` taking no argument -- it
+    always reads ``os.environ``, regardless of what ``env`` mapping was
+    threaded into ``create_app``/``JobRegistry`` (see ``fce_web.jobs``'s own
+    module docstring). Fixing that means adding an ``env`` parameter to
+    ``run_physics_loop`` and updating its one call site in
+    ``engine/driver.py`` -- outside this task's file scope, which only
+    permits touching ``analytical_loop.py`` itself.
+
+    Autouse and function-scoped, defined only in ``tests/e2e/``, so it
+    affects nothing outside this directory. Cycle 1 set this via a
+    hand-rolled ``pytest.MonkeyPatch`` undone only at *session* teardown --
+    since e2e collects first, every one of the 623 non-e2e tests in the same
+    run then saw ``FCE_HOME`` pointed at the e2e tmp dir. ``monkeypatch``
+    (function-scoped, pytest's own) undoes this after each test, so a
+    non-e2e test run afterwards in the same session sees ``FCE_HOME`` exactly
+    as it was before the session.
+    """
+    monkeypatch.setenv("FCE_HOME", str(_fce_home))
 
 
 @pytest.fixture(name="browser", scope="session")

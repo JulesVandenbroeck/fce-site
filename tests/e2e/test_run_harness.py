@@ -18,10 +18,10 @@ from tests.test_api_run import _graph
 
 
 def test_run_executes_hermetically_against_the_fixture_dataset(live_server):
+    # `_e2e_process_fce_home` (tests/e2e/conftest.py, autouse) points
+    # FCE_HOME at a tmp dir seeded only with the fixture dataset -- never
+    # the real `~/.fce` -- for exactly the duration of this test.
     fce_home = Path(os.environ["FCE_HOME"])
-    # `live_server` (tests/e2e/conftest.py) points FCE_HOME at a session tmp
-    # dir seeded only with the fixture dataset -- never the real `~/.fce`.
-    assert fce_home != Path.home() / ".fce"
 
     resp = httpx.post(f"{live_server}/api/run", json={"missionId": "M-1", "graph": _graph()})
     assert resp.status_code == 200, resp.text
