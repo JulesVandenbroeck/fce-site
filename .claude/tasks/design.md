@@ -72,20 +72,7 @@ _none._
 
 ## Ready
 
-### D-017 — Disabled mission pagers look disabled; right panel at 768
-- **Scope:** `src/fce_web/static/css/shell.css` (tokens read-only).
-- **Accept:** C1 `.mission-panel__pager:disabled` computes default cursor, no hover background change, muted
-  ink that still meets AA for a disabled control or is exempt per WCAG 1.4.3 (say which); `--ink-45` not for text.
-  C2 at 768 the expanded mission panel is not cut off at the viewport edge (PR #40 review saw it clipped); C6/C14
-  of D-015 still hold in 12 layouts. **Serialise after F-009** (same page).
-- **Depends on:** F-010 (`57a42a5`). From PR #40 review F2.
-- **Branch / PR:** `task/d-017-disabled-pagers` — #44, worktree `.claude/worktrees/agent-a5106434c9bbf4667`
-- **Status:** re-review (after re-spec) — head `562f724`, gate passed (test_shell 12 / flake8 0; diff since e898c32 +3 −13).
-- **Review (cycle 1):** `findings=3, scope=pass, verdict=rework` — PR #44. Pager half correct (4 properties flip under
-  mutation; `--ink-45` accepted under WCAG 1.4.3's inactive-control exemption). **F1** the 768 `.shell` width rule fixes an
-  overflow nobody reproduces and adds an 8px gap. **Diagnosis: re-specification** — my C2 was written from two
-  unreproduced reports; on main the panel already ends at 768 with no h-scroll. C2 re-ruled: met on main, no CSS.
-  F2/F3 comment trims. checks stay 5.
+_none._
 
 ## Blocked
 
@@ -129,6 +116,9 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-017** — disabled mission pagers look disabled — #44, `8ab7964`, 1 cycle + 1 re-spec (mine: C2 asked to fix an
+  unreproducible 768 overflow), clean gate (`findings=1, verdict=approve`; F4 comment trim backlogged). checks=5.
+  `:disabled` → cursor default, `--ink-45` (WCAG 1.4.3 inactive exemption), no hover. No layout change.
 - **D-015** — the shell, canvas and node stylesheets — #39, `0eded93`, **3 cycles + 1 re-spec + 1 reviewer handoff**,
   clean gate (`findings=1, verdict=approve`; F12 comment trim backlogged). checks=14. Suite floor **677** unchanged.
   Ships `shell.css`, `canvas.css`, `observable.css` + 3 `<link>`s and one `<span>` wrapper. First real use of

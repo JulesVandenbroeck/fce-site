@@ -694,3 +694,4 @@ and are historical now that #6 is merged.
 - **F-003 F1/F2** — `tests/e2e/test_fonts.py:36-41` lambda listener → `def on_response`; `:60` → `set(matches.values()) == {200}` (PR #41).
 - **B-023 candidate** — `engine/analytical_loop.py:272` bare `get_fce_home()` ignores the threaded `env` (unlike `driver.py`/`jobs.py`); thread it so e2e hermeticity needs no process-env mutation.
 - **F-009 F1-F4** — `graph.js:123-126` unreachable `!div` fallback; `:167-172` redundant guard + double `persistUI` on mode change; `:107-111` comment hard-codes px; `test_graph.py:419-428/:450-459` duplicated open block → `_open` helper (PR #42).
+- **D-017 F4** — `shell.css:252-256` 5-line WCAG comment → one line (PR #44).
