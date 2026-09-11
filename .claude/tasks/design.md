@@ -69,7 +69,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-015 — The shell, canvas and node stylesheets
-- **Status:** **cycle 3 dispatched (last before §5.7 limit)** to design-coder in worktree `.claude/worktrees/agent-ad7927e0c748beb14`. Head was `9e8fbf1`.
+- **Status:** **in review (cycle 3, last before §5.7)** — head `68d2605`, gate passed (677 / flake8 0, C14 in body). Worktree `.claude/worktrees/agent-ad7927e0c748beb14`.
 - **Review (cycle 2, finished from handoff):** `findings=3, scope=pass, verdict=rework` — PR #39 comment `5632891506`.
   F5-F8 fixed; 677 / flake8 0. **F9** collapsed `#palette-list` still painted (`display:flex` beats `[hidden]`);
   **F10** collapsed palette toggle clipped outside the 64px rail; **F11** collapsed panel toggle 21-53px past the
