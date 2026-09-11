@@ -15,7 +15,8 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Accept:** C1-C7 in the plan. **Total checks: 7.**
 - **Depends on:** F-005 (merged `b7fdfdf`). Wave 3.
 - **Branch / PR:** `task/f-006-observable-interior` — #38, head `8cb14ab`
-- **Status:** **in rework (cycle 2)**, dispatched 2026-09-11 into the existing worktree.
+- **Status:** **in review (cycle 2)**, head `892171b`. Gate reproduced in the primary checkout:
+  `671 passed`, flake8 0, `tests/e2e/` **54** nodeids; scope exactly the two files. No hook refusal.
 - **Review (cycle 1):** `findings=5, scope=pass, verdict=rework` — PR #38 comment `5631301455`.
   670 / flake8 0 / 16 reproduced; C1/C2/C3/C6 mutation-verified. **F1 blocks:** Enter on the
   summary drops focus to `<body>` (bring-to-front `appendChild` moves the focused element).
