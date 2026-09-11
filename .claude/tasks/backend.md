@@ -9,7 +9,14 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-023 — The e2e live server runs analyses against the fixture dataset
+- **Scope:** `tests/e2e/conftest.py`, `scripts/screenshot.py` (`serve_app` env), new `tests/e2e/test_run_harness.py`
+- **Accept:** `live_server`'s app resolves `FCE_HOME` to a session tmp dir holding B-018's fixture under
+  `datasets/IDEA/91GeV`; a mission-1 graph POSTed to it streams to `done` and X1 peaks within 3 GeV of the Z;
+  nothing under the real `~/.fce` is read or written. checks=5.
+- **Why:** scout 2026-09-11 — `live_server` sets no `FCE_HOME`, so a browser-submitted run (F-007/F-008) would use
+  `~/.fce`. Prerequisite for F-007's e2e checks.
+- **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/b-023-e2e-fixture-runs`.
 
 ## Ready
 
