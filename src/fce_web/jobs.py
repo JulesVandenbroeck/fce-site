@@ -18,8 +18,10 @@ cache.
 **The progress queue, named for B-022.** Every ``Job`` carries ``events``, a
 ``queue.Queue[dict]`` fed by the run's ``RunContext`` callbacks. Full item
 shapes and the exactly-one-sentinel contract are in ``docs/api.md``'s
-"Progress, for B-022" note -- this is the one place that contract is
-written out; do not restate it here.
+"Run progress event" section -- this is the one place that contract is
+written out; do not restate it here. Every item put on ``events`` already
+carries its own ``runId`` (stamped here, where the frame is produced -- see
+``_make_ctx``), not added later by whichever stream happens to read it.
 
 **The content-addressed cache, at the job-registry layer.** The engine
 already caches on disk per histogram digest (``engine/analytical_loop.py``,
@@ -95,15 +97,18 @@ class Job:
     error: Optional[str] = None
 
 
-def _make_ctx(events: "queue.Queue") -> RunContext:
+def _make_ctx(events: "queue.Queue", run_id: str) -> RunContext:
     """A ``RunContext`` whose callbacks feed *events* -- nothing shared with
-    any other job's context."""
+    any other job's context. Every item stamps its own ``runId`` here, at
+    the point the frame is produced, so a bug that ever crosses two jobs'
+    queues still yields frames tagged with the job that actually produced
+    them, not the job whichever stream happens to be reading."""
     return RunContext(
-        on_progress=lambda f: events.put({"type": "progress", "value": f}),
-        on_log=lambda m: events.put({"type": "log", "message": m}),
-        on_phase=lambda p: events.put({"type": "phase", "phase": p}),
+        on_progress=lambda f: events.put({"type": "progress", "value": f, "runId": run_id}),
+        on_log=lambda m: events.put({"type": "log", "message": m, "runId": run_id}),
+        on_phase=lambda p: events.put({"type": "phase", "phase": p, "runId": run_id}),
         on_node=lambda status, nids: events.put(
-            {"type": "node", "status": status, "nids": sorted(nids)}
+            {"type": "node", "status": status, "nids": sorted(nids), "runId": run_id}
         ),
     )
 
@@ -163,25 +168,26 @@ class JobRegistry:
         config = build_run_config(graph, _V1_DATASET)
         digest = _config_digest(config)
 
+        job_id = uuid.uuid4().hex
         events: "queue.Queue" = queue.Queue()
-        ctx = _make_ctx(events)
+        ctx = _make_ctx(events, job_id)
 
         with self._lock:
             cached_id = self._cache.get(digest)
             cached = self._jobs.get(cached_id) if cached_id else None
             if cached is not None:
                 job = Job(
-                    id=uuid.uuid4().hex, mission_id=mission_id, ctx=ctx,
+                    id=job_id, mission_id=mission_id, ctx=ctx,
                     events=events, status="done", cache_hit=True,
                     result=cached.result,
                     payload=_retag_payload(cached.payload, mission_id),
                 )
                 self._jobs[job.id] = job
                 self._evict_over_cap()
-                job.events.put({"type": "done", "status": "done"})
+                job.events.put({"type": "done", "status": "done", "runId": job_id})
                 return job
 
-            job = Job(id=uuid.uuid4().hex, mission_id=mission_id, ctx=ctx, events=events)
+            job = Job(id=job_id, mission_id=mission_id, ctx=ctx, events=events)
             self._jobs[job.id] = job
             self._evict_over_cap()
 
@@ -214,7 +220,7 @@ class JobRegistry:
         one ``try/except Exception``, so *any* failure (an engine bug, a
         bad histogram file, anything) still lands ``job`` in a terminal
         status and still puts the sentinel on ``job.events`` (see
-        ``docs/api.md``'s "Progress, for B-022" note for the queue's
+        ``docs/api.md``'s "Run progress event" section for the queue's
         contract); nothing here may leave a job stuck at ``"running"`` with
         a caller blocked on the queue forever.
         """
@@ -251,7 +257,7 @@ class JobRegistry:
         if status == "done":
             with self._lock:
                 self._cache[digest] = job.id
-        job.events.put({"type": "done", "status": status})
+        job.events.put({"type": "done", "status": status, "runId": job.id})
 
     def _build_payload(self, job: Job, config: RunConfig, result: RunResult) -> dict:
         """Read the finished run's histogram files into the chart payload.

@@ -385,13 +385,9 @@ Each frame's JSON body is one of:
 ```
 
 `done` is always the last frame and appears exactly once per stream; the connection closes
-immediately after it. A cache-hit run's stream is a single `done` frame -- there is no
-synthesised progress sweep for a result that was already computed. So is a second stream, or
-the same client reconnecting, opened against a run that has already finished: the endpoint
-checks the job's status before touching the shared progress queue (which only ever yields its
-frames once, to whichever stream reads them first) and short-circuits straight to one `done`
-frame carrying that job's real terminal status, never blocking on a queue nothing will fill
-again.
+immediately after it. A cache-hit run's stream is a single `done` frame, and so is a second
+stream (or a reconnect) opened against a run that has already finished -- neither produces a
+synthesised progress sweep for a result that was already computed.
 
 | Field | Type | Nullable | Meaning |
 |---|---|---|---|
