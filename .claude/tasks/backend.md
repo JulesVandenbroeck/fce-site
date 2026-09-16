@@ -9,7 +9,13 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-025 — Scale the fixture's sample weights to its 2000-event slice
+- **Scope:** `tests/fixtures/make_fixture.py`, `tests/fixtures/datasets/IDEA/91GeV/*.root`, tests pinning fixture weights/sums.
+- **Accept:** each sample's `weight` multiplied by N_source/2000 (user's ruling 2026-09-16, all samples); MC and data comparable in the chart; peaks unchanged; regenerable byte-identically; suite ≥697, flake8 0.
+- **Stop-and-report:** if `data` weights feed the sqrt(N) error bars, or source N is unobtainable offline.
+- **Depends on:** none. Parallel with D-016 (no shared files).
+- **Branch / PR:** `task/b-025-fixture-weight-scale` — not yet opened
+- **Status:** dispatched (cycle 1). Closes backlog item "B-018 fixture / F-008 readability".
 
 ## Ready
 
