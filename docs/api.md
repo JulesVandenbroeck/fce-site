@@ -67,9 +67,17 @@ is synthesised server-side from the mission's declared dataset (`docs/design-bri
   branch) are all rejected with a `fce_web.graph.GraphError` naming the offending node or
   edge.
 
-A rejected graph returns `400` with `{"error": "<student-legible message>"}`. A legal graph
-that the loader itself rejects (a translation bug, not a student mistake) is a `500` — that
-path should not be reachable from valid input.
+A rejected graph returns `400` with `{"error": "<student-legible message>", "nodeId": "<id>" | null}`
+(B-026). `nodeId` is the offending node's client id — the same id the graph submitted in
+`nodes[].id` — so the browser can attach the message to that node; it is `null` when no
+single node is at fault (a malformed top-level payload, a cycle, a disconnection, a missing
+`Histogram` terminal, an illegal edge, or a Multiplicity-chain disagreement across branches —
+all of those involve more than one node or none at all). A `Selection` node's `exprs` and an
+`Observable` node's `expr` are compiled through `fce_web.safe_eval.compile_expr` at submit,
+inside `build_run_config` — so a syntactically bad or disallowed expression is also a `400`
+naming its node, not a run that starts and fails later. A legal graph that the loader itself
+rejects (a translation bug, not a student mistake) is a `500` — that path should not be
+reachable from valid input.
 
 ### `POST /api/run` response
 

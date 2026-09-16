@@ -2281,3 +2281,7 @@ own trim — the call is at `:280`; code correct, prose wrong — backlogged).
 - **Branch / PR:** #49. **User ruled 2026-09-16: keep as is** (MC ×N_source/2000, data untouched). Gate running.
 - **Status:** coder hit C2's stop: `data` weight feeds sqrt(N) bars (`path_filter.py:549`, `chart.js:338-346`), so only MC scaled. Result MC 3589 (X1 3136.75, X3 452.21) vs data 712 — MC now represents full lumi, data a 2000/31873 slice. N_source X1 960403, X2 652809, X3 325794, data 31873.  Closes backlog item "B-018 fixture / F-008 readability".
 
+
+### B-026 — rejected-graph errors name the offending node
+- PR #51, merged `a9cc376`, 1 cycle. Review comment on PR #51. Gate reproduced 707 passed / flake8 0 at `60ff2c7`.
+- Raised by M4 plan Q2 (scout: no node id anywhere). Parallel with B-027 on `graph.py`.

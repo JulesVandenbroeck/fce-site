@@ -52,7 +52,7 @@ def build_router() -> APIRouter:
         try:
             job = registry.submit(body.graph, body.missionId)
         except GraphError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=400)
+            return JSONResponse({"error": str(exc), "nodeId": exc.node_id}, status_code=400)
         return {"runId": job.id, "cacheHit": job.cache_hit}
 
     @router.get("/run/{run_id}/result")

@@ -10,11 +10,11 @@ IDs are `F-nnn`, allocated in order and never reused.
 ## In progress
 
 ### F-011 — Observable and Selection interiors + the expression module (**CONTRACT TASK**)
-- **Scope:** new `static/js/expr.js`, `static/js/graph.js`, `static/js/run.js`, new `tests/e2e/test_interiors.py`
+- **Scope:** new `static/js/expr.js`, `static/js/graph.js`, `static/js/run.js`, new `tests/e2e/test_interiors.py`, **+ `tests/e2e/test_graph.py` (re-spec, mine: C1 supersedes 3 F-006 assertions my scope forbade)**
 - **Accept:** C1-C7 in dispatch; expression table verbatim in PR body; plan `docs/plan-m4-recipe-builder.md`
 - **Depends on:** Q1 (answered)
-- **Branch / PR:** `task/f-011-interiors` — not yet opened
-- **Status:** dispatched (cycle 1)
+- **Branch / PR:** `task/f-011-interiors` — #50
+- **Status:** cycle 2 dispatched — c1 `findings=2, scope=pass, verdict=rework` (F1 expr string in graph.js vs C3; F2 docstring). My `020261b` rode the branch (worktree cut from unpushed local main) — no-op on merge.
 
 ## Ready
 
