@@ -27,11 +27,16 @@ from __future__ import annotations
 
 import graphlib
 import hashlib
+import math
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 from fce_web.engine.runconfig import RunConfig
 from fce_web.safe_eval import UnsafeExpression, compile_expr
+
+# ponytail: fixed cap, not a mission-configurable setting -- raise it if a
+# mission ever legitimately needs a finer histogram than this.
+_MAX_BINS = 1000
 
 __all__ = [
     "VALID_CONNECTIONS",
@@ -342,6 +347,27 @@ def _histogram_dict(node: _Node, plot_idx: int) -> dict:
     if "target" in config and not isinstance(config["target"], str):
         raise GraphError(
             f"node {node.id!r}: 'target' must be a string, got {config['target']!r}", node_id=node.id
+        )
+    try:
+        bins = int(config["bins"])
+    except ValueError:
+        raise GraphError(
+            f"node {node.id!r}: 'bins' must be a whole number, got {config['bins']!r}", node_id=node.id
+        )
+    if not 1 <= bins <= _MAX_BINS:
+        raise GraphError(
+            f"node {node.id!r}: 'bins' must be between 1 and {_MAX_BINS}, got {bins}", node_id=node.id
+        )
+    try:
+        hist_min = float(config["min"])
+        hist_max = float(config["max"])
+        if not (math.isfinite(hist_min) and math.isfinite(hist_max)):
+            raise ValueError("not finite")
+    except ValueError:
+        raise GraphError(f"node {node.id!r}: 'min' and 'max' must be finite numbers", node_id=node.id)
+    if not hist_min < hist_max:
+        raise GraphError(
+            f"node {node.id!r}: 'min' must be less than 'max', got {hist_min} and {hist_max}", node_id=node.id
         )
     return {
         "observable": None,  # filled in by the caller, which knows the Observable node
