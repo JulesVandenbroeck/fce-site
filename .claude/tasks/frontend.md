@@ -9,12 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-011 — Observable and Selection interiors + the expression module (**CONTRACT TASK**)
-- **Scope:** new `static/js/expr.js`, `static/js/graph.js`, `static/js/run.js`, new `tests/e2e/test_interiors.py`, **+ `tests/e2e/test_graph.py` (re-spec, mine: C1 supersedes 3 F-006 assertions my scope forbade)**
-- **Accept:** C1-C7 in dispatch; expression table verbatim in PR body; plan `docs/plan-m4-recipe-builder.md`
-- **Depends on:** Q1 (answered)
-- **Branch / PR:** `task/f-011-interiors` — #50
-- **Status:** cycle 2 dispatched — c1 `findings=2, scope=pass, verdict=rework` (F1 expr string in graph.js vs C3; F2 docstring). My `020261b` rode the branch (worktree cut from unpushed local main) — no-op on merge.
+_none._
 
 ## Ready
 
@@ -29,6 +24,11 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-011** — Observable and Selection interiors + `expr.js` (**CONTRACT TASK**) — #50, `e5a8bff`, 2 cycles + 1 re-spec (mine: scope omitted `test_graph.py`),
+  clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor **717** (715 + 2) on the merge, reproduced by me pre-merge.
+  **Vocabulary table verbatim in PR #50's body — F-012 and D-018 consume it read-only.** graph.js holds no expression strings.
+  Classes for D-018: `.obs-panel`, `.obs-panel__opt`, `.selection-rows`, `.selection-row`, `.selection-add`, `.selection-remove`.
+  Server-side limit noted by review: `ALLOWED_ATTRS` is not per-object. My bookkeeping `020261b` rode the branch (unpushed main).
 - **F-008** — the interactive SVG histogram — #47, `7472675`, 2 cycles, clean gate
   (`findings=1, verdict=approve`; F9, one garbled sentence in the D-016 contract prose, folded into
   D-016's dispatch instead of another cycle). checks=11. Suite floor → **697**; `tests/e2e/` **74**.

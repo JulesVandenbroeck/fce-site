@@ -486,3 +486,9 @@ attribute to keep keyboard focus; `.hist-band` needs its `fill-opacity` back; `.
 solid black block because it is a filled rect with no `fill` given; `.bin-hit` needs a visible focus ring;
 the reveal must use `animation-fill-mode: forwards` because `.reveal-armed` is added once and never removed.
 F9 (one garbled sentence stating that last point) was folded into D-016's dispatch rather than costing a cycle.
+
+### F-011 — Observable and Selection interiors + the expression module
+- PR #50, merged `e5a8bff`, 2 cycles + 1 re-spec. Reviews on PR #50.
+- Re-spec: C1 superseded 3 F-006 assertions in `tests/e2e/test_graph.py`, which my scope forbade; coder stopped at 700/703 and reported.
+- c1 rework: `"l1.pt"` and MET label hard-coded in graph.js (C3); C4 docstring cited a mutation that fails in JS, not at safe_eval.
+- Lesson (mine): push bookkeeping before a worktree dispatch, or it rides the task branch.
