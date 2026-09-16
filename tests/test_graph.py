@@ -239,6 +239,42 @@ def test_histogram_bins_as_json_int_is_a_graph_error():
         build_run_config(payload, _dataset())
 
 
+@pytest.mark.parametrize("field, bad_value", [
+    ("bins", "0"),
+    ("bins", "1001"),
+    ("bins", "abc"),
+    ("bins", "1.5"),
+    ("min", "nan"),
+    ("min", "inf"),
+])
+def test_histogram_bins_min_max_bad_values_are_rejected(field, bad_value):
+    payload = {
+        "nodes": [_sel_node(), _obs_node(), _hist_node()],
+        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
+    }
+    payload["nodes"][-1]["config"][field] = bad_value
+    with pytest.raises(GraphError, match=field):
+        build_run_config(payload, _dataset())
+
+
+@pytest.mark.parametrize("min_value, max_value", [("60.0", "60.0"), ("120.0", "60.0")])
+def test_histogram_min_not_less_than_max_is_rejected(min_value, max_value):
+    payload = {
+        "nodes": [_sel_node(), _obs_node(), _hist_node()],
+        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
+    }
+    payload["nodes"][-1]["config"]["min"] = min_value
+    payload["nodes"][-1]["config"]["max"] = max_value
+    with pytest.raises(GraphError, match="min"):
+        build_run_config(payload, _dataset())
+
+
+def test_valid_histogram_bins_min_max_is_accepted():
+    payload = _mission1_payload()
+    cfg = build_run_config(payload, _dataset())
+    assert cfg.selections[0].histograms[0].bins == "50"
+
+
 def test_mult_cut_count_as_json_string_is_a_graph_error():
     payload = _mission1_payload()
     payload["nodes"][0]["config"]["nlep"] = "2"  # JSON string, not the int dpg would send
