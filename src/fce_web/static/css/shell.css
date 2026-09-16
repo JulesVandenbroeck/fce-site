@@ -180,10 +180,21 @@ main > h1 {
 }
 
 /* ---- canvas region (middle, always present, never covered) -------------- */
+/* D-016/C1: at 1440 with both side panels expanded this region has ~752px
+ * to work with and .canvas-wrap alone is a fixed 704px, so a *row* of
+ * canvas-wrap + run-control + results (D-016's two new occupants) leaves
+ * ~48px for both of the latter -- not enough, and it was pushing the node
+ * canvas itself half off the region's left edge (flex auto-margins overflow
+ * symmetrically). Column stacks all three instead; each centres on the
+ * region's cross axis via `align-items: center`, so a `margin: auto` hack
+ * on .canvas-wrap is no longer what does the centring. */
 .canvas-region {
   flex: 1 1 0;
   min-width: calc(var(--space-7) * 6);
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-3);
   overflow: auto;
   background: var(--paper);
@@ -197,7 +208,6 @@ main > h1 {
  * stays the fixed 11 x --space-7 = 704px design surface. */
 .canvas-wrap {
   flex: 0 0 auto;
-  margin: auto;
   width: calc(var(--space-7) * 11);
   border: var(--border-hairline) solid var(--paper-line);
   border-radius: var(--radius);
