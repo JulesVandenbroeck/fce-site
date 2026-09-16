@@ -178,6 +178,18 @@ one `done` -> `/result` status done; X1 modal bin 90.0 GeV, X3 74.4 GeV, X2 empt
 Resubmit -> `cacheHit: true` and a single `done` frame. Reported to the user; wave 5 (F-007) waits
 for their go-ahead. Note: `missionId` is not validated yet — dataset hardcoded IDEA/91 GeV (`jobs.py:61-66`).
 
+**The fixture's MC-vs-data normalisation is expected, not a bug — settled 2026-09-16 on PR #47, do not
+re-raise.** F-008's C7 reads `6 predicted, 593 data` in the peak bin. The reviewer opened the fixture ROOT
+files: per-event `weight` is `X1 0.008768`, `X2 0.032768`, `X3 0.004492`, `data 1.0`, 2000 entries each.
+Those MC weights are production normalisations (sigma*L / N_generated) over the **full** sample, while
+B-018's fixture keeps only a 2000-event slice, so weighted MC is suppressed by the truncation factor while
+pseudo-data, weight 1.0, is a raw count of its own slice. Totals: X1 6.53, X2 0.00, X3 2.88 weighted against
+712 raw data. **The shapes agree** — X1 peaks in `90.0-91.2` at 5.75, data peaks in the same bin at 593.
+`chart.js` computes no counts; it draws what B-019's endpoint hands it.
+**Consequence for the M3 demo, and it is against the fixture, not against F-008:** because
+`yMax = max(stack, data)`, the MC stack renders as a ~1px sliver and every populated ratio bin pegs at the
+panel clip. The figure is correct and *unreadable on this fixture*. Backlogged.
+
 The facts a future dispatch consumes. Everything else about these tasks is in the archive.
 
 - `run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> RunResult` (B-009)

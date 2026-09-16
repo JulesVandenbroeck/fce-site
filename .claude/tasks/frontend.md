@@ -11,7 +11,17 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ### F-008 — The interactive SVG histogram
 - **Branch / PR:** `task/f-008-svg-histogram` — PR not yet opened
-- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=11 (C1-C11).
+- **Branch / PR:** `task/f-008-svg-histogram` — #47
+- **Status:** in review (cycle 2). checks=11 (C1-C11).
+- **Gate (§5.1) passed** at `5d7c8ad`: 698 / 75 e2e collected / flake8 0 / 4 files, none under `static/css/`.
+  **C7 reproduced in my own worktree: modal bin `90.0-91.2 GeV`, centre 90.6 GeV.**
+- **Review cycle 1:** `findings=8, scope=pass, verdict=rework`. A **cycle** — the gating items are the
+  coder's: F1 (the published D-016 class list omits every reveal class the figure emits), F4 (both the
+  PR body and a test docstring blame "the unstyled shell"), F3 (C5's stated proof is not in the code —
+  the test compares the normal-motion band to itself), F7 (asserts the absence of a class `chart.js`
+  never emits, so it cannot fail). F2/F5/F6/F8 ride along.
+- **The renderer itself is sound:** C7 reproduces in two independent worktrees, and both load-bearing
+  checks mutate red (bin edges shifted +20 GeV; the reduced-motion query broken).
 - **Reference enumerated by `scout`, not remembered:** `docs/design-explorations/plot.js`, 817 lines,
   **17** top-level functions (the plan says 16). `FIG.h = 460` at `:136`, `FIG.w` 650 at `:142`.
   `drawLegend` `:548` (called from `renderHistogramFigure:473`, `renderCutflowFigure:698`);
