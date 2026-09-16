@@ -68,7 +68,38 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none._
+### D-016 — Results region and chart styling
+- **Scope:** `static/css/chart.css` (new), `static/css/shell.css`, one `<link>` in `base.html`
+  (the D-015 precedent), class attributes only in `shell.html`.
+- **Branch / PR:** `task/d-016-results-chart-styling` — PR not yet opened
+- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=13 (C1-C13).
+- **Depends on:** F-007 `1fdb8e6`, F-008 `7472675` — both merged. **Last task in M3; checkpoint 2 follows.**
+- **At the §2 ceiling deliberately, and I am recording the choice.** 13 criteria is past the five-bullet
+  splitting test. Splitting it would mean two serialised tasks on the same page and two review passes over
+  tightly coupled rules — the figure's fixed 650x460 is exactly what breaks the region's layout, so the
+  layout half and the paint half cannot be judged apart. If it cycles twice, split it rather than pushing
+  for a third.
+- **C1 is a live defect on `main`, not a cosmetic gap.** Once the chart renders, node `n1`'s handle centre
+  moves off `.node__title` onto a `.palette__add` button at 1280x720. Mechanism traced by PR #47's
+  reviewer: `shell.css:183-204`'s `.canvas-region { display: flex }` + `.canvas-wrap { margin: auto }`
+  loses its free space to a 650px `.chart-figure` sibling. F-008's test drags `n4` to route around it.
+- **Facts given, enumerated by `scout`, not remembered:** sample identity colours already exist as
+  `--frozen-x1/x2/x3` (`tokens.css:169-171`) — `--tab10-*` at `:188-190` are for static-export parity and
+  are not the interactive renderer's. `base.html:9-12` links four stylesheets in order. The 19 classes
+  `chart.js` emits are listed in the dispatch.
+- **`verify.py` is not this task's instrument** — it lives in `docs/design-explorations/`, guards the
+  exploration pages, and none of its 81 sections touch the chart, results region or run control. The
+  dispatch asks for a standalone Playwright script reading **computed styles and rendered geometry**,
+  pasted into the PR body and not committed. If those guards should become permanent, that is a task for
+  whoever owns the file they would live in — design owns no test file.
+- **Carried in from F-008's review, all in the dispatch:** `.legend-frame` paints as a solid black block
+  (a filled rect with no `fill`, drawn before its own swatches); `.hist-band` needs the `fill-opacity`
+  0.8 that F-008 removed from the JS; `.bin-hit` needs a visible focus ring for 50 focusable targets;
+  the reveal must settle with `animation-fill-mode: forwards` because `.reveal-armed` is added once and
+  never removed. **F9 from PR #47 — one garbled sentence stating that last point — is corrected here
+  rather than costing a cycle.**
+- **C8 carries F-007's accessibility consequence:** `#run-button` gave up the `disabled` attribute to keep
+  keyboard focus mid-run, so the browser's free busy affordance is gone and this CSS rule is the only one.
 
 ## Ready
 
@@ -76,11 +107,8 @@ _none._
 
 ## Blocked
 
-M3 tasks first; D-011/D-012 are unchanged below.
+D-011/D-012 are unchanged below.
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
-
-### D-016 — Results region and chart styling
-- **Depends on:** F-008. Wave 5. Sample identity colour identical in graph, legend and plot.
 
 ### D-011 — The completed-mission box on the canvas
 - **Scope:** the frozen-and-boxed treatment for a completed mission's graph.
