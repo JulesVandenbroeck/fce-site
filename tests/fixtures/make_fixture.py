@@ -152,8 +152,28 @@ def generate() -> None:
         source_path = _ensure_source(sample)
         with uproot.open(source_path) as f:
             tr = f["ntuple"]
+            n_source = tr.num_entries
             columns = tr.arrays(entry_stop=N_EVENTS, library="ak")
         grouped = _regroup(columns)
+
+        # B-025: the 2000-event slice is a fraction of the sample's real
+        # production statistics, so its per-event MC weight (sigma*L/N_generated,
+        # set at production time) still normalises to the *full* sample, not to
+        # these 2000 events -- weighted MC totals came out 100-1000x too small
+        # against the pseudo-data. Scale by N_source/N_EVENTS so the weighted
+        # sum over the slice approximates the weighted sum over the full
+        # sample. Shapes/peak positions are unaffected: it is one constant
+        # factor per sample, applied uniformly.
+        #
+        # "data" is excluded deliberately (ruled in this task): its weight is
+        # read by path_filter.py's histogram fill the same as any MC sample's,
+        # and the chart (static/js/chart.js) derives its sqrt(N) error bars
+        # directly from that filled bin content -- which is only a valid
+        # Poisson error estimate at unit weight. Scaling "data" would both
+        # invalidate those error bars and inflate its total to represent
+        # events it does not have.
+        if sample != "data":
+            grouped["weight"] = grouped["weight"] * (n_source / N_EVENTS)
 
         out_path = os.path.join(FIXTURE_DIR, f"{sample}.root")
         fixed_uuid = uuid.UUID(int=BASE_SEED + offset)
