@@ -68,7 +68,12 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none._
+### D-018 — Style the four node interiors
+- **Scope:** `static/css/observable.css`, `static/css/canvas.css`
+- **Accept:** C1-C6 in PR body; plan `docs/plan-m4-recipe-builder.md`
+- **Depends on:** F-012 (done, `82ce11c`)
+- **Branch / PR:** `task/d-018-interiors-style` — not yet opened
+- **Status:** dispatched (cycle 1), parallel with B-028, worktree-isolated
 
 ## Ready
 

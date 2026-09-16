@@ -9,16 +9,11 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-012 — Multiplicity and Histogram interiors, range presets
-- **Scope:** `static/js/graph.js`, `static/js/run.js`, `static/js/expr.js` (append-only), `tests/e2e/test_interiors.py`, `tests/e2e/test_run.py`, `tests/e2e/test_chart.py`
-- **Accept:** C1-C7 in dispatch; plan `docs/plan-m4-recipe-builder.md`
-- **Depends on:** F-011 (done), B-027 (done)
-- **Branch / PR:** `task/f-012-mult-hist-interiors` — #53
-- **Status:** **approved, merge held for the user** — c2 `findings=0, scope=pass, verdict=approve` (c1 5 findings, all fixed). Gate 718 at `1db168f`. Held: user to confirm the 0-150 GeV default range (mission-1 modal bin 90.0-93.0). Mission-1 modal bin now 90.0-93.0 GeV (range 0-150).
+_none._
 
 ## Ready
 
-_none — D-016 is next and is design's; see `design.md`._
+_none — D-018 (design) styles F-012's interiors; see `design.md`._
 
 ## Blocked
 
@@ -29,6 +24,8 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-012** — Multiplicity and Histogram interiors, range presets — #53, `82ce11c`, 2 cycles, clean gate (`findings=0, scope=pass, verdict=approve`; c1 F1-F5 all fixed).
+  Suite floor **718**. Default Histogram range 0-150 GeV **ratified by the user 2026-09-17**; mission-1 modal bin 90.0-93.0 GeV. New class for D-018: `.mult-group` (fieldset per object kind). Blank count -> `null` -> server 400.
 - **F-011** — Observable and Selection interiors + `expr.js` (**CONTRACT TASK**) — #50, `e5a8bff`, 2 cycles + 1 re-spec (mine: scope omitted `test_graph.py`),
   clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor **717** (715 + 2) on the merge, reproduced by me pre-merge.
   **Vocabulary table verbatim in PR #50's body — F-012 and D-018 consume it read-only.** graph.js holds no expression strings.

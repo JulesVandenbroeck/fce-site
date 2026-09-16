@@ -9,11 +9,17 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-028 — Reject unknown Multiplicity ops, lepton types and negative counts
+- **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`
+- **Accept:** C1-C4 in PR body; unknown `op_*`/`ltype`, negative or bool counts -> 400 naming the node
+- **Depends on:** B-026 (done)
+- **Branch / PR:** `task/b-028-mult-cut-values` — not yet opened
+- **Status:** dispatched (cycle 1), parallel with D-018, worktree-isolated
+- **Raised:** user 2026-09-17, from the F-012 scout answer (`docs/plan-m4-recipe-builder.md` Q1 values)
 
 ## Ready
 
-_none — F-005 and F-006 are wave 3 but frontend; see `frontend.md`._
+_none._
 
 ## Blocked
 
