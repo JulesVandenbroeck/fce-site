@@ -71,7 +71,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ### D-016 — Results region and chart styling
 - **Scope:** `static/css/chart.css` (new), `static/css/shell.css`, one `<link>` in `base.html`
   (the D-015 precedent), class attributes only in `shell.html`.
-- **Branch / PR:** `task/d-016-results-chart-styling` — PR not yet opened
+- **Branch / PR:** `task/d-016-results-chart-styling` — #48, gate reproduced (697 passed, flake8 0), in review (cycle 1)
 - **Status:** **handed off (cycle 1)** at the session's usage limit, 2026-09-16, ~1 minute after dispatch.
   **No branch, no commit, no CSS written** — confirmed against git, not taken on trust. Handoff:
   [`handoff/d-016-design-1.md`](../handoff/d-016-design-1.md), 113 lines, copied into the primary checkout
