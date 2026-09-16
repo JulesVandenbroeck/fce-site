@@ -14,7 +14,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Accept:** C1-C7 in dispatch; plan `docs/plan-m4-recipe-builder.md`
 - **Depends on:** F-011 (done), B-027 (done)
 - **Branch / PR:** `task/f-012-mult-hist-interiors` — #53
-- **Status:** cycle 2 dispatched — c1 `findings=5, scope=pass, verdict=rework` (F1 Custom mode leaves stale x_label). Mission-1 modal bin now 90.0-93.0 GeV (range 0-150).
+- **Status:** **approved, merge held for the user** — c2 `findings=0, scope=pass, verdict=approve` (c1 5 findings, all fixed). Gate 718 at `1db168f`. Held: user to confirm the 0-150 GeV default range (mission-1 modal bin 90.0-93.0). Mission-1 modal bin now 90.0-93.0 GeV (range 0-150).
 
 ## Ready
 
