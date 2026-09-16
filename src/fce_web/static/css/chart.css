@@ -1,0 +1,202 @@
+/* chart.css — D-016. The results region markup F-007 shipped (#run-control,
+ * #results) and the SVG histogram F-008's chart.js emits into #results-chart
+ * — neither had any CSS before this file. Every colour, spacing, type and
+ * timing value is a var() into tokens.css; the one exception is the note's
+ * `max-width: 40ch`, a relative unit rather than a literal (design manual §4).
+ *
+ * Reveal contract (chart.js's own comment, armReveal): `.reveal-armed` is
+ * added exactly once to `.chart-figure` and never removed, and is skipped
+ * entirely under prefers-reduced-motion. So every rule below keys off
+ * `.chart-figure.reveal-armed …` with `animation-fill-mode: forwards`, and
+ * the *unarmed* state (no ancestor class — true on first paint and under
+ * reduced motion alike) is written to already equal the settled end state:
+ * full opacity, no transform. No separate reduced-motion query is needed for
+ * that half; one is still added below as a second line of defence in case a
+ * browser is told to prefer reduced motion after this class was already
+ * armed by JS on an earlier interaction.
+ */
+
+/* ---- run control ----------------------------------------------------- */
+.run-control {
+  display: flex;
+  justify-content: center;
+}
+.run-control__button {
+  border: var(--border-hairline) solid var(--graphite-blue-strong);
+  background: var(--graphite-blue);
+  color: var(--on-graphite-blue);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+.run-control__button:hover { background: var(--graphite-blue-strong); }
+/* aria-disabled, never the `disabled` attribute (run.js's own comment: a
+ * disabled button drops keyboard focus mid-run) — so the busy look is on
+ * the attribute selector, and the generic `button:focus-visible` rule in
+ * shell.css keeps ringing it exactly as it would any other button. */
+.run-control__button[aria-disabled="true"] {
+  background: var(--chrome-bg);
+  border-color: var(--chrome-border);
+  color: var(--ink-70);
+  cursor: progress;
+}
+
+/* ---- results region ---------------------------------------------------- */
+.results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding-top: var(--space-2);
+}
+.results__status {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+.results__progress {
+  width: 100%;
+  max-width: 40ch;
+  accent-color: var(--graphite-blue);
+}
+/* A margin note, not a banner (design-brief.md §2/§7): quiet, handwritten-
+ * feeling, never alarmed red. Rotation stays under the manual's 2° ceiling. */
+.results__note {
+  margin: 0;
+  max-width: 40ch;
+  font-style: italic;
+  font-size: var(--text-sm);
+  color: var(--ink-70);
+  transform: rotate(-1deg);
+}
+.results__chart {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ---- chart figure card -------------------------------------------------- */
+.chart-readout,
+.chart-empty {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--ink-70);
+}
+/* Sized to its child only (the svg carries its own fixed width/height
+ * attributes, chart.js's FIG.w/FIG.h) — never given a width here, which is
+ * what lets it hold 650x460 at every viewport without a magic literal (C2). */
+.chart-figure {
+  border: var(--border-hairline) solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-resting);
+  padding: var(--space-2);
+}
+#hist-svg { display: block; }
+
+/* ---- plot furniture ------------------------------------------------------ */
+.plot-frame { fill: none; stroke: var(--plot-frame); stroke-width: 1; }
+.plot-tick { stroke: var(--plot-frame); stroke-width: 1; }
+.plot-tick-minor { opacity: 0.6; }
+.plot-tick-label,
+.plot-axis-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-numeric);
+  fill: var(--ink-70);
+}
+.plot-header {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  fill: var(--ink);
+}
+.plot-header-bold { font-weight: var(--weight-bold); }
+
+/* ---- sample identity: same hue in the band and its legend swatch (C3) --- */
+.sample-x1 { fill: var(--frozen-x1); }
+.sample-x2 { fill: var(--frozen-x2); }
+.sample-x3 { fill: var(--frozen-x3); }
+
+.hist-band {
+  fill-opacity: 0.8;
+  stroke: var(--plot-edge);
+  stroke-width: 1;
+}
+
+.syst-band { fill: url(#syst-hatch); }
+.hatch-line { stroke: var(--syst-grey); stroke-width: 1; }
+
+.data-marker { fill: var(--data-marker); }
+.data-errbar { stroke: var(--data-marker); stroke-width: 1; }
+.ratio-oneline { stroke: var(--plot-frame); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* Focus ring against a colour it can sit over as well as against paper:
+ * --ink measures >=3.8:1 on every frozen sample fill at 0.8 opacity and
+ * >=12:1 on paper/panel, where --focus-ring (graphite-blue) would not (C6). */
+.bin-hit:focus-visible {
+  outline: var(--focus-ring-width) solid var(--ink);
+  outline-offset: calc(var(--focus-ring-offset) * -1);
+}
+
+/* ---- legend -------------------------------------------------------------- */
+/* No fill was ever set on this rect, so it painted SVG's own black-fill
+ * default over the labels it was meant to sit behind (C5's bug). Framed in
+ * panel-on-paper, the same "card on ground" relationship .chart-figure
+ * itself uses. */
+.legend-frame {
+  fill: var(--panel);
+  stroke: var(--legend-border);
+  stroke-width: 1;
+}
+.legend-swatch { stroke: var(--legend-border); stroke-width: 0.5; }
+.legend-label {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  fill: var(--ink);
+}
+
+/* ---- reveal: settled by default, ink-draw when armed --------------------- */
+.reveal-frame,
+.reveal-band,
+.reveal-data {
+  opacity: 1;
+  transform: none;
+}
+.chart-figure.reveal-armed .reveal-frame {
+  transform-box: fill-box;
+  animation: chart-fade-in var(--duration-fast) var(--ease-settle) both;
+}
+.chart-figure.reveal-armed .reveal-band {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: chart-rise-in var(--duration-base) var(--ease-settle) both;
+}
+.chart-figure.reveal-armed .reveal-band.s0 { animation-delay: 0ms; }
+.chart-figure.reveal-armed .reveal-band.s1 { animation-delay: var(--duration-fast); }
+.chart-figure.reveal-armed .reveal-band.s2 { animation-delay: calc(var(--duration-fast) * 2); }
+.chart-figure.reveal-armed .reveal-band.s3 { animation-delay: calc(var(--duration-fast) * 3); }
+.chart-figure.reveal-armed .reveal-data {
+  transform-box: fill-box;
+  animation: chart-fade-in var(--duration-base) var(--ease-settle) both;
+  animation-delay: var(--duration-slow);
+}
+@keyframes chart-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes chart-rise-in {
+  from { opacity: 0; transform: scaleY(0.85); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-figure.reveal-armed .reveal-frame,
+  .chart-figure.reveal-armed .reveal-band,
+  .chart-figure.reveal-armed .reveal-data {
+    animation: none;
+  }
+}
