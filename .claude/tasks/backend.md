@@ -9,10 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
-
-## Ready
-
 ### B-024 — Unit tests never write into the real `~/.fce`
 - **Scope:** `src/fce_web/engine/analytical_loop.py` + `engine/driver.py:162` (thread `env` into `run_physics_loop`'s
   `get_fce_home` at :272), `tests/test_jobs.py`, `tests/test_driver.py`, `tests/test_engine_parity.py`, `tests/e2e/conftest.py`
@@ -24,7 +20,11 @@ _none._
   and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
   `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
   The sentinel is put unconditionally in a `finally`, so a drain loop cannot hang on an exception.
+- **Branch / PR:** `task/b-024-env-threading` — PR not yet opened
+- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=9 (C1-C9).
 - Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+
+## Ready
 
 _none — F-005 and F-006 are wave 3 but frontend; see `frontend.md`._
 
@@ -212,7 +212,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **677 passed**; flake8 0 across `src/ tests/ scripts/`; `tests/e2e/` **54** nodeids.
+- Suite floor **683 passed**; flake8 0. Confirmed on `main` at `df0f6d4` by the orchestrator, 2026-09-16.
+- Superseded: suite floor **677 passed**; `tests/e2e/` **54** nodeids.
   Confirmed on `main` at `3e85cf8`, 2026-09-11 (671 after F-006, +6 from B-022).
 - Superseded: suite floor **654 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at
   `78ceb8d`, 2026-09-09. (639 after B-020; 653 after B-021 cycle 2; 654 after cycle 3.)

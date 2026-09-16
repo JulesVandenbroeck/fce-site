@@ -9,21 +9,24 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-007 — Serialise, submit, stream, show progress
+- **Branch / PR:** `task/f-007-run-submit-stream` — PR not yet opened
+- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=11 (C1-C11).
+- **Depends on:** F-005, F-006, B-020, B-021, B-022, B-023 (all merged); go-ahead given 2026-09-11. Wave 5.
+- **C1/C2 deviate from the plan text by my ruling, 2026-09-16.** `docs/plan-m3-vertical-slice.md:720-727`
+  asks for `{nodes, edges, ui{}}` with layout confined to `ui`. Enumerated by `scout`: nothing reads a
+  `ui` key — `build_run_config` reads only `nodes`/`edges` (`graph.py:349-350`), `docs/api.md:34-50`
+  documents only those, and `graph.js:93-101` already rides `x`/`y` on each node where `_parse_nodes`
+  ignores them. The `ui` wrapper would need a backend change for no behavioural gain. C1/C2 state the
+  same property against what shipped; C2 proves it by drag-then-resubmit landing a cache hit.
+- **C10 is the contract clause:** the PR body must carry the results-region markup verbatim, the way
+  F-004's PR #32 did. **D-016 and F-008 consume it read-only.**
 
 ## Ready
 
-**Wave 5 go-ahead given by the user, 2026-09-11.** D-017 merged `8ab7964`. B-023 merged `5bcccd8`. **F-007 is released** → F-008 → D-016, serialised on the page.
-**Held at the 75% usage soft threshold (2026-09-11, resets 17:00):** F-007 is not dispatched this window.
+**Wave 5 go-ahead given by the user, 2026-09-11.** F-007 dispatched 2026-09-16 → F-008 → D-016, serialised on the page.
 
 ## Blocked
-
-### F-007 — Serialise, submit, stream, show progress
-- **Depends on:** F-005, F-006, B-020, B-021, B-022 (all merged); go-ahead given 2026-09-11. F-009 merged `ad36dd9`. Wave 5.
-- **User ruling 2026-09-11 — client mission-1 defaults.** `build_run_config` rejects nodes without config and F-006
-  removed the fields, so `run.js` fills each node's missing config at submit with the mission-1 recipe from
-  `tests/test_api_run.py:24-38` (nlep 2 `>=`, `l1.pt > 20`, ObsCustom `(l1.p4 + l2.p4).mass`, 50 bins 60-120).
-  Editable node fields are M4. **Also waits for B-023** (e2e `live_server` on the fixture; it sets no `FCE_HOME`).
 ### F-008 — The interactive SVG histogram
 - **Depends on:** B-019, F-007. Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge
   are explicitly out of scope by the user's 2026-09-07 ruling. Wave 5.
