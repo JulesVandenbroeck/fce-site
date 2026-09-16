@@ -257,13 +257,8 @@ def run_physics_loop(
     global state. Cancellation is ``ctx.cancel``: setting it on this run's
     context stops only this run.
 
-    *env* is the same optional environment mapping ``fce_web.paths.
-    get_fce_home`` accepts (task B-024) -- forwarded unchanged from
-    ``fce_web.engine.driver.run_analysis`` so this loop's cache and output
-    directories land under the same ``FCE_HOME`` the caller resolved its
-    dataset directory from, instead of resolving a second, independent
-    answer from the real process environment. ``None`` means "the real
-    process environment", the same default ``get_fce_home`` itself has.
+    *env* is forwarded to ``get_fce_home``; ``None`` means the real process
+    environment.
     """
     selections = cfg.get("selections")
 

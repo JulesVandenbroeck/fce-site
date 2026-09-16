@@ -144,12 +144,7 @@ def _live_server(_fce_home: Path) -> Iterator[str]:
     against a hermetic ``FCE_HOME`` seeded with the fixture dataset (task
     B-023) -- never the real ``~/.fce``.
 
-    ``env`` is an explicit ``{"FCE_HOME": ...}`` mapping, not ``os.environ``:
-    task B-024 threaded that mapping the rest of the way down to
-    ``analytical_loop.run_physics_loop``'s own ``get_fce_home`` call, so
-    pointing the *server's* ``env`` here is now sufficient on its own -- no
-    process-environment mutation needed alongside it (that was B-023 cycle
-    2's ``_e2e_process_fce_home`` workaround, retired by this task).
+    ``env`` points the served app's ``FCE_HOME`` at the fixture tmp dir.
     """
     with serve_app(env={"FCE_HOME": str(_fce_home)}) as base_url:
         yield base_url
