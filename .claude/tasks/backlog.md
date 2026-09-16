@@ -704,3 +704,6 @@ and are historical now that #6 is merged.
 - **D-016 F2-F4 (PR #48)** — `chart.css:10` comment says `forwards`, rules use `both`; `chart.css:164-169` default-valued rule, delete; `chart.css:1-17` / `shell.css:183-190` comments retell the PR, cut to 1-2 lines.
 - **B-025 note** — `tests/fixtures/README.md` says fixture unchanged except event count; now stale for MC weight.
 - **B-025 F2 (PR #49)** — `tests/fixtures/make_fixture.py:158-173` 16-line comment over a 2-line change; cut to ~3 lines.
+
+- **B-026 F1** — `tests/test_graph.py:307-348`: 4 tests duplicate `test_api_run.py`'s POST checks; delete, mutations still red (PR #51 review).
+- **B-027 note** — unpinned `fastapi` resolves a `starlette` whose `TestClient` needs `httpx2`; a fresh venv fails collection. Floor-pin or swap (reported by B-027 coder).

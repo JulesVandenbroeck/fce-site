@@ -84,6 +84,17 @@ Its exported table goes verbatim into PR F-011's body, and nothing merges agains
   (`min < max`, `bins > 0`, a cap on `bins`)? If not, that is a trust-boundary gap and becomes a
   backend task, not a client check.
 
+## Answers (scout, 2026-09-16)
+
+- **Q1.** Empty `exprs` is accepted (no cut). Multiplicity: `nlep/njets/nphot` int, `op_*`/`ltype` str,
+  **no defaults** — a missing field is a `GraphError` (`graph.py:240-242`). Exact `op_*`/`ltype` values still
+  unenumerated; ask before F-012.
+- **Q2. No.** Submit rejection is `400 {"error": str}` (`routes/api.py:55`); a later failure is
+  `{"status":"error","error":str}` on `/result` only (`api.py:77`), the SSE `done` frame carries no text.
+  → **B-026 is raised.**
+- **Q3. Absent.** `bins/min/max` are only checked as strings (`graph.py:315-318`), converted unchecked at
+  `analytical_loop.py:209`. → trust-boundary gap, **B-027**, before F-012.
+
 ## Out of scope
 
 Unlock filtering (M5), mission-driven defaults (M5), the "show expression" toggle (M6 if missions
