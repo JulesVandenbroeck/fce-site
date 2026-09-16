@@ -9,13 +9,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-026 — rejected-graph errors name the offending node (**CONTRACT TASK** — 400 body shape)
-- **Scope:** `graph.py`, `routes/api.py`, `docs/api.md`, the existing `build_run_config` test file
-- **Accept:** C1-C5 in dispatch; plan `docs/plan-m4-recipe-builder.md` Q2
-- **Depends on:** none. Shares `graph.py` with B-027 — second to merge takes `main` in by merge.
-- **Branch / PR:** `task/b-026-error-node-id` — not yet opened
-- **Status:** dispatched (cycle 1)
-
 ### B-027 — server-side validation of Histogram bins/min/max (trust boundary)
 - **Scope:** `graph.py`, the existing `build_run_config` test file
 - **Accept:** C1-C4 in dispatch; plan Q3. Blocks F-012.
@@ -60,6 +53,8 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-026** — rejected-graph errors name the offending node (**CONTRACT**: 400 body `{"error": str, "nodeId": str|null}`) — #51, `a9cc376`, 1 cycle, clean gate (`findings=1, scope=pass, verdict=approve`).
+  Suite floor **707**. Selection/Observable exprs now compiled via `safe_eval.compile_expr` at submit → 400 naming the node. 28 raise sites enumerated in PR body. F1 (4 surplus tests) backlogged.
 - **B-025** — fixture MC weights scaled to the 2000-event slice — #49, `3e944bd`, 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`).
   Suite floor **701**. MC weight ×N_source/2000 (X1 480.2, X2 326.4, X3 162.9); `data` stays 1.0 (sqrt(N) bars). Weighted X1 3136.75 / X3 452.21 vs data 712 —
   **MC ≈4.4× data, accepted by the user's ruling 2026-09-16** (reviewer F1 raised the same point). F2 comment trim backlogged.
@@ -236,7 +231,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **701 passed**; flake8 0. Confirmed on PR #49 head by the orchestrator, 2026-09-16.
+- Suite floor **707 passed**; flake8 0. Confirmed on PR #51 head by the orchestrator, 2026-09-16.
+- Superseded: suite floor **701 passed**; flake8 0. Confirmed on PR #49 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **683 passed**; flake8 0. Confirmed on `main` at `df0f6d4` by the orchestrator, 2026-09-16.
 - Superseded: suite floor **677 passed**; `tests/e2e/` **54** nodeids.
   Confirmed on `main` at `3e85cf8`, 2026-09-11 (671 after F-006, +6 from B-022).
