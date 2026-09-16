@@ -14,7 +14,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Accept:** C1-C7 in dispatch; expression table verbatim in PR body; plan `docs/plan-m4-recipe-builder.md`
 - **Depends on:** Q1 (answered)
 - **Branch / PR:** `task/f-011-interiors` — #50
-- **Status:** re-spec (not a cycle) — scope widened to `test_graph.py`; coder at 700/703
+- **Status:** cycle 2 dispatched — c1 `findings=2, scope=pass, verdict=rework` (F1 expr string in graph.js vs C3; F2 docstring). My `020261b` rode the branch (worktree cut from unpushed local main) — no-op on merge.
 
 ## Ready
 

@@ -14,7 +14,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Accept:** C1-C4 in dispatch; plan Q3. Blocks F-012.
 - **Depends on:** none. Shares `graph.py` with B-026.
 - **Branch / PR:** `task/b-027-histogram-bounds` — #52
-- **Status:** cycle 2 dispatched — c1 `findings=3, verdict=rework` (F1 finiteness unguarded); must merge `main` (B-026 in `graph.py`)
+- **Status:** cycle 2 in review (gate 715/flake8 0 reproduced at `3c29499`) — c1 `findings=3, verdict=rework` (F1 finiteness unguarded); must merge `main` (B-026 in `graph.py`)
 
 ## Ready
 
