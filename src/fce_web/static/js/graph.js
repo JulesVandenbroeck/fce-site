@@ -36,6 +36,21 @@
 // authority (B-020); a client that disagrees with the server is a bug in
 // the client, not a second source of truth.
 
+import {
+  OBJECTS,
+  VECTOR_SUM_OBJECTS,
+  PROPERTIES,
+  OBJECT_PROPERTIES,
+  COUNTS,
+  COMPARISONS,
+  VECTOR_SUM_QUANTITIES,
+  buildSelectionExpr,
+  globalConfig,
+  objectConfig,
+  vectorSumConfig,
+  customConfig,
+} from "./expr.js";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const NODE_KINDS = [
@@ -231,6 +246,105 @@ const MODES = [
   { value: "ObsCustom", label: "Custom" },
 ];
 
+// F-011, plan "Decisions" #3: a freshly placed node must already run.
+// VectorSum(l1, l2, mass) is the default for every mode's own fallback too.
+const DEFAULT_MODE = "ObsVectorSum";
+const DEFAULT_VECTOR_SUM_OBJECTS = ["l1", "l2"];
+
+function propertyOptions(select, objectName) {
+  select.textContent = "";
+  OBJECT_PROPERTIES[objectName].forEach((propName) => {
+    const prop = PROPERTIES.find((p) => p.name === propName);
+    select.appendChild(h("option", { value: prop.name, text: prop.label }));
+  });
+}
+
+// Global: a count, or MET pt (plan table row 1).
+function buildGlobalPanel(uid, onChange) {
+  const wrap = h("div", { class: "obs-panel" });
+  const select = h("select", { id: uid("global-qty"), name: uid("global-qty") });
+  COUNTS.forEach((c) => select.appendChild(h("option", { value: c.name, text: c.label })));
+  select.appendChild(h("option", { value: "met_pt", text: globalConfig("met_pt").label }));
+  select.addEventListener("change", onChange);
+  wrap.appendChild(h("label", { for: uid("global-qty"), text: "Quantity" }));
+  wrap.appendChild(select);
+  return { el: wrap, getConfig: () => globalConfig(select.value) };
+}
+
+// Object: object + property (plan table row 2).
+function buildObjectPanel(uid, onChange) {
+  const wrap = h("div", { class: "obs-panel" });
+  const objSelect = h("select", { id: uid("obj-object"), name: uid("obj-object") });
+  OBJECTS.forEach((o) => objSelect.appendChild(h("option", { value: o.name, text: o.label })));
+  const propSelect = h("select", { id: uid("obj-property"), name: uid("obj-property") });
+  propertyOptions(propSelect, objSelect.value);
+
+  objSelect.addEventListener("change", () => {
+    propertyOptions(propSelect, objSelect.value);
+    onChange();
+  });
+  propSelect.addEventListener("change", onChange);
+
+  wrap.appendChild(h("label", { for: uid("obj-object"), text: "Object" }));
+  wrap.appendChild(objSelect);
+  wrap.appendChild(h("label", { for: uid("obj-property"), text: "Property" }));
+  wrap.appendChild(propSelect);
+  return { el: wrap, getConfig: () => objectConfig(objSelect.value, propSelect.value) };
+}
+
+// VectorSum: tick objects, then mass or pt (plan table row 3, default).
+function buildVectorSumPanel(uid, onChange) {
+  const wrap = h("div", { class: "obs-panel" });
+  const fieldset = h("fieldset", {});
+  fieldset.appendChild(h("legend", { text: "Objects to sum" }));
+  const checkboxes = VECTOR_SUM_OBJECTS.map((o) => {
+    const cbId = uid(`vs-${o.name}`);
+    const input = h("input", { type: "checkbox", id: cbId, name: uid("vs"), value: o.name });
+    if (DEFAULT_VECTOR_SUM_OBJECTS.includes(o.name)) input.checked = true;
+    fieldset.appendChild(h("span", { class: "obs-panel__opt" }, [input, h("label", { for: cbId, text: o.label })]));
+    return input;
+  });
+  // At least one object must stay ticked -- an empty sum is not an
+  // expression. Reverting a would-be-empty uncheck is cheaper than a
+  // validation message for a control this small.
+  checkboxes.forEach((cb) => {
+    cb.addEventListener("change", () => {
+      if (!checkboxes.some((c) => c.checked)) {
+        cb.checked = true;
+        return;
+      }
+      onChange();
+    });
+  });
+  wrap.appendChild(fieldset);
+
+  const qtySelect = h("select", { id: uid("vs-qty"), name: uid("vs-qty") });
+  VECTOR_SUM_QUANTITIES.forEach((q) => qtySelect.appendChild(h("option", { value: q.name, text: q.label })));
+  qtySelect.addEventListener("change", onChange);
+  wrap.appendChild(h("label", { for: uid("vs-qty"), text: "Quantity" }));
+  wrap.appendChild(qtySelect);
+
+  return {
+    el: wrap,
+    getConfig: () => {
+      const objects = checkboxes.filter((c) => c.checked).map((c) => c.value);
+      return vectorSumConfig(objects, qtySelect.value);
+    },
+  };
+}
+
+// Custom: one free-text field (plan table row 4) -- the one mode whose
+// expression the student types rather than builds from controls.
+function buildCustomPanel(uid, onChange) {
+  const wrap = h("div", { class: "obs-panel" });
+  const input = h("input", { type: "text", id: uid("custom-expr"), name: uid("custom-expr") });
+  input.value = objectConfig("l1", "pt").expr;
+  input.addEventListener("input", onChange);
+  wrap.appendChild(h("label", { for: uid("custom-expr"), text: "Custom expression" }));
+  wrap.appendChild(input);
+  return { el: wrap, getConfig: () => customConfig(input.value) };
+}
+
 // One `Observable` node, one in-node mode toggle -- the 2026-09-02 ruling
 // (docs/design-brief.md §4): ObsGlobal/ObsObject/ObsVectorSum/ObsCustom are
 // not four palette kinds, they are one node's `config.mode`. A native
@@ -238,12 +352,11 @@ const MODES = [
 // radio <fieldset> is the toggle (C1) -- both keyboard-operable and
 // self-naming for free, which is what C5 checks.
 //
-// docs/design-explorations/observable.html also mocks up a per-mode form
-// (event quantity, object+field, vector-sum checkboxes, a custom-expression
-// input). None of C1-C11 asks for those fields, and their values never
-// reached `config` -- a student filling one in got nothing back -- so they
-// are not built here. They return in the task that wires them into
-// `config`.
+// F-011 wires each mode's own native controls (docs/plan-m4-recipe-builder.md
+// table) into `config` through expr.js -- the panel builders above. Every
+// control lives inside this one <details>; the inactive panels are `hidden`
+// (native, so a screen reader skips them) rather than removed, so switching
+// modes never rebuilds DOM.
 function buildObservableInterior(id) {
   const uid = (s) => `obs-${s}-${id}`;
 
@@ -253,39 +366,159 @@ function buildObservableInterior(id) {
 
   const fieldset = h("fieldset", { class: "mode-toggle" });
   fieldset.appendChild(h("legend", { class: "mode-toggle__legend", text: "Mode — what number am I plotting?" }));
-  const radios = MODES.map((m, i) => {
+  const radios = MODES.map((m) => {
     const radioId = uid(`mode-${m.value}`);
     const input = h("input", { type: "radio", name: uid("mode"), id: radioId, value: m.value });
-    if (i === 0) input.checked = true;
+    if (m.value === DEFAULT_MODE) input.checked = true;
     fieldset.appendChild(h("span", { class: "mode-toggle__opt" }, [input, h("label", { for: radioId, text: m.label })]));
     return input;
   });
   details.appendChild(fieldset);
 
-  // C9: the default mode (ObsGlobal) is already what `config` exports, so
-  // the subtitle says so from the start too -- buildNodeEl sets the same
-  // MODES[0].label before this node is even appended to the page.
-  const node = graphState.nodes.get(id);
-  if (node) node.config = { mode: MODES[0].value };
-
-  function applyMode(mode) {
+  function update() {
+    const mode = radios.find((r) => r.checked).value;
+    const cfg = panels[mode].getConfig();
     const n = graphState.nodes.get(id);
     if (n) {
-      n.config = { mode };
+      n.config = { mode, ...cfg };
       persistUI();
     }
     const sub = els.wrap.querySelector(`.node[data-node-id="${id}"] .node__subtitle`);
     if (sub) sub.textContent = MODES.find((m) => m.value === mode).label;
+    Object.entries(panels).forEach(([m, p]) => {
+      p.el.hidden = m !== mode;
+    });
     growNode(id);
   }
 
-  radios.forEach((r) => r.addEventListener("change", () => applyMode(r.value)));
+  const panels = {
+    ObsGlobal: buildGlobalPanel(uid, update),
+    ObsObject: buildObjectPanel(uid, update),
+    ObsVectorSum: buildVectorSumPanel(uid, update),
+    ObsCustom: buildCustomPanel(uid, update),
+  };
+  Object.values(panels).forEach((p) => details.appendChild(p.el));
+
+  radios.forEach((r) => r.addEventListener("change", update));
+  // C9: the default mode's config is already what `config` exports, so the
+  // subtitle says so from the start too -- buildNodeEl sets the same
+  // DEFAULT_MODE label before this node is even appended to the page. This
+  // first call's DOM lookups (subtitle, foreignObject) are guarded no-ops,
+  // since the node is not attached to the page yet -- only node.config and
+  // panel visibility land at this point.
+  update();
+
   // C6: an opened node grows over whatever else sits at that canvas
   // position -- SVG has no z-index, paint order is the only stacking
   // mechanism, so bring it to the end of #nodes-layer (painted last) on open.
   // C8: that reparenting (`appendChild` on an already-attached node) drops
   // DOM focus to <body> even though the summary itself never moved logically
   // -- refocus it once the move is done.
+  details.addEventListener("toggle", () => {
+    if (details.open) {
+      els.nodesLayer.appendChild(foreignObjectFor(id));
+      summary.focus();
+    }
+    growNode(id);
+  });
+
+  return details;
+}
+
+// One `Selection` node's interior: rows of object · property · comparison ·
+// number, ANDed server-side (`fce_web.graph._selection_exprs`). Plan table
+// row 2 -- default one row, "1st lepton pt > 5"; zero rows is legal (an
+// empty `exprs` list is an unconditional pass, confirmed by scout Q1).
+function buildSelectionInterior(id) {
+  const uid = (s) => `sel-${s}-${id}`;
+  let rowSeq = 0;
+  const rows = []; // { el, getExpr() }
+
+  const details = h("details", { class: "node__interior" });
+  const summary = h("summary", { class: "node__interior-summary", text: "Configure selection" });
+  details.appendChild(summary);
+
+  const list = h("div", { class: "selection-rows" });
+  details.appendChild(list);
+
+  function update() {
+    const n = graphState.nodes.get(id);
+    if (n) {
+      n.config = { exprs: rows.map((r) => r.getExpr()) };
+      persistUI();
+    }
+    growNode(id);
+  }
+
+  function addRow(defaults) {
+    rowSeq += 1;
+    const rid = uid(`row-${rowSeq}`);
+    const row = h("div", { class: "selection-row" });
+
+    const objSelect = h("select", { id: `${rid}-object`, name: `${rid}-object` });
+    OBJECTS.forEach((o) => objSelect.appendChild(h("option", { value: o.name, text: o.label })));
+    const propSelect = h("select", { id: `${rid}-property`, name: `${rid}-property` });
+    propertyOptions(propSelect, objSelect.value);
+    const cmpSelect = h("select", { id: `${rid}-comparison`, name: `${rid}-comparison` });
+    COMPARISONS.forEach((c) => cmpSelect.appendChild(h("option", { value: c.op, text: c.label })));
+    const valInput = h("input", { type: "number", id: `${rid}-value`, name: `${rid}-value`, step: "any" });
+
+    if (defaults) {
+      objSelect.value = defaults.object;
+      propertyOptions(propSelect, objSelect.value);
+      propSelect.value = defaults.property;
+      cmpSelect.value = defaults.comparison;
+      valInput.value = defaults.value;
+    }
+
+    objSelect.addEventListener("change", () => {
+      propertyOptions(propSelect, objSelect.value);
+      update();
+    });
+    propSelect.addEventListener("change", update);
+    cmpSelect.addEventListener("change", update);
+    valInput.addEventListener("input", update);
+
+    const removeBtn = h("button", {
+      type: "button",
+      class: "selection-remove",
+      text: "Remove condition",
+      "aria-label": `Remove condition ${rowSeq}`,
+    });
+    removeBtn.addEventListener("click", () => {
+      list.removeChild(row);
+      const idx = rows.findIndex((r) => r.el === row);
+      if (idx >= 0) rows.splice(idx, 1);
+      update();
+    });
+
+    row.appendChild(h("label", { for: `${rid}-object`, text: "Object" }));
+    row.appendChild(objSelect);
+    row.appendChild(h("label", { for: `${rid}-property`, text: "Property" }));
+    row.appendChild(propSelect);
+    row.appendChild(h("label", { for: `${rid}-comparison`, text: "Comparison" }));
+    row.appendChild(cmpSelect);
+    row.appendChild(h("label", { for: `${rid}-value`, text: "Value" }));
+    row.appendChild(valInput);
+    row.appendChild(removeBtn);
+
+    list.appendChild(row);
+    rows.push({
+      el: row,
+      getExpr: () => buildSelectionExpr(objSelect.value, propSelect.value, cmpSelect.value, valInput.value),
+    });
+  }
+
+  const addBtn = h("button", { type: "button", class: "selection-add", text: "Add condition" });
+  addBtn.addEventListener("click", () => {
+    addRow();
+    update();
+  });
+  details.appendChild(addBtn);
+
+  addRow({ object: "l1", property: "pt", comparison: ">", value: "5" });
+  update();
+
   details.addEventListener("toggle", () => {
     if (details.open) {
       els.nodesLayer.appendChild(foreignObjectFor(id));
@@ -325,7 +558,7 @@ function buildNodeEl(id, kind) {
 
   const sub = document.createElement("p");
   sub.className = "node__subtitle";
-  sub.textContent = kind === "Observable" ? MODES[0].label : "not configured yet";
+  sub.textContent = kind === "Observable" ? MODES.find((m) => m.value === DEFAULT_MODE).label : "not configured yet";
   div.appendChild(sub);
 
   const ports = document.createElement("div");
@@ -357,6 +590,8 @@ function buildNodeEl(id, kind) {
 
   if (kind === "Observable") {
     div.appendChild(buildObservableInterior(id));
+  } else if (kind === "Selection") {
+    div.appendChild(buildSelectionInterior(id));
   }
 
   fo.appendChild(div);

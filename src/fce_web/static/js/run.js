@@ -20,19 +20,18 @@
 //                             dispatches a `fce:result` CustomEvent on it,
 //                             `detail` set to the parsed payload.
 
-// The mission-1 recipe (docs/design-brief.md, tests/test_api_run.py:24-38),
-// verbatim. Editable node fields are M4 (2026-09-11 ruling) -- until then
-// the client fills whatever config a node is missing with this recipe, so a
-// student can place, connect and run a mission-1 graph without configuring
-// anything by hand.
-function defaultConfigFor(kind, id) {
+// Multiplicity and Histogram have no interior yet (F-012) -- until then the
+// client fills them with the mission-1 recipe (docs/design-brief.md,
+// tests/test_api_run.py:24-38) so a student can place, connect and run a
+// mission-1 graph without configuring those two by hand. Selection and
+// Observable are F-011: their interiors (graph.js) always populate `config`
+// themselves, so this must not also guess a value for them -- a stale
+// fallback here would silently override nothing today, but it is one more
+// place a real interior's output could be second-guessed tomorrow.
+function defaultConfigFor(kind) {
   switch (kind) {
     case "Multiplicity":
       return { nlep: 2, op_lep: ">=", njets: 0, op_jet: ">=", ltype: "Any", nphot: 0, op_phot: ">=" };
-    case "Selection":
-      return { name: id, exprs: ["l1.pt > 20"] };
-    case "Observable":
-      return { mode: "ObsCustom", expr: "(l1.p4 + l2.p4).mass", label: "m(l1,l2)" };
     case "Histogram":
       return { bins: "50", min: "60", max: "120" };
     default:
@@ -49,7 +48,7 @@ function buildSubmission() {
   const nodes = graph.nodes.map((n) => ({
     id: n.id,
     kind: n.kind,
-    config: { ...defaultConfigFor(n.kind, n.id), ...(n.config || {}) },
+    config: { ...defaultConfigFor(n.kind), ...(n.config || {}) },
   }));
   const missionId = document.getElementById("mission-label").dataset.missionId;
   return { missionId, graph: { nodes, edges: graph.edges } };
