@@ -99,10 +99,14 @@ def test_changed_histogram_bins_changes_the_histogram(index: LoadedPage) -> None
     run.js's old hardcoded 50/60/120 fallback), produce a different bin
     count in the returned payload.
 
-    Verified red (2026-09-16, this task): with run.js's `defaultConfigFor`
-    restored to also mask Multiplicity/Histogram configs, this test failed
-    because both submissions serialised to the same hardcoded recipe
-    (50 bins each time, regardless of what the interior's inputs held).
+    Verified red (2026-09-16, review cycle 1 F2): the reviewer's
+    "restore-the-old-fallback" mutation does *not* turn this red -- the old
+    `defaultConfigFor` spread happens under `n.config`, so a real interior
+    value always wins over it, fallback or not. What does turn it red is
+    `buildSubmission` ignoring the interior's `bins` value altogether and
+    always sending `"50"` -- confirmed by stubbing `run.js`'s submission to
+    do exactly that: both runs then serialise 50 bins regardless of the
+    interior's input, and the `changed_bins == 25` assertion fails.
     """
     page = index.page
     _place_mission1_chain(page)

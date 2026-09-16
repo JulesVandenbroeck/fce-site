@@ -233,6 +233,21 @@ function moveNodeTo(id, x, y) {
   renderEdges();
 }
 
+// Cycle 2 F5: the four node interiors below (Observable, Selection,
+// Multiplicity, Histogram) each open the same way -- bring the node to the
+// end of #nodes-layer so its grown box paints over whatever else sits at
+// that canvas position (SVG has no z-index), and refocus the summary that
+// reparenting under `appendChild` otherwise drops focus from (C6/C8).
+function wireInteriorToggle(details, summary, id) {
+  details.addEventListener("toggle", () => {
+    if (details.open) {
+      els.nodesLayer.appendChild(foreignObjectFor(id));
+      summary.focus();
+    }
+    growNode(id);
+  });
+}
+
 // ---- Observable node interior (F-006, docs/design-explorations/observable.html) ----
 
 function h(tag, attrs = {}, children = []) {
@@ -418,13 +433,13 @@ function buildObservableInterior(id) {
       p.el.hidden = m !== mode;
     });
     growNode(id);
-    // C3: an already-connected Histogram re-presets to this quantity's
-    // range/label. No preset (Custom mode) leaves the Histogram alone.
-    if (range) {
-      graphState.edges
-        .filter(([from, to]) => from === id && histogramInteriors.has(to))
-        .forEach(([, to]) => histogramInteriors.get(to).applyPreset(range, cfg.label));
-    }
+    // C3/F1: an already-connected Histogram re-presets to this quantity's
+    // range/label. Custom mode has no range (`getRange()` returns `null`),
+    // but its label still reaches the Histogram's axis -- applyPreset only
+    // skips min/max when `range` is falsy, never the label.
+    graphState.edges
+      .filter(([from, to]) => from === id && histogramInteriors.has(to))
+      .forEach(([, to]) => histogramInteriors.get(to)(range, cfg.label));
   }
 
   const panels = {
@@ -444,19 +459,7 @@ function buildObservableInterior(id) {
   // panel visibility land at this point.
   update();
 
-  // C6: an opened node grows over whatever else sits at that canvas
-  // position -- SVG has no z-index, paint order is the only stacking
-  // mechanism, so bring it to the end of #nodes-layer (painted last) on open.
-  // C8: that reparenting (`appendChild` on an already-attached node) drops
-  // DOM focus to <body> even though the summary itself never moved logically
-  // -- refocus it once the move is done.
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      els.nodesLayer.appendChild(foreignObjectFor(id));
-      summary.focus();
-    }
-    growNode(id);
-  });
+  wireInteriorToggle(details, summary, id);
 
   return details;
 }
@@ -555,13 +558,7 @@ function buildSelectionInterior(id) {
   addRow({ object: "l1", property: "pt", comparison: ">", value: "5" });
   update();
 
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      els.nodesLayer.appendChild(foreignObjectFor(id));
-      summary.focus();
-    }
-    growNode(id);
-  });
+  wireInteriorToggle(details, summary, id);
 
   return details;
 }
@@ -591,7 +588,12 @@ function buildMultCountGroup(uid, kind, legendText, defaultCount, defaultOp, onC
   wrap.appendChild(h("label", { for: uid(`${kind}-count`), text: "Count" }));
   wrap.appendChild(countInput);
 
-  return { el: wrap, getOp: () => opSelect.value, getCount: () => parseInt(countInput.value, 10) || 0 };
+  // Cycle 2 F3: no `|| 0` fallback -- a blank/non-numeric count must reach
+  // the server as something it rejects (NaN serialises to `null` in JSON,
+  // which graph.py's int check refuses), the same way a blank Histogram
+  // bins field is left to the server's own validation rather than silently
+  // becoming "exactly 0".
+  return { el: wrap, getOp: () => opSelect.value, getCount: () => parseInt(countInput.value, 10) };
 }
 
 function buildMultiplicityInterior(id) {
@@ -634,13 +636,7 @@ function buildMultiplicityInterior(id) {
 
   update();
 
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      els.nodesLayer.appendChild(foreignObjectFor(id));
-      summary.focus();
-    }
-    growNode(id);
-  });
+  wireInteriorToggle(details, summary, id);
 
   return details;
 }
@@ -686,25 +682,22 @@ function buildHistogramInterior(id) {
 
   // C3: exposed so a connected Observable's update() (and attemptConnect,
   // on first connect) can push its quantity's preset here -- looked up by
-  // node id through graphState.edges, not a second graph model.
-  histogramInteriors.set(id, {
-    applyPreset(range, label) {
+  // node id through graphState.edges, not a second graph model. Cycle 2 F1:
+  // a `range` of `null` (Custom mode has none) still updates the axis label
+  // -- only min/max are skipped -- so switching to Custom does not leave a
+  // stale label from whatever the previous mode was showing.
+  histogramInteriors.set(id, (range, label) => {
+    if (range) {
       minInput.value = String(range[0]);
       maxInput.value = String(range[1]);
-      xLabel = label;
-      update();
-    },
+    }
+    xLabel = label;
+    update();
   });
 
   update();
 
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      els.nodesLayer.appendChild(foreignObjectFor(id));
-      summary.focus();
-    }
-    growNode(id);
-  });
+  wireInteriorToggle(details, summary, id);
 
   return details;
 }
@@ -922,13 +915,12 @@ function attemptConnect(fromId, fromKind, toId) {
     graphState.edges.push([fromId, toId]);
     persistUI();
     renderEdges();
-    // C3: a Histogram connected to an already-configured Observable starts
-    // at that quantity's preset, not whatever it defaulted to alone.
+    // C3/F1: a Histogram connected to an already-configured Observable
+    // starts at that quantity's preset (or, in Custom mode, at least its
+    // label), not whatever it defaulted to alone.
     if (fromKind === "Observable" && histogramInteriors.has(toId)) {
       const fromNode = graphState.nodes.get(fromId);
-      if (fromNode.rangePreset) {
-        histogramInteriors.get(toId).applyPreset(fromNode.rangePreset, fromNode.config.label);
-      }
+      histogramInteriors.get(toId)(fromNode.rangePreset, fromNode.config.label);
     }
     setStatus(`Connected: ${nodeLabel(fromId)} → ${nodeLabel(toId)}.`);
   } else {
