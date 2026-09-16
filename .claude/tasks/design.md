@@ -69,11 +69,11 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 ## In progress
 
 ### D-018 — Style the four node interiors
-- **Scope:** `static/css/observable.css`, `static/css/canvas.css`
+- **Scope:** `static/css/observable.css`, `static/css/canvas.css` (+ new `docs/design-explorations/interior_style_verify.py` — D-016 left no check location; deviation stated in PR)
 - **Accept:** C1-C6 in PR body; plan `docs/plan-m4-recipe-builder.md`
 - **Depends on:** F-012 (done, `82ce11c`)
-- **Branch / PR:** `task/d-018-interiors-style` — not yet opened
-- **Status:** dispatched (cycle 1), parallel with B-028, worktree-isolated
+- **Branch / PR:** `task/d-018-interiors-style` — #55
+- **Status:** in review (cycle 1); gate reproduced 728 passed, verify script passes
 
 ## Ready
 
