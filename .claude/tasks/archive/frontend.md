@@ -310,3 +310,98 @@ Review: PR #42, `findings=4, verdict=approve`.
 - **Depends on:** D-015 — merged `0eded93`. Wave 3 fix, before F-007.
 - **Status:** in progress (cycle 1), dispatched 2026-09-11, branch `task/f-009-clamp-opened-node` — #42, head `6507db0`, gate passed (681 / flake8 0), in review. checks=5.
 
+
+
+---
+
+### F-007 — Serialise, submit, stream, show progress
+
+## In progress
+
+### F-007 — Serialise, submit, stream, show progress
+- **Branch / PR:** `task/f-007-run-submit-stream` — #46
+- **Status:** re-specification in flight (still cycle 1 — §5.4). checks 11 -> **15** (C12-C15 added).
+- **Gate (§5.1) passed** at `8fa2004`: 687 / 64 e2e collected / flake8 0 / 3 files, none under `static/css/`.
+- **Review cycle 1:** `findings=11, scope=pass, verdict=rework` — PR #46 comment `5694837876`.
+  **Two of the gating findings are against my criteria, not the code.** C2's check — drag, resubmit,
+  expect a cache hit — tests a *server* property and stayed green when the reviewer randomised `x`/`y`
+  per submission; C4 shipped with no operational check at all and stayed green when **both** SSE status
+  writes were deleted. §2's *instrument that structurally cannot observe the property it certifies*,
+  twice in one dispatch. Re-specification, not a cycle.
+  **Recorded so the next pass is not also free:** F4 (a failed run leaves the previous payload on
+  `#results-chart`'s `data-result` for F-008 to render as current) and F5 (disabling the focused Run
+  button drops focus to `<body>`) are against properties no criterion gated — clause 3, a cycle. If
+  this needs a third pass, **it counts.**
+- **C12-C15:** no `x`/`y` in the POST body, asserted on the intercepted request, not on a cache hit;
+  live rendering proven by a guard that reddens when `run.js:74`/`:122` are deleted; `resetResults`
+  clears `data-result` and the status; the Run button does not cost the keyboard user their place.
+- F6 (`aria-live` on `<progress>` announces nothing) corrects the **published contract**, not just the
+  markup. F7/F8/F9 are three deletions, about -14 lines. F11 (`#results` 26px wide, half-covering the
+  Run button at 1440) is **D-016's**, backlogged.
+- **F2 ruled by me:** the property stands — real datasets are slow and the brief requires a run never be
+  silent. The fixture merely finishes too fast to see it. The client must be proven to render frame by
+  frame; a controlled stream is a legitimate way to show that. The property is not restated to match
+  what the fixture happens to show.
+- **Contract shipped, verbatim in PR #46's body (C10), consumed read-only by D-016 and F-008:**
+  `#run-control`/`#run-button`, and `#results` carrying `#results-status` (aria-live, phase + percent),
+  `#results-progress` (native `<progress max=100>`, hidden until the first frame), `#results-note`
+  (aria-live, **no `role="alert"`**, no banner class — brief §2), `#results-chart`.
+  **F-008 renders into `#results-chart`**, reading its `data-result` attribute or the bubbling
+  `fce:result` CustomEvent it dispatches on `done`.
+- **`x`/`y` never leave the client** — `run.js` rebuilds each node as `{id, kind, config}`, so a
+  drag-then-resubmit is a cache hit. That is stronger than the ride-along the dispatch allowed for.
+- **Environment note:** the coder added Chromium r1243 to the shared `~/.cache/ms-playwright`
+  (additive, r1234 untouched) — an unpinned `playwright` in a fresh worktree venv resolved higher.
+- **Depends on:** F-005, F-006, B-020, B-021, B-022, B-023 (all merged); go-ahead given 2026-09-11. Wave 5.
+- **C1/C2 deviate from the plan text by my ruling, 2026-09-16.** `docs/plan-m3-vertical-slice.md:720-727`
+  asks for `{nodes, edges, ui{}}` with layout confined to `ui`. Enumerated by `scout`: nothing reads a
+  `ui` key — `build_run_config` reads only `nodes`/`edges` (`graph.py:349-350`), `docs/api.md:34-50`
+  documents only those, and `graph.js:93-101` already rides `x`/`y` on each node where `_parse_nodes`
+  ignores them. The `ui` wrapper would need a backend change for no behavioural gain. C1/C2 state the
+  same property against what shipped; C2 proves it by drag-then-resubmit landing a cache hit.
+- **C10 is the contract clause:** the PR body must carry the results-region markup verbatim, the way
+  F-004's PR #32 did. **D-016 and F-008 consume it read-only.**
+
+**Outcome:** merged `1fdb8e6`, PR #46, 2 cycles + 1 re-specification + 1 pre-merge pass. checks=15.
+Suite floor 683 -> 691; `tests/e2e/` 64 -> 68 nodeids.
+
+**The task's whole lesson is about instruments, and it recurred three times at three levels.**
+
+1. *My criteria could not observe their own properties.* C2 asked for "layout state is ignored by the
+   run" and checked it by drag-then-resubmit-expect-a-cache-hit — a **server** property. The reviewer
+   stamped `x: Math.random(), y: Math.random()` on every node and the check stayed green. C4 asked for
+   "phase and progress render live" and shipped **no** check; the coder's `len(seen) > 1` was satisfied
+   by two client-local strings, and deleting *both* SSE status writes left it green. §2's "an instrument
+   that structurally cannot observe the property it certifies", twice in one dispatch. Re-specification
+   under §5.4 clause 2; C12 (assert the intercepted POST body's key set) and C13 (redden when
+   `run.js:74`/`:122` are deleted) replace them and were verified red under exactly those mutations.
+2. *The review's own instrument was too coarse.* Cycle 1's F2 reported that the real app never renders
+   live progress at all — observed sequence `Submitting… -> Run complete.` — and proposed restating C4
+   to match. I ruled the property stood: real datasets are slow, the brief requires a run never be
+   silent, and the fixture merely finishes too fast to watch. Cycle 2 replaced 20ms polling with a
+   `MutationObserver` and recorded
+   `Locating datasets... -> Reading events... -> ... 90% -> ... 100% -> Done -> Run complete.`
+   **The property was always there.** Had the criterion been restated to match the instrument, the
+   brief's requirement would have been quietly dropped on the strength of a measurement artefact.
+3. *A green suite hid a contract hole.* F12: `buildSubmission()`'s failure path returned before
+   `resetResults()`, the one route leaving a stale `data-result` on `#results-chart` for F-008 to render
+   as current. Non-gating by the reviewer's judgement; closed before merge anyway, because D-004's
+   post-mortem records what merging a contract task with an open finding against the shared value costs.
+
+**Two accessibility facts that are now contract, not implementation detail.** `#run-button` is **never**
+given the `disabled` attribute: disabling a focused button drops focus to `<body>` and costs a keyboard
+user their place mid-run. It uses `aria-disabled` plus a re-entry guard in `run.js` (three same-tick
+clicks record `['false','true','true']`). The consequence, F13, is D-016's: giving up `disabled` gives up
+the free visual busy affordance the browser renders for it, so **`#run-button[aria-disabled="true"]` must
+be styled busy**. `<progress>` also lost its `aria-live` — it has no text content to announce.
+
+**Operational cost worth recording.** Twice, concurrent suites corrupted a measurement: my first §5.1
+gate on B-024 read a moved `~/.fce/output` mtime because this branch's suite was running on a pre-fix
+branch, and the coder lost ~8 minutes to three stale background `pytest` processes. Every dispatch and
+review on this task after that carried an explicit "run nothing in the background, leave nothing running"
+line. The shared `~/.fce` directory and the shared Playwright cache make suite runs non-independent.
+
+**Findings:** F1-F11 cycle 1 (F1/F3 mine, see above; F2 overturned by a better instrument; F4 stale
+`data-result`; F5 focus loss; F6 `aria-live` on `<progress>`; F7-F9 three deletions, -14 lines; F10 stale
+status after an error; F11 -> D-016, backlogged). F12-F14 cycle 2 (F12 closed pre-merge, F13 into the
+contract and D-016's dispatch, F14 one deletion).

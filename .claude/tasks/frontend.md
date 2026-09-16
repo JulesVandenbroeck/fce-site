@@ -9,56 +9,25 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-007 — Serialise, submit, stream, show progress
-- **Branch / PR:** `task/f-007-run-submit-stream` — #46
-- **Status:** re-specification in flight (still cycle 1 — §5.4). checks 11 -> **15** (C12-C15 added).
-- **Gate (§5.1) passed** at `8fa2004`: 687 / 64 e2e collected / flake8 0 / 3 files, none under `static/css/`.
-- **Review cycle 1:** `findings=11, scope=pass, verdict=rework` — PR #46 comment `5694837876`.
-  **Two of the gating findings are against my criteria, not the code.** C2's check — drag, resubmit,
-  expect a cache hit — tests a *server* property and stayed green when the reviewer randomised `x`/`y`
-  per submission; C4 shipped with no operational check at all and stayed green when **both** SSE status
-  writes were deleted. §2's *instrument that structurally cannot observe the property it certifies*,
-  twice in one dispatch. Re-specification, not a cycle.
-  **Recorded so the next pass is not also free:** F4 (a failed run leaves the previous payload on
-  `#results-chart`'s `data-result` for F-008 to render as current) and F5 (disabling the focused Run
-  button drops focus to `<body>`) are against properties no criterion gated — clause 3, a cycle. If
-  this needs a third pass, **it counts.**
-- **C12-C15:** no `x`/`y` in the POST body, asserted on the intercepted request, not on a cache hit;
-  live rendering proven by a guard that reddens when `run.js:74`/`:122` are deleted; `resetResults`
-  clears `data-result` and the status; the Run button does not cost the keyboard user their place.
-- F6 (`aria-live` on `<progress>` announces nothing) corrects the **published contract**, not just the
-  markup. F7/F8/F9 are three deletions, about -14 lines. F11 (`#results` 26px wide, half-covering the
-  Run button at 1440) is **D-016's**, backlogged.
-- **F2 ruled by me:** the property stands — real datasets are slow and the brief requires a run never be
-  silent. The fixture merely finishes too fast to see it. The client must be proven to render frame by
-  frame; a controlled stream is a legitimate way to show that. The property is not restated to match
-  what the fixture happens to show.
-- **Contract shipped, verbatim in PR #46's body (C10), consumed read-only by D-016 and F-008:**
-  `#run-control`/`#run-button`, and `#results` carrying `#results-status` (aria-live, phase + percent),
-  `#results-progress` (native `<progress max=100>`, hidden until the first frame), `#results-note`
-  (aria-live, **no `role="alert"`**, no banner class — brief §2), `#results-chart`.
-  **F-008 renders into `#results-chart`**, reading its `data-result` attribute or the bubbling
-  `fce:result` CustomEvent it dispatches on `done`.
-- **`x`/`y` never leave the client** — `run.js` rebuilds each node as `{id, kind, config}`, so a
-  drag-then-resubmit is a cache hit. That is stronger than the ride-along the dispatch allowed for.
-- **Environment note:** the coder added Chromium r1243 to the shared `~/.cache/ms-playwright`
-  (additive, r1234 untouched) — an unpinned `playwright` in a fresh worktree venv resolved higher.
-- **Depends on:** F-005, F-006, B-020, B-021, B-022, B-023 (all merged); go-ahead given 2026-09-11. Wave 5.
-- **C1/C2 deviate from the plan text by my ruling, 2026-09-16.** `docs/plan-m3-vertical-slice.md:720-727`
-  asks for `{nodes, edges, ui{}}` with layout confined to `ui`. Enumerated by `scout`: nothing reads a
-  `ui` key — `build_run_config` reads only `nodes`/`edges` (`graph.py:349-350`), `docs/api.md:34-50`
-  documents only those, and `graph.js:93-101` already rides `x`/`y` on each node where `_parse_nodes`
-  ignores them. The `ui` wrapper would need a backend change for no behavioural gain. C1/C2 state the
-  same property against what shipped; C2 proves it by drag-then-resubmit landing a cache hit.
-- **C10 is the contract clause:** the PR body must carry the results-region markup verbatim, the way
-  F-004's PR #32 did. **D-016 and F-008 consume it read-only.**
+_none._
 
 ## Ready
 
 **Wave 5 go-ahead given by the user, 2026-09-11.** F-007 dispatched 2026-09-16 → F-008 → D-016, serialised on the page.
 
-## Blocked
+## Ready
+
 ### F-008 — The interactive SVG histogram
+- **Depends on:** B-019, F-007 — **both merged**; F-007 `1fdb8e6`. Wave 5. Next to dispatch.
+- **Consumes read-only, verbatim in PR #46's body:** `#results-chart` is where the chart renders.
+  On a `done` result `run.js` sets its `data-result` to the raw `GET /api/run/{id}/result` JSON and
+  dispatches a bubbling `fce:result` CustomEvent with the parsed payload as `detail` — read either.
+  **The attribute is absent, never stale**, while a run is in flight or after one fails.
+- Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge are out of scope by the user's
+  2026-09-07 ruling. **C7 closes the milestone:** the peak read off the running app, not a fixture JSON.
+
+## Blocked
+### F-008 — superseded by the Ready entry above — The interactive SVG histogram
 - **Depends on:** B-019, F-007. Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge
   are explicitly out of scope by the user's 2026-09-07 ruling. Wave 5.
 
@@ -67,6 +36,25 @@ IDs are `F-nnn`, allocated in order and never reused.
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-007** — serialise, submit, stream, show progress — #46, `1fdb8e6`, **2 cycles + 1 re-spec (mine) + 1
+  pre-merge pass**, clean gate (`findings=3, scope=pass, verdict=approve`). checks=15. Suite floor → **691**;
+  `tests/e2e/` 64 → **68** nodeids. Ships `static/js/run.js` and the `#run-control`/`#results` markup —
+  **the first time a student can run an analysis from the browser.** No CSS by design; D-016 styles it.
+  **Contract for F-008 and D-016 is verbatim in PR #46's body** and was diffed element-by-element against
+  the shipped markup by the reviewer.
+  **The cycle-1 lesson, and it is mine:** both criteria that gated the properties that matter were
+  instruments that could not observe them. C2's "drag, resubmit, expect a cache hit" tests a *server*
+  property — randomising `x`/`y` per submission kept it green; C4 shipped with no check and stayed green
+  when **both** SSE status writes were deleted. C12/C13 replace them and are red under exactly those
+  mutations. §2's blind-instrument failure, twice in one dispatch.
+  **And the instrument beat the app once more:** cycle 1 reported the real page never showing live
+  progress. It does — a `MutationObserver` on the live server recorded
+  `Locating datasets… → Reading events… → … 90% → … 100% → Done → Run complete.`; cycle 1's 20ms polling
+  was too coarse to see it. I had ruled the property stood and must not be restated to match the
+  instrument, which is the only reason it was not weakened.
+  **`disabled` is never used on `#run-button`** — it drops keyboard focus to `<body>` mid-run.
+  `aria-disabled` plus a re-entry guard instead, so **D-016 must style the busy state itself** (F13).
+  F11 backlogged (`#results` 26px wide at 1440, D-016's).
 - **F-009** — opened node clamped by its measured size — #42, `ad36dd9`, 1 cycle, clean gate (`findings=4, verdict=approve`;
   F1-F4 cleanups backlogged, ~−16 lines). checks=5. Suite floor → **681**. `moveNodeTo` clamps by live box; `growNode`
   re-clamps. Two tests, each mutation-verified against its own path. Closes D-015's C12 vertical half.
