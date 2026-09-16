@@ -141,6 +141,14 @@ its fixtures, `PageActivity`, the live server. Frontend owns the browser *assert
 own markup*, in `tests/e2e/` test files. If frontend needs a fixture that does not exist, it
 does not add one: it reports that and the orchestrator raises a backend task.
 
+**Clarified 2026-09-16, on PR #45's F1.** "Frontend owns `tests/e2e/` test files" is about what a
+test *asserts*, not about which directory it sits in. A test file under `tests/e2e/` that asserts
+about **the harness itself** — that the live server runs hermetically, that a fixture resolves —
+is backend's, and `tests/e2e/test_run_harness.py` is the case in point: backend wrote it in B-023
+for exactly that purpose. Frontend's half is the assertions about markup and browser behaviour
+(`test_run.py`, `test_smoke.py`'s page checks). The test that goes red when the harness breaks
+belongs to whoever owns the harness.
+
 Why: F-002's dispatch handed a frontend coder `tests/e2e/test_smoke.py`, which this table then
 forbade it to touch. The coder followed the scope and the reviewer caught the contradiction. The
 alternative — pairing every frontend task with a backend task to write its browser check — would

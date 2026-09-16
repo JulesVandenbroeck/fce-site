@@ -21,7 +21,21 @@ IDs are `B-nnn`, allocated in order and never reused.
   `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
   The sentinel is put unconditionally in a `finally`, so a drain loop cannot hang on an exception.
 - **Branch / PR:** `task/b-024-env-threading` — #45
-- **Status:** in review (cycle 1). checks=9 (C1-C9), all 9 claimed met.
+- **Status:** re-specification in flight (still cycle 1 — §5.4). checks=9 (C1-C9).
+- **Review cycle 1:** `findings=3, scope=fail, verdict=rework` — PR #45 comment `5694489248`.
+  F1 is **against my dispatch, not the code**: my file scope omitted `tests/test_run_context.py`
+  (whose exact-signature assertion necessarily fails once `env` is added) and
+  `tests/e2e/test_run_harness.py`. §2 question 3 — *does the file scope let the coder satisfy every
+  criterion* — and it did not. B-005 cycle 1 precedent. **Scope amended and both edits ratified in
+  writing; this does not count against the §5.7 limit.** F2/F3 (two comment-bloat trims, one line each)
+  went back with it.
+- **Seam ruled 2026-09-16, now in `shared/CLAUDE.md` §4:** a test under `tests/e2e/` that asserts about
+  the *harness* is backend's, whatever directory it sits in. `test_run_harness.py` is backend's;
+  `tests/e2e/test_run.py` is frontend's. The 2026-09-07 ruling said "frontend owns `tests/e2e/` test
+  files" and read as a directory rule; it was always a rule about what a test asserts.
+- **The reviewer checked C3 harder than I did** — mtimes held across the full run *including* e2e,
+  and it mutation-verified the guard by an independent mechanism (a pytest plugin rebinding
+  `driver.run_physics_loop` to a mutated in-memory module).
 - **Gate (§5.1) passed 2026-09-16**, re-run at `7f82558` in `~/fce-gate-b024`: 623 unit / **683** full /
   60 e2e collected / flake8 0, and `~/.fce/{output,cache}` mtimes unchanged across the unit run.
   **The first gate run showed `output` moving** — F-007's suite was running concurrently on a branch
