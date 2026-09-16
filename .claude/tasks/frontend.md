@@ -11,8 +11,28 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ### F-007 — Serialise, submit, stream, show progress
 - **Branch / PR:** `task/f-007-run-submit-stream` — #46
-- **Status:** coder done, all 11 claimed met; **gate + review held until PR #45's review finishes** —
-  B-024's central criterion is measured on the shared `~/.fce`, which any concurrent suite disturbs.
+- **Status:** re-specification in flight (still cycle 1 — §5.4). checks 11 -> **15** (C12-C15 added).
+- **Gate (§5.1) passed** at `8fa2004`: 687 / 64 e2e collected / flake8 0 / 3 files, none under `static/css/`.
+- **Review cycle 1:** `findings=11, scope=pass, verdict=rework` — PR #46 comment `5694837876`.
+  **Two of the gating findings are against my criteria, not the code.** C2's check — drag, resubmit,
+  expect a cache hit — tests a *server* property and stayed green when the reviewer randomised `x`/`y`
+  per submission; C4 shipped with no operational check at all and stayed green when **both** SSE status
+  writes were deleted. §2's *instrument that structurally cannot observe the property it certifies*,
+  twice in one dispatch. Re-specification, not a cycle.
+  **Recorded so the next pass is not also free:** F4 (a failed run leaves the previous payload on
+  `#results-chart`'s `data-result` for F-008 to render as current) and F5 (disabling the focused Run
+  button drops focus to `<body>`) are against properties no criterion gated — clause 3, a cycle. If
+  this needs a third pass, **it counts.**
+- **C12-C15:** no `x`/`y` in the POST body, asserted on the intercepted request, not on a cache hit;
+  live rendering proven by a guard that reddens when `run.js:74`/`:122` are deleted; `resetResults`
+  clears `data-result` and the status; the Run button does not cost the keyboard user their place.
+- F6 (`aria-live` on `<progress>` announces nothing) corrects the **published contract**, not just the
+  markup. F7/F8/F9 are three deletions, about -14 lines. F11 (`#results` 26px wide, half-covering the
+  Run button at 1440) is **D-016's**, backlogged.
+- **F2 ruled by me:** the property stands — real datasets are slow and the brief requires a run never be
+  silent. The fixture merely finishes too fast to see it. The client must be proven to render frame by
+  frame; a controlled stream is a legitimate way to show that. The property is not restated to match
+  what the fixture happens to show.
 - **Contract shipped, verbatim in PR #46's body (C10), consumed read-only by D-016 and F-008:**
   `#run-control`/`#run-button`, and `#results` carrying `#results-status` (aria-live, phase + percent),
   `#results-progress` (native `<progress max=100>`, hidden until the first frame), `#results-note`

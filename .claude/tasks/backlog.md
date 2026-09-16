@@ -697,3 +697,4 @@ and are historical now that #6 is merged.
 - **D-017 F4** — `shell.css:252-256` 5-line WCAG comment → one line (PR #44).
 
 - **B-024 F4** — PR #45's body cites the `get_fce_home` call at `analytical_loop.py:285` and narrates a shift from `:272`; cycle 2's own docstring trim moved it to `:280`. Code is correct, only the criterion prose is stale. Cite `run_physics_loop` by name instead of a line number so it cannot go stale again. Non-blocking, found 2026-09-16.
+- **F-007 F11** — `#results` renders 26px wide and half-covers the Run button at 1440px on the unstyled page. Cosmetic only; the region ships without CSS by design and **D-016 owns laying it out**. Named in PR #46's body as a handoff. Found 2026-09-16.
