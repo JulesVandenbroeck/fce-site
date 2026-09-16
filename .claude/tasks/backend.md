@@ -9,7 +9,19 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-026 — rejected-graph errors name the offending node (**CONTRACT TASK** — 400 body shape)
+- **Scope:** `graph.py`, `routes/api.py`, `docs/api.md`, the existing `build_run_config` test file
+- **Accept:** C1-C5 in dispatch; plan `docs/plan-m4-recipe-builder.md` Q2
+- **Depends on:** none. Shares `graph.py` with B-027 — second to merge takes `main` in by merge.
+- **Branch / PR:** `task/b-026-error-node-id` — not yet opened
+- **Status:** dispatched (cycle 1)
+
+### B-027 — server-side validation of Histogram bins/min/max (trust boundary)
+- **Scope:** `graph.py`, the existing `build_run_config` test file
+- **Accept:** C1-C4 in dispatch; plan Q3. Blocks F-012.
+- **Depends on:** none. Shares `graph.py` with B-026.
+- **Branch / PR:** `task/b-027-histogram-bounds` — not yet opened
+- **Status:** dispatched (cycle 1)
 
 ## Ready
 
