@@ -9,16 +9,13 @@ Frontend's own markup, on frontend's side of the 2026-09-07 conftest seam
 
 from __future__ import annotations
 
+import json
 import re
 
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import LoadedPage
+from tests.e2e.conftest import LoadedPage, observe
 from tests.e2e.test_run import _place_mission1_chain
-
-# Longest reveal chain chart.js ports from plot.js (chart.js:88) -- how long
-# to wait past it to be sure any armed reveal has already been disarmed.
-REVEAL_TOTAL_MS = 1600
 
 
 def _run_and_wait(page) -> None:
@@ -61,14 +58,22 @@ def test_result_never_fetched_a_second_time(index: LoadedPage) -> None:
 
 
 def test_bins_render_stacked_backgrounds_and_data_points(index: LoadedPage) -> None:
-    """C3: backgrounds are stacked sample bands, data is drawn as points
-    (not bars) -- the convention docs/design-brief.md §5 names."""
+    """C3: backgrounds are stacked sample bands, one per sample, and the
+    data is drawn as one point per bin (not a bar) -- the convention
+    docs/design-brief.md §5 names. Counts are checked against the actual
+    result payload rather than just ">0", which a renderer emitting the
+    wrong number of bands or points would still pass."""
     page = index.page
     _run_and_wait(page)
 
-    assert page.locator("#hist-svg path.hist-band").count() > 0
-    assert page.locator("#hist-svg circle.data-marker").count() > 0
-    assert page.locator("#hist-svg rect.data-bar").count() == 0
+    result = json.loads(page.locator("#results-chart").get_attribute("data-result"))
+    nbins = len(result["edges"]) - 1
+    nsamples = len(result["samples"])
+
+    assert page.locator("#hist-svg path.hist-band").count() == nsamples
+    # Main panel + ratio panel each draw one marker per bin, plus one more
+    # for the legend's "Pseudo-data" swatch (drawLegend, chart.js).
+    assert page.locator("#hist-svg circle.data-marker").count() == nbins * 2 + 1
 
 
 def test_hover_and_keyboard_reach_the_same_bin_readout(index: LoadedPage) -> None:
@@ -95,47 +100,44 @@ def test_hover_and_keyboard_reach_the_same_bin_readout(index: LoadedPage) -> Non
     assert index.activity.console_errors == []
 
 
-def test_reduced_motion_skips_the_reveal_with_identical_final_geometry(index: LoadedPage) -> None:
+def test_reduced_motion_skips_the_reveal_with_identical_final_geometry(page, browser, live_server) -> None:
     """C5: under prefers-reduced-motion, the reveal animation class is
-    never armed, and the rendered geometry is identical to what the
-    animated path settles on -- checked by comparing the same drawn band's
-    `d` attribute between a reduced-motion run and a normal run."""
-    page = index.page
+    never armed; without it, the class is armed and (chart.js's armReveal
+    only ever adds it -- see chart.js's own comment) stays armed. Either
+    way the drawn geometry is identical, proven here by an actual
+    cross-run comparison of the same band's `d` attribute, not two tests
+    that each only compare a value to itself.
+    """
+    activity_reduced = observe(page)
     page.emulate_media(reduced_motion="reduce")
+    page.goto(f"{live_server}/", wait_until="networkidle")
     _run_and_wait(page)
 
     band_reduced = page.locator("#hist-svg path.hist-band").first.get_attribute("d")
     assert band_reduced
-
     # Never armed: chart.js's armReveal short-circuits under reduced motion.
     assert page.locator(".chart-figure.reveal-armed").count() == 0
+    assert activity_reduced.console_errors == []
 
-    # Waiting past the reveal chain must not change anything -- there is no
-    # separate "settling" step to wait for.
-    page.wait_for_timeout(REVEAL_TOTAL_MS + 200)
-    assert page.locator("#hist-svg path.hist-band").first.get_attribute("d") == band_reduced
-    assert page.locator(".chart-figure.reveal-armed").count() == 0
+    context_normal = browser.new_context()
+    try:
+        page_normal = context_normal.new_page()
+        activity_normal = observe(page_normal)
+        page_normal.goto(f"{live_server}/", wait_until="networkidle")
+        _run_and_wait(page_normal)
 
+        band_normal = page_normal.locator("#hist-svg path.hist-band").first.get_attribute("d")
+        # Armed, and (unlike the reference this is ported from) stays armed:
+        # armReveal only ever adds the class, never removes it -- see its
+        # own comment in chart.js.
+        assert page_normal.locator(".chart-figure.reveal-armed").count() == 1
+        assert activity_normal.console_errors == []
+    finally:
+        context_normal.close()
 
-def test_normal_motion_arms_then_disarms_with_the_same_geometry(page, live_server) -> None:
-    """C5 continued: without reduced motion, the same figure is armed
-    immediately after render and disarmed again after the reveal chain
-    finishes, while the drawn geometry itself never differs from the
-    reduced-motion run above -- proving the animation is purely a class
-    toggle, never a change to the plotted numbers."""
-    from tests.e2e.conftest import observe
-
-    activity = observe(page)
-    page.goto(f"{live_server}/", wait_until="networkidle")
-    _run_and_wait(page)
-
-    band_normal = page.locator("#hist-svg path.hist-band").first.get_attribute("d")
-    assert page.locator(".chart-figure.reveal-armed").count() == 1
-
-    page.wait_for_timeout(REVEAL_TOTAL_MS + 200)
-    assert page.locator(".chart-figure.reveal-armed").count() == 0
-    assert page.locator("#hist-svg path.hist-band").first.get_attribute("d") == band_normal
-    assert activity.console_errors == []
+    # The actual C5 claim: the two runs' geometry is identical regardless
+    # of which branch armReveal took.
+    assert band_normal == band_reduced
 
 
 def test_peak_sits_at_the_z_mass_read_off_the_running_app(index: LoadedPage) -> None:

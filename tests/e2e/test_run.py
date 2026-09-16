@@ -224,15 +224,18 @@ def test_layout_only_change_is_a_cache_hit_on_resubmit(index: LoadedPage) -> Non
     Waits for #results-chart's data-result (F-008) before reading a
     handle's bounding box, not just "Run complete.": F-008's 650px-wide
     figure renders into that region on the same slightly-later async step
-    fetchResult does, and the unstyled shell (no CSS to constrain it yet --
-    that is D-016's, dispatched right after F-008) centres the whole
-    canvas-region row on its content width, so the canvas visibly shifts
-    left once the figure is the widest item in it. Drags n4 rather than n1
-    for the same reason: n1's handle lands under the palette column after
-    that shift (n4's, further right, does not) -- reliably misclicking the
-    palette instead of a node handle added a stray node and turned "n5"
-    into the thing the resubmitted graph called disconnected, before this
-    was understood as the F-008 figure's width, not a coordinate race.
+    fetchResult does. The shell *is* styled (base.html:9-12 links
+    shell.css); the actual mechanism is shell.css's `.canvas-region {
+    display: flex }` with `.canvas-wrap { margin: auto }` -- centring via
+    auto margins divides up whatever free space is left in the flex line,
+    so a 650px flex sibling appearing eats the space that auto margin was
+    centring `.canvas-wrap` on, and the canvas visibly shifts left. Drags
+    n4 rather than n1 for the same reason: n1's handle lands under the
+    palette column after that shift (n4's, further right, does not) --
+    reliably misclicking the palette instead of a node handle added a
+    stray node and turned "n5" into the thing the resubmitted graph called
+    disconnected, before this was understood as the auto-margin mechanism,
+    not a coordinate race.
     """
     page = index.page
     _place_mission1_chain(page)

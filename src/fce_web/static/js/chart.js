@@ -80,12 +80,6 @@ FIG.w = FIG.axesRight + FIG.legendGap + FIG.legendW + FIG.right;
 const TICK_MAJOR = 6;
 const TICK_MINOR = 3;
 
-// Longest reveal chain in the reference's plot.css: legend animation-delay
-// 1160ms + 380ms duration = 1540ms; 1600ms is that plus a small buffer
-// (plot.js:710-712). D-016 owns the actual CSS durations and must keep this
-// constant in step with whatever it builds, or update it here.
-const REVEAL_TOTAL_MS = 1600;
-
 function drawFrame(container, rect, xTicks, yTicks, opts) {
   const { showXLabels, showYLabel, yLabel, xLabelText, xFmt, yFmt } = opts;
   const { x0, y0, x1, y1 } = rect;
@@ -158,10 +152,6 @@ function bandPath(edges, xScale, yScale, bottoms, tops) {
   return "M" + pts.join(" L") + " Z";
 }
 
-function hatchBandPath(edges, xScale, yScale, low, high) {
-  return bandPath(edges, xScale, yScale, low, high);
-}
-
 /** "///" hatch pattern for the systematic-uncertainty band -- plot.js:275-289. */
 function ensureHatchDefs() {
   const defs = el("defs");
@@ -200,8 +190,13 @@ function drawLegend(container, opts) {
   container.appendChild(g);
 }
 
-/** Play the ink-draw reveal on `panel` exactly once, skipping it entirely
- * under prefers-reduced-motion -- plot.js:714-739, ported unchanged. The
+/** Arm the ink-draw reveal on `panel` exactly once, skipping it entirely
+ * under prefers-reduced-motion -- adapted from plot.js:714-739. Unlike the
+ * reference, this never removes `.reveal-armed` again: `dataset.revealed`
+ * already stops it re-arming (each run replaces `panel` with a fresh
+ * element anyway, so there is nothing to reset), so D-016's reveal
+ * animation only needs `animation-fill-mode: forwards` to hold its end
+ * state -- no timer here has to track that animation's duration. The
  * settled (unarmed) state is what CSS renders with no `.reveal-armed`
  * class present, so skipping the class is what leaves the final geometry
  * (already fully computed either way -- this module never animates a `d`
@@ -213,7 +208,6 @@ function armReveal(panel) {
     return;
   }
   panel.classList.add("reveal-armed");
-  window.setTimeout(() => panel.classList.remove("reveal-armed"), REVEAL_TOTAL_MS);
 }
 
 /** Renders the histogram (main + ratio panel) plus a keyboard/hover-readout
@@ -251,7 +245,11 @@ function renderHistogramFigure(container, payload) {
     viewBox: `0 0 ${FIG.w} ${FIG.h}`,
     width: FIG.w,
     height: FIG.h,
-    role: "img",
+    // role="group", not "img": the subtree holds 50+ focusable
+    // role="button" bin targets (C4), and "img" makes an ARIA subtree
+    // children-presentational, which would strip them out of the
+    // accessibility tree in a stricter engine than today's Chromium.
+    role: "group",
     "aria-labelledby": "hist-title hist-desc",
   });
   const titleEl = el("title");
@@ -322,18 +320,19 @@ function renderHistogramFigure(container, payload) {
     );
   }
 
+  // fill-opacity is paint -- D-016's, on `.hist-band` (see the PR body's
+  // "For D-016" list), not hard-coded here.
   samples.forEach((s, si) => {
     mainG.appendChild(
       el("path", {
         class: `sample-${s.name.toLowerCase()} hist-band reveal-band s${si}`,
         d: bandPath(edges, xScale, yScale, stackBottoms[si], stackTops[si]),
-        "fill-opacity": 0.8,
       })
     );
   });
 
   mainG.appendChild(
-    el("path", { class: "syst-band reveal-band s3", d: hatchBandPath(edges, xScale, yScale, bandLow, bandHigh) })
+    el("path", { class: "syst-band reveal-band s3", d: bandPath(edges, xScale, yScale, bandLow, bandHigh) })
   );
 
   // Pseudo-data: sqrt(N) error bars + circle markers -- the convention the
@@ -438,7 +437,7 @@ function renderHistogramFigure(container, payload) {
   ratioG.appendChild(
     el("path", {
       class: "syst-band reveal-band s3",
-      d: hatchBandPath(
+      d: bandPath(
         edges,
         xScale,
         ratioYScale,
