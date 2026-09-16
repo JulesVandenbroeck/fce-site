@@ -9,13 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-025 — Scale the fixture's sample weights to its 2000-event slice
-- **Scope:** `tests/fixtures/make_fixture.py`, `tests/fixtures/datasets/IDEA/91GeV/*.root`, tests pinning fixture weights/sums.
-- **Accept:** each sample's `weight` multiplied by N_source/2000 (user's ruling 2026-09-16, all samples); MC and data comparable in the chart; peaks unchanged; regenerable byte-identically; suite ≥697, flake8 0.
-- **Stop-and-report:** if `data` weights feed the sqrt(N) error bars, or source N is unobtainable offline.
-- **Depends on:** none. Parallel with D-016 (no shared files).
-- **Branch / PR:** #49. **User ruled 2026-09-16: keep as is** (MC ×N_source/2000, data untouched). Gate running.
-- **Status:** coder hit C2's stop: `data` weight feeds sqrt(N) bars (`path_filter.py:549`, `chart.js:338-346`), so only MC scaled. Result MC 3589 (X1 3136.75, X3 452.21) vs data 712 — MC now represents full lumi, data a 2000/31873 slice. N_source X1 960403, X2 652809, X3 325794, data 31873.  Closes backlog item "B-018 fixture / F-008 readability".
+_none._
 
 ## Ready
 
@@ -54,6 +48,9 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-025** — fixture MC weights scaled to the 2000-event slice — #49, `3e944bd`, 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`).
+  Suite floor **701**. MC weight ×N_source/2000 (X1 480.2, X2 326.4, X3 162.9); `data` stays 1.0 (sqrt(N) bars). Weighted X1 3136.75 / X3 452.21 vs data 712 —
+  **MC ≈4.4× data, accepted by the user's ruling 2026-09-16** (reviewer F1 raised the same point). F2 comment trim backlogged.
 - **B-024** — unit tests never write into the real `~/.fce` — #45, `849f832`, **1 cycle + 1 re-spec (mine)**,
   clean gate (`findings=1, scope=pass, verdict=approve`). checks=9. Suite floor **683** unchanged (623 unit + 60 e2e).
   One line was the whole bug: `analytical_loop.py` held the only unthreaded `get_fce_home()` call in `engine/`,
@@ -227,7 +224,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **683 passed**; flake8 0. Confirmed on `main` at `df0f6d4` by the orchestrator, 2026-09-16.
+- Suite floor **701 passed**; flake8 0. Confirmed on PR #49 head by the orchestrator, 2026-09-16.
+- Superseded: suite floor **683 passed**; flake8 0. Confirmed on `main` at `df0f6d4` by the orchestrator, 2026-09-16.
 - Superseded: suite floor **677 passed**; `tests/e2e/` **54** nodeids.
   Confirmed on `main` at `3e85cf8`, 2026-09-11 (671 after F-006, +6 from B-022).
 - Superseded: suite floor **654 passed**; flake8 0 across `src/ tests/ scripts/`. Confirmed on `main` at

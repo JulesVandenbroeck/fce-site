@@ -2271,3 +2271,13 @@ the plugin off.
 `driver.py:110-116`, cut to 2), F3 (a 22-line history comment removed by C7 and re-narrated in its
 replacement docstring, cut to 1), F4 (PR-body line citations `:285`/`:272` gone stale under cycle 2's
 own trim — the call is at `:280`; code correct, prose wrong — backlogged).
+
+
+### B-025 (merged #49 `3e944bd`) — Scale the fixture's sample weights to its 2000-event slice
+- **Scope:** `tests/fixtures/make_fixture.py`, `tests/fixtures/datasets/IDEA/91GeV/*.root`, tests pinning fixture weights/sums.
+- **Accept:** each sample's `weight` multiplied by N_source/2000 (user's ruling 2026-09-16, all samples); MC and data comparable in the chart; peaks unchanged; regenerable byte-identically; suite ≥697, flake8 0.
+- **Stop-and-report:** if `data` weights feed the sqrt(N) error bars, or source N is unobtainable offline.
+- **Depends on:** none. Parallel with D-016 (no shared files).
+- **Branch / PR:** #49. **User ruled 2026-09-16: keep as is** (MC ×N_source/2000, data untouched). Gate running.
+- **Status:** coder hit C2's stop: `data` weight feeds sqrt(N) bars (`path_filter.py:549`, `chart.js:338-346`), so only MC scaled. Result MC 3589 (X1 3136.75, X3 452.21) vs data 712 — MC now represents full lumi, data a 2000/31873 slice. N_source X1 960403, X2 652809, X3 325794, data 31873.  Closes backlog item "B-018 fixture / F-008 readability".
+
