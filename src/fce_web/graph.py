@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 from fce_web.engine.runconfig import RunConfig
+from fce_web.safe_eval import UnsafeExpression, compile_expr
 
 __all__ = [
     "VALID_CONNECTIONS",
@@ -48,7 +49,18 @@ class GraphError(ValueError):
     ``Observable`` mode). Distinct from :class:`RunConfigError`, which is
     raised by the engine's own loader on a config that is well-formed as a
     *graph* but wrong as a *config*.
+
+    ``node_id`` names the single node responsible, when there is one --
+    ``routes/api.py`` surfaces it as the 400 body's ``nodeId`` so the
+    browser can attach the message to that node (B-026). It is ``None``
+    when no single node is at fault: a malformed top-level payload, or a
+    defect (a cycle, a disconnection, a missing terminal, an illegal edge,
+    a Multiplicity-chain disagreement) that spans more than one node.
     """
+
+    def __init__(self, message: str, node_id: str | None = None) -> None:
+        super().__init__(message)
+        self.node_id = node_id
 
 
 # The reference's `_VALID_CONNECTIONS` (`ui/graph.py`), reproduced verbatim --
@@ -107,7 +119,8 @@ def _resolved_kind(node: _Node) -> str:
     mode = node.config.get("mode")
     if mode not in _OBS_MODES:
         raise GraphError(
-            f"node {node.id!r}: 'mode' must be one of {', '.join(_OBS_MODES)}, got {mode!r}"
+            f"node {node.id!r}: 'mode' must be one of {', '.join(_OBS_MODES)}, got {mode!r}",
+            node_id=node.id,
         )
     return mode
 
@@ -124,14 +137,16 @@ def _parse_nodes(raw_nodes: list) -> Dict[str, _Node]:
         if kind == "DataSource":
             raise GraphError(
                 f"node {node_id!r}: 'DataSource' is supplied from the mission's dataset, "
-                "not drawn -- remove it from the graph you submit"
+                "not drawn -- remove it from the graph you submit",
+                node_id=node_id,
             )
         if kind not in PALETTE_KINDS:
             raise GraphError(
-                f"node {node_id!r}: unknown kind {kind!r}, expected one of {', '.join(PALETTE_KINDS)}"
+                f"node {node_id!r}: unknown kind {kind!r}, expected one of {', '.join(PALETTE_KINDS)}",
+                node_id=node_id,
             )
         if node_id in nodes:
-            raise GraphError(f"duplicate node id {node_id!r}")
+            raise GraphError(f"duplicate node id {node_id!r}", node_id=node_id)
         nodes[node_id] = _Node(id=node_id, kind=kind, config=raw.get("config") or {})
     return nodes
 
@@ -146,7 +161,7 @@ def _parse_edges(raw_edges: list, nodes: Dict[str, _Node]) -> List[Tuple[str, st
         src, dst = raw
         for end in (src, dst):
             if end not in nodes:
-                raise GraphError(f"edges[{i}]: unknown node id {end!r}")
+                raise GraphError(f"edges[{i}]: unknown node id {end!r}", node_id=end)
         edges.append((src, dst))
     return edges
 
@@ -211,7 +226,8 @@ def _roots(nodes: Dict[str, _Node], edges: List[Tuple[str, str]]) -> List[str]:
         kind = _resolved_kind(nodes[root])
         if kind not in VALID_CONNECTIONS["DataSource"]:
             raise GraphError(
-                f"illegal connection: DataSource cannot connect to {nodes[root].kind} ({root!r})"
+                f"illegal connection: DataSource cannot connect to {nodes[root].kind} ({root!r})",
+                node_id=root,
             )
     return roots
 
@@ -239,14 +255,14 @@ def _mult_cut_tuple(node: _Node) -> tuple:
     config = node.config
     missing = [field for field in _MULT_CUT_FIELDS if field not in config]
     if missing:
-        raise GraphError(f"node {node.id!r}: Multiplicity is missing {', '.join(missing)}")
+        raise GraphError(f"node {node.id!r}: Multiplicity is missing {', '.join(missing)}", node_id=node.id)
     for field, expected_type in zip(_MULT_CUT_FIELDS, _MULT_CUT_TYPES):
         value = config[field]
         # bool is a subclass of int; reject it explicitly, same as runconfig.
         if expected_type is int and (not isinstance(value, int) or isinstance(value, bool)):
-            raise GraphError(f"node {node.id!r}: '{field}' must be an int, got {value!r}")
+            raise GraphError(f"node {node.id!r}: '{field}' must be an int, got {value!r}", node_id=node.id)
         if expected_type is str and not isinstance(value, str):
-            raise GraphError(f"node {node.id!r}: '{field}' must be a string, got {value!r}")
+            raise GraphError(f"node {node.id!r}: '{field}' must be a string, got {value!r}", node_id=node.id)
     return tuple(config[field] for field in _MULT_CUT_FIELDS)
 
 
@@ -300,7 +316,14 @@ def _selection_exprs(path: List[str], nodes: Dict[str, _Node]) -> List[str]:
         if node.kind == "Selection":
             branch_exprs = node.config.get("exprs")
             if not isinstance(branch_exprs, list) or not all(isinstance(e, str) for e in branch_exprs):
-                raise GraphError(f"node {node_id!r}: Selection 'exprs' must be a list of strings")
+                raise GraphError(
+                    f"node {node_id!r}: Selection 'exprs' must be a list of strings", node_id=node_id
+                )
+            for expr in branch_exprs:
+                try:
+                    compile_expr(expr)
+                except UnsafeExpression as exc:
+                    raise GraphError(f"node {node_id!r}: {exc}", node_id=node_id) from exc
             exprs.extend(branch_exprs)
     return exprs
 
@@ -310,15 +333,15 @@ def _histogram_dict(node: _Node, plot_idx: int) -> dict:
     required = ("bins", "min", "max")
     missing = [field for field in required if field not in config]
     if missing:
-        raise GraphError(f"node {node.id!r}: Histogram is missing {', '.join(missing)}")
+        raise GraphError(f"node {node.id!r}: Histogram is missing {', '.join(missing)}", node_id=node.id)
     for field in required:
         if not isinstance(config[field], str):
             raise GraphError(
-                f"node {node.id!r}: '{field}' must be a string, got {config[field]!r}"
+                f"node {node.id!r}: '{field}' must be a string, got {config[field]!r}", node_id=node.id
             )
     if "target" in config and not isinstance(config["target"], str):
         raise GraphError(
-            f"node {node.id!r}: 'target' must be a string, got {config['target']!r}"
+            f"node {node.id!r}: 'target' must be a string, got {config['target']!r}", node_id=node.id
         )
     return {
         "observable": None,  # filled in by the caller, which knows the Observable node
@@ -369,7 +392,11 @@ def build_run_config(payload: dict, dataset: Dataset) -> RunConfig:
         hist_node = nodes[hist_id]
         observable_expr = obs_node.config.get("expr")
         if not isinstance(observable_expr, str):
-            raise GraphError(f"node {obs_id!r}: Observable 'expr' must be a string")
+            raise GraphError(f"node {obs_id!r}: Observable 'expr' must be a string", node_id=obs_id)
+        try:
+            compile_expr(observable_expr)
+        except UnsafeExpression as exc:
+            raise GraphError(f"node {obs_id!r}: {exc}", node_id=obs_id) from exc
 
         key = _selection_group_key(path, nodes)
         if key not in grouped:
