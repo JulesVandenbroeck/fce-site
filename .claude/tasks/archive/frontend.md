@@ -405,3 +405,84 @@ line. The shared `~/.fce` directory and the shared Playwright cache make suite r
 `data-result`; F5 focus loss; F6 `aria-live` on `<progress>`; F7-F9 three deletions, -14 lines; F10 stale
 status after an error; F11 -> D-016, backlogged). F12-F14 cycle 2 (F12 closed pre-merge, F13 into the
 contract and D-016's dispatch, F14 one deletion).
+
+
+---
+
+### F-008 — The interactive SVG histogram
+
+## In progress
+
+### F-008 — The interactive SVG histogram
+- **Branch / PR:** `task/f-008-svg-histogram` — PR not yet opened
+- **Branch / PR:** `task/f-008-svg-histogram` — #47
+- **Status:** in review (cycle 2). checks=11 (C1-C11).
+- **Gate (§5.1) passed** at `5d7c8ad`: 698 / 75 e2e collected / flake8 0 / 4 files, none under `static/css/`.
+  **C7 reproduced in my own worktree: modal bin `90.0-91.2 GeV`, centre 90.6 GeV.**
+- **Review cycle 1:** `findings=8, scope=pass, verdict=rework`. A **cycle** — the gating items are the
+  coder's: F1 (the published D-016 class list omits every reveal class the figure emits), F4 (both the
+  PR body and a test docstring blame "the unstyled shell"), F3 (C5's stated proof is not in the code —
+  the test compares the normal-motion band to itself), F7 (asserts the absence of a class `chart.js`
+  never emits, so it cannot fail). F2/F5/F6/F8 ride along.
+- **The renderer itself is sound:** C7 reproduces in two independent worktrees, and both load-bearing
+  checks mutate red (bin edges shifted +20 GeV; the reduced-motion query broken).
+- **Reference enumerated by `scout`, not remembered:** `docs/design-explorations/plot.js`, 817 lines,
+  **17** top-level functions (the plan says 16). `FIG.h = 460` at `:136`, `FIG.w` 650 at `:142`.
+  `drawLegend` `:548` (called from `renderHistogramFigure:473`, `renderCutflowFigure:698`);
+  `renderCutflowFigure` `:568` (called from `main:782`). `chart.js` does not exist yet.
+- **C2 deviates from the plan text by my ruling.** The plan has F-008 fetch
+  `GET /api/run/{id}/result` itself, replacing `plot.html:167`'s embedded JSON — written before F-007
+  existed. `run.js` already fetches it and publishes it on `#results-chart`. Issuing a second request
+  for a payload already handed over is rung 2 of the ladder ignored. Data enters by contract.
+- **C3 carries a physics constraint from B-019:** `samples[].weightsSquared` is unconditionally `null`,
+  so the MC statistical input does not exist. The dispatch forbids inventing it or faking a band, and
+  requires any omission to be named in the PR body with the missing field. An honest gap is not
+  simplified away any more than the physics is.
+- **C6:** a **static** legend is in scope — D-016 needs sample identity colour identical across graph,
+  legend and plot — while legend *toggling*, PNG export, cutflow and the Z gauge stay out by the user's
+  2026-09-07 ruling. `renderCutflowFigure` is left behind.
+- **C7 closes M3:** the peak read off the drawn figure in the running app, not off a fixture JSON.
+
+## Ready
+
+**Wave 5 go-ahead given by the user, 2026-09-11.** F-007 dispatched 2026-09-16 → F-008 → D-016, serialised on the page.
+
+**Outcome:** merged `7472675`, PR #47, 2 cycles. checks=11. Suite 691 -> 697; `tests/e2e/` 68 -> 74.
+**C7 closed M3's coding work:** modal bin `90.0-91.2 GeV`, centre **90.6 GeV**, read off the drawn figure
+in the running app and reproduced in three independent worktrees.
+
+**The physics question, settled with evidence rather than argument.** C7's readout is
+`6 predicted, 593 data` in the peak bin, which does not look right. The reviewer opened the fixture ROOT
+files and read the per-event `weight` branches: `X1 0.008768`, `X2 0.032768`, `X3 0.004492`, `data 1.0`,
+2000 entries each. Those MC weights are production normalisations (sigma*L / N_generated) over the **full**
+sample; B-018's fixture keeps a 2000-event slice, so weighted MC is suppressed by the truncation while
+pseudo-data at weight 1.0 is a raw count of its own slice. Totals X1 6.53 / X2 0.00 / X3 2.88 against 712
+raw data, and **the shapes agree** — X1 peaks in `90.0-91.2` at 5.75, data peaks in the same bin at 593.
+`chart.js` computes no counts. Not a bug. Recorded in `backend.md`'s contracts so it is not re-raised.
+The consequence is against the fixture: `yMax = max(stack, data)` makes the MC stack a ~1px sliver and pegs
+every populated ratio bin at the panel clip — **correct and unreadable on this fixture**. Backlogged, and
+raised with the user because it is what the M3 checkpoint demo will show.
+
+**A test was rewritten to stop tripping over a layout defect, and that needed checking.** The 650px figure
+recentres the canvas row and pushes node `n1` under the palette, so F-007's cache-hit test was changed to
+drag `n4`. The reviewer reproduced the shift with `elementFromPoint` (`node__title|SPAN` before,
+`palette__add|BUTTON` after), confirmed `n4` is as valid a layout-only change, and confirmed the test still
+asserts exactly what it did before — that test never guarded layout, so nothing was traded away. **But the
+stated premise was false**: both the docstring and the PR body blamed "the unstyled shell", and the shell is
+styled — `base.html:9-12` links four stylesheets and the real mechanism is `shell.css:183-204`'s
+`.canvas-region { display: flex }` with `.canvas-wrap { margin: auto }` losing free space to a 650px
+sibling. D-016 would have been briefed against a page state that does not exist. Fixed in every copy.
+
+**The cycle-1 findings worth keeping.** F1: the published D-016 class list omitted every reveal class the
+figure emits — a contract task shipping an incomplete contract to the task dispatched immediately after it.
+F3: C5's stated proof did not exist; the test compared the normal-motion band to itself. F7: an assertion
+against the absence of a class `chart.js` never emits, which cannot fail. F2/F5/F6/F8 were deletions and an
+ARIA role: an undeclared 1600ms reveal budget on CSS nobody had written, a verbatim alias of `bandPath`,
+`fill-opacity` hard-coded in JS, and `role="img"` on a subtree holding 50 focusable bin targets.
+
+**Left for D-016, all in its dispatch:** `.chart-figure` needs `overflow-x: auto` or the figure shifts the
+canvas; `#run-button[aria-disabled="true"]` must be styled busy because F-007 gave up the `disabled`
+attribute to keep keyboard focus; `.hist-band` needs its `fill-opacity` back; `.legend-frame` paints as a
+solid black block because it is a filled rect with no `fill` given; `.bin-hit` needs a visible focus ring;
+the reveal must use `animation-fill-mode: forwards` because `.reveal-armed` is added once and never removed.
+F9 (one garbled sentence stating that last point) was folded into D-016's dispatch rather than costing a cycle.

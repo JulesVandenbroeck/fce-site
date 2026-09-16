@@ -9,61 +9,36 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-008 — The interactive SVG histogram
-- **Branch / PR:** `task/f-008-svg-histogram` — PR not yet opened
-- **Branch / PR:** `task/f-008-svg-histogram` — #47
-- **Status:** in review (cycle 2). checks=11 (C1-C11).
-- **Gate (§5.1) passed** at `5d7c8ad`: 698 / 75 e2e collected / flake8 0 / 4 files, none under `static/css/`.
-  **C7 reproduced in my own worktree: modal bin `90.0-91.2 GeV`, centre 90.6 GeV.**
-- **Review cycle 1:** `findings=8, scope=pass, verdict=rework`. A **cycle** — the gating items are the
-  coder's: F1 (the published D-016 class list omits every reveal class the figure emits), F4 (both the
-  PR body and a test docstring blame "the unstyled shell"), F3 (C5's stated proof is not in the code —
-  the test compares the normal-motion band to itself), F7 (asserts the absence of a class `chart.js`
-  never emits, so it cannot fail). F2/F5/F6/F8 ride along.
-- **The renderer itself is sound:** C7 reproduces in two independent worktrees, and both load-bearing
-  checks mutate red (bin edges shifted +20 GeV; the reduced-motion query broken).
-- **Reference enumerated by `scout`, not remembered:** `docs/design-explorations/plot.js`, 817 lines,
-  **17** top-level functions (the plan says 16). `FIG.h = 460` at `:136`, `FIG.w` 650 at `:142`.
-  `drawLegend` `:548` (called from `renderHistogramFigure:473`, `renderCutflowFigure:698`);
-  `renderCutflowFigure` `:568` (called from `main:782`). `chart.js` does not exist yet.
-- **C2 deviates from the plan text by my ruling.** The plan has F-008 fetch
-  `GET /api/run/{id}/result` itself, replacing `plot.html:167`'s embedded JSON — written before F-007
-  existed. `run.js` already fetches it and publishes it on `#results-chart`. Issuing a second request
-  for a payload already handed over is rung 2 of the ladder ignored. Data enters by contract.
-- **C3 carries a physics constraint from B-019:** `samples[].weightsSquared` is unconditionally `null`,
-  so the MC statistical input does not exist. The dispatch forbids inventing it or faking a band, and
-  requires any omission to be named in the PR body with the missing field. An honest gap is not
-  simplified away any more than the physics is.
-- **C6:** a **static** legend is in scope — D-016 needs sample identity colour identical across graph,
-  legend and plot — while legend *toggling*, PNG export, cutflow and the Z gauge stay out by the user's
-  2026-09-07 ruling. `renderCutflowFigure` is left behind.
-- **C7 closes M3:** the peak read off the drawn figure in the running app, not off a fixture JSON.
+_none._
 
 ## Ready
 
-**Wave 5 go-ahead given by the user, 2026-09-11.** F-007 dispatched 2026-09-16 → F-008 → D-016, serialised on the page.
-
-## Ready
-
-### F-008 — The interactive SVG histogram
-- **Depends on:** B-019, F-007 — **both merged**; F-007 `1fdb8e6`. Wave 5. Next to dispatch.
-- **Consumes read-only, verbatim in PR #46's body:** `#results-chart` is where the chart renders.
-  On a `done` result `run.js` sets its `data-result` to the raw `GET /api/run/{id}/result` JSON and
-  dispatches a bubbling `fce:result` CustomEvent with the parsed payload as `detail` — read either.
-  **The attribute is absent, never stale**, while a run is in flight or after one fails.
-- Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge are out of scope by the user's
-  2026-09-07 ruling. **C7 closes the milestone:** the peak read off the running app, not a fixture JSON.
+_none — D-016 is next and is design's; see `design.md`._
 
 ## Blocked
-### F-008 — superseded by the Ready entry above — The interactive SVG histogram
-- **Depends on:** B-019, F-007. Ports `plot.js`; legend toggle, PNG export, cutflow and Z gauge
-  are explicitly out of scope by the user's 2026-09-07 ruling. Wave 5.
+
+_none._
 
 ## Done
 
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-008** — the interactive SVG histogram — #47, `7472675`, 2 cycles, clean gate
+  (`findings=1, verdict=approve`; F9, one garbled sentence in the D-016 contract prose, folded into
+  D-016's dispatch instead of another cycle). checks=11. Suite floor → **697**; `tests/e2e/` **74**.
+  Ships `static/js/chart.js` (503 lines, ported from `docs/design-explorations/plot.js`) and one
+  `<script>` line. **C7 closed the milestone: modal bin `90.0-91.2 GeV`, centre 90.6 GeV, read off the
+  drawn figure in the running app** — reproduced in three independent worktrees.
+  **C2 deviated by my ruling** — data enters by F-007's `fce:result`/`data-result` contract, never a
+  second fetch. **C3 is honest:** `weightsSquared` is `null`, so no MC stat band is drawn and the
+  omission is named with the field; only the systematics hatch and pseudo-data sqrt(N) bars appear.
+  Static legend ported, `renderCutflowFigure` left behind.
+  **The count fell 698 → 697 / 75 → 74 and that was a strengthening, checked not assumed:** two reveal
+  tests merged into one asserting `band_normal == band_reduced` directly, which goes red under a 1px
+  offset applied to the reduced-motion page only — a mutation the replaced pair could not catch.
+  **Contract for D-016 is verbatim in PR #47's body**, re-enumerated against the emitted classes by the
+  reviewer line by line.
 - **F-007** — serialise, submit, stream, show progress — #46, `1fdb8e6`, **2 cycles + 1 re-spec (mine) + 1
   pre-merge pass**, clean gate (`findings=3, scope=pass, verdict=approve`). checks=15. Suite floor → **691**;
   `tests/e2e/` 64 → **68** nodeids. Ships `static/js/run.js` and the `#run-control`/`#results` markup —
