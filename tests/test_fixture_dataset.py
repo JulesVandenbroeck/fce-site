@@ -186,5 +186,31 @@ def test_fixture_size_is_at_most_5mb():
     assert total <= 5 * 1024 * 1024, total
 
 
+# ---------------------------------------------------------------------------
+# B-025: MC weight scaled by N_source/2000; "data" left at unit weight.
+#
+# Expected values computed independently of make_fixture.py: the source
+# file's original per-event weight (constant across its sample -- read
+# directly from ~/.fce/datasets/IDEA/91GeV before this task's change) times
+# N_source/2000, where N_source is that sample's ``tr.num_entries`` in the
+# same source file (960403/652809/325794 for X1/X2/X3 -- see PR body).
+# ---------------------------------------------------------------------------
+
+EXPECTED_WEIGHT = {
+    "X1": 0.008768 * (960403 / 2000),
+    "X2": 0.032768 * (652809 / 2000),
+    "X3": 0.004492 * (325794 / 2000),
+    "data": 1.0,
+}
+
+
+@pytest.mark.parametrize("sample", SAMPLES)
+def test_fixture_weight_is_scaled_to_the_2000_event_slice(sample):
+    with uproot.open(os.path.join(DATASET_DIR, f"{sample}.root")) as f:
+        w = f["ntuple"]["weight"].array(library="np")
+    assert w.min() == w.max(), "fixture weight is expected constant per sample"
+    assert w[0] == pytest.approx(EXPECTED_WEIGHT[sample], rel=1e-6), (sample, w[0])
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-q"])
