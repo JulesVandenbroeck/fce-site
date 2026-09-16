@@ -9,44 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-024 — Unit tests never write into the real `~/.fce`
-- **Scope:** `src/fce_web/engine/analytical_loop.py` + `engine/driver.py:162` (thread `env` into `run_physics_loop`'s
-  `get_fce_home` at :272), `tests/test_jobs.py`, `tests/test_driver.py`, `tests/test_engine_parity.py`, `tests/e2e/conftest.py`
-  (retire `_e2e_process_fce_home`), `scripts/screenshot.py`.
-- **Inherits B-023's C7:** ignoring the app's `env` turns `test_run_harness.py` red; and B-023's F2 (make `serve_app(env=)` real or revert).
-- **Accept:** `pytest tests/ --ignore=tests/e2e -q` leaves `~/.fce/output` and `~/.fce/cache` mtimes unchanged; floors hold.
-- **Depends on:** B-023 — merged `5bcccd8`. Found by PR #43's review. Also fold in B-023 F4 (trim ~22 lines of history comments in `tests/e2e/conftest.py`).
-- **Consumes read-only:** `Job.events`, the contract written out once in `docs/api.md:108-114`
-  and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
-  `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
-  The sentinel is put unconditionally in a `finally`, so a drain loop cannot hang on an exception.
-- **Branch / PR:** `task/b-024-env-threading` — #45
-- **Status:** re-specification in flight (still cycle 1 — §5.4). checks=9 (C1-C9).
-- **Review cycle 1:** `findings=3, scope=fail, verdict=rework` — PR #45 comment `5694489248`.
-  F1 is **against my dispatch, not the code**: my file scope omitted `tests/test_run_context.py`
-  (whose exact-signature assertion necessarily fails once `env` is added) and
-  `tests/e2e/test_run_harness.py`. §2 question 3 — *does the file scope let the coder satisfy every
-  criterion* — and it did not. B-005 cycle 1 precedent. **Scope amended and both edits ratified in
-  writing; this does not count against the §5.7 limit.** F2/F3 (two comment-bloat trims, one line each)
-  went back with it.
-- **Seam ruled 2026-09-16, now in `shared/CLAUDE.md` §4:** a test under `tests/e2e/` that asserts about
-  the *harness* is backend's, whatever directory it sits in. `test_run_harness.py` is backend's;
-  `tests/e2e/test_run.py` is frontend's. The 2026-09-07 ruling said "frontend owns `tests/e2e/` test
-  files" and read as a directory rule; it was always a rule about what a test asserts.
-- **The reviewer checked C3 harder than I did** — mtimes held across the full run *including* e2e,
-  and it mutation-verified the guard by an independent mechanism (a pytest plugin rebinding
-  `driver.run_physics_loop` to a mutated in-memory module).
-- **Gate (§5.1) passed 2026-09-16**, re-run at `7f82558` in `~/fce-gate-b024`: 623 unit / **683** full /
-  60 e2e collected / flake8 0, and `~/.fce/{output,cache}` mtimes unchanged across the unit run.
-  **The first gate run showed `output` moving** — F-007's suite was running concurrently on a branch
-  without this fix. Re-run serially, clean. Incidental confirmation the bug was real.
-  **Consequence for scheduling: this criterion is measured on a shared directory, so B-024 and any
-  other suite run must not overlap.** The two wave-5 reviews are serialised for that reason.
-- **Deviation to rule on at merge:** two files outside the given scope — `tests/test_run_context.py`
-  (its exact-signature assertion necessarily fails once `env` is added) and `tests/e2e/test_run_harness.py`
-  (read `os.environ["FCE_HOME"]` set by the retired fixture). Both are mechanical fallout of the required
-  signature change. My scope omission, not scope creep.
-- Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+_none._
 
 ## Ready
 
@@ -85,6 +48,16 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-024** — unit tests never write into the real `~/.fce` — #45, `849f832`, **1 cycle + 1 re-spec (mine)**,
+  clean gate (`findings=1, scope=pass, verdict=approve`). checks=9. Suite floor **683** unchanged (623 unit + 60 e2e).
+  One line was the whole bug: `analytical_loop.py` held the only unthreaded `get_fce_home()` call in `engine/`,
+  so `run_analysis(..., env=)` was a promise that stopped one frame short of the cache and output directories.
+  `test_jobs.py` and `scripts/screenshot.py` needed nothing — `serve_app(env=)` was already real above that line
+  (B-023's F2 closed by making the promise true, not by removing the parameter). B-023's `_e2e_process_fce_home`
+  and `test_engine_parity.py`'s `_fce_home_env` are both retired: no test mutates the process environment now.
+  **F1 was against my dispatch** — my file scope omitted the two files C1 necessarily breaks; scope amended and
+  ratified, re-spec not a cycle. Seam ruled into `shared/CLAUDE.md` §4. F4 (stale `:285`/`:272` line citations in
+  the PR body, code correct) backlogged.
 - **B-023** — e2e `live_server` runs on the fixture dataset — #43, `5bcccd8`, 2 cycles, clean gate (`findings=1, verdict=approve`).
   checks=7, **C7 + F2 moved to B-024 by my ruling** (my scope forbade `driver.py`). Suite floor **680** (+1 test, pre-F-003/F-009
   base). Session tmp `FCE_HOME` symlinks the fixture; a function-scoped autouse fixture sets process `FCE_HOME` per e2e test

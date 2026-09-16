@@ -695,3 +695,5 @@ and are historical now that #6 is merged.
 - **B-023 candidate** — `engine/analytical_loop.py:272` bare `get_fce_home()` ignores the threaded `env` (unlike `driver.py`/`jobs.py`); thread it so e2e hermeticity needs no process-env mutation.
 - **F-009 F1-F4** — `graph.js:123-126` unreachable `!div` fallback; `:167-172` redundant guard + double `persistUI` on mode change; `:107-111` comment hard-codes px; `test_graph.py:419-428/:450-459` duplicated open block → `_open` helper (PR #42).
 - **D-017 F4** — `shell.css:252-256` 5-line WCAG comment → one line (PR #44).
+
+- **B-024 F4** — PR #45's body cites the `get_fce_home` call at `analytical_loop.py:285` and narrates a shift from `:272`; cycle 2's own docstring trim moved it to `:280`. Code is correct, only the criterion prose is stale. Cite `run_physics_loop` by name instead of a line number so it cannot go stale again. Non-blocking, found 2026-09-16.

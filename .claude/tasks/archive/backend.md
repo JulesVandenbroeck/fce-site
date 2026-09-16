@@ -2192,3 +2192,82 @@ Reviews: PR #43 `5633850118` (rework), ruling `5634042625`, cycle-2 approve.
   Reviewer also found **pre-existing writers into the real `~/.fce`**: `test_jobs.py:148`, `test_driver.py:340`,
   `test_engine_parity.py` → **B-024**.
 
+
+
+---
+
+### B-024 — Unit tests never write into the real `~/.fce`
+
+## In progress
+
+### B-024 — Unit tests never write into the real `~/.fce`
+- **Scope:** `src/fce_web/engine/analytical_loop.py` + `engine/driver.py:162` (thread `env` into `run_physics_loop`'s
+  `get_fce_home` at :272), `tests/test_jobs.py`, `tests/test_driver.py`, `tests/test_engine_parity.py`, `tests/e2e/conftest.py`
+  (retire `_e2e_process_fce_home`), `scripts/screenshot.py`.
+- **Inherits B-023's C7:** ignoring the app's `env` turns `test_run_harness.py` red; and B-023's F2 (make `serve_app(env=)` real or revert).
+- **Accept:** `pytest tests/ --ignore=tests/e2e -q` leaves `~/.fce/output` and `~/.fce/cache` mtimes unchanged; floors hold.
+- **Depends on:** B-023 — merged `5bcccd8`. Found by PR #43's review. Also fold in B-023 F4 (trim ~22 lines of history comments in `tests/e2e/conftest.py`).
+- **Consumes read-only:** `Job.events`, the contract written out once in `docs/api.md:108-114`
+  and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
+  `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
+  The sentinel is put unconditionally in a `finally`, so a drain loop cannot hang on an exception.
+- **Branch / PR:** `task/b-024-env-threading` — #45
+- **Status:** re-specification in flight (still cycle 1 — §5.4). checks=9 (C1-C9).
+- **Review cycle 1:** `findings=3, scope=fail, verdict=rework` — PR #45 comment `5694489248`.
+  F1 is **against my dispatch, not the code**: my file scope omitted `tests/test_run_context.py`
+  (whose exact-signature assertion necessarily fails once `env` is added) and
+  `tests/e2e/test_run_harness.py`. §2 question 3 — *does the file scope let the coder satisfy every
+  criterion* — and it did not. B-005 cycle 1 precedent. **Scope amended and both edits ratified in
+  writing; this does not count against the §5.7 limit.** F2/F3 (two comment-bloat trims, one line each)
+  went back with it.
+- **Seam ruled 2026-09-16, now in `shared/CLAUDE.md` §4:** a test under `tests/e2e/` that asserts about
+  the *harness* is backend's, whatever directory it sits in. `test_run_harness.py` is backend's;
+  `tests/e2e/test_run.py` is frontend's. The 2026-09-07 ruling said "frontend owns `tests/e2e/` test
+  files" and read as a directory rule; it was always a rule about what a test asserts.
+- **The reviewer checked C3 harder than I did** — mtimes held across the full run *including* e2e,
+  and it mutation-verified the guard by an independent mechanism (a pytest plugin rebinding
+  `driver.run_physics_loop` to a mutated in-memory module).
+- **Gate (§5.1) passed 2026-09-16**, re-run at `7f82558` in `~/fce-gate-b024`: 623 unit / **683** full /
+  60 e2e collected / flake8 0, and `~/.fce/{output,cache}` mtimes unchanged across the unit run.
+  **The first gate run showed `output` moving** — F-007's suite was running concurrently on a branch
+  without this fix. Re-run serially, clean. Incidental confirmation the bug was real.
+  **Consequence for scheduling: this criterion is measured on a shared directory, so B-024 and any
+  other suite run must not overlap.** The two wave-5 reviews are serialised for that reason.
+- **Deviation to rule on at merge:** two files outside the given scope — `tests/test_run_context.py`
+  (its exact-signature assertion necessarily fails once `env` is added) and `tests/e2e/test_run_harness.py`
+  (read `os.environ["FCE_HOME"]` set by the retired fixture). Both are mechanical fallout of the required
+  signature change. My scope omission, not scope creep.
+- Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
+
+**Outcome:** merged `849f832`, PR #45, 1 cycle + 1 re-specification. `findings=1, scope=pass, verdict=approve`.
+
+**The re-specification, recorded because it is the fifth of its shape.** Cycle 1 came back
+`scope=fail` on F1: the coder had edited `tests/test_run_context.py` and `tests/e2e/test_run_harness.py`,
+neither in the file scope I wrote. Both edits were forced by C1 itself —
+`test_run_physics_loop_has_no_dead_parameters` asserts `run_physics_loop`'s exact parameter list, so
+*adding* the `env` parameter C1 demands necessarily reddens it. §2 question 3, *does the file scope let
+the coder satisfy every criterion*, would have caught it in the drafting if I had asked it. B-005 cycle 1
+is the same defect. The coder made the edits, disclosed them, and offered to revert — which is the
+behaviour the scope rule exists to produce.
+
+**The seam it exposed, ruled 2026-09-16 into `shared/CLAUDE.md` §4.** The 2026-09-07 frontend/e2e
+ruling said "frontend owns the browser assertions about its own markup, in `tests/e2e/` test files",
+and both the reviewer and I initially read the second half as a directory rule. It was always a rule
+about what a test *asserts*: `test_run_harness.py` asserts the harness runs hermetically and was
+written by backend in B-023, so it is backend's; `tests/e2e/test_run.py` asserts about markup and is
+frontend's. Recorded with the date and PR so the next task does not re-derive it.
+
+**The measurement hazard, which cost one false gate reading.** C3 is measured on the shared `~/.fce`
+directory. My first §5.1 gate showed `output`'s mtime moving and would have failed the branch's central
+criterion; F-007's suite was running concurrently on a branch *without* this fix. A serial re-run was
+clean. The mis-reading was incidental proof the bug was real — but the lesson is that this criterion
+cannot be measured while any other suite runs, and the two wave-5 reviews were serialised from then on.
+The reviewer then checked it harder than I had: mtimes stable at four points including around the full
+e2e run, plus a mutation by an independent mechanism (a pytest plugin rebinding `driver.run_physics_loop`
+to an in-memory mutated module, no tracked file touched), red at `test_run_harness.py:38` and green with
+the plugin off.
+
+**Findings:** F1 (scope, resolved by amendment — mine), F2 (8-line `env` docstring restating
+`driver.py:110-116`, cut to 2), F3 (a 22-line history comment removed by C7 and re-narrated in its
+replacement docstring, cut to 1), F4 (PR-body line citations `:285`/`:272` gone stale under cycle 2's
+own trim — the call is at `:280`; code correct, prose wrong — backlogged).
