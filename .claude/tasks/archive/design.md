@@ -2048,3 +2048,63 @@ Reviews: PR #44 comments `5633915624` (rework) and the re-review (approve).
   unreproduced reports; on main the panel already ends at 768 with no h-scroll. C2 re-ruled: met on main, no CSS.
   F2/F3 comment trims. checks stay 5.
 
+
+
+### D-016 (merged #48 `bb4f355`) — Results region and chart styling
+- **Scope:** `static/css/chart.css` (new), `static/css/shell.css`, one `<link>` in `base.html`
+  (the D-015 precedent), class attributes only in `shell.html`.
+- **Branch / PR:** `task/d-016-results-chart-styling` — #48, gate reproduced (697 passed, flake8 0), in review (cycle 1)
+- **Status:** **handed off (cycle 1)** at the session's usage limit, 2026-09-16, ~1 minute after dispatch.
+  **No branch, no commit, no CSS written** — confirmed against git, not taken on trust. Handoff:
+  [`handoff/d-016-design-1.md`](../handoff/d-016-design-1.md), 113 lines, copied into the primary checkout
+  from the agent's worktree (worktree isolation refused it the primary path). **Re-dispatch from the
+  criteria in this entry and the dispatch, not from the handoff** — the handoff's value is the reading it
+  already did and the one open question below. checks=13 (C1-C13).
+- **The open question it raised before stopping, and it is worth answering first.** The dispatch tells the
+  coder to fix C1 by constraining `.chart-figure` with `overflow-x: auto` and not touching
+  `.canvas-region`'s direction. The agent read the widths and doubts a **row** layout is structurally
+  viable at all: `.canvas-region` has ~752px at 1440, and `.canvas-wrap` alone takes 704px, leaving ~48px
+  for `#run-control` + `#results` beside it. That would explain F-007's F11 (`#results` rendering ~26px
+  wide) as a symptom of the same cause rather than a separate gap. **It had not yet measured this in a
+  browser** — that was its next step, and it is the right next step. If the measurement holds, my
+  prescribed fix is wrong and the region needs to stack rather than sit beside the canvas; the criterion
+  is C1's `elementFromPoint` property, which does not care which way it is solved. Re-dispatch should say
+  so explicitly rather than repeat `overflow-x: auto` as if it were settled.
+- **Its worktree is reusable:** `.claude/worktrees/agent-a1a7be38838a932a5`, clean, no venv yet.
+- **Re-dispatched 2026-09-16 (session 2), fresh `isolation: "worktree"`, effort high.** The original
+  dispatch's verbatim C1-C13 was never written to disk; **criteria reissued** in the new dispatch and are
+  verbatim in its PR body once opened. C1 canvas not displaced (elementFromPoint, mechanism free, measure
+  row-vs-stack first) · C2 figure fixed 650x460, no page h-scroll 1440/1024/768 · C3 sample colour
+  identical band/legend via `--frozen-x*` · C4 `.hist-band` fill-opacity 0.8 · C5 `.legend-frame` not
+  black · C6 `.bin-hit` focus ring ≥3:1 · C7 reveal forwards, unarmed = settled · C8
+  `#run-button[aria-disabled=true]` busy style · C9 `.results__note` quiet note, AA · C10 tokens only,
+  computed styles enumerated · C11 light ground, AA text, no `--ink-45` text · C12 `verify.py` unmodified,
+  scope by `main...HEAD` · C13 suite ≥697, flake8 0, F-007 F11 closed.
+- **Depends on:** F-007 `1fdb8e6`, F-008 `7472675` — both merged. **Last task in M3; checkpoint 2 follows.**
+- **At the §2 ceiling deliberately, and I am recording the choice.** 13 criteria is past the five-bullet
+  splitting test. Splitting it would mean two serialised tasks on the same page and two review passes over
+  tightly coupled rules — the figure's fixed 650x460 is exactly what breaks the region's layout, so the
+  layout half and the paint half cannot be judged apart. If it cycles twice, split it rather than pushing
+  for a third.
+- **C1 is a live defect on `main`, not a cosmetic gap.** Once the chart renders, node `n1`'s handle centre
+  moves off `.node__title` onto a `.palette__add` button at 1280x720. Mechanism traced by PR #47's
+  reviewer: `shell.css:183-204`'s `.canvas-region { display: flex }` + `.canvas-wrap { margin: auto }`
+  loses its free space to a 650px `.chart-figure` sibling. F-008's test drags `n4` to route around it.
+- **Facts given, enumerated by `scout`, not remembered:** sample identity colours already exist as
+  `--frozen-x1/x2/x3` (`tokens.css:169-171`) — `--tab10-*` at `:188-190` are for static-export parity and
+  are not the interactive renderer's. `base.html:9-12` links four stylesheets in order. The 19 classes
+  `chart.js` emits are listed in the dispatch.
+- **`verify.py` is not this task's instrument** — it lives in `docs/design-explorations/`, guards the
+  exploration pages, and none of its 81 sections touch the chart, results region or run control. The
+  dispatch asks for a standalone Playwright script reading **computed styles and rendered geometry**,
+  pasted into the PR body and not committed. If those guards should become permanent, that is a task for
+  whoever owns the file they would live in — design owns no test file.
+- **Carried in from F-008's review, all in the dispatch:** `.legend-frame` paints as a solid black block
+  (a filled rect with no `fill`, drawn before its own swatches); `.hist-band` needs the `fill-opacity`
+  0.8 that F-008 removed from the JS; `.bin-hit` needs a visible focus ring for 50 focusable targets;
+  the reveal must settle with `animation-fill-mode: forwards` because `.reveal-armed` is added once and
+  never removed. **F9 from PR #47 — one garbled sentence stating that last point — is corrected here
+  rather than costing a cycle.**
+- **C8 carries F-007's accessibility consequence:** `#run-button` gave up the `disabled` attribute to keep
+  keyboard focus mid-run, so the browser's free busy affordance is gone and this CSS rule is the only one.
+
