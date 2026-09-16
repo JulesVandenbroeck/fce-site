@@ -13,8 +13,8 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`
 - **Accept:** C1-C4 in PR body; unknown `op_*`/`ltype`, negative or bool counts -> 400 naming the node
 - **Depends on:** B-026 (done)
-- **Branch / PR:** `task/b-028-mult-cut-values` — not yet opened
-- **Status:** dispatched (cycle 1), parallel with D-018, worktree-isolated
+- **Branch / PR:** `task/b-028-mult-cut-values` — #54
+- **Status:** in review (cycle 1); gate reproduced 728 passed, flake8 0 at `beb3133`
 - **Raised:** user 2026-09-17, from the F-012 scout answer (`docs/plan-m4-recipe-builder.md` Q1 values)
 
 ## Ready
