@@ -9,13 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-028 — Reject unknown Multiplicity ops, lepton types and negative counts
-- **Scope:** `src/fce_web/graph.py`, `tests/test_graph.py`
-- **Accept:** C1-C4 in PR body; unknown `op_*`/`ltype`, negative or bool counts -> 400 naming the node
-- **Depends on:** B-026 (done)
-- **Branch / PR:** `task/b-028-mult-cut-values` — #54
-- **Status:** in review (cycle 1); gate reproduced 728 passed, flake8 0 at `beb3133`
-- **Raised:** user 2026-09-17, from the F-012 scout answer (`docs/plan-m4-recipe-builder.md` Q1 values)
+_none._
 
 ## Ready
 
@@ -54,6 +48,8 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-028** — reject unknown Multiplicity ops/ltypes and negative counts — #54, `8aca7aa`, 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`).
+  Suite floor **728**. `_MULT_OPS`/`_MULT_LTYPES` in `graph.py`, checked in `_mult_cut_tuple`; allowed sets in `docs/api.md`. F1 (redundant digest test) + F2 (wrong file in comment) backlogged.
 - **B-027** — server-side validation of Histogram bins/min/max — #52, `0b6f202`, 2 cycles, clean gate (`findings=0, scope=pass, verdict=approve`).
   Suite floor **715**. `bins` int 1..`_MAX_BINS`=1000, `min`/`max` finite, `min < max`, raw strings still passed on (digests unchanged); each rejection names the Histogram node. **Releases F-012.**
 - **B-026** — rejected-graph errors name the offending node (**CONTRACT**: 400 body `{"error": str, "nodeId": str|null}`) — #51, `a9cc376`, 1 cycle, clean gate (`findings=1, scope=pass, verdict=approve`).
@@ -234,7 +230,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **715 passed**; flake8 0. Confirmed on PR #52 head by the orchestrator, 2026-09-16.
+- Suite floor **728 passed**; flake8 0. Confirmed on PR #54 head by the orchestrator, 2026-09-17.
+- Superseded: suite floor **715 passed**; flake8 0. Confirmed on PR #52 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **707 passed**; flake8 0. Confirmed on PR #51 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **701 passed**; flake8 0. Confirmed on PR #49 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **683 passed**; flake8 0. Confirmed on `main` at `df0f6d4` by the orchestrator, 2026-09-16.

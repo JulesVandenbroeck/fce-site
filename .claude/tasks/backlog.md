@@ -709,3 +709,6 @@ and are historical now that #6 is merged.
 - **B-027 note** — unpinned `fastapi` resolves a `starlette` whose `TestClient` needs `httpx2`; a fresh venv fails collection. Floor-pin or swap (reported by B-027 coder).
 
 - **B-028 candidate** — `graph.py` accepts any `op_*`/`ltype` string and any int count; engine silently maps unknown op → `>=`, unknown ltype → all leptons (`path_filter.py:668-689`). Reject at submit with `nodeId`. (scout, 2026-09-16)
+
+- **B-028 F1** — `tests/test_graph.py:294-296` `test_valid_mult_cut_values_are_accepted` duplicates the digest assertion at `:212`; delete. (PR #54)
+- **B-028 F2** — `src/fce_web/graph.py:259` comment cites `ltype.py:676`; should be `path_filter.py:676`. (PR #54)
