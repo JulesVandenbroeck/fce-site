@@ -164,6 +164,16 @@ def test_starting_a_new_run_clears_a_stale_result(index: LoadedPage) -> None:
 
     page.locator("#run-button").click()
     assert page.locator("#results-chart").get_attribute("data-result") is None
+    expect(page.locator("#results-status")).to_have_text("Run complete.", timeout=60000)
+
+    # C14 (cycle 3, F12): a graph that fails to serialise client-side --
+    # buildSubmission() throwing on a corrupted data-graph -- returns before
+    # ever reaching the network. That early-return path must still clear a
+    # stale data-result; it was the one route resetResults() didn't run.
+    page.evaluate("document.getElementById('canvas-wrap').setAttribute('data-graph', 'not json')")
+    page.locator("#run-button").click()
+    assert page.locator("#results-chart").get_attribute("data-result") is None
+    expect(page.locator("#results-note")).not_to_be_hidden()
 
 
 def test_run_button_keeps_focus_while_running(index: LoadedPage) -> None:

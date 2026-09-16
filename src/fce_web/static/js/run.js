@@ -148,6 +148,11 @@ function runAnalysis() {
   // focusable while a run is in flight -- guard re-entry ourselves.
   if (els.runButton.getAttribute("aria-disabled") === "true") return;
 
+  // Ahead of buildSubmission(), not after -- a graph that fails to
+  // serialise must not leave a previous run's histogram on #results-chart
+  // either (cycle 3 F12): this was the one path resetResults() didn't run.
+  resetResults();
+
   let payload;
   try {
     payload = buildSubmission();
@@ -157,7 +162,6 @@ function runAnalysis() {
   }
 
   setRunning(true);
-  resetResults();
 
   fetch("/api/run", {
     method: "POST",
@@ -192,7 +196,8 @@ function init() {
     note: document.getElementById("results-note"),
     chart: document.getElementById("results-chart"),
   };
-  setRunning(false);
+  // No setRunning(false) here (cycle 3 F14) -- the markup already ships
+  // aria-disabled="false" on #run-button (shell.html).
   els.runButton.addEventListener("click", runAnalysis);
 }
 
