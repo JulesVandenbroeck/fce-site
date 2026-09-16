@@ -220,14 +220,28 @@ def test_layout_only_change_is_a_cache_hit_on_resubmit(index: LoadedPage) -> Non
     requires, and all this asserts, is that the *second* submission -- same
     analysis, only the layout differs -- is a cache hit. (C12, above, is what
     proves layout never reaches the payload in the first place.)
+
+    Waits for #results-chart's data-result (F-008) before reading a
+    handle's bounding box, not just "Run complete.": F-008's 650px-wide
+    figure renders into that region on the same slightly-later async step
+    fetchResult does, and the unstyled shell (no CSS to constrain it yet --
+    that is D-016's, dispatched right after F-008) centres the whole
+    canvas-region row on its content width, so the canvas visibly shifts
+    left once the figure is the widest item in it. Drags n4 rather than n1
+    for the same reason: n1's handle lands under the palette column after
+    that shift (n4's, further right, does not) -- reliably misclicking the
+    palette instead of a node handle added a stray node and turned "n5"
+    into the thing the resubmitted graph called disconnected, before this
+    was understood as the F-008 figure's width, not a coordinate race.
     """
     page = index.page
     _place_mission1_chain(page)
 
     page.locator("#run-button").click()
     expect(page.locator("#results-status")).to_have_text("Run complete.", timeout=60000)
+    expect(page.locator("#results-chart")).to_have_attribute("data-result", re.compile(".+"), timeout=10000)
 
-    handle = page.locator('.node[data-node-id="n1"] .node__handle')
+    handle = page.locator('.node[data-node-id="n4"] .node__handle')
     box = handle.bounding_box()
     start = (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
     page.mouse.move(*start)
