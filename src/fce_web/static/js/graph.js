@@ -44,6 +44,8 @@ import {
   COUNTS,
   COMPARISONS,
   VECTOR_SUM_QUANTITIES,
+  MULT_COMPARISONS,
+  LEPTON_TYPES,
   buildSelectionExpr,
   globalConfig,
   objectConfig,
@@ -91,12 +93,18 @@ const NUDGE_BIG = 40;
 
 // The only state this module keeps.
 const graphState = {
-  nodes: new Map(), // id -> { kind, x, y }
+  nodes: new Map(), // id -> { kind, x, y, config?, rangePreset? }
   edges: [], // [fromId, toId][]
   nextId: 1,
   spawnIndex: 0,
   keyboardArmed: null, // { id, kind } while an out-port is armed via Enter/Space
 };
+
+// F-012, C3: a Histogram node's applyPreset(range, label), keyed by node id
+// -- how an upstream Observable's update() re-presets a connected
+// Histogram's range without a second graph model; looked up through the
+// same graphState.edges list `attemptConnect` and `renderEdges` already use.
+const histogramInteriors = new Map();
 
 let els = {};
 
@@ -225,6 +233,21 @@ function moveNodeTo(id, x, y) {
   renderEdges();
 }
 
+// Cycle 2 F5: the four node interiors below (Observable, Selection,
+// Multiplicity, Histogram) each open the same way -- bring the node to the
+// end of #nodes-layer so its grown box paints over whatever else sits at
+// that canvas position (SVG has no z-index), and refocus the summary that
+// reparenting under `appendChild` otherwise drops focus from (C6/C8).
+function wireInteriorToggle(details, summary, id) {
+  details.addEventListener("toggle", () => {
+    if (details.open) {
+      els.nodesLayer.appendChild(foreignObjectFor(id));
+      summary.focus();
+    }
+    growNode(id);
+  });
+}
+
 // ---- Observable node interior (F-006, docs/design-explorations/observable.html) ----
 
 function h(tag, attrs = {}, children = []) {
@@ -268,7 +291,16 @@ function buildGlobalPanel(uid, onChange) {
   select.addEventListener("change", onChange);
   wrap.appendChild(h("label", { for: uid("global-qty"), text: "Quantity" }));
   wrap.appendChild(select);
-  return { el: wrap, getConfig: () => globalConfig(select.value) };
+  return {
+    el: wrap,
+    getConfig: () => globalConfig(select.value),
+    // F-012, C3: met_pt has no COUNTS entry of its own -- it is a physical
+    // pt like any object's, so its preset comes from PROPERTIES' "pt".
+    getRange: () =>
+      select.value === "met_pt"
+        ? PROPERTIES.find((p) => p.name === "pt").range
+        : COUNTS.find((c) => c.name === select.value).range,
+  };
 }
 
 // Object: object + property (plan table row 2).
@@ -289,7 +321,11 @@ function buildObjectPanel(uid, onChange) {
   wrap.appendChild(objSelect);
   wrap.appendChild(h("label", { for: uid("obj-property"), text: "Property" }));
   wrap.appendChild(propSelect);
-  return { el: wrap, getConfig: () => objectConfig(objSelect.value, propSelect.value) };
+  return {
+    el: wrap,
+    getConfig: () => objectConfig(objSelect.value, propSelect.value),
+    getRange: () => PROPERTIES.find((p) => p.name === propSelect.value).range,
+  };
 }
 
 // VectorSum: tick objects, then mass or pt (plan table row 3, default).
@@ -330,6 +366,7 @@ function buildVectorSumPanel(uid, onChange) {
       const objects = checkboxes.filter((c) => c.checked).map((c) => c.value);
       return vectorSumConfig(objects, qtySelect.value);
     },
+    getRange: () => VECTOR_SUM_QUANTITIES.find((q) => q.name === qtySelect.value).range,
   };
 }
 
@@ -342,7 +379,9 @@ function buildCustomPanel(uid, onChange) {
   input.addEventListener("input", onChange);
   wrap.appendChild(h("label", { for: uid("custom-expr"), text: "Custom expression" }));
   wrap.appendChild(input);
-  return { el: wrap, getConfig: () => customConfig(input.value) };
+  // No known preset for free text -- C3 only re-presets for the three
+  // vocabulary-backed modes.
+  return { el: wrap, getConfig: () => customConfig(input.value), getRange: () => null };
 }
 
 // One `Observable` node, one in-node mode toggle -- the 2026-09-02 ruling
@@ -378,9 +417,14 @@ function buildObservableInterior(id) {
   function update() {
     const mode = radios.find((r) => r.checked).value;
     const cfg = panels[mode].getConfig();
+    const range = panels[mode].getRange();
     const n = graphState.nodes.get(id);
     if (n) {
       n.config = { mode, ...cfg };
+      // Not sent to the server -- persistUI only reads id/kind/x/y/config --
+      // just this node's own memory of its current preset, for C3's
+      // connect-time push and for attemptConnect below.
+      n.rangePreset = range;
       persistUI();
     }
     const sub = els.wrap.querySelector(`.node[data-node-id="${id}"] .node__subtitle`);
@@ -389,6 +433,13 @@ function buildObservableInterior(id) {
       p.el.hidden = m !== mode;
     });
     growNode(id);
+    // C3/F1: an already-connected Histogram re-presets to this quantity's
+    // range/label. Custom mode has no range (`getRange()` returns `null`),
+    // but its label still reaches the Histogram's axis -- applyPreset only
+    // skips min/max when `range` is falsy, never the label.
+    graphState.edges
+      .filter(([from, to]) => from === id && histogramInteriors.has(to))
+      .forEach(([, to]) => histogramInteriors.get(to)(range, cfg.label));
   }
 
   const panels = {
@@ -408,19 +459,7 @@ function buildObservableInterior(id) {
   // panel visibility land at this point.
   update();
 
-  // C6: an opened node grows over whatever else sits at that canvas
-  // position -- SVG has no z-index, paint order is the only stacking
-  // mechanism, so bring it to the end of #nodes-layer (painted last) on open.
-  // C8: that reparenting (`appendChild` on an already-attached node) drops
-  // DOM focus to <body> even though the summary itself never moved logically
-  // -- refocus it once the move is done.
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      els.nodesLayer.appendChild(foreignObjectFor(id));
-      summary.focus();
-    }
-    growNode(id);
-  });
+  wireInteriorToggle(details, summary, id);
 
   return details;
 }
@@ -519,13 +558,146 @@ function buildSelectionInterior(id) {
   addRow({ object: "l1", property: "pt", comparison: ">", value: "5" });
   update();
 
-  details.addEventListener("toggle", () => {
-    if (details.open) {
-      els.nodesLayer.appendChild(foreignObjectFor(id));
-      summary.focus();
+  wireInteriorToggle(details, summary, id);
+
+  return details;
+}
+
+// ---- Multiplicity node interior (F-012) --------------------------------
+//
+// One fieldset per object kind (leptons, jets, photons): a comparison and a
+// count. Leptons also carry the lepton-type radio the plan's Answers block
+// enumerates. Default, plan "The design": exactly 2 leptons, jets and
+// photons unconstrained (">=" 0), lepton type Any -- a freshly placed node
+// already runs (F-011's Decisions #3).
+function buildMultCountGroup(uid, kind, legendText, defaultCount, defaultOp, onChange) {
+  const wrap = h("fieldset", { class: "mult-group" });
+  wrap.appendChild(h("legend", { text: legendText }));
+
+  const opSelect = h("select", { id: uid(`${kind}-op`), name: uid(`${kind}-op`) });
+  MULT_COMPARISONS.forEach((c) => opSelect.appendChild(h("option", { value: c.op, text: c.label })));
+  opSelect.value = defaultOp;
+  opSelect.addEventListener("change", onChange);
+
+  const countInput = h("input", { type: "number", min: "0", id: uid(`${kind}-count`), name: uid(`${kind}-count`) });
+  countInput.value = String(defaultCount);
+  countInput.addEventListener("input", onChange);
+
+  wrap.appendChild(h("label", { for: uid(`${kind}-op`), text: "Comparison" }));
+  wrap.appendChild(opSelect);
+  wrap.appendChild(h("label", { for: uid(`${kind}-count`), text: "Count" }));
+  wrap.appendChild(countInput);
+
+  // Cycle 2 F3: no `|| 0` fallback -- a blank/non-numeric count must reach
+  // the server as something it rejects (NaN serialises to `null` in JSON,
+  // which graph.py's int check refuses), the same way a blank Histogram
+  // bins field is left to the server's own validation rather than silently
+  // becoming "exactly 0".
+  return { el: wrap, getOp: () => opSelect.value, getCount: () => parseInt(countInput.value, 10) };
+}
+
+function buildMultiplicityInterior(id) {
+  const uid = (s) => `mult-${s}-${id}`;
+
+  const details = h("details", { class: "node__interior" });
+  const summary = h("summary", { class: "node__interior-summary", text: "Configure multiplicity" });
+  details.appendChild(summary);
+
+  function update() {
+    const n = graphState.nodes.get(id);
+    if (n) {
+      n.config = {
+        nlep: lepGroup.getCount(),
+        op_lep: lepGroup.getOp(),
+        njets: jetGroup.getCount(),
+        op_jet: jetGroup.getOp(),
+        ltype: ltypeSelect.value,
+        nphot: photGroup.getCount(),
+        op_phot: photGroup.getOp(),
+      };
+      persistUI();
     }
     growNode(id);
+  }
+
+  const lepGroup = buildMultCountGroup(uid, "lep", "Leptons", 2, "==", update);
+  const ltypeSelect = h("select", { id: uid("ltype"), name: uid("ltype") });
+  LEPTON_TYPES.forEach((t) => ltypeSelect.appendChild(h("option", { value: t.value, text: t.label })));
+  ltypeSelect.addEventListener("change", update);
+  lepGroup.el.appendChild(h("label", { for: uid("ltype"), text: "Lepton type" }));
+  lepGroup.el.appendChild(ltypeSelect);
+
+  const jetGroup = buildMultCountGroup(uid, "jet", "Jets", 0, ">=", update);
+  const photGroup = buildMultCountGroup(uid, "phot", "Photons", 0, ">=", update);
+
+  details.appendChild(lepGroup.el);
+  details.appendChild(jetGroup.el);
+  details.appendChild(photGroup.el);
+
+  update();
+
+  wireInteriorToggle(details, summary, id);
+
+  return details;
+}
+
+// ---- Histogram node interior (F-012) -----------------------------------
+//
+// bins/min/max as number inputs; x_label is not its own control -- it
+// mirrors whatever the connected Observable's quantity is called (C3),
+// blank when nothing is connected. Default 50 bins, 0-150 (plan table's
+// "with no Observable connected" case).
+function buildHistogramInterior(id) {
+  const uid = (s) => `hist-${s}-${id}`;
+  let xLabel = "";
+
+  const details = h("details", { class: "node__interior" });
+  const summary = h("summary", { class: "node__interior-summary", text: "Configure histogram" });
+  details.appendChild(summary);
+
+  const binsInput = h("input", { type: "number", min: "1", id: uid("bins"), name: uid("bins") });
+  binsInput.value = "50";
+  const minInput = h("input", { type: "number", id: uid("min"), name: uid("min") });
+  minInput.value = "0";
+  const maxInput = h("input", { type: "number", id: uid("max"), name: uid("max") });
+  maxInput.value = "150";
+
+  function update() {
+    const n = graphState.nodes.get(id);
+    if (n) {
+      n.config = { bins: binsInput.value, min: minInput.value, max: maxInput.value, x_label: xLabel };
+      persistUI();
+    }
+    growNode(id);
+  }
+
+  [binsInput, minInput, maxInput].forEach((inp) => inp.addEventListener("input", update));
+
+  details.appendChild(h("label", { for: uid("bins"), text: "Bins" }));
+  details.appendChild(binsInput);
+  details.appendChild(h("label", { for: uid("min"), text: "Minimum" }));
+  details.appendChild(minInput);
+  details.appendChild(h("label", { for: uid("max"), text: "Maximum" }));
+  details.appendChild(maxInput);
+
+  // C3: exposed so a connected Observable's update() (and attemptConnect,
+  // on first connect) can push its quantity's preset here -- looked up by
+  // node id through graphState.edges, not a second graph model. Cycle 2 F1:
+  // a `range` of `null` (Custom mode has none) still updates the axis label
+  // -- only min/max are skipped -- so switching to Custom does not leave a
+  // stale label from whatever the previous mode was showing.
+  histogramInteriors.set(id, (range, label) => {
+    if (range) {
+      minInput.value = String(range[0]);
+      maxInput.value = String(range[1]);
+    }
+    xLabel = label;
+    update();
   });
+
+  update();
+
+  wireInteriorToggle(details, summary, id);
 
   return details;
 }
@@ -592,6 +764,10 @@ function buildNodeEl(id, kind) {
     div.appendChild(buildObservableInterior(id));
   } else if (kind === "Selection") {
     div.appendChild(buildSelectionInterior(id));
+  } else if (kind === "Multiplicity") {
+    div.appendChild(buildMultiplicityInterior(id));
+  } else if (kind === "Histogram") {
+    div.appendChild(buildHistogramInterior(id));
   }
 
   fo.appendChild(div);
@@ -739,6 +915,13 @@ function attemptConnect(fromId, fromKind, toId) {
     graphState.edges.push([fromId, toId]);
     persistUI();
     renderEdges();
+    // C3/F1: a Histogram connected to an already-configured Observable
+    // starts at that quantity's preset (or, in Custom mode, at least its
+    // label), not whatever it defaulted to alone.
+    if (fromKind === "Observable" && histogramInteriors.has(toId)) {
+      const fromNode = graphState.nodes.get(fromId);
+      histogramInteriors.get(toId)(fromNode.rangePreset, fromNode.config.label);
+    }
     setStatus(`Connected: ${nodeLabel(fromId)} → ${nodeLabel(toId)}.`);
   } else {
     setStatus(`Refused: ${KIND_BY_NAME[fromKind].label} cannot connect to ${KIND_BY_NAME[toKind].label}.`);
