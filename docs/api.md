@@ -54,7 +54,11 @@ is synthesised server-side from the mission's declared dataset (`docs/design-bri
   input.
 - `nodes[].config` — kind-specific, validated by `fce_web.graph.build_run_config`:
   - `Multiplicity`: `nlep`, `op_lep`, `njets`, `op_jet`, `ltype`, `nphot`, `op_phot` (the
-    7-tuple `engine/runconfig.py`'s `mult_cuts` expects, per node).
+    7-tuple `engine/runconfig.py`'s `mult_cuts` expects, per node). `nlep`/`njets`/`nphot` are
+    non-negative ints; `op_lep`/`op_jet`/`op_phot` must be one of `"=="`, `"<="`, `">="`; `ltype`
+    must be one of `"Any"`, `"Electron"`, `"Muon"`. An unrecognised op or ltype is a `400`
+    naming the node (B-028) rather than the silent misread `engine/path_filter.py` would give
+    an unknown value (op falls back to `">="`, ltype falls back to all leptons).
   - `Selection`: `name`, `exprs` (list of strings, ANDed with any upstream `Selection`).
   - `Observable`: `mode` (one of `ObsGlobal`, `ObsObject`, `ObsVectorSum`, `ObsCustom` — mode
     is config, not identity), `expr`, `label`.
