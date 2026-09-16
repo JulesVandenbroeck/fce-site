@@ -280,23 +280,39 @@ def test_observable_node_grows_in_place_when_opened(index: LoadedPage) -> None:
 
 def test_observable_mode_is_config_not_identity(index: LoadedPage) -> None:
     """C3: the exported node's `kind` stays `Observable`; the chosen mode
-    rides along as `config.mode`, for the server to resolve at submit."""
+    rides along as `config.mode`, for the server to resolve at submit.
+
+    Updated (F-011, orchestrator re-spec 2026-09-16): the default mode is
+    now `ObsVectorSum`, not `ObsGlobal` (docs/plan-m4-recipe-builder.md's
+    table, C1) -- switched to `ObsGlobal` here instead, so the test still
+    demonstrates a change away from whatever the default is, not a
+    same-value round trip."""
     page = index.page
     page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
 
     graph = _graph(page)
     node = _node_by_id(graph, "n1")
     assert node["kind"] == "Observable"
-    assert node["config"]["mode"] == "ObsGlobal"  # default, unopened
+    assert node["config"]["mode"] == "ObsVectorSum"  # C1's default, unopened
 
     summary = page.locator('.node[data-node-id="n1"] summary')
     summary.focus()
     page.keyboard.press("Enter")
-    page.locator('.node[data-node-id="n1"] input[value="ObsVectorSum"]').check()
+    # .focus() + Space, not .check()'s real pointer click: the interior is
+    # unstyled until D-018, and VectorSum's now-larger default panel (six
+    # checkboxes) can grow the node tall enough that a screen click on an
+    # early radio lands under the palette column -- the same
+    # unstyled-layout brittleness test_run.py's
+    # test_layout_only_change_is_a_cache_hit_on_resubmit already documents
+    # for a different node. Reaching the control by keyboard sidesteps it
+    # and is exactly how a keyboard user would operate it anyway.
+    global_radio = page.locator('.node[data-node-id="n1"] input[value="ObsGlobal"]')
+    global_radio.focus()
+    page.keyboard.press(" ")
 
     node = _node_by_id(_graph(page), "n1")
     assert node["kind"] == "Observable"
-    assert node["config"]["mode"] == "ObsVectorSum"
+    assert node["config"]["mode"] == "ObsGlobal"
 
 
 def test_opened_observable_node_is_brought_to_front(index: LoadedPage) -> None:
@@ -346,22 +362,38 @@ def test_observable_mode_toggle_is_keyboard_operable_with_accessible_name(index:
 def test_observable_default_subtitle_matches_exported_config(index: LoadedPage) -> None:
     """C9: a freshly placed node's visible subtitle names the same mode its
     exported `config` carries -- not a placeholder that lags behind the
-    default `config.mode` until the student touches a radio."""
+    default `config.mode` until the student touches a radio.
+
+    Updated (F-011, orchestrator re-spec 2026-09-16): default mode/subtitle
+    are now `ObsVectorSum`/"Vector sum", not `ObsGlobal`/"Global" -- literals
+    only, the guarded property (subtitle text matches config.mode's label)
+    is unchanged."""
     page = index.page
     page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
 
     node = _node_by_id(_graph(page), "n1")
-    assert node["config"]["mode"] == "ObsGlobal"
+    assert node["config"]["mode"] == "ObsVectorSum"
 
     subtitle = page.locator('.node[data-node-id="n1"] .node__subtitle')
-    assert subtitle.inner_text().strip() == "Global"
+    assert subtitle.inner_text().strip() == "Vector sum"
 
 
 def test_observable_interior_has_no_dead_controls(index: LoadedPage) -> None:
     """C10: every control inside the node interior either reaches the
-    exported `config` or is absent. The only controls here are the four
-    mode radios (config.mode, covered by C3/C9); nothing else is rendered
-    for a value to go silently missing from."""
+    exported `config` or is absent.
+
+    Updated (F-011, orchestrator re-spec 2026-09-16): C1 replaced the bare
+    mode radios with four full per-mode panels (docs/plan-m4-recipe-builder.md's
+    table) -- every panel's controls are always present in the DOM (only the
+    active mode's panel is visible; switching modes, not remounting DOM,
+    reveals the rest), so the expected count and type breakdown below covers
+    all four panels, not just the radios. Each figure is the size of the
+    thing it comes from, not a guessed number: 4 mode radios; Global's 1
+    quantity <select>; Object's object + property <select>s (2); VectorSum's
+    <select>s aren't checkboxes -- 6 object checkboxes (expr.js's
+    VECTOR_SUM_OBJECTS, OBJECTS minus `met`) + 1 quantity <select>; Custom's
+    1 text <input>. No control renders that C1's four panels don't define,
+    and no defined control is missing."""
     page = index.page
     page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
     summary = page.locator('.node[data-node-id="n1"] summary')
@@ -370,9 +402,13 @@ def test_observable_interior_has_no_dead_controls(index: LoadedPage) -> None:
 
     interior = page.locator('.node[data-node-id="n1"] .node__interior')
     controls = interior.locator("input, select, textarea, button:not(summary)")
-    assert controls.count() == 4  # the four mode radios, nothing else
-    kinds = {controls.nth(i).get_attribute("type") for i in range(4)}
-    assert kinds == {"radio"}
+    assert controls.count() == 15
+    kinds = [controls.nth(i).get_attribute("type") for i in range(controls.count())]
+    assert kinds.count("radio") == 4  # the mode toggle
+    assert kinds.count(None) == 4  # <select> has no `type` attribute
+    assert kinds.count("checkbox") == 6  # VectorSum's ticked objects
+    assert kinds.count("text") == 1  # Custom's expression field
+    assert len(kinds) == 4 + 4 + 6 + 1  # nothing left over, no other type
 
 
 # ---- F-009: an opened node is re-clamped by its measured size, not the
