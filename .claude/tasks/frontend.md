@@ -13,8 +13,8 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Scope:** `static/js/graph.js`, `static/js/run.js`, `static/js/expr.js` (append-only), `tests/e2e/test_interiors.py`, `tests/e2e/test_run.py`, `tests/e2e/test_chart.py`
 - **Accept:** C1-C7 in dispatch; plan `docs/plan-m4-recipe-builder.md`
 - **Depends on:** F-011 (done), B-027 (done)
-- **Branch / PR:** `task/f-012-mult-hist-interiors` — not yet opened
-- **Status:** dispatched (cycle 1)
+- **Branch / PR:** `task/f-012-mult-hist-interiors` — #53
+- **Status:** in review (cycle 1) — gate 718 / flake8 0 reproduced. Mission-1 modal bin now 90.0-93.0 GeV (range 0-150).
 
 ## Ready
 
