@@ -94,6 +94,13 @@ Its exported table goes verbatim into PR F-011's body, and nothing merges agains
   → **B-026 is raised.**
 - **Q3. Absent.** `bins/min/max` are only checked as strings (`graph.py:315-318`), converted unchecked at
   `analytical_loop.py:209`. → trust-boundary gap, **B-027**, before F-012.
+- **Q1 values (scout, before F-012).** `op_*` ∈ `"==" "<=" ">="`; `ltype` ∈ `"Any" "Electron" "Muon"`
+  (`engine/path_filter.py:668-689`). Unconstrained = `">=" 0`. **graph.py checks only types**: an unknown op
+  silently becomes `">="`, an unknown `ltype` silently means all leptons, and counts are unbounded / may be
+  negative. Silent wrong physics, not a crash → candidate **B-028**, not a client check.
+- **Histogram (after B-027).** `bins/min/max` strings; optional `target`, `x_label` (default `""`), `name`
+  (default node id) (`graph.py:336-384`). Client today: `run.js:31-40` fills Multiplicity
+  `nlep 2 >=, njets 0 >=, Any, nphot 0 >=` and Histogram `50 / 60 / 120`.
 
 ## Out of scope
 

@@ -707,3 +707,5 @@ and are historical now that #6 is merged.
 
 - **B-026 F1** — `tests/test_graph.py:307-348`: 4 tests duplicate `test_api_run.py`'s POST checks; delete, mutations still red (PR #51 review).
 - **B-027 note** — unpinned `fastapi` resolves a `starlette` whose `TestClient` needs `httpx2`; a fresh venv fails collection. Floor-pin or swap (reported by B-027 coder).
+
+- **B-028 candidate** — `graph.py` accepts any `op_*`/`ltype` string and any int count; engine silently maps unknown op → `>=`, unknown ltype → all leptons (`path_filter.py:668-689`). Reject at submit with `nodeId`. (scout, 2026-09-16)

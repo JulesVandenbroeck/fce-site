@@ -9,7 +9,12 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-012 — Multiplicity and Histogram interiors, range presets
+- **Scope:** `static/js/graph.js`, `static/js/run.js`, `static/js/expr.js` (append-only), `tests/e2e/test_interiors.py`, `tests/e2e/test_run.py`, `tests/e2e/test_chart.py`
+- **Accept:** C1-C7 in dispatch; plan `docs/plan-m4-recipe-builder.md`
+- **Depends on:** F-011 (done), B-027 (done)
+- **Branch / PR:** `task/f-012-mult-hist-interiors` — not yet opened
+- **Status:** dispatched (cycle 1)
 
 ## Ready
 
