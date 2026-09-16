@@ -61,6 +61,21 @@
       <p class="canvas-status" id="canvas-status" aria-live="polite">Add a node from the palette,
         or Tab onto the canvas to move around it.</p>
     </div>
+
+    {#- F-007: submits the canvas graph above and streams its progress below.
+       Markup contract for D-016 (styling) and F-008 (the chart), written out
+       in full in the F-007 PR body -- read it there, not by guessing from
+       this comment. #}
+    <div class="run-control" id="run-control">
+      <button type="button" class="run-control__button" id="run-button" aria-disabled="false">Run analysis</button>
+    </div>
+
+    <section class="results" id="results" aria-label="Run results">
+      <p class="results__status" id="results-status" aria-live="polite">Not run yet.</p>
+      <progress class="results__progress" id="results-progress" max="100" value="0" hidden></progress>
+      <p class="results__note" id="results-note" aria-live="polite" hidden></p>
+      <div class="results__chart" id="results-chart"></div>
+    </section>
   </section>
 
   <aside class="mission-panel" id="mission-panel" data-state="expanded" aria-label="Mission">
@@ -84,3 +99,4 @@
 </div>
 <script type="module" src="/static/js/shell.js" defer></script>
 <script type="module" src="/static/js/graph.js" defer></script>
+<script type="module" src="/static/js/run.js" defer></script>
