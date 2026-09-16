@@ -1,23 +1,11 @@
-# Orchestrator anchor — 2026-09-11, past 75% of 5h (resets 17:00)
+# Orchestrator anchor — 2026-09-16 (second session)
 
-## In flight
-Nothing. No open PRs, no running agents.
-
-## Merged this session
-D-015 0eded93, F-010 57a42a5, F-003 1f9d344, F-009 ad36dd9, D-017 8ab7964, B-023 5bcccd8.
-Suite floor on main expected ~683 (679 +1 F-003 +2 F-009 +1 B-023) — NOT yet verified on main.
-
-## Decisions (user)
-- rtk excludes git globally (~/.config/rtk/config.toml). settings.json manual-read denies removed.
-- Wave 5 go-ahead. F-007 uses client mission-1 defaults (tests/test_api_run.py:24-38).
-
-## Next, after the window resets
-1. Verify the suite floor on main (PLAYWRIGHT_BROWSERS_PATH exported).
-2. Dispatch F-007 (frontend.md entry + plan docs/plan-m3-vertical-slice.md:720-738; api.md POST/SSE contract;
-   graph exposes `data-graph` on #canvas-wrap; no Run button/results region/run.js exist; SSE frames
-   progress{value}, phase{phase}, log, node, done{status, runId}). Then F-008 → D-016 → M3 checkpoint.
-3. B-024 (env threading through run_physics_loop + driver.py:162; unit tests writing real ~/.fce) — parallel-safe with F-007.
-
-## Dead ends
-- `cd .claude/worktrees/*` is denied — gates run by absolute path (`$W/.venv/bin/python -m pytest $W/tests --rootdir=$W`).
-- Push bookkeeping before `gh pr merge`, then `git pull --ff-only`, or local main diverges.
+- Consumed SESSION.md (D-016 not started; git agrees: no task/d-016 branch, 0 open PRs, backlog 134).
+- Original D-016 dispatch text (C1-C13 verbatim) was never persisted — only in the dead transcript.
+  Criteria REISSUED as C1-C13 in design.md's D-016 entry; nothing cited the old IDs (no PR existed).
+- Open question handed to the coder, not answered by me: row vs stack for .canvas-region — measure first.
+- Handoff writes: worktree-isolated agents cannot write the primary checkout's .claude/handoff/;
+  told the coder to write in its worktree and report the path.
+- Next: collect D-016 report -> §5.1 gate -> code-reviewer (raised effort: contract-ish, a11y) -> merge
+  -> M3 checkpoint 2 (includes the unanswered fixture-normalisation question).
+- Usage at session start: 54%. Soft-stop at 75%.

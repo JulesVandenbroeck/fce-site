@@ -89,6 +89,15 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   is C1's `elementFromPoint` property, which does not care which way it is solved. Re-dispatch should say
   so explicitly rather than repeat `overflow-x: auto` as if it were settled.
 - **Its worktree is reusable:** `.claude/worktrees/agent-a1a7be38838a932a5`, clean, no venv yet.
+- **Re-dispatched 2026-09-16 (session 2), fresh `isolation: "worktree"`, effort high.** The original
+  dispatch's verbatim C1-C13 was never written to disk; **criteria reissued** in the new dispatch and are
+  verbatim in its PR body once opened. C1 canvas not displaced (elementFromPoint, mechanism free, measure
+  row-vs-stack first) · C2 figure fixed 650x460, no page h-scroll 1440/1024/768 · C3 sample colour
+  identical band/legend via `--frozen-x*` · C4 `.hist-band` fill-opacity 0.8 · C5 `.legend-frame` not
+  black · C6 `.bin-hit` focus ring ≥3:1 · C7 reveal forwards, unarmed = settled · C8
+  `#run-button[aria-disabled=true]` busy style · C9 `.results__note` quiet note, AA · C10 tokens only,
+  computed styles enumerated · C11 light ground, AA text, no `--ink-45` text · C12 `verify.py` unmodified,
+  scope by `main...HEAD` · C13 suite ≥697, flake8 0, F-007 F11 closed.
 - **Depends on:** F-007 `1fdb8e6`, F-008 `7472675` — both merged. **Last task in M3; checkpoint 2 follows.**
 - **At the §2 ceiling deliberately, and I am recording the choice.** 13 criteria is past the five-bullet
   splitting test. Splitting it would mean two serialised tasks on the same page and two review passes over
