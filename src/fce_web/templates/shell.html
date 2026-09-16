@@ -67,13 +67,12 @@
        in full in the F-007 PR body -- read it there, not by guessing from
        this comment. #}
     <div class="run-control" id="run-control">
-      <button type="button" class="run-control__button" id="run-button">Run analysis</button>
+      <button type="button" class="run-control__button" id="run-button" aria-disabled="false">Run analysis</button>
     </div>
 
     <section class="results" id="results" aria-label="Run results">
       <p class="results__status" id="results-status" aria-live="polite">Not run yet.</p>
-      <progress class="results__progress" id="results-progress" max="100" value="0"
-                 aria-live="polite" hidden></progress>
+      <progress class="results__progress" id="results-progress" max="100" value="0" hidden></progress>
       <p class="results__note" id="results-note" aria-live="polite" hidden></p>
       <div class="results__chart" id="results-chart"></div>
     </section>
