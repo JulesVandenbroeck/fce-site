@@ -323,8 +323,11 @@ def test_no_ui_layout_scale_constants_in_source():
 # ---------------------------------------------------------------------------
 
 def test_run_physics_loop_has_no_dead_parameters():
+    # "env" (task B-024) is the one addition since this criterion was
+    # written -- the live seam that lets a caller's FCE_HOME reach this
+    # loop's own get_fce_home() call, not a dead parameter.
     sig = inspect.signature(analytical_loop.run_physics_loop)
-    assert list(sig.parameters) == ["cfg", "active_samples", "ctx"], sig
+    assert list(sig.parameters) == ["cfg", "active_samples", "ctx", "env"], sig
 
 
 # ---------------------------------------------------------------------------

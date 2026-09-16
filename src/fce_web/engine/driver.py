@@ -159,7 +159,7 @@ def run_analysis(
         on_node=ctx.on_node,
     )
 
-    result = run_physics_loop(config.to_dict(), active_samples, inner_ctx)
+    result = run_physics_loop(config.to_dict(), active_samples, inner_ctx, env)
 
     if ctx.cancel.is_set():
         ctx.on_phase("Cancelled")

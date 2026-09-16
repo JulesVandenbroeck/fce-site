@@ -87,7 +87,7 @@ ctx = RunContext(
 config = RunConfig.from_file({FIXTURE!r})
 
 
-def fake_run_physics_loop(cfg, active_samples, inner_ctx):
+def fake_run_physics_loop(cfg, active_samples, inner_ctx, env=None):
     from fce_web.runs import RunResult
     inner_ctx.on_phase("Reading events...")
     for f in (0.0, 0.5, 1.0):
@@ -177,7 +177,7 @@ def _stub_engine_progress_trace(trace):
     1.0]``) closely enough that the driver's forwarding/scaling code
     actually executes on every value, not just the endpoints.
     """
-    def fake_run_physics_loop(cfg, active_samples, inner_ctx):
+    def fake_run_physics_loop(cfg, active_samples, inner_ctx, env=None):
         inner_ctx.on_phase("Reading events...")
         for f in trace:
             inner_ctx.on_progress(f)
@@ -246,7 +246,7 @@ def _slow_stub_run_physics_loop(steps=6, step_seconds=0.05):
     fraction of steps actually completed before the stop -- so the returned
     result carries genuine partial output, not a canned value.
     """
-    def fake_run_physics_loop(cfg, active_samples, inner_ctx):
+    def fake_run_physics_loop(cfg, active_samples, inner_ctx, env=None):
         inner_ctx.on_phase("Reading events...")
         completed = 0
         for i in range(steps):

@@ -9,7 +9,6 @@ this test's job is only to prove the harness itself is hermetic.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import httpx
@@ -17,11 +16,11 @@ import httpx
 from tests.test_api_run import _graph
 
 
-def test_run_executes_hermetically_against_the_fixture_dataset(live_server):
-    # `_e2e_process_fce_home` (tests/e2e/conftest.py, autouse) points
-    # FCE_HOME at a tmp dir seeded only with the fixture dataset -- never
-    # the real `~/.fce` -- for exactly the duration of this test.
-    fce_home = Path(os.environ["FCE_HOME"])
+def test_run_executes_hermetically_against_the_fixture_dataset(live_server, _fce_home: Path):
+    # `live_server` (tests/e2e/conftest.py) serves the app with
+    # `env={"FCE_HOME": str(_fce_home)}` (task B-024) -- a tmp dir seeded
+    # only with the fixture dataset, never the real `~/.fce`.
+    fce_home = _fce_home
 
     resp = httpx.post(f"{live_server}/api/run", json={"missionId": "M-1", "graph": _graph()})
     assert resp.status_code == 200, resp.text
