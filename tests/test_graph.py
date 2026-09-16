@@ -304,3 +304,45 @@ def test_disagreeing_multiplicity_chains_into_shared_selection_are_rejected():
     }
     with pytest.raises(GraphError, match="Multiplicity chain"):
         build_run_config(payload, _dataset())
+
+
+# ---- B-026 C1/C2/C3: GraphError carries the offending node's id, and a bad
+# expression is caught here (safe_eval), not left to fail later at engine
+# compile.
+
+def test_illegal_edge_error_carries_no_single_node_id():
+    payload = {
+        "nodes": [_mult_node("m1"), _hist_node("h1")],
+        "edges": [["m1", "h1"]],
+    }
+    with pytest.raises(GraphError) as exc_info:
+        build_run_config(payload, _dataset())
+    assert exc_info.value.node_id is None
+
+
+def test_bad_multiplicity_field_error_names_its_node():
+    payload = _mission1_payload()
+    payload["nodes"][0]["config"]["nlep"] = "2"
+    with pytest.raises(GraphError) as exc_info:
+        build_run_config(payload, _dataset())
+    assert exc_info.value.node_id == "mult1"
+
+
+def test_bad_observable_expr_is_a_graph_error_naming_its_node():
+    payload = {
+        "nodes": [_sel_node(), _obs_node(expr="__import__('os')"), _hist_node()],
+        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
+    }
+    with pytest.raises(GraphError) as exc_info:
+        build_run_config(payload, _dataset())
+    assert exc_info.value.node_id == "obs1"
+
+
+def test_bad_selection_expr_is_a_graph_error_naming_its_node():
+    payload = {
+        "nodes": [_sel_node(exprs=["__import__('os')"]), _obs_node(), _hist_node()],
+        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
+    }
+    with pytest.raises(GraphError) as exc_info:
+        build_run_config(payload, _dataset())
+    assert exc_info.value.node_id == "sel1"
