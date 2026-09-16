@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 
 from playwright.sync_api import expect
 
@@ -168,9 +169,24 @@ def test_starting_a_new_run_clears_a_stale_result(index: LoadedPage) -> None:
 def test_run_button_keeps_focus_while_running(index: LoadedPage) -> None:
     """C15: the Run control does not cost the keyboard user their place --
     it is marked busy with aria-disabled, not the disabled attribute, which
-    would drop focus to <body> mid-run (cycle 2 F5)."""
+    would drop focus to <body> mid-run (cycle 2 F5).
+
+    Delays the SSE connection (real request, real server, just held up in
+    transit) rather than checking "running" state immediately after the
+    click: by this point in the file the mission-1 default graph has
+    usually already been run and cached earlier in this session, so an
+    uninstrumented run can finish between the keypress and the next line of
+    Python -- flaky, not a product bug. The delay guarantees a "running"
+    window long enough to observe.
+    """
     page = index.page
     _place_mission1_chain(page)
+
+    def delay_events(route):
+        time.sleep(0.3)
+        route.continue_()
+
+    page.route("**/api/run/*/events", delay_events)
 
     page.locator("#run-button").focus()
     page.keyboard.press("Enter")
@@ -179,6 +195,7 @@ def test_run_button_keeps_focus_while_running(index: LoadedPage) -> None:
 
     expect(page.locator("#results-status")).to_have_text("Run complete.", timeout=60000)
     assert page.locator("#run-button").get_attribute("aria-disabled") == "false"
+    assert page.evaluate("document.activeElement.id") == "run-button"
 
 
 def test_layout_only_change_is_a_cache_hit_on_resubmit(index: LoadedPage) -> None:
