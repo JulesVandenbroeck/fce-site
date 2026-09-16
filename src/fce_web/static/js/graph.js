@@ -264,7 +264,7 @@ function buildGlobalPanel(uid, onChange) {
   const wrap = h("div", { class: "obs-panel" });
   const select = h("select", { id: uid("global-qty"), name: uid("global-qty") });
   COUNTS.forEach((c) => select.appendChild(h("option", { value: c.name, text: c.label })));
-  select.appendChild(h("option", { value: "met_pt", text: "missing transverse energy (MET) pt" }));
+  select.appendChild(h("option", { value: "met_pt", text: globalConfig("met_pt").label }));
   select.addEventListener("change", onChange);
   wrap.appendChild(h("label", { for: uid("global-qty"), text: "Quantity" }));
   wrap.appendChild(select);
@@ -338,7 +338,7 @@ function buildVectorSumPanel(uid, onChange) {
 function buildCustomPanel(uid, onChange) {
   const wrap = h("div", { class: "obs-panel" });
   const input = h("input", { type: "text", id: uid("custom-expr"), name: uid("custom-expr") });
-  input.value = "l1.pt";
+  input.value = objectConfig("l1", "pt").expr;
   input.addEventListener("input", onChange);
   wrap.appendChild(h("label", { for: uid("custom-expr"), text: "Custom expression" }));
   wrap.appendChild(input);

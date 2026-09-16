@@ -24,9 +24,13 @@ def test_every_builder_output_compiles_under_safe_eval(index: LoadedPage) -> Non
     compile each one with `fce_web.safe_eval` -- the server is the
     authority, this does not re-implement the allowlist in JS.
 
-    Verified red (2026-09-16, this task): renaming `PROPERTIES`' "pt" entry
-    to "ppt" in expr.js turned this test red, `UnsafeExpression: Unknown
-    attribute '.ppt'`, then reverted.
+    Verified red (2026-09-16, review cycle 1 F2): changing `.p4` to `.p5` in
+    `vectorSumConfig` (expr.js) turned this test red at `compile_expr`,
+    `UnsafeExpression: Unknown attribute '.p5'` -- reaching the server's own
+    check, not a JS-side failure -- then reverted. (Renaming `PROPERTIES`'
+    "pt" entry fails earlier, inside the page's own `propertyLabel` lookup,
+    before any expression is even built -- a real bug this test would also
+    catch, but not the one this docstring claims.)
     """
     page = index.page
     exprs = page.evaluate(
