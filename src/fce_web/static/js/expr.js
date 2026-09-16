@@ -126,3 +126,20 @@ export function vectorSumConfig(objects, quantity) {
 export function customConfig(expr) {
   return { expr, label: expr };
 }
+
+// ---- Multiplicity: comparison + lepton-type vocabulary (F-012) --------
+
+// engine/path_filter.py:668-689 accepts only these three comparisons for a
+// Multiplicity cut -- plain-labelled per the plan's "the design" table
+// (count + comparison per object).
+export const MULT_COMPARISONS = [
+  { op: "==", label: "exactly" },
+  { op: "<=", label: "at most" },
+  { op: ">=", label: "at least" },
+];
+
+export const LEPTON_TYPES = [
+  { value: "Any", label: "Any" },
+  { value: "Electron", label: "Electron" },
+  { value: "Muon", label: "Muon" },
+];

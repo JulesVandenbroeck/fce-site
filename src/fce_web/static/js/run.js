@@ -20,24 +20,9 @@
 //                             dispatches a `fce:result` CustomEvent on it,
 //                             `detail` set to the parsed payload.
 
-// Multiplicity and Histogram have no interior yet (F-012) -- until then the
-// client fills them with the mission-1 recipe (docs/design-brief.md,
-// tests/test_api_run.py:24-38) so a student can place, connect and run a
-// mission-1 graph without configuring those two by hand. Selection and
-// Observable are F-011: their interiors (graph.js) always populate `config`
-// themselves, so this must not also guess a value for them -- a stale
-// fallback here would silently override nothing today, but it is one more
-// place a real interior's output could be second-guessed tomorrow.
-function defaultConfigFor(kind) {
-  switch (kind) {
-    case "Multiplicity":
-      return { nlep: 2, op_lep: ">=", njets: 0, op_jet: ">=", ltype: "Any", nphot: 0, op_phot: ">=" };
-    case "Histogram":
-      return { bins: "50", min: "60", max: "120" };
-    default:
-      return {};
-  }
-}
+// Every node kind's interior (graph.js) populates `config` itself -- F-011
+// for Selection/Observable, F-012 for Multiplicity/Histogram -- so this
+// module no longer fabricates a fallback for any of them.
 
 // docs/api.md:34-50 -- {missionId, graph: {nodes: [{id, kind, config}], edges}}
 // only. `x`/`y` are canvas layout, not part of this shape (graph.py never
@@ -45,11 +30,7 @@ function defaultConfigFor(kind) {
 function buildSubmission() {
   const wrap = document.getElementById("canvas-wrap");
   const graph = JSON.parse(wrap.getAttribute("data-graph"));
-  const nodes = graph.nodes.map((n) => ({
-    id: n.id,
-    kind: n.kind,
-    config: { ...defaultConfigFor(n.kind), ...(n.config || {}) },
-  }));
+  const nodes = graph.nodes.map((n) => ({ id: n.id, kind: n.kind, config: n.config || {} }));
   const missionId = document.getElementById("mission-label").dataset.missionId;
   return { missionId, graph: { nodes, edges: graph.edges } };
 }

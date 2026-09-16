@@ -91,3 +91,37 @@ def test_changed_selection_changes_the_histogram(index: LoadedPage) -> None:
     changed_result = json.loads(page.locator("#results-chart").get_attribute("data-result"))
 
     assert changed_result["samples"] != default_result["samples"] or changed_result["data"] != default_result["data"]
+
+
+def test_changed_histogram_bins_changes_the_histogram(index: LoadedPage) -> None:
+    """F-012 C5: the default mission-1 chain, then the same chain with its
+    Histogram node's bin count halved through the real interior (not
+    run.js's old hardcoded 50/60/120 fallback), produce a different bin
+    count in the returned payload.
+
+    Verified red (2026-09-16, this task): with run.js's `defaultConfigFor`
+    restored to also mask Multiplicity/Histogram configs, this test failed
+    because both submissions serialised to the same hardcoded recipe
+    (50 bins each time, regardless of what the interior's inputs held).
+    """
+    page = index.page
+    _place_mission1_chain(page)
+
+    page.locator("#run-button").click()
+    expect(page.locator("#results-status")).to_have_text("Run complete.", timeout=60000)
+    expect(page.locator("#results-chart")).to_have_attribute("data-result", re.compile(".+"), timeout=10000)
+    default_result = json.loads(page.locator("#results-chart").get_attribute("data-result"))
+    default_bins = len(default_result["edges"]) - 1
+
+    # n4 is the Histogram node (CHAIN order in test_run.py).
+    page.locator('.node[data-node-id="n4"] summary').click()
+    page.locator("#hist-bins-n4").fill("25")
+
+    page.locator("#run-button").click()
+    expect(page.locator("#results-status")).to_have_text("Run complete.", timeout=60000)
+    expect(page.locator("#results-chart")).to_have_attribute("data-result", re.compile(".+"), timeout=10000)
+    changed_result = json.loads(page.locator("#results-chart").get_attribute("data-result"))
+    changed_bins = len(changed_result["edges"]) - 1
+
+    assert changed_bins == 25, changed_bins
+    assert changed_bins != default_bins
