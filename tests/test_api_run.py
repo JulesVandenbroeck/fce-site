@@ -97,7 +97,36 @@ def test_invalid_graph_is_a_400_with_graph_error_message(client):
     bad_graph = {"nodes": [{"id": "ds1", "kind": "DataSource", "config": {}}], "edges": []}
     resp = client.post("/api/run", json={"missionId": "M-1", "graph": bad_graph})
     assert resp.status_code == 400
-    assert "DataSource" in resp.json()["error"]
+    body = resp.json()
+    assert "DataSource" in body["error"]
+    assert body["nodeId"] == "ds1"
+
+
+# ---- B-026: a bad Observable/Selection expression is a 400 naming its node,
+# not a run that starts and fails later.
+
+def _graph_with_bad_observable_expr():
+    graph = _graph()
+    graph["nodes"][2]["config"]["expr"] = "__import__('os')"
+    return graph
+
+
+def _graph_with_bad_selection_expr():
+    graph = _graph()
+    graph["nodes"][1]["config"]["exprs"] = ["__import__('os')"]
+    return graph
+
+
+def test_bad_observable_expr_is_a_400_naming_its_node(client):
+    resp = client.post("/api/run", json={"missionId": "M-1", "graph": _graph_with_bad_observable_expr()})
+    assert resp.status_code == 400
+    assert resp.json()["nodeId"] == "obs1"
+
+
+def test_bad_selection_expr_is_a_400_naming_its_node(client):
+    resp = client.post("/api/run", json={"missionId": "M-1", "graph": _graph_with_bad_selection_expr()})
+    assert resp.status_code == 400
+    assert resp.json()["nodeId"] == "sel1"
 
 
 # ---- result is fetchable by id, "running" while in flight, 404 unknown ----
