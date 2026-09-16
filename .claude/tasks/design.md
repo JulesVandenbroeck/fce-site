@@ -72,7 +72,23 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 - **Scope:** `static/css/chart.css` (new), `static/css/shell.css`, one `<link>` in `base.html`
   (the D-015 precedent), class attributes only in `shell.html`.
 - **Branch / PR:** `task/d-016-results-chart-styling` — PR not yet opened
-- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=13 (C1-C13).
+- **Status:** **handed off (cycle 1)** at the session's usage limit, 2026-09-16, ~1 minute after dispatch.
+  **No branch, no commit, no CSS written** — confirmed against git, not taken on trust. Handoff:
+  [`handoff/d-016-design-1.md`](../handoff/d-016-design-1.md), 113 lines, copied into the primary checkout
+  from the agent's worktree (worktree isolation refused it the primary path). **Re-dispatch from the
+  criteria in this entry and the dispatch, not from the handoff** — the handoff's value is the reading it
+  already did and the one open question below. checks=13 (C1-C13).
+- **The open question it raised before stopping, and it is worth answering first.** The dispatch tells the
+  coder to fix C1 by constraining `.chart-figure` with `overflow-x: auto` and not touching
+  `.canvas-region`'s direction. The agent read the widths and doubts a **row** layout is structurally
+  viable at all: `.canvas-region` has ~752px at 1440, and `.canvas-wrap` alone takes 704px, leaving ~48px
+  for `#run-control` + `#results` beside it. That would explain F-007's F11 (`#results` rendering ~26px
+  wide) as a symptom of the same cause rather than a separate gap. **It had not yet measured this in a
+  browser** — that was its next step, and it is the right next step. If the measurement holds, my
+  prescribed fix is wrong and the region needs to stack rather than sit beside the canvas; the criterion
+  is C1's `elementFromPoint` property, which does not care which way it is solved. Re-dispatch should say
+  so explicitly rather than repeat `overflow-x: auto` as if it were settled.
+- **Its worktree is reusable:** `.claude/worktrees/agent-a1a7be38838a932a5`, clean, no venv yet.
 - **Depends on:** F-007 `1fdb8e6`, F-008 `7472675` — both merged. **Last task in M3; checkpoint 2 follows.**
 - **At the §2 ceiling deliberately, and I am recording the choice.** 13 criteria is past the five-bullet
   splitting test. Splitting it would mean two serialised tasks on the same page and two review passes over
