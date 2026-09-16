@@ -22,14 +22,13 @@ reader.
 """
 from __future__ import annotations
 
-import contextlib
 import json
 import os
 import shutil
 import subprocess
 import sys
 import time
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, List, Tuple
 
 import pytest
 
@@ -99,27 +98,6 @@ def _require_reference_and_datasets() -> None:
         pytest.skip(reason)
 
 
-@contextlib.contextmanager
-def _fce_home_env(path: str) -> Iterator[None]:
-    """Set the *real* ``FCE_HOME`` process environment variable for the
-    duration of the block, restoring whatever was there before.
-
-    Needed because ``engine/analytical_loop.py:241`` (both ours and the
-    reference's) calls ``get_fce_home()`` with **no** ``env`` argument, so it
-    always resolves against ``os.environ`` regardless of what a caller passes
-    through ``run_analysis(..., env=...)``. See criterion 4 in the PR body.
-    """
-    previous = os.environ.get("FCE_HOME")
-    os.environ["FCE_HOME"] = path
-    try:
-        yield
-    finally:
-        if previous is None:
-            os.environ.pop("FCE_HOME", None)
-        else:
-            os.environ["FCE_HOME"] = previous
-
-
 def _link_dataset(fce_home: str, detector: str, energy: str) -> str:
     """Symlink ``<fce_home>/datasets/<detector>/<energy>`` to the real,
     shared dataset directory, without copying the multi-hundred-MB files.
@@ -143,8 +121,7 @@ def _run_our_engine(fce_home: str) -> None:
     config = RunConfig.from_file(CONFIG_PATH)
     _link_dataset(fce_home, config.detector, config.energy)
     ctx = RunContext(n_workers=4)
-    with _fce_home_env(fce_home):
-        result = run_analysis(config, ctx, env={"FCE_HOME": fce_home})
+    result = run_analysis(config, ctx, env={"FCE_HOME": fce_home})
     assert result.processed_any, (
         f"our engine did not process any data against {fce_home!r}: {result}"
     )

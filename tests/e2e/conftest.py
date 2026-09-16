@@ -143,35 +143,16 @@ def _live_server(_fce_home: Path) -> Iterator[str]:
     """Serve the real application on an ephemeral port for the whole session,
     against a hermetic ``FCE_HOME`` seeded with the fixture dataset (task
     B-023) -- never the real ``~/.fce``.
+
+    ``env`` is an explicit ``{"FCE_HOME": ...}`` mapping, not ``os.environ``:
+    task B-024 threaded that mapping the rest of the way down to
+    ``analytical_loop.run_physics_loop``'s own ``get_fce_home`` call, so
+    pointing the *server's* ``env`` here is now sufficient on its own -- no
+    process-environment mutation needed alongside it (that was B-023 cycle
+    2's ``_e2e_process_fce_home`` workaround, retired by this task).
     """
-    with serve_app(env=os.environ) as base_url:
+    with serve_app(env={"FCE_HOME": str(_fce_home)}) as base_url:
         yield base_url
-
-
-@pytest.fixture(autouse=True)
-def _e2e_process_fce_home(_fce_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Point the real process ``FCE_HOME`` at the fixture tmp dir for exactly
-    the duration of one e2e test (task B-023 cycle 2, F1).
-
-    Required because ``engine.analytical_loop.run_physics_loop`` resolves its
-    cache/output directory with ``get_fce_home()`` taking no argument -- it
-    always reads ``os.environ``, regardless of what ``env`` mapping was
-    threaded into ``create_app``/``JobRegistry`` (see ``fce_web.jobs``'s own
-    module docstring). Fixing that means adding an ``env`` parameter to
-    ``run_physics_loop`` and updating its one call site in
-    ``engine/driver.py`` -- outside this task's file scope, which only
-    permits touching ``analytical_loop.py`` itself.
-
-    Autouse and function-scoped, defined only in ``tests/e2e/``, so it
-    affects nothing outside this directory. Cycle 1 set this via a
-    hand-rolled ``pytest.MonkeyPatch`` undone only at *session* teardown --
-    since e2e collects first, every one of the 623 non-e2e tests in the same
-    run then saw ``FCE_HOME`` pointed at the e2e tmp dir. ``monkeypatch``
-    (function-scoped, pytest's own) undoes this after each test, so a
-    non-e2e test run afterwards in the same session sees ``FCE_HOME`` exactly
-    as it was before the session.
-    """
-    monkeypatch.setenv("FCE_HOME", str(_fce_home))
 
 
 @pytest.fixture(name="browser", scope="session")

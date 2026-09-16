@@ -34,7 +34,7 @@ import os
 import shutil
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional
+from typing import List, Mapping, Optional
 
 import boost_histogram as bh
 import uproot
@@ -243,7 +243,12 @@ def _validate_sel_exprs(selections: list) -> None:
                 ) from exc
 
 
-def run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> RunResult:
+def run_physics_loop(
+    cfg: dict,
+    active_samples: List[str],
+    ctx: RunContext,
+    env: Optional[Mapping[str, str]] = None,
+) -> RunResult:
     """Run every selection branch of *cfg* against *active_samples*.
 
     Reports progress, log lines, phase labels and node status through *ctx*
@@ -251,6 +256,14 @@ def run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> R
     returns a ``RunResult`` instead of writing ``cutflow_ready`` back to
     global state. Cancellation is ``ctx.cancel``: setting it on this run's
     context stops only this run.
+
+    *env* is the same optional environment mapping ``fce_web.paths.
+    get_fce_home`` accepts (task B-024) -- forwarded unchanged from
+    ``fce_web.engine.driver.run_analysis`` so this loop's cache and output
+    directories land under the same ``FCE_HOME`` the caller resolved its
+    dataset directory from, instead of resolving a second, independent
+    answer from the real process environment. ``None`` means "the real
+    process environment", the same default ``get_fce_home`` itself has.
     """
     selections = cfg.get("selections")
 
@@ -269,7 +282,7 @@ def run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> R
 
     _validate_sel_exprs(selections)
 
-    hdir = str(get_fce_home())
+    hdir = str(get_fce_home(env))
     os.makedirs(os.path.join(hdir, "cache"),  exist_ok=True)
     os.makedirs(os.path.join(hdir, "output"), exist_ok=True)
 
