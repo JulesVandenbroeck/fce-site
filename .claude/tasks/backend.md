@@ -9,12 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-027 — server-side validation of Histogram bins/min/max (trust boundary)
-- **Scope:** `graph.py`, the existing `build_run_config` test file
-- **Accept:** C1-C4 in dispatch; plan Q3. Blocks F-012.
-- **Depends on:** none. Shares `graph.py` with B-026.
-- **Branch / PR:** `task/b-027-histogram-bounds` — #52
-- **Status:** cycle 2 in review (gate 715/flake8 0 reproduced at `3c29499`) — c1 `findings=3, verdict=rework` (F1 finiteness unguarded); must merge `main` (B-026 in `graph.py`)
+_none._
 
 ## Ready
 
@@ -53,6 +48,8 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-027** — server-side validation of Histogram bins/min/max — #52, `0b6f202`, 2 cycles, clean gate (`findings=0, scope=pass, verdict=approve`).
+  Suite floor **715**. `bins` int 1..`_MAX_BINS`=1000, `min`/`max` finite, `min < max`, raw strings still passed on (digests unchanged); each rejection names the Histogram node. **Releases F-012.**
 - **B-026** — rejected-graph errors name the offending node (**CONTRACT**: 400 body `{"error": str, "nodeId": str|null}`) — #51, `a9cc376`, 1 cycle, clean gate (`findings=1, scope=pass, verdict=approve`).
   Suite floor **707**. Selection/Observable exprs now compiled via `safe_eval.compile_expr` at submit → 400 naming the node. 28 raise sites enumerated in PR body. F1 (4 surplus tests) backlogged.
 - **B-025** — fixture MC weights scaled to the 2000-event slice — #49, `3e944bd`, 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`).
@@ -231,7 +228,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **707 passed**; flake8 0. Confirmed on PR #51 head by the orchestrator, 2026-09-16.
+- Suite floor **715 passed**; flake8 0. Confirmed on PR #52 head by the orchestrator, 2026-09-16.
+- Superseded: suite floor **707 passed**; flake8 0. Confirmed on PR #51 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **701 passed**; flake8 0. Confirmed on PR #49 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **683 passed**; flake8 0. Confirmed on `main` at `df0f6d4` by the orchestrator, 2026-09-16.
 - Superseded: suite floor **677 passed**; `tests/e2e/` **54** nodeids.

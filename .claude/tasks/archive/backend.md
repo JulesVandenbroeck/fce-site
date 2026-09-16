@@ -2285,3 +2285,6 @@ own trim — the call is at `:280`; code correct, prose wrong — backlogged).
 ### B-026 — rejected-graph errors name the offending node
 - PR #51, merged `a9cc376`, 1 cycle. Review comment on PR #51. Gate reproduced 707 passed / flake8 0 at `60ff2c7`.
 - Raised by M4 plan Q2 (scout: no node id anywhere). Parallel with B-027 on `graph.py`.
+
+### B-027 — server-side validation of Histogram bins/min/max
+- PR #52, merged `0b6f202`, 2 cycles. Reviews on PR #52. c1 rework: `min` nan/inf cases also failed `min < max`, so `isfinite` was untested and `max="inf"` would reach `bh.axis.Regular`. c2 fixed with a `max: inf` row; merged `main` for B-026 node ids.
