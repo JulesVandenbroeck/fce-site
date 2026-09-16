@@ -9,7 +9,25 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-008 — The interactive SVG histogram
+- **Branch / PR:** `task/f-008-svg-histogram` — PR not yet opened
+- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=11 (C1-C11).
+- **Reference enumerated by `scout`, not remembered:** `docs/design-explorations/plot.js`, 817 lines,
+  **17** top-level functions (the plan says 16). `FIG.h = 460` at `:136`, `FIG.w` 650 at `:142`.
+  `drawLegend` `:548` (called from `renderHistogramFigure:473`, `renderCutflowFigure:698`);
+  `renderCutflowFigure` `:568` (called from `main:782`). `chart.js` does not exist yet.
+- **C2 deviates from the plan text by my ruling.** The plan has F-008 fetch
+  `GET /api/run/{id}/result` itself, replacing `plot.html:167`'s embedded JSON — written before F-007
+  existed. `run.js` already fetches it and publishes it on `#results-chart`. Issuing a second request
+  for a payload already handed over is rung 2 of the ladder ignored. Data enters by contract.
+- **C3 carries a physics constraint from B-019:** `samples[].weightsSquared` is unconditionally `null`,
+  so the MC statistical input does not exist. The dispatch forbids inventing it or faking a band, and
+  requires any omission to be named in the PR body with the missing field. An honest gap is not
+  simplified away any more than the physics is.
+- **C6:** a **static** legend is in scope — D-016 needs sample identity colour identical across graph,
+  legend and plot — while legend *toggling*, PNG export, cutflow and the Z gauge stay out by the user's
+  2026-09-07 ruling. `renderCutflowFigure` is left behind.
+- **C7 closes M3:** the peak read off the drawn figure in the running app, not off a fixture JSON.
 
 ## Ready
 
