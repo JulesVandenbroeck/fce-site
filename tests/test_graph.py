@@ -271,6 +271,31 @@ def test_mult_cut_count_as_json_string_is_a_graph_error():
         build_run_config(payload, _dataset())
 
 
+# ---- B-028: op_*, ltype and counts the engine would silently misread ----
+
+@pytest.mark.parametrize("field, bad_value, match", [
+    ("op_lep", "!=", "op_lep"),
+    ("op_jet", "!=", "op_jet"),
+    ("op_phot", "!=", "op_phot"),
+    ("ltype", "Photon", "ltype"),
+    ("ltype", "any", "ltype"),  # case matters -- the engine dict key is "Any"
+    ("nlep", -1, "nlep"),
+    ("njets", -1, "njets"),
+    ("nphot", -1, "nphot"),
+    ("nlep", True, "nlep"),  # bool is an int subclass
+])
+def test_mult_cut_bad_values_are_rejected(field, bad_value, match):
+    payload = _mission1_payload()
+    payload["nodes"][0]["config"][field] = bad_value
+    with pytest.raises(GraphError, match=match):
+        build_run_config(payload, _dataset())
+
+
+def test_valid_mult_cut_values_are_accepted():
+    cfg = build_run_config(_mission1_payload(), _dataset())
+    assert cfg.h5_sel == _MISSION1_H5_SEL
+
+
 # ---- C13: the multi-path branch (chained Selections, sibling branches
 # sharing a prefix) is covered by a check that can fail. Digests
 # independently derived from the same formula documented above test_mission1_graph_produces_a_run_config

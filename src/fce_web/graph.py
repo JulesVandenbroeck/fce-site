@@ -255,6 +255,14 @@ def _check_terminals(nodes: Dict[str, _Node], children: Dict[str, List[str]]) ->
 # 400), not as the engine's `RunConfigError` (a 500) -- F4.
 _MULT_CUT_TYPES = (int, str, int, str, str, int, str)
 
+# path_filter.py:679-683 -- an op it doesn't recognise silently falls through
+# to ">=", and ltype.py:676 -- an ltype it doesn't recognise silently falls
+# back to `nlep` (all leptons). Both are wrong-physics-not-an-error, so the
+# values are enforced here, at the trust boundary, instead.
+_MULT_OP_FIELDS = ("op_lep", "op_jet", "op_phot")
+_MULT_OPS = ("==", "<=", ">=")
+_MULT_LTYPES = ("Any", "Electron", "Muon")
+
 
 def _mult_cut_tuple(node: _Node) -> tuple:
     config = node.config
@@ -268,6 +276,19 @@ def _mult_cut_tuple(node: _Node) -> tuple:
             raise GraphError(f"node {node.id!r}: '{field}' must be an int, got {value!r}", node_id=node.id)
         if expected_type is str and not isinstance(value, str):
             raise GraphError(f"node {node.id!r}: '{field}' must be a string, got {value!r}", node_id=node.id)
+        if expected_type is int and value < 0:
+            raise GraphError(f"node {node.id!r}: '{field}' must not be negative, got {value!r}", node_id=node.id)
+    for field in _MULT_OP_FIELDS:
+        if config[field] not in _MULT_OPS:
+            raise GraphError(
+                f"node {node.id!r}: '{field}' must be one of {', '.join(_MULT_OPS)}, got {config[field]!r}",
+                node_id=node.id,
+            )
+    if config["ltype"] not in _MULT_LTYPES:
+        raise GraphError(
+            f"node {node.id!r}: 'ltype' must be one of {', '.join(_MULT_LTYPES)}, got {config['ltype']!r}",
+            node_id=node.id,
+        )
     return tuple(config[field] for field in _MULT_CUT_FIELDS)
 
 
