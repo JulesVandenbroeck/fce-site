@@ -73,7 +73,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 - **Accept:** C1-C6 in PR body; plan `docs/plan-m4-recipe-builder.md`
 - **Depends on:** F-012 (done, `82ce11c`)
 - **Branch / PR:** `task/d-018-interiors-style` — #55
-- **Status:** in review (cycle 1); gate reproduced 728 passed, verify script passes
+- **Status:** cycle 2 dispatched — c1 `findings=7, scope=fail, verdict=rework`. **F1 is against my dispatch** (scope pointed at a check location D-016 never left) → re-spec: check moves to `tests/e2e/test_interior_style.py`, ruled by me; not a cycle.
 
 ## Ready
 
