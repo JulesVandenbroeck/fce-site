@@ -239,33 +239,22 @@ def test_histogram_bins_as_json_int_is_a_graph_error():
         build_run_config(payload, _dataset())
 
 
-@pytest.mark.parametrize("field, bad_value", [
-    ("bins", "0"),
-    ("bins", "1001"),
-    ("bins", "abc"),
-    ("bins", "1.5"),
-    ("min", "nan"),
-    ("min", "inf"),
+@pytest.mark.parametrize("overrides, match", [
+    ({"bins": "0"}, "bins"),
+    ({"bins": "1001"}, "bins"),
+    ({"bins": "abc"}, "bins"),
+    ({"bins": "1.5"}, "bins"),
+    ({"max": "inf"}, "finite"),  # min < max holds (60.0 < inf); only isfinite() catches this
+    ({"min": "60.0", "max": "60.0"}, "min"),
+    ({"min": "120.0", "max": "60.0"}, "min"),
 ])
-def test_histogram_bins_min_max_bad_values_are_rejected(field, bad_value):
+def test_histogram_bins_min_max_bad_values_are_rejected(overrides, match):
     payload = {
         "nodes": [_sel_node(), _obs_node(), _hist_node()],
         "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
     }
-    payload["nodes"][-1]["config"][field] = bad_value
-    with pytest.raises(GraphError, match=field):
-        build_run_config(payload, _dataset())
-
-
-@pytest.mark.parametrize("min_value, max_value", [("60.0", "60.0"), ("120.0", "60.0")])
-def test_histogram_min_not_less_than_max_is_rejected(min_value, max_value):
-    payload = {
-        "nodes": [_sel_node(), _obs_node(), _hist_node()],
-        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
-    }
-    payload["nodes"][-1]["config"]["min"] = min_value
-    payload["nodes"][-1]["config"]["max"] = max_value
-    with pytest.raises(GraphError, match="min"):
+    payload["nodes"][-1]["config"].update(overrides)
+    with pytest.raises(GraphError, match=match):
         build_run_config(payload, _dataset())
 
 

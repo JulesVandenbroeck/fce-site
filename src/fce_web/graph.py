@@ -351,18 +351,24 @@ def _histogram_dict(node: _Node, plot_idx: int) -> dict:
     try:
         bins = int(config["bins"])
     except ValueError:
-        raise GraphError(f"node {node.id!r}: 'bins' must be a whole number, got {config['bins']!r}")
+        raise GraphError(
+            f"node {node.id!r}: 'bins' must be a whole number, got {config['bins']!r}", node_id=node.id
+        )
     if not 1 <= bins <= _MAX_BINS:
-        raise GraphError(f"node {node.id!r}: 'bins' must be between 1 and {_MAX_BINS}, got {bins}")
+        raise GraphError(
+            f"node {node.id!r}: 'bins' must be between 1 and {_MAX_BINS}, got {bins}", node_id=node.id
+        )
     try:
         hist_min = float(config["min"])
         hist_max = float(config["max"])
+        if not (math.isfinite(hist_min) and math.isfinite(hist_max)):
+            raise ValueError("not finite")
     except ValueError:
-        raise GraphError(f"node {node.id!r}: 'min' and 'max' must be numbers")
-    if not (math.isfinite(hist_min) and math.isfinite(hist_max)):
-        raise GraphError(f"node {node.id!r}: 'min' and 'max' must be finite numbers")
+        raise GraphError(f"node {node.id!r}: 'min' and 'max' must be finite numbers", node_id=node.id)
     if not hist_min < hist_max:
-        raise GraphError(f"node {node.id!r}: 'min' must be less than 'max', got {hist_min} and {hist_max}")
+        raise GraphError(
+            f"node {node.id!r}: 'min' must be less than 'max', got {hist_min} and {hist_max}", node_id=node.id
+        )
     return {
         "observable": None,  # filled in by the caller, which knows the Observable node
         "x_label": config.get("x_label", ""),
