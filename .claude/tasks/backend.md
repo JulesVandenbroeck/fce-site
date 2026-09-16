@@ -20,8 +20,18 @@ IDs are `B-nnn`, allocated in order and never reused.
   and asserted by C10/C11 — at least one `{"type": "progress"}` item and **exactly one** terminal
   `{"type": "done", ...}` as the last item; a cache-hit job's queue holds only the sentinel.
   The sentinel is put unconditionally in a `finally`, so a drain loop cannot hang on an exception.
-- **Branch / PR:** `task/b-024-env-threading` — PR not yet opened
-- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=9 (C1-C9).
+- **Branch / PR:** `task/b-024-env-threading` — #45
+- **Status:** in review (cycle 1). checks=9 (C1-C9), all 9 claimed met.
+- **Gate (§5.1) passed 2026-09-16**, re-run at `7f82558` in `~/fce-gate-b024`: 623 unit / **683** full /
+  60 e2e collected / flake8 0, and `~/.fce/{output,cache}` mtimes unchanged across the unit run.
+  **The first gate run showed `output` moving** — F-007's suite was running concurrently on a branch
+  without this fix. Re-run serially, clean. Incidental confirmation the bug was real.
+  **Consequence for scheduling: this criterion is measured on a shared directory, so B-024 and any
+  other suite run must not overlap.** The two wave-5 reviews are serialised for that reason.
+- **Deviation to rule on at merge:** two files outside the given scope — `tests/test_run_context.py`
+  (its exact-signature assertion necessarily fails once `env` is added) and `tests/e2e/test_run_harness.py`
+  (read `os.environ["FCE_HOME"]` set by the retired fixture). Both are mechanical fallout of the required
+  signature change. My scope omission, not scope creep.
 - Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ## Ready

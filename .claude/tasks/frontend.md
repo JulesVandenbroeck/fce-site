@@ -10,8 +10,19 @@ IDs are `F-nnn`, allocated in order and never reused.
 ## In progress
 
 ### F-007 — Serialise, submit, stream, show progress
-- **Branch / PR:** `task/f-007-run-submit-stream` — PR not yet opened
-- **Status:** dispatched (cycle 1), 2026-09-16, `isolation: worktree`. checks=11 (C1-C11).
+- **Branch / PR:** `task/f-007-run-submit-stream` — #46
+- **Status:** coder done, all 11 claimed met; **gate + review held until PR #45's review finishes** —
+  B-024's central criterion is measured on the shared `~/.fce`, which any concurrent suite disturbs.
+- **Contract shipped, verbatim in PR #46's body (C10), consumed read-only by D-016 and F-008:**
+  `#run-control`/`#run-button`, and `#results` carrying `#results-status` (aria-live, phase + percent),
+  `#results-progress` (native `<progress max=100>`, hidden until the first frame), `#results-note`
+  (aria-live, **no `role="alert"`**, no banner class — brief §2), `#results-chart`.
+  **F-008 renders into `#results-chart`**, reading its `data-result` attribute or the bubbling
+  `fce:result` CustomEvent it dispatches on `done`.
+- **`x`/`y` never leave the client** — `run.js` rebuilds each node as `{id, kind, config}`, so a
+  drag-then-resubmit is a cache hit. That is stronger than the ride-along the dispatch allowed for.
+- **Environment note:** the coder added Chromium r1243 to the shared `~/.cache/ms-playwright`
+  (additive, r1234 untouched) — an unpinned `playwright` in a fresh worktree venv resolved higher.
 - **Depends on:** F-005, F-006, B-020, B-021, B-022, B-023 (all merged); go-ahead given 2026-09-11. Wave 5.
 - **C1/C2 deviate from the plan text by my ruling, 2026-09-16.** `docs/plan-m3-vertical-slice.md:720-727`
   asks for `{nodes, edges, ui{}}` with layout confined to `ui`. Enumerated by `scout`: nothing reads a
