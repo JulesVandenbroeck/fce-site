@@ -1,31 +1,16 @@
 /* Opened interior wraps inside NODE_W; growNode() sets the height.
- *
- * D-018/C3: the canvas SVG has a fixed viewBox (shell.html, 704x512) and
- * does not clip an overflowing foreignObject, so an interior tall enough
- * (Multiplicity's seven fields; Selection grown to several rows) would
- * spill the whole node past the canvas surface into whatever sits below
- * it. Capped and internally scrollable instead, the same "tall content
- * scrolls in its own container" rule the chart and cutflow already
- * follow -- not `position: sticky` on the summary: a sticky header paints
- * over whatever scrolls up underneath it, which put the Selection node's
- * own "Add condition" button behind it and out of pointer reach once
- * several rows pushed it that far down. Scrolling the whole interior,
- * summary included, keeps every control simultaneously reachable by mouse
- * and keyboard. */
+ * D-018/C3: capped and internally scrollable so a tall interior (Multiplicity's
+ * seven fields; Selection grown to several rows) never spills the fixed-viewBox
+ * canvas SVG; the whole interior scrolls together (not `position: sticky` on
+ * the summary) so a scrolled-down "Add condition" stays reachable. */
 .node__interior {
   margin-top: var(--space-1);
 }
 .node__interior[open] {
   display: block;
-  /* `.node` is a flex column (canvas.css) and `flex-shrink`'s default is 1;
-   * a flex item's automatic minimum size stops tracking its content once
-   * that item's own `overflow` is anything but `visible` (the CSS Flexbox
-   * spec's min-size-auto rule), so without `flex-shrink: 0` this cap
-   * fights the *outer* flex layout instead of the content: `.node` is
-   * still at its pre-grow height at the instant this is measured, the
-   * flex algorithm shrinks the interior to fit inside it, `scrollHeight`
-   * reports that already-shrunk size back to `growNode()`, and the node
-   * never grows at all. */
+  /* flex-shrink: 0 -- without it, `.node`'s flex-column min-size-auto rule
+   * shrinks this to `.node`'s pre-grow height before growNode() ever reads
+   * scrollHeight, and the node never grows (regression caught by D-018/C6). */
   flex-shrink: 0;
   max-height: calc(var(--space-7) * 6);
   overflow-y: auto;
@@ -61,10 +46,6 @@
 .mode-toggle__legend {
   display: block;
   width: 100%;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--node-label-on-fill);
   margin-bottom: var(--space-1);
   padding: 0;
 }
@@ -107,22 +88,26 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-/* ---- shared native controls, all four interiors (D-018) -------------------
- * Every control here sits directly on the node's own saturated `--node-*`
- * fill (no separate panel/flyout -- the 2026-09-02 ruling was inline grow),
- * so text controls get a light --paper face rather than trying to read ink
- * against the fill -- the same inversion `.mode-toggle__opt`'s checked state
- * already uses above. Specificity keeps this from touching
- * `.mode-toggle__opt label`/`.obs-panel__opt label` (two classes each, so
- * they always win the cascade regardless of source order) or the radio/
- * checkbox inputs those rules hide (`input[type="radio"]` is layered and
- * opacity: 0; `input[type="checkbox"]` is untouched here beyond focus). */
-.node__interior label {
-  display: block;
+/* Shared caps-label look: every uppercase-tracked label/legend across the
+ * four interiors (D-018/F4), each keeping its own layout declarations below. */
+.mode-toggle__legend,
+.node__interior label,
+.obs-panel legend,
+.mult-group legend {
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
   color: var(--node-label-on-fill);
+}
+
+/* ---- shared native controls, all four interiors (D-018) -------------------
+ * Every control here sits on the node's own saturated `--node-*` fill, so
+ * text controls get a light --paper face rather than reading ink against the
+ * fill. Specificity keeps this from touching `.mode-toggle__opt label`/
+ * `.obs-panel__opt label` (two classes each) or the radio/checkbox inputs
+ * those rules hide. */
+.node__interior label {
+  display: block;
   line-height: var(--leading-tight);
   margin-top: var(--space-1);
 }
@@ -140,7 +125,7 @@
   padding: var(--space-1);
   margin-top: var(--space-1);
 }
-.node__interior :is(select, input):focus-visible {
+.node__interior :is(select, input, button):focus-visible {
   outline: var(--focus-ring-width) solid var(--node-label-on-fill);
   outline-offset: var(--focus-ring-offset);
 }
@@ -156,10 +141,6 @@
 }
 .obs-panel legend {
   padding: 0;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--node-label-on-fill);
 }
 .obs-panel__opt {
   display: flex;
@@ -205,16 +186,11 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
-.selection-add:focus-visible,
-.selection-remove:focus-visible {
-  outline: var(--focus-ring-width) solid var(--node-label-on-fill);
-  outline-offset: var(--focus-ring-offset);
-}
 
 /* ---- Multiplicity groups (F-012) --------------------------------------------
- * A plain top-divider replaces the default fieldset border/margin/padding
- * (reset to zero below; a browser's UA default fieldset box is wide enough
- * to eat into the 160px node's already-tight budget on its own). */
+ * A plain top-divider replaces the default fieldset border/margin/padding:
+ * a browser's UA default fieldset box is wide enough to eat into the 160px
+ * node's already-tight budget on its own. */
 .mult-group {
   border: 0;
   margin: var(--space-1) 0 0;
@@ -229,10 +205,6 @@
 .mult-group legend {
   margin: 0;
   padding: 0;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--node-label-on-fill);
 }
 .mult-group label:first-of-type {
   margin-top: var(--space-1);
