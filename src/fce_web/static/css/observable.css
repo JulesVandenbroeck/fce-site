@@ -1,7 +1,19 @@
-/* Opened interior wraps inside NODE_W; growNode() sets the height. */
-
+/* Opened interior wraps inside NODE_W; growNode() sets the height.
+ * D-018/C3: capped and internally scrollable so a tall interior (Multiplicity's
+ * seven fields; Selection grown to several rows) never spills the fixed-viewBox
+ * canvas SVG; the whole interior scrolls together (not `position: sticky` on
+ * the summary) so a scrolled-down "Add condition" stays reachable. */
 .node__interior {
   margin-top: var(--space-1);
+}
+.node__interior[open] {
+  display: block;
+  /* flex-shrink: 0 -- without it, `.node`'s flex-column min-size-auto rule
+   * shrinks this to `.node`'s pre-grow height before growNode() ever reads
+   * scrollHeight, and the node never grows (regression caught by D-018/C6). */
+  flex-shrink: 0;
+  max-height: calc(var(--space-7) * 6);
+  overflow-y: auto;
 }
 .node__interior-summary {
   cursor: pointer;
@@ -34,10 +46,6 @@
 .mode-toggle__legend {
   display: block;
   width: 100%;
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--node-label-on-fill);
   margin-bottom: var(--space-1);
   padding: 0;
 }
@@ -78,4 +86,126 @@
 .mode-toggle__opt input:focus-visible + label {
   outline: var(--focus-ring-width) solid var(--node-label-on-fill);
   outline-offset: var(--focus-ring-offset);
+}
+
+/* Shared caps-label look: every uppercase-tracked label/legend across the
+ * four interiors (D-018/F4), each keeping its own layout declarations below. */
+.mode-toggle__legend,
+.node__interior label,
+.obs-panel legend,
+.mult-group legend {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--node-label-on-fill);
+}
+
+/* ---- shared native controls, all four interiors (D-018) -------------------
+ * Every control here sits on the node's own saturated `--node-*` fill, so
+ * text controls get a light --paper face rather than reading ink against the
+ * fill. Specificity keeps this from touching `.mode-toggle__opt label`/
+ * `.obs-panel__opt label` (two classes each) or the radio/checkbox inputs
+ * those rules hide. */
+.node__interior label {
+  display: block;
+  line-height: var(--leading-tight);
+  margin-top: var(--space-1);
+}
+.node__interior select,
+.node__interior input[type="number"],
+.node__interior input[type="text"] {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--border-hairline) solid var(--node-label-on-fill);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+  margin-top: var(--space-1);
+}
+.node__interior :is(select, input, button):focus-visible {
+  outline: var(--focus-ring-width) solid var(--node-label-on-fill);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ---- Observable panels (F-011) --------------------------------------------- */
+.obs-panel {
+  margin-top: var(--space-1);
+}
+.obs-panel fieldset {
+  border: 0;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+.obs-panel legend {
+  padding: 0;
+}
+.obs-panel__opt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.obs-panel__opt label {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* ---- Selection rows (F-011) ------------------------------------------------- */
+.selection-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.selection-row {
+  border-top: var(--border-hairline) dashed var(--node-label-on-fill);
+  padding-top: var(--space-1);
+}
+.selection-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.selection-row label:first-child {
+  margin-top: 0;
+}
+.selection-add,
+.selection-remove {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-1);
+  padding: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--node-selection);
+  background: var(--node-label-on-fill);
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* ---- Multiplicity groups (F-012) --------------------------------------------
+ * A plain top-divider replaces the default fieldset border/margin/padding:
+ * a browser's UA default fieldset box is wide enough to eat into the 160px
+ * node's already-tight budget on its own. */
+.mult-group {
+  border: 0;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0 0;
+  border-top: var(--border-hairline) dashed var(--node-label-on-fill);
+}
+.mult-group:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.mult-group legend {
+  margin: 0;
+  padding: 0;
+}
+.mult-group label:first-of-type {
+  margin-top: var(--space-1);
 }
