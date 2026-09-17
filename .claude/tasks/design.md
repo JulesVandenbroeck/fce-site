@@ -68,12 +68,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-### D-018 — Style the four node interiors
-- **Scope:** `static/css/observable.css`, `static/css/canvas.css` (+ new `docs/design-explorations/interior_style_verify.py` — D-016 left no check location; deviation stated in PR)
-- **Accept:** C1-C6 in PR body; plan `docs/plan-m4-recipe-builder.md`
-- **Depends on:** F-012 (done, `82ce11c`)
-- **Branch / PR:** `task/d-018-interiors-style` — #55
-- **Status:** cycle 2 dispatched — c1 `findings=7, scope=fail, verdict=rework`. **F1 is against my dispatch** (scope pointed at a check location D-016 never left) → re-spec: check moves to `tests/e2e/test_interior_style.py`, ruled by me; not a cycle.
+_none._
 
 ## Ready
 
@@ -118,6 +113,8 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-018** — styled the four node interiors — #55, `ac97b42`, 2 cycles + 1 re-spec (mine: scope pointed at a check location D-016 never left), clean gate (`findings=1, scope=pass, verdict=approve`).
+  Suite floor **729**. `observable.css` only; guard `tests/e2e/test_interior_style.py` (colour/no UA fallback, grown height, no h-scroll at 1440/1024/768). `.node__interior[open]` capped + scrollable, `flex-shrink: 0` load-bearing for `growNode`. Focus rings unguarded by test (C2 one-off). F8 docstring trim backlogged. **Closes M4 coding.**
 - **D-016** — results region and chart styling — #48, `bb4f355`, 1 cycle, clean gate (`findings=4, scope=pass, verdict=approve`).
   checks=13. Suite floor **697** unchanged. `.canvas-region` now stacks (column) — a row left ~48px at 1440; F-007 F11 closed
   (`#results` 720px). Focus ring on `.bin-hit` uses `--ink` (graphite-blue fails 3:1 on two fills) — accepted deviation.

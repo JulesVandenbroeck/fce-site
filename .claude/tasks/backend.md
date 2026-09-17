@@ -230,7 +230,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **728 passed**; flake8 0. Confirmed on PR #54 head by the orchestrator, 2026-09-17.
+- Suite floor **729 passed**; flake8 0. Confirmed on PR #55 head by the orchestrator, 2026-09-17.
+- Superseded: suite floor **728 passed**; flake8 0. Confirmed on PR #54 head by the orchestrator, 2026-09-17.
 - Superseded: suite floor **715 passed**; flake8 0. Confirmed on PR #52 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **707 passed**; flake8 0. Confirmed on PR #51 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **701 passed**; flake8 0. Confirmed on PR #49 head by the orchestrator, 2026-09-16.

@@ -712,3 +712,5 @@ and are historical now that #6 is merged.
 
 - **B-028 F1** — `tests/test_graph.py:294-296` `test_valid_mult_cut_values_are_accepted` duplicates the digest assertion at `:212`; delete. (PR #54)
 - **B-028 F2** — `src/fce_web/graph.py:259` comment cites `ltype.py:676`; should be `path_filter.py:676`. (PR #54)
+- **D-018 F8** — `tests/e2e/test_interior_style.py:3-11,28-32` docstrings retell review history (and call the committed script "uncommitted"); cut to one line each. (PR #55)
+- **D-018 note** — at 1024/768 `.canvas-region` h-scroll can leave the leftmost node out of reach for coordinate clicks; keyboard/DOM click still work. Relevant to future e2e at narrow widths. (PR #55)
