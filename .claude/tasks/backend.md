@@ -9,7 +9,14 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-029 — Backlog cleanup sweep, backend
+- **Scope:** backend-owned files named by the items in the dispatch (`.flake8`, `scripts/screenshot.py`, `runs.py`, `engine/runconfig.py`, `graph.py`, `jobs.py`, `tests/**` outside e2e test files, `tests/fixtures/`).
+- **Accept:** every listed item fixed or reported N/A in a PR-body table; every removed test nodeid named (collect-only diff vs main); suite green, flake8 0.
+- **Depends on:** nothing. Items from the 2026-09-17 sweep.
+- **Branch / PR:** `task/b-029-backlog-cleanup` — not yet opened
+- **Status:** in progress (cycle 1)
+- **Review:** —
+- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
 ## Ready
 

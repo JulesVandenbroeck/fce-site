@@ -9,7 +9,14 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-013 — Backlog cleanup sweep, frontend
+- **Scope:** `static/js/graph.js`, `static/js/shell.js`, `tests/e2e/test_{graph,shell,fonts,interior_style}.py` and the file holding `test_figure_holds_fixed_size_at_every_width`.
+- **Accept:** every listed item fixed or reported N/A in a PR-body table; removed nodeids named; suite green.
+- **Depends on:** nothing.
+- **Branch / PR:** `task/f-013-backlog-cleanup` — not yet opened
+- **Status:** in progress (cycle 1)
+- **Review:** —
+- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
 ## Ready
 

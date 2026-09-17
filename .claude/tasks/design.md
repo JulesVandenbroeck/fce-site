@@ -68,7 +68,14 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none._
+### D-019 — Backlog cleanup sweep, design
+- **Scope:** `static/css/shell.css`, `static/css/chart.css`.
+- **Accept:** every listed item fixed or reported N/A in a PR-body table; no computed-style change; suite green.
+- **Depends on:** nothing.
+- **Branch / PR:** `task/d-019-backlog-cleanup` — not yet opened
+- **Status:** in progress (cycle 1)
+- **Review:** —
+- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
 ## Ready
 
