@@ -77,10 +77,26 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   cleanups.
 - **Depends on:** D-020 (#59, merged `7043e76`).
 - **Branch / PR:** `task/d-021-canvas-frame-pan` — #60
-- **Status:** in rework (cycle 2 dispatched). Cycle 1: `findings=4, scope=fail, verdict=rework`
-  — [review](https://github.com/JulesVandenbroeck/fce-site/pull/60#issuecomment-5781891877).
-  **C1-C10 hold, checks=10, probe floor 54.** Cycle 2 adds C11 (sheet never drops content it holds)
-  and C12 (C8's void guard becomes a real `elementsFromPoint` hit test), both gated on a mutation.
+- **Status:** **handed off (cycle 2)** — see [`handoff/d-021-design-2.md`](../handoff/d-021-design-2.md).
+  The coder's watchdog fired at **90%** on cycle 2's *first* tool call, so cycle 2 produced two
+  commits and a handoff, not the four findings. Branch head `7b1c210`, pushed. **PR #60 body is
+  still cycle 1's** — C11/C12 are not appended, because there is no evidence to append.
+  Cycle 1: `findings=4, scope=fail, verdict=rework` —
+  [review](https://github.com/JulesVandenbroeck/fce-site/pull/60#issuecomment-5781891877).
+  **C1-C10 hold, checks=10, probe floor 54.**
+- **What cycle 2 actually landed, reconciled against git:**
+  - **F3 fixed** (`01b140c`) — anchor `git rm`'d from the branch; `git diff --stat main...HEAD` is
+    exactly the three scoped files, nothing under `.claude/` or `src/`. **`scope=fail` is cleared.**
+  - **F2 code landed, UNVERIFIED** (`7b1c210`, `canvas-frame.html:355-363`) — three-term `Math.max`
+    per axis, the reviewer's suggested form unmodified. **Never loaded in a browser, no probe.
+    Treat as untested code, not as F2 resolved.**
+  - **F1 and F4 not started.** Both agreed with on reading, neither disputed.
+  - **No verification run of any kind this cycle.** The last real numbers are cycle 1's at
+    `85f4665`. The 54 floor must be re-established before C11's probe can grow it.
+- **Trap the successor checks first:** `moveNode` (`canvas-frame.html:439-440`) clamps `n.x` to
+  `sheet.w - NODE_W`, and `applyZoom` now derives `sheet.w` from node extent. Confirm `moveNode`
+  never calls `applyZoom` or the clamp and the sizing are mutually recursive. It does not on a read;
+  it was not exercised.
 - **Diagnosis (§5.4): a cycle, not a re-specification.** Nothing was dropped, and C6 shipped with a
   command and was met. F2 is against a property no criterion ever gated — clause 3. Same shape as
   B-006's unbounded `ast.Pow`: the dispatch named the root cause ("a node becomes unreachable") and
