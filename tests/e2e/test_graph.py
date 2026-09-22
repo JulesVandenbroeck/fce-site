@@ -95,7 +95,16 @@ def test_keyboard_only_builds_a_complete_mission_1_graph(index: LoadedPage) -> N
 
 
 def test_pointer_places_drags_and_connects_nodes(index: LoadedPage) -> None:
-    """C2: positions persist as {id, x, y}, edges as an ordered pair list."""
+    """C2: positions persist as {id, x, y}, edges as an ordered pair list.
+
+    F-015: the canvas is no longer confined to a fixed strip beside the
+    palette -- the two `.click()`s above can themselves scroll the page (the
+    palette now sits below the canvas in the unstyled shell, per N12), so a
+    coordinate read before that scroll settles is stale before it is even
+    used. Every box a raw `page.mouse` drag depends on is read only after
+    `scroll_into_view_if_needed()` on the element the drag starts from --
+    never cached from an earlier point in the test.
+    """
     page = index.page
 
     page.locator('.palette__add[data-add-kind="Multiplicity"]').click()
@@ -105,7 +114,9 @@ def test_pointer_places_drags_and_connects_nodes(index: LoadedPage) -> None:
     n1_start = _node_by_id(graph, "n1")
 
     # Drag n1 by its handle.
-    handle_box = page.locator('.node[data-node-id="n1"] .node__handle').bounding_box()
+    handle = page.locator('.node[data-node-id="n1"] .node__handle')
+    handle.scroll_into_view_if_needed()
+    handle_box = handle.bounding_box()
     start = (handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
     page.mouse.move(*start)
     page.mouse.down()
@@ -115,9 +126,15 @@ def test_pointer_places_drags_and_connects_nodes(index: LoadedPage) -> None:
     moved = _node_by_id(_graph(page), "n1")
     assert (moved["x"], moved["y"]) != (n1_start["x"], n1_start["y"])
 
-    # Connect n1's output to n2's input by dragging between ports.
-    out_box = page.locator('.node[data-node-id="n1"] .port--out').bounding_box()
-    in_box = page.locator('.node[data-node-id="n2"] .port--in').bounding_box()
+    # Connect n1's output to n2's input by dragging between ports. Scroll
+    # once, via the first port, so both ports are read in the same settled
+    # frame -- scrolling to each independently would invalidate whichever
+    # was measured first.
+    out_port = page.locator('.node[data-node-id="n1"] .port--out')
+    in_port = page.locator('.node[data-node-id="n2"] .port--in')
+    out_port.scroll_into_view_if_needed()
+    out_box = out_port.bounding_box()
+    in_box = in_port.bounding_box()
     out_center = (out_box["x"] + out_box["width"] / 2, out_box["y"] + out_box["height"] / 2)
     in_center = (in_box["x"] + in_box["width"] / 2, in_box["y"] + in_box["height"] / 2)
     page.mouse.move(*out_center)
@@ -484,12 +501,22 @@ def test_opened_node_near_bottom_edge_stays_inside_canvas_in_every_mode(index: L
     """C1: an Observable dragged low on the canvas, then opened, keeps its
     measured box (`.node`'s own `getBoundingClientRect`, not the
     foreignObject) fully inside the canvas SVG -- in every one of the four
-    modes, since switching modes re-measures and re-clamps too."""
+    modes, since switching modes re-measures and re-clamps too.
+
+    F-015: placing the node, opening it, and checking a mode radio can each
+    scroll the page on their own (the palette and the node's own controls
+    can land off-screen once the canvas is no longer confined to a fixed
+    strip, N12), so `svg_box` is never captured once and trusted -- both it
+    and `node_box` are (re)measured together, immediately after bringing
+    the canvas back into view, right where each is used.
+    """
     page = index.page
     page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
-    svg_box = page.locator("#canvas-svg").bounding_box()
 
+    svg = page.locator("#canvas-svg")
     handle = page.locator('.node[data-node-id="n1"] .node__handle')
+    handle.scroll_into_view_if_needed()
+    svg_box = svg.bounding_box()
     handle_box = handle.bounding_box()
     start = (handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
     target = (svg_box["x"] + svg_box["width"] / 2, svg_box["y"] + svg_box["height"] - 5)
@@ -502,6 +529,8 @@ def test_opened_node_near_bottom_edge_stays_inside_canvas_in_every_mode(index: L
 
     for mode in ("ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom"):
         page.locator(f'.node[data-node-id="n1"] input[value="{mode}"]').check()
+        svg.scroll_into_view_if_needed()
+        svg_box = svg.bounding_box()
         node_box = page.locator('.node[data-node-id="n1"]').bounding_box()
         assert _inside(node_box, svg_box), f"mode {mode}: {node_box} not inside {svg_box}"
 
