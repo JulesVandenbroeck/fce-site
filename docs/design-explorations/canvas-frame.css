@@ -221,7 +221,11 @@ button { font: inherit; color: inherit; }
 .palette { left: 0; border-right: var(--border-hairline) solid var(--paper-line); }
 .mission-panel { right: 0; border-left: var(--border-hairline) solid var(--paper-line); }
 
-.palette[data-state="expanded"] { width: calc(var(--space-7) * 5 + var(--space-6)); }
+/* D-021: 4 x --space-7, down from 5 + --space-6. The palette holds five short
+ * rows and did not need 368px; the 112px it gives back is 112px of clear band
+ * between the panels, which is what lets the whole pipeline open inside that
+ * band at a zoom the node labels are still readable at (C9). */
+.palette[data-state="expanded"] { width: calc(var(--space-7) * 4); }
 .mission-panel[data-state="expanded"] { width: calc(var(--space-7) * 5); }
 
 @media (prefers-reduced-motion: reduce) {
