@@ -9,22 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-029 — Backlog cleanup sweep, backend
-- **Scope:** backend-owned files named by the items in the dispatch (`.flake8`, `scripts/screenshot.py`, `runs.py`, `engine/runconfig.py`, `graph.py`, `jobs.py`, `tests/**` outside e2e test files, `tests/fixtures/`).
-- **Accept:** every listed item fixed or reported N/A in a PR-body table; every removed test nodeid named (collect-only diff vs main); suite green, flake8 0.
-- **Depends on:** nothing. Items from the 2026-09-17 sweep.
-- **Branch / PR:** `task/b-029-backlog-cleanup` — not yet opened
-- **Status:** in review (cycle 2) — PR **#56**, head `69eda7d`
-- **Review:** cycle 1 `findings=4, scope=fail, verdict=rework` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/56#issuecomment-5776251703)).
-  **F1 was the real one:** the replacement for #31 F4 was *itself* unfalsifiable — `FCE_HOME` is redirected to
-  `tmp_path`, so `sorted(os.listdir(DATASET_DIR)) == committed_before` certifies a property true by construction.
-  Cycle 2 deleted it rather than writing a third one. F2 docstring trim, F4 confirmed no-action.
-  **F3 was against my dispatch, not the coder** — my scope list omitted `engine/analytical_loop.py` while the item
-  I assigned (#26 F3) lives there. **Scope ratified as widened**; `scope=fail` carries no consequence.
-  Gate re-run by me on `69eda7d`: **721 passed**, flake8 0.
-- **Suite floor:** 729 → **721** (9 nodeids removed, 1 added), every one named by collect-only diff and
-  reproduced independently by me and by the reviewer.
-- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
+_none._
 
 ## Ready
 
@@ -63,6 +48,15 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-029** — backlog cleanup sweep, backend — #56, `07ef418`, 2 cycles, clean gate (`findings=2, scope=pass, verdict=approve`).
+  **Suite floor 729 → 721** (9 nodeids removed, 1 added; every one named by collect-only diff, reproduced by me and
+  the reviewer). −142 lines net. Two real defects fixed: **`jobs.py` `_queue_owner` now pruned on eviction** (#37 F14,
+  mutation-proven 502≠500) and **the cache-digest formula exported from `engine/runconfig.py`** (#33 F7) so `graph.py`
+  stops transcribing it a third time. `.flake8` now excludes `.venv` — `flake8 .` went 40,000+ → 5.
+  **Cycle 1's F1 is the lesson:** the fix for #31 F4 replaced a dead assertion with *another* unfalsifiable one
+  (`FCE_HOME` is redirected to `tmp_path`, so `os.listdir(DATASET_DIR)` cannot change). Cycle 2 deleted it rather
+  than writing a third. F3 was against my scope list → ratified. F5 (one dead `monkeypatch.setenv` + docstring
+  clause) and F6 (e2e flake) backlogged.
 - **B-028** — reject unknown Multiplicity ops/ltypes and negative counts — #54, `8aca7aa`, 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`).
   Suite floor **728**. `_MULT_OPS`/`_MULT_LTYPES` in `graph.py`, checked in `_mult_cut_tuple`; allowed sets in `docs/api.md`. F1 (redundant digest test) + F2 (wrong file in comment) backlogged.
 - **B-027** — server-side validation of Histogram bins/min/max — #52, `0b6f202`, 2 cycles, clean gate (`findings=0, scope=pass, verdict=approve`).
@@ -260,7 +254,12 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **729 passed**; flake8 0. Confirmed on PR #55 head by the orchestrator, 2026-09-17.
+- Suite floor **720 passed**; flake8 0. Confirmed by the orchestrator on `main` at `9c72521`, 2026-09-22,
+  after B-029 (−8) and F-013 (−1) merged. `verify.py --all` exits 1 with only `board-lane-fill` red.
+- **`compute_h5_sel` / `compute_h5` are module-level functions in `engine/runconfig.py`** (B-029, #33 F7).
+  `RunConfig`'s methods, `_validate_nested_digests` and `graph.build_run_config` all call the one copy.
+  **Do not transcribe the digest formula again.** Digests themselves are unchanged.
+- Superseded: suite floor **729 passed**; flake8 0. Confirmed on PR #55 head by the orchestrator, 2026-09-17.
 - Superseded: suite floor **728 passed**; flake8 0. Confirmed on PR #54 head by the orchestrator, 2026-09-17.
 - Superseded: suite floor **715 passed**; flake8 0. Confirmed on PR #52 head by the orchestrator, 2026-09-16.
 - Superseded: suite floor **707 passed**; flake8 0. Confirmed on PR #51 head by the orchestrator, 2026-09-16.

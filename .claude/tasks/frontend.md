@@ -9,24 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-013 — Backlog cleanup sweep, frontend
-- **Scope:** `static/js/graph.js`, `static/js/shell.js`, `tests/e2e/test_{graph,shell,fonts,interior_style}.py` and the file holding `test_figure_holds_fixed_size_at_every_width`.
-- **Accept:** every listed item fixed or reported N/A in a PR-body table; removed nodeids named; suite green.
-- **Depends on:** nothing.
-- **Branch / PR:** `task/f-013-backlog-cleanup` — not yet opened
-- **Status:** in review (cycle 2) — PR **#57**, head `4dbdc67`
-- **Review:** cycle 1 `findings=3, scope=pass, verdict=rework` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/57#issuecomment-5776405265)).
-  F1 fixed — the twin `if (fo)` guard on the same lookup is gone and the lookup is hoisted once into
-  `moveNodeTo`, verified against all three callers (pointer drag, keyboard nudge, `growNode` re-clamp).
-  F3 fixed by the **first of the two forms the reviewer itself offered** (one glyph-pair string, not an options
-  object), declared in the PR body rather than chosen silently — a legitimate pick between the reviewer's own
-  alternatives, not a deviation. **F2 was mine** and is closed by pushing `main` to `6ff54c1`.
-  Criteria appended C6/C7, **checks 5 → 7**; the count never fell.
-  Gate re-run by me on `4dbdc67`: **728 passed**, flake8 0, scope = the 5 frontend files, `.claude/tasks/*.md`
-  gone from the diff.
-- **Suite floor:** 729 → **728** (`test_mission_pager_has_nothing_to_page_to`, folded into its sibling;
-  shown stronger, not merely shorter).
-- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
+_none._
 
 ## Ready
 
@@ -41,6 +24,14 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-013** — backlog cleanup sweep, frontend — #57, `9c72521`, 2 cycles, clean gate (`findings=1, scope=pass, verdict=approve`).
+  **Suite floor 729 → 728** (`test_mission_pager_has_nothing_to_page_to`, folded into its sibling and shown
+  *stronger* by mutation, not merely shorter). `shell.js` 59 → 45 lines; `wireToggle` merged from two near-identical
+  wirings. **Cycle 1's F1:** the sweep deleted `measuredSize`'s unreachable guard but left the twin `if (fo)` on the
+  same lookup four lines below — the one outcome a task about deleting unreachable guards must not produce; cycle 2
+  hoisted the lookup after verifying all three callers. F2 was mine (unpushed bookkeeping on the branch point).
+  F4 (the expanded-state chevron is written twice, in template and JS, unguarded — `aria-hidden` decoration, no
+  functional consequence) backlogged.
 - **F-012** — Multiplicity and Histogram interiors, range presets — #53, `82ce11c`, 2 cycles, clean gate (`findings=0, scope=pass, verdict=approve`; c1 F1-F5 all fixed).
   Suite floor **718**. Default Histogram range 0-150 GeV **ratified by the user 2026-09-17**; mission-1 modal bin 90.0-93.0 GeV. New class for D-018: `.mult-group` (fieldset per object kind). Blank count -> `null` -> server 400.
 - **F-011** — Observable and Selection interiors + `expr.js` (**CONTRACT TASK**) — #50, `e5a8bff`, 2 cycles + 1 re-spec (mine: scope omitted `test_graph.py`),

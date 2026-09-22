@@ -74,6 +74,21 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   for an excess **in `data`** over the stack, so authoring or reviewing either mission end to end
   needs a fixture whose `data` actually contains the signal, plus `X4`/`X5` for a faithful
   background. A task against B-018's `tests/fixtures/make_fixture.py`. _(truth deck, slides 6-7)_
+- **N9 `test_observable_mode_is_config_not_identity` is flaky under the full suite** (frontend).
+  `tests/e2e/test_graph.py:281`. Observed failing once in a full run and passing on rerun, standalone, and
+  `tests/e2e` alone — **twice, independently: by me and by PR #56's reviewer**, on branches that touch no frontend
+  file. May be N7's port contention or may be genuine; N7 is the cheaper hypothesis to rule out first. Until then it
+  will keep costing false cycles. _(B-029 c2 review + orchestrator, 2026-09-22)_
+- **N10 One dead line and a false docstring clause in `test_fixture_dataset.py`** (backend, trivial).
+  `:139-141` — `monkeypatch.setenv` does *not* cover `run_physics_loop`'s cache/output resolution; the `env` dict
+  does (`driver.py:162` → `analytical_loop.py:266` → `paths.py:27`). Proven: forcing `setenv` to a bogus dir leaves
+  the test passing. Delete the line and the `monkeypatch` parameter, cut the docstring to its first sentence.
+  Rides along on any later backend touch of this file. _(PR #56 c2 F5)_
+- **N11 The expanded-state chevron is written twice and nothing checks they agree** (frontend, two lines).
+  `shell.js:43-44` + `shell.html:20,88` — once as the template's `&#8249;`/`&#8250;`, once as `glyphs[0]`.
+  Transposing a pair leaves all 77 e2e tests green. Fix: read the expanded glyph from the DOM at wire time
+  (`const expandGlyph = glyph.textContent;`) and pass only the collapsed one. Not gating — the value is
+  `aria-hidden` decoration and the screen-reader text is derived separately. _(PR #57 c2 F4)_
 - **N5 `verify.py`'s `check_git_diff` gives every design task three false reds** (design/tooling).
   `docs/design-explorations/verify.py:1936` enforces a D-002-era invariant that a branch touches nothing under
   `src/` except `tokens.css` and the fonts. Any task editing any other `src/` stylesheet trips `git-diff-clean`

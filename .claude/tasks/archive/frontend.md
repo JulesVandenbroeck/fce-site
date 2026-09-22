@@ -492,3 +492,44 @@ F9 (one garbled sentence stating that last point) was folded into D-016's dispat
 - Re-spec: C1 superseded 3 F-006 assertions in `tests/e2e/test_graph.py`, which my scope forbade; coder stopped at 700/703 and reported.
 - c1 rework: `"l1.pt"` and MET label hard-coded in graph.js (C3); C4 docstring cited a mutation that fails in JS, not at safe_eval.
 - Lesson (mine): push bookkeeping before a worktree dispatch, or it rides the task branch.
+
+
+### F-013 — Backlog cleanup sweep, frontend (merged 2026-09-22, PR #57, `9c72521`)
+
+### F-013 — Backlog cleanup sweep, frontend
+- **Scope:** `static/js/graph.js`, `static/js/shell.js`, `tests/e2e/test_{graph,shell,fonts,interior_style}.py` and the file holding `test_figure_holds_fixed_size_at_every_width`.
+- **Accept:** every listed item fixed or reported N/A in a PR-body table; removed nodeids named; suite green.
+- **Depends on:** nothing.
+- **Branch / PR:** `task/f-013-backlog-cleanup` — not yet opened
+- **Status:** in review (cycle 2) — PR **#57**, head `4dbdc67`
+- **Review:** cycle 1 `findings=3, scope=pass, verdict=rework` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/57#issuecomment-5776405265)).
+  F1 fixed — the twin `if (fo)` guard on the same lookup is gone and the lookup is hoisted once into
+  `moveNodeTo`, verified against all three callers (pointer drag, keyboard nudge, `growNode` re-clamp).
+  F3 fixed by the **first of the two forms the reviewer itself offered** (one glyph-pair string, not an options
+  object), declared in the PR body rather than chosen silently — a legitimate pick between the reviewer's own
+  alternatives, not a deviation. **F2 was mine** and is closed by pushing `main` to `6ff54c1`.
+  Criteria appended C6/C7, **checks 5 → 7**; the count never fell.
+  Gate re-run by me on `4dbdc67`: **728 passed**, flake8 0, scope = the 5 frontend files, `.claude/tasks/*.md`
+  gone from the diff.
+- **Suite floor:** 729 → **728** (`test_mission_pager_has_nothing_to_page_to`, folded into its sibling;
+  shown stronger, not merely shorter).
+- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
+
+
+#### Post-mortem
+
+**Cycle 1's F1 is the one to remember: a cleanup that deletes one half of a contradiction and leaves the other.**
+Cycle 1 removed `measuredSize`'s unreachable `!div` fallback and added a comment asserting the foreignObject always
+exists — while `moveNodeTo` kept wrapping the *same* `foreignObjectFor(id)` lookup in `if (fo)` four lines later.
+Both cannot be true and a reader cannot tell which is, so the file was left less honest than before the sweep
+touched it. Cycle 2 verified all three callers before hoisting rather than deleting on the reviewer's say-so.
+
+**The suite count fell and that was checked, not assumed.** 729 → 728 by folding
+`test_mission_pager_has_nothing_to_page_to` into its sibling; the surviving test was shown red under the exact
+mutation the deleted one guarded (stripping `disabled` off `#pager-back`), by both coder and reviewer, the latter
+by runtime monkeypatch rather than by editing the template. That is the F-008 precedent held to.
+
+**On F3 the coder chose between the reviewer's own two alternatives and said so.** I told the re-review to judge
+whether the hazard was closed and not to re-litigate the form — left unsaid, that is how a third cycle gets spent
+on nothing. The reviewer then found F4, a *narrower* residue of the same hazard, and correctly declined to gate on
+it: the value it protects is `aria-hidden` decoration.

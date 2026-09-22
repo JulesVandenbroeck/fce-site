@@ -2288,3 +2288,45 @@ own trim — the call is at `:280`; code correct, prose wrong — backlogged).
 
 ### B-027 — server-side validation of Histogram bins/min/max
 - PR #52, merged `0b6f202`, 2 cycles. Reviews on PR #52. c1 rework: `min` nan/inf cases also failed `min < max`, so `isfinite` was untested and `max="inf"` would reach `bh.axis.Regular`. c2 fixed with a `max: inf` row; merged `main` for B-026 node ids.
+
+
+### B-029 — Backlog cleanup sweep, backend (merged 2026-09-22, PR #56, `07ef418`)
+
+### B-029 — Backlog cleanup sweep, backend
+- **Scope:** backend-owned files named by the items in the dispatch (`.flake8`, `scripts/screenshot.py`, `runs.py`, `engine/runconfig.py`, `graph.py`, `jobs.py`, `tests/**` outside e2e test files, `tests/fixtures/`).
+- **Accept:** every listed item fixed or reported N/A in a PR-body table; every removed test nodeid named (collect-only diff vs main); suite green, flake8 0.
+- **Depends on:** nothing. Items from the 2026-09-17 sweep.
+- **Branch / PR:** `task/b-029-backlog-cleanup` — not yet opened
+- **Status:** in review (cycle 2) — PR **#56**, head `69eda7d`
+- **Review:** cycle 1 `findings=4, scope=fail, verdict=rework` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/56#issuecomment-5776251703)).
+  **F1 was the real one:** the replacement for #31 F4 was *itself* unfalsifiable — `FCE_HOME` is redirected to
+  `tmp_path`, so `sorted(os.listdir(DATASET_DIR)) == committed_before` certifies a property true by construction.
+  Cycle 2 deleted it rather than writing a third one. F2 docstring trim, F4 confirmed no-action.
+  **F3 was against my dispatch, not the coder** — my scope list omitted `engine/analytical_loop.py` while the item
+  I assigned (#26 F3) lives there. **Scope ratified as widened**; `scope=fail` carries no consequence.
+  Gate re-run by me on `69eda7d`: **721 passed**, flake8 0.
+- **Suite floor:** 729 → **721** (9 nodeids removed, 1 added), every one named by collect-only diff and
+  reproduced independently by me and by the reviewer.
+- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
+
+
+#### Post-mortem
+
+**The finding worth keeping is cycle 1's F1, because it is this project's signature failure arriving inside a task
+whose whole purpose was to remove it.** Item #31 F4 was "a dead assertion"; the fix replaced it with
+`sorted(os.listdir(DATASET_DIR)) == committed_before`, which is *also* dead — the test redirects `FCE_HOME` to
+`tmp_path` by two independent mechanisms, so nothing reachable can write into `DATASET_DIR` whether the redirection
+works or not. A green suite certified it. The reviewer caught it by asking §2's question — what would this print if
+the property were false? — and the coder deleted it rather than writing a third. **A cleanup sweep is exactly where
+this defect breeds:** the coder is rewarded for replacing something, and a replacement that cannot fail looks like
+progress in the diff.
+
+**F3 was against my dispatch.** My file scope omitted `src/fce_web/engine/analytical_loop.py` while the item I
+assigned (#26 F3) lives in that file. The coder flagged it instead of widening silently, which is the behaviour the
+scope rule exists to produce; I ratified the widening rather than making it re-open the question.
+
+**Two environment facts surfaced that cost real time and are now backlog N7/N8:** `.venv` is an editable install
+rooted at the primary checkout, so a suite run from any other worktree imports the *wrong source* unless
+`PYTHONPATH` is set — the reviewer lost a run to it, and it fails in the dangerous direction (it would certify the
+primary checkout while claiming to test the branch). And two full suites running concurrently in different
+worktrees contend on the live-server port; I produced a false failure that way and nearly spent a cycle on it.
