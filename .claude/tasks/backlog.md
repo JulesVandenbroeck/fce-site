@@ -213,14 +213,24 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   no defect behind it; ponytail says no.
 - **`--node-observable` token** (D-013) — check folded into D-019; drop if it exists.
 
-- **N19 Agent worktree venvs install a newer playwright than the primary checkout** (tooling; bites
-  every frontend and design task). Found on F-014's gate, 2026-09-23. A fresh worktree venv resolved
-  **playwright 1.63.0 → chromium-1243**; the primary checkout is **1.62.0 → chromium-1234**. Both
-  builds coexist in the shared `~/.cache/ms-playwright`, so a coder and the gate can run the same
-  e2e suite against **different browsers** and get different results with no warning anywhere. F-014
-  passed 721 in the worktree and 719 in the primary checkout for exactly this reason, and the
-  difference was a real behavioural difference in layout reflow, not flake. Every suite floor in
-  `backend.md` `## Contracts in force` was measured in the primary checkout, so that is the
-  reference environment. Options: pin playwright in `pyproject.toml` (needs the U1 dependency
-  sign-off), or have the dispatch template tell coders to run the suite with the primary venv.
-  **Until this is fixed, the §5.1 free gate is the only thing catching it.** _(orchestrator, 2026-09-23)_
+- **N19 The primary checkout's venv pins `fce_web` to the primary checkout's `src/`, so it CANNOT
+  test any worktree's code** (tooling; it silently falsified an orchestrator gate). Found on F-014's
+  gate, 2026-09-23. **This entry's first version blamed a playwright version skew. That was wrong,
+  and it is recorded because the wrong diagnosis was plausible and cost the coder a round trip.**
+  `.venv/lib/python3.12/site-packages/__editable__.fce_web-0.1.0.pth` is a plain path entry reading
+  `<primary checkout>/src`. `conftest.py` inserts only the repo root, never `src/`, so nothing
+  overrides it. Run pytest from a detached worktree with that venv and **pytest collects the
+  worktree's test files (path-based) while the app served to the browser is the primary checkout's
+  `src/` — i.e. `main`.** The branch's JS is never exercised. Confirm with
+  `.venv/bin/python -c "import fce_web; print(fce_web.__file__)"` — it prints the primary path with
+  cwd inside the worktree.
+  **What it looked like:** F-014's gate reported 2 failed / 719 passed against the coder's 721; both
+  failures were the wrong app being served. Re-run with the head checked out **detached in the primary
+  checkout**, it is **721 passed, flake8 0** — the coder's numbers, exactly.
+  **The version skew is real but was not the cause:** worktree venvs resolve playwright **1.63.0
+  (chromium-1243)**, the primary **1.62.0 (chromium-1234)**, both builds in the shared cache. The
+  coder re-ran the branch on both and got 721 on each, so the fix has no browser dependency.
+  **Procedure fixed in `orchestrator/CLAUDE.md` §5.1.** A real fix is still open: pin playwright and
+  make a per-worktree `pip install -e .` explicit in the dispatch template, or have `conftest.py`
+  prepend the repo-local `src/`. Doing it properly needs the U1 dependency sign-off.
+  _(orchestrator, 2026-09-23)_

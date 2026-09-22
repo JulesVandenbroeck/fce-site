@@ -579,6 +579,30 @@ cycle disproving it. Neither is worth the thirty seconds this gate costs.
 `PLAYWRIGHT_BROWSERS_PATH`; the browser cache is shared at `~/.cache/ms-playwright`. A check run
 in the same broken environment reproduces the coder's error and then certifies it.
 
+**Check the PR head out DETACHED IN THE PRIMARY CHECKOUT — never run the gate from a scratch
+worktree.** `git checkout --detach <pr head>`, run, `git checkout main` after. The reason is
+mechanical: `.venv/.../__editable__.fce_web-0.1.0.pth` is a plain path entry pinned to the **primary
+checkout's** `src/`, and `conftest.py` never prepends a repo-local `src/`. So a detached worktree plus
+the primary venv **collects the branch's tests while serving `main`'s application code**, and the
+branch's own JS is never exercised at all.
+
+That combination falsified F-014's gate on 2026-09-23. It reported 2 failed / 719 passed against a
+true 721, both failures caused by the wrong app being served, and I turned that into a confident
+wrong diagnosis — a chromium version skew, which is real (worktrees get 1.63.0/chromium-1243, the
+primary 1.62.0/chromium-1234) but was not the cause. The coder disproved it by re-running on both
+builds. **An instrument that structurally cannot observe the property it certifies** (§2) applies to
+the gate itself, not only to a coder's checks, and the gate is the one instrument nothing else
+double-checks.
+
+**So before trusting any gate run, confirm the tree under test is the one you think it is:**
+
+```bash
+.venv/bin/python -c "import fce_web; print(fce_web.__file__)"
+```
+
+Note also that while the primary checkout is detached, `.claude/` is the **branch's** copy — do not
+write bookkeeping until you are back on `main`. Backlog **N19**.
+
 Running a command is not reading a file, so this does not conflict with §1.
 
 ### 5.2 The loop

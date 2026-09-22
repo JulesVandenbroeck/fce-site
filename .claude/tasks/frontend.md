@@ -17,17 +17,20 @@ IDs are `F-nnn`, allocated in order and never reused.
   `test_graph.py:258,318,339,454,480` / `test_interior_style.py:22` stay green and unweakened.
 - **Depends on:** the canvas ruling 2026-09-22 (N15 was held until D-020 landed — it has).
 - **Branch / PR:** `task/f-014-node-collapse-height` — not yet opened
-- **Status:** **gate return (§5.1), not a cycle** — PR #61 opened at `adcb6e3`; its "721 passed" does
-  **not** reproduce in the primary checkout: I get **2 failed, 719 passed**, flake8 0.
-  **Cause isolated, do not re-derive:** the agent worktree venv carries **playwright 1.63.0
-  (chromium-1243)**, the primary checkout **1.62.0 (chromium-1234)**; both builds sit in the shared
-  cache, so the two runs used different browsers. The coder's PASS is real on 1243 and its own RED
-  transcript is what the primary env produces on 1234 — deterministic, fix present.
-  Two things sent back: (a) the fix reads `scrollHeight` in the same tick as the foreignObject reset,
-  a synchronous-reflow assumption that does not hold on 1234 — must be green on **both** builds;
-  (b) `test_graph.py::test_observable_mode_is_config_not_identity` fails **only** in the full-suite
-  run (passes alone, and passes with `test_graph.py` run alone: 1 failed / 19 passed), so it is
-  ordering or state leakage and must be attributed with a run, not asserted.
+- **Status:** **gate passed (2nd attempt) — dispatching the reviewer.** PR #61 at `adcb6e3`.
+  **721 passed, flake8 0**, reproduced by me with the head checked out **detached in the primary
+  checkout**. The coder's numbers were right all along.
+- **My first gate run was the broken instrument, and this is the lesson.** I ran it from a detached
+  worktree using the primary venv and got 2 failed / 719 passed, then diagnosed a playwright/chromium
+  skew and sent the branch back. Both were wrong. `__editable__.fce_web-0.1.0.pth` pins `fce_web` to
+  the **primary checkout's** `src/`, so that combination collects the branch's tests while serving
+  `main`'s app — the branch's JS was never exercised. The coder disproved the skew theory by re-running
+  on **both** chromium builds (1234 and 1243) and getting 721 on each. Cost: one round trip, no code
+  change; `adcb6e3` is untouched since it was first pushed. Procedure fixed in `orchestrator/CLAUDE.md`
+  §5.1; hazard filed as backlog **N19**.
+- **`test_observable_mode_is_config_not_identity` was collateral of the same fault**, not ordering
+  leakage as I claimed — it fails only when the wrong app is served, and does not reproduce once the
+  branch's source is actually under test. Nothing carries forward from it.
 - **Ground truth is in the dispatch, enumerated by `scout` 2026-09-22 — it refutes the obvious
   hypothesis.** No inline style is ever set; `graph.js:186` writes only the `foreignObject` height, and
   `wireInteriorToggle` (`:237-245`) calls the *same* `growNode` on open and close. The defect is in the
