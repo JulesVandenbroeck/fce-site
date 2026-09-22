@@ -7397,6 +7397,7 @@ def main() -> None:
     parser.add_argument("--bench", action="store_true", help="D-005 Bench section only")
     parser.add_argument("--board", action="store_true", help="D-006 Board section only")
     parser.add_argument("--shell", action="store_true", help="D-010 Shell section only")
+    parser.add_argument("--canvas-frame", action="store_true", help="D-020 canvas-frame section only")
     parser.add_argument(
         "--section",
         action="append",
@@ -7407,7 +7408,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     if (not args.plot and not args.all and not args.beamline and not args.bench and not args.board
-            and not args.shell and not args.section):
+            and not args.shell and not args.canvas_frame and not args.section):
         args.all = True
 
     all_results = []
@@ -7809,6 +7810,16 @@ def main() -> None:
                 (
                     "shell-canvas-fade-affordance",
                     run_section("shell-canvas-fade-affordance", check_shell_canvas_fade_affordance, pw),
+                )
+            )
+
+        if args.all or args.canvas_frame:
+            # D-020's single registered section -- criterion C4, the one
+            # property a screenshot cannot settle.
+            all_results.append(
+                (
+                    "canvas-frame-no-h-scroll",
+                    run_section("canvas-frame-no-h-scroll", check_canvas_frame_no_h_scroll, pw),
                 )
             )
 
@@ -8901,6 +8912,125 @@ def _dispatch_shell_section(name: str, pw: Playwright) -> bool:
     if name not in SHELL_SECTIONS:
         raise KeyError(f"unknown section {name!r}; known: {sorted(SHELL_SECTIONS)}")
     return SHELL_SECTIONS[name](pw)
+
+
+# =========================================================================
+# D-020 -- canvas-frame.html: the re-framed analysis canvas (full-bleed
+# canvas, overlay panels, pan/zoom, bottom results drawer).
+#
+# One registered section, per this project's one-runnable-check convention.
+# The properties a screenshot settles -- the canvas keeps its width under
+# every panel state, pan and zoom respond to pointer and keyboard, the run
+# button sits on the bottom border and Run auto-expands the drawer -- were
+# measured in a real browser and written out in this task's pull request.
+# The property a screenshot cannot settle is horizontal page scroll across
+# the combinatorial state space, and this is that one.
+# =========================================================================
+
+CANVAS_FRAME_HTML = HERE / "canvas-frame.html"
+CANVAS_FRAME_DESIGN_WIDTHS: tuple[int, ...] = (1440, 1024, 768)
+
+
+def _canvas_frame_set_state(page: Page, region: str, toggle: str, want: str) -> None:
+    """Drive one collapse region to `want` through its own chevron button,
+    never by writing the attribute -- so the page's real toggle handler is
+    what produces the state being measured."""
+    if page.eval_on_selector(region, "el => el.dataset.state") != want:
+        page.click(toggle)
+        page.wait_for_timeout(250)  # let the width transition settle
+
+
+def check_canvas_frame_no_h_scroll(pw: Playwright) -> bool:
+    """D-020 criterion C4: the page never grows a horizontal scrollbar in
+    any combination of palette state x mission-panel state x drawer state,
+    at 1440, 1024 and 768.
+
+    Eight states per width, plus one post-Run state, twenty-seven probes in
+    all. This is the D-020 analogue of `check_shell_page_no_h_scroll` and
+    measures the same comparison (`document.documentElement.scrollWidth`
+    against `clientWidth`), extended by the third collapsing region D-020
+    adds -- the results drawer. It is the property this project has been
+    burned by before, and the one a screenshot cannot settle, because a
+    page one pixel too wide and a page four hundred pixels too wide look
+    identical in a viewport capture.
+
+    The drawer is driven into its expanded state twice over: once through
+    its chevron and once through the Run button, because Run auto-expanding
+    the drawer is a second, independent path into the widest layout."""
+    section(
+        "D-020 C4 -- canvas-frame-no-h-scroll: no horizontal page scroll, "
+        "8 states (palette x panel x drawer) + post-Run, x 3 widths"
+    )
+
+    states = [
+        (pal, pan, drw)
+        for pal in ("collapsed", "expanded")
+        for pan in ("collapsed", "expanded")
+        for drw in ("collapsed", "expanded")
+    ]
+    reports: list[str] = []
+    failures: list[str] = []
+
+    for width in CANVAS_FRAME_DESIGN_WIDTHS:
+        browser = pw.chromium.launch()
+        context = browser.new_context(viewport={"width": width, "height": 900})
+        page = context.new_page()
+        page.goto(CANVAS_FRAME_HTML.as_uri())
+        page.wait_for_timeout(200)
+
+        for palette_state, panel_state, drawer_state in states:
+            _canvas_frame_set_state(page, "#palette", "#palette-toggle", palette_state)
+            _canvas_frame_set_state(page, "#mission-panel", "#panel-toggle", panel_state)
+            _canvas_frame_set_state(page, "#drawer", "#drawer-toggle", drawer_state)
+            measured = page.evaluate(
+                """() => ({
+                    scrollWidth: document.documentElement.scrollWidth,
+                    clientWidth: document.documentElement.clientWidth,
+                    drawer: document.getElementById('drawer').dataset.state,
+                })"""
+            )
+            name = f"{width}px palette={palette_state},panel={panel_state},drawer={measured['drawer']}"
+            reports.append(f"{name}: scrollWidth={measured['scrollWidth']} clientWidth={measured['clientWidth']}")
+            if measured["scrollWidth"] > measured["clientWidth"] + 1:
+                failures.append(
+                    f"{name}: document.documentElement.scrollWidth {measured['scrollWidth']}px "
+                    f"> clientWidth {measured['clientWidth']}px"
+                )
+
+        # The second path into an expanded drawer: Run, which auto-expands
+        # it. Measured separately because it is the gesture a student
+        # actually uses to get there.
+        _canvas_frame_set_state(page, "#drawer", "#drawer-toggle", "collapsed")
+        page.click("#run-button")
+        page.wait_for_timeout(250)
+        after_run = page.evaluate(
+            """() => ({
+                scrollWidth: document.documentElement.scrollWidth,
+                clientWidth: document.documentElement.clientWidth,
+                drawer: document.getElementById('drawer').dataset.state,
+                expanded: document.getElementById('drawer-toggle').getAttribute('aria-expanded'),
+            })"""
+        )
+        name = f"{width}px after Run (drawer={after_run['drawer']}, aria-expanded={after_run['expanded']})"
+        reports.append(f"{name}: scrollWidth={after_run['scrollWidth']} clientWidth={after_run['clientWidth']}")
+        if after_run["drawer"] != "expanded" or after_run["expanded"] != "true":
+            failures.append(f"{name}: Run did not auto-expand the drawer")
+        if after_run["scrollWidth"] > after_run["clientWidth"] + 1:
+            failures.append(
+                f"{name}: document.documentElement.scrollWidth {after_run['scrollWidth']}px "
+                f"> clientWidth {after_run['clientWidth']}px"
+            )
+        browser.close()
+
+    probes = (len(states) + 1) * len(CANVAS_FRAME_DESIGN_WIDTHS)
+    ok = not failures
+    line(
+        f"document.documentElement.scrollWidth <= clientWidth in all {probes} layouts "
+        f"(8 states + 1 post-Run state, x {len(CANVAS_FRAME_DESIGN_WIDTHS)} widths)",
+        ok,
+        "; ".join(reports) if ok else f"{len(failures)} failing layout(s): {failures}",
+    )
+    return ok
 
 
 if __name__ == "__main__":
