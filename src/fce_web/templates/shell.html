@@ -1,16 +1,48 @@
-{#- The three-region app shell (F-004, porting docs/design-explorations/shell.html).
+{#- The four-region app shell (F-004; restructured F-015 per
+   docs/design-explorations/canvas-frame.html, backlog N12/N14).
 
-   Included by any page that hosts the analysis canvas -- currently index.html only.
-   Unstyled by design: static/css/ is D-015's, dispatched in wave 3 against the class
-   names and data-state values this partial ships (listed in the F-004 PR body).
+   Included by any page that hosts the analysis canvas -- currently
+   index.html only.
+
+   The canvas is full-bleed: the palette, the mission panel and the results
+   drawer are overlays on top of it rather than sharing width with it (N12)
+   -- opening a panel never narrows the canvas, because each panel is pinned
+   to an edge of `#frame` instead of sitting beside the canvas in a row.
+   Unstyled by design until D-022 lands -- static/css/ is design's, and the
+   classes below are the ones docs/design-explorations/canvas-frame.css
+   already expects, ported rather than invented.
+
+   Pan/zoom on the canvas surface (N13) is deliberately NOT here -- that is
+   F-016's task. The canvas keeps its fixed 704x512 viewBox and graph.js's
+   own CANVAS_W/CANVAS_H untouched.
 
    Two kinds of state stay apart, per docs/design-brief.md §4:
      - the graph (nodes/edges) -- the engine's business, F-005's to add and
        serialise into the run payload. #nodes-layer is empty until then.
-     - palette/panel collapsed-or-expanded -- UI state, carried only in each
-       region's own `data-state` attribute, and never read by a run payload.
+     - palette/panel/drawer collapsed-or-expanded -- UI state, carried only
+       in each region's own `data-state` attribute, and never read by a run
+       payload.
 #}
-<div class="shell" id="shell">
+<div class="frame" id="frame">
+
+  <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
+    <div class="canvas-wrap" id="canvas-wrap">
+      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512"
+           role="group" aria-label="Analysis canvas -- drag nodes to arrange, drag between ports to connect">
+        <defs>
+          <marker id="canvas-arrowhead" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6"
+                  orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead"></path>
+          </marker>
+        </defs>
+        <rect x="0" y="0" width="704" height="512" class="canvas-bg"></rect>
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+      <p class="canvas-status" id="canvas-status" aria-live="polite">Add a node from the palette,
+        or Tab onto the canvas to move around it.</p>
+    </div>
+  </section>
 
   <aside class="palette" id="palette" data-state="expanded" aria-labelledby="palette-title">
     <div class="palette__head">
@@ -44,40 +76,6 @@
     </ul>
   </aside>
 
-  <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
-    <div class="canvas-wrap" id="canvas-wrap">
-      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512"
-           role="group" aria-label="Analysis canvas -- drag nodes to arrange, drag between ports to connect">
-        <defs>
-          <marker id="canvas-arrowhead" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6"
-                  orient="auto-start-reverse">
-            <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead"></path>
-          </marker>
-        </defs>
-        <rect x="0" y="0" width="704" height="512" class="canvas-bg"></rect>
-        <g id="edges-layer"></g>
-        <g id="nodes-layer"></g>
-      </svg>
-      <p class="canvas-status" id="canvas-status" aria-live="polite">Add a node from the palette,
-        or Tab onto the canvas to move around it.</p>
-    </div>
-
-    {#- F-007: submits the canvas graph above and streams its progress below.
-       Markup contract for D-016 (styling) and F-008 (the chart), written out
-       in full in the F-007 PR body -- read it there, not by guessing from
-       this comment. #}
-    <div class="run-control" id="run-control">
-      <button type="button" class="run-control__button" id="run-button" aria-disabled="false">Run analysis</button>
-    </div>
-
-    <section class="results" id="results" aria-label="Run results">
-      <p class="results__status" id="results-status" aria-live="polite">Not run yet.</p>
-      <progress class="results__progress" id="results-progress" max="100" value="0" hidden></progress>
-      <p class="results__note" id="results-note" aria-live="polite" hidden></p>
-      <div class="results__chart" id="results-chart"></div>
-    </section>
-  </section>
-
   <aside class="mission-panel" id="mission-panel" data-state="expanded" aria-label="Mission">
     <div class="mission-panel__head">
       <button class="mission-panel__pager" id="pager-back" type="button" aria-label="Previous mission" disabled>&#8249;</button>
@@ -95,6 +93,37 @@
         shows up.</p>
     </div>
   </aside>
+
+  {#- F-007/F-015: the Run control and the results now live in a drawer
+     rising from the bottom edge (N14), collapsed by default. Its chevron
+     sits above the Run Analysis button. Wired through the same wireToggle
+     shell.js already uses for the two side panels (a third call, not a
+     second mechanism), and pressing Run Analysis auto-expands it if it is
+     collapsed. Markup contract for D-022 (styling) and F-008 (the chart) is
+     unchanged from the F-007 PR body: #run-button, #results-status,
+     #results-progress, #results-note, #results-chart. #}
+  <section class="drawer" id="drawer" data-state="collapsed" aria-label="Results drawer">
+    <div class="drawer__body" id="drawer-body" hidden>
+      <section class="results" id="results" aria-label="Run results">
+        <p class="results__status" id="results-status" aria-live="polite">Not run yet.</p>
+        <progress class="results__progress" id="results-progress" max="100" value="0" hidden></progress>
+        <p class="results__note" id="results-note" aria-live="polite" hidden></p>
+        <div class="results__chart" id="results-chart"></div>
+      </section>
+    </div>
+
+    <div class="drawer__handle-row">
+      <button class="drawer__toggle" id="drawer-toggle" type="button"
+              aria-expanded="false" aria-controls="drawer-body">
+        <span class="drawer__toggle-glyph" id="drawer-toggle-glyph" aria-hidden="true">&#8963;</span>
+        <span class="sr-only" id="drawer-toggle-sr">Expand the results drawer</span>
+      </button>
+    </div>
+
+    <div class="run-control" id="run-control">
+      <button type="button" class="run-control__button" id="run-button" aria-disabled="false">Run analysis</button>
+    </div>
+  </section>
 
 </div>
 <script type="module" src="/static/js/shell.js" defer></script>
