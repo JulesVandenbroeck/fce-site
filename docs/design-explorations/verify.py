@@ -71,6 +71,7 @@ from pathlib import Path
 from typing import Optional
 
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
+from playwright.sync_api import TimeoutError as PWTimeout
 import numpy as np
 
 # One line of a check function's report: (label, pass/fail, detail string).
@@ -7822,6 +7823,16 @@ def main() -> None:
                     run_section("canvas-frame-no-h-scroll", check_canvas_frame_no_h_scroll, pw),
                 )
             )
+            all_results.append(
+                (
+                    "canvas-frame-node-extent-monotonic",
+                    run_section(
+                        "canvas-frame-node-extent-monotonic",
+                        check_canvas_frame_node_extent_monotonic,
+                        pw,
+                    ),
+                )
+            )
 
     section("Summary")
     for name, ok in all_results:
@@ -8946,7 +8957,14 @@ def _canvas_frame_set_state(page: Page, region: str, toggle: str, want: str) -> 
     instead of silently relabelling it as a layout that was never measured."""
     if page.eval_on_selector(region, "el => el.dataset.state") != want:
         page.click(toggle)
-        page.wait_for_timeout(250)  # let the width transition settle
+        # D-021 F4: wait on the state the click is supposed to produce,
+        # not a fixed transition-settle guess -- a slow or stalled
+        # transition then fails the probe instead of being silently
+        # measured before it finishes.
+        try:
+            page.wait_for_selector(f'{region}[data-state="{want}"]', timeout=2000)
+        except PWTimeout:
+            pass  # unreached state is reported by the caller's own comparison
     return page.eval_on_selector(region, "el => el.dataset.state")
 
 
@@ -9070,12 +9088,27 @@ def check_canvas_frame_no_h_scroll(pw: Playwright) -> bool:
                 """() => {
                     const v = document.getElementById('canvas-viewport');
                     const r = v.getBoundingClientRect();
-                    const s = document.getElementById('canvas-svg').getBoundingClientRect();
+                    // D-021 C12: what is actually painted at each point, not
+                    // the SVG element's own box -- a backing rect can be
+                    // painted smaller than its element (e.g. by an ancestor
+                    // clip or transform) while the box comparison still
+                    // reads full coverage.
+                    const corners = [
+                        [r.left + 1, r.top + 1],
+                        [r.right - 1, r.top + 1],
+                        [r.left + 1, r.bottom - 1],
+                        [r.right - 1, r.bottom - 1],
+                        [(r.left + r.right) / 2, (r.top + r.bottom) / 2],
+                    ];
+                    const covers = corners.every(
+                        ([x, y]) => document.elementsFromPoint(x, y).some(
+                            (el) => el.classList && el.classList.contains('canvas-grid')
+                        )
+                    );
                     return {
                         rangeX: v.scrollWidth - v.clientWidth,
                         rangeY: v.scrollHeight - v.clientHeight,
-                        covers: s.left <= r.left + 0.5 && s.top <= r.top + 0.5
-                                && s.right >= r.right - 0.5 && s.bottom >= r.bottom - 0.5,
+                        covers,
                         zoom: document.getElementById('zoom-readout').textContent,
                     };
                 }"""
@@ -9104,6 +9137,70 @@ def check_canvas_frame_no_h_scroll(pw: Playwright) -> bool:
         ok,
         "; ".join(reports) if ok else f"{len(failures)} failing probe(s): {failures}",
     )
+    return ok
+
+
+def check_canvas_frame_node_extent_monotonic(pw: Playwright) -> bool:
+    """D-021 C11 (F2): zooming *in* must never orphan a node placed at a
+    lower zoom -- the sheet has to be monotonic in the content it holds.
+
+    Drags n5 toward the far edge of the sheet at 50% zoom (a real client-
+    space pointer drag, the same gesture as `startNodeDrag` wires), zooms
+    to 200%, then reads the node's position and its own width/height back
+    from the DOM (never hardcoded) and checks its scaled extent still
+    fits inside the sheet the SVG element paints -- the same size the
+    viewport's scrollWidth/scrollHeight track, so an extent inside it is
+    an extent a pan can reach.
+
+    Must go red if `applyZoom`'s third `Math.max` term (the node-extent
+    term) is removed: at 50% the sheet is then sized to the viewport
+    alone, a node dragged onto that wide 50%-zoom paper sits past what
+    100%/200%'s narrower paper covers, and zooming in strands it off the
+    scrollable area -- PR #60 F2, in reverse."""
+    section("D-021 C11 -- canvas-frame node extent stays inside the sheet across zoom-in")
+    browser = pw.chromium.launch()
+    context = browser.new_context(viewport={"width": 1920, "height": 900})
+    page = context.new_page()
+    page.goto(CANVAS_FRAME_HTML.as_uri())
+    page.wait_for_timeout(200)
+
+    _canvas_frame_zoom(page, 50)
+    handle = page.locator('[data-node-id="n5"] .node-card__handle')
+    box = handle.bounding_box()
+    start_x, start_y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(start_x, start_y)
+    page.mouse.down()
+    page.mouse.move(1919, 899, steps=5)  # toward the far edge, in client px
+    page.mouse.up()
+
+    _canvas_frame_zoom(page, 200)
+    extent = page.evaluate(
+        """() => {
+            const fo = document.querySelector('[data-node-id="n5"]');
+            const svg = document.getElementById('canvas-svg');
+            const zoom = parseFloat(document.getElementById('zoom-readout').textContent) / 100;
+            const x = +fo.getAttribute('x'), y = +fo.getAttribute('y');
+            const w = +fo.getAttribute('width'), h = +fo.getAttribute('height');
+            return {
+                rightPx: (x + w) * zoom,
+                bottomPx: (y + h) * zoom,
+                svgWidthPx: +svg.getAttribute('width'),
+                svgHeightPx: +svg.getAttribute('height'),
+            };
+        }"""
+    )
+    ok = (
+        extent["rightPx"] <= extent["svgWidthPx"] + 0.5
+        and extent["bottomPx"] <= extent["svgHeightPx"] + 0.5
+    )
+    line(
+        "n5's surface extent (position + own size, read from the DOM) stays inside the "
+        "sheet the SVG paints after dragging at 50% and zooming to 200%",
+        ok,
+        f"node right/bottom = {extent['rightPx']:.1f}x{extent['bottomPx']:.1f}px, "
+        f"sheet = {extent['svgWidthPx']}x{extent['svgHeightPx']}px",
+    )
+    browser.close()
     return ok
 
 
