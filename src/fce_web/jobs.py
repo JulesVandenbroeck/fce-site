@@ -67,9 +67,8 @@ _V1_DATASET = Dataset(energy="91 GeV", detector="IDEA")
 
 # ponytail: process-lifetime cap on how many finished jobs the registry
 # remembers, not a real LRU -- a classroom session submits at most a few
-# hundred runs. Evicts the oldest non-"running" job once over the cap
-# (F8); upgrade to a real eviction policy if a long-lived server ever gets
-# near it.
+# hundred runs. Bounded so a long-lived server cannot grow the registry
+# without limit; upgrade to a real eviction policy if it ever gets near it.
 _MAX_JOBS = 500
 
 
@@ -217,11 +216,12 @@ class JobRegistry:
 
     def _evict_over_cap(self) -> None:
         """Drop the oldest non-``"running"`` job once ``self._jobs`` exceeds
-        ``_MAX_JOBS`` (F8). Caller holds ``self._lock``."""
+        ``_MAX_JOBS``. Caller holds ``self._lock``."""
         while len(self._jobs) > _MAX_JOBS:
             for old_id, old_job in self._jobs.items():
                 if old_job.status != "running":
                     del self._jobs[old_id]
+                    self._queue_owner.pop(id(old_job.events), None)
                     break
             else:
                 break  # every job on record is still running; nothing to evict

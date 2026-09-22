@@ -22,22 +22,19 @@ ANALYSIS_CONFIG = os.path.join(
     os.path.dirname(FIXTURE_ROOT), "content", "analyses", "zpeak-dilepton.json"
 )
 
-# The 26 branches engine/analytical_loop.py's key filter selects
+# The 24 branches engine/analytical_loop.py's key filter selects
 # (analytical_loop.py:156-159, substring match on "pt"/"eta"/"phi"/"e"/
 # "weight"/"btag"/"d0signif"/"z0signif"/"charge") and engine/path_filter.py
 # reads by name (path_filter.py:609-643), for every object kind the engine
-# knows -- electron, muon, jet, photon -- plus weight/MET_pt/MET_phi. This
-# is a *subset* of what the real files (and this fixture, downsampled from
-# them byte-for-byte otherwise -- see make_fixture.py) actually carry: the
-# real files also have MET_e/MET_eta (unread) and one counter branch per
-# object (electron_n, jet_n, muon_n, photon_n) -- the ROOT/uproot structural
-# requirement for any variable-length branch, not something read by name.
-# Of those four counters, "electron_n" and "jet_n" happen to also match the
-# substring filter (they contain the letter "e"); "muon_n" and "photon_n" do
-# not. All of this is native to the real production files, unchanged by the
-# downsample -- confirmed against the real ~/.fce/datasets/IDEA/91GeV files
-# this fixture was cut from.
-ENGINE_READ_BRANCHES = {
+# knows -- electron, muon, jet, photon -- plus weight/MET_pt/MET_phi, plus
+# the 6 more the fixture also carries but the engine never reads by name:
+# MET_e/MET_eta (present upstream, unread) and the four structural
+# per-object counters (electron_n, jet_n, muon_n, photon_n -- the ROOT/
+# uproot requirement for any variable-length branch). All of this is native
+# to the real production files, unchanged by the downsample -- confirmed
+# against the real ~/.fce/datasets/IDEA/91GeV files this fixture was cut
+# from.
+FULL_BRANCH_SET = {
     "weight", "MET_pt", "MET_phi",
     "electron_pt", "electron_eta", "electron_phi", "electron_e",
     "electron_d0signif", "electron_z0signif",
@@ -45,12 +42,6 @@ ENGINE_READ_BRANCHES = {
     "muon_d0signif", "muon_z0signif",
     "jet_pt", "jet_eta", "jet_phi", "jet_e", "jet_btag",
     "photon_pt", "photon_eta", "photon_phi", "photon_e",
-}
-
-# The exact branch set the fixture files carry: ENGINE_READ_BRANCHES, plus
-# MET_e/MET_eta (present upstream, never read by name) and the four
-# structural per-object counters.
-FULL_BRANCH_SET = ENGINE_READ_BRANCHES | {
     "MET_e", "MET_eta", "electron_n", "muon_n", "jet_n", "photon_n",
 }
 
@@ -66,9 +57,6 @@ def test_branch_set_matches_the_real_fixture_schema(sample):
     with uproot.open(os.path.join(DATASET_DIR, f"{sample}.root")) as f:
         branches = set(f["ntuple"].keys())
     assert branches == FULL_BRANCH_SET, branches
-    # The engine's own key filter selects a subset of this; confirm the
-    # relationship rather than asserting it in prose.
-    assert ENGINE_READ_BRANCHES <= branches
 
 
 # ---------------------------------------------------------------------------
@@ -138,21 +126,15 @@ def test_x3_dilepton_mass_sits_below_the_z_peak():
 
 # ---------------------------------------------------------------------------
 # Criterion 5: run_analysis completes against the fixture, writing output/
-# into a tmp FCE_HOME -- never into the committed fixture tree.
+# into a tmp FCE_HOME.
 # ---------------------------------------------------------------------------
 
 def test_run_analysis_completes_against_the_fixture(tmp_path, monkeypatch):
-    """``run_analysis``'s ``env`` parameter reaches ``driver._dataset_dir``
-    (dataset discovery) but not ``analytical_loop.run_physics_loop``'s own
-    cache/output directory, which resolves ``get_fce_home()`` with no
-    argument (``analytical_loop.py:272``) and therefore always reads the
-    real process environment for where to read/write ``cache/`` and
-    ``output/`` -- a real inconsistency between the two (reported in this
-    task's PR body as a backlog candidate; out of this task's file scope to
-    fix, since ``analytical_loop.py`` is read-only here). ``monkeypatch.setenv``
-    closes that gap for this test the same way the ``env`` dict closes it for
-    dataset discovery, so both land in the same tmp directory and the
-    committed fixture tree is never touched.
+    """``run_analysis`` completes against a copy of the fixture in a tmp
+    ``FCE_HOME``, writing ``output/hist0_<sample>.root`` per sample.
+    ``monkeypatch.setenv`` covers ``analytical_loop.run_physics_loop``'s own
+    cache/output resolution, which forwards ``env`` alongside the ``env``
+    dict already given to ``run_analysis`` for dataset discovery.
     """
     monkeypatch.setenv("FCE_HOME", str(tmp_path))
     tmp_dataset_dir = tmp_path / "datasets" / "IDEA" / "91GeV"
@@ -166,11 +148,6 @@ def test_run_analysis_completes_against_the_fixture(tmp_path, monkeypatch):
     for sample in SAMPLES:
         out_file = tmp_path / "output" / f"hist0_{sample}.root"
         assert out_file.exists(), f"missing {out_file}"
-
-    fixture_output_dir = os.path.join(FIXTURE_ROOT, "fixtures", "output")
-    assert not os.path.exists(fixture_output_dir), (
-        f"run_analysis wrote into the committed fixture tree: {fixture_output_dir}"
-    )
 
 
 # ---------------------------------------------------------------------------

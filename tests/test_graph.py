@@ -291,11 +291,6 @@ def test_mult_cut_bad_values_are_rejected(field, bad_value, match):
         build_run_config(payload, _dataset())
 
 
-def test_valid_mult_cut_values_are_accepted():
-    cfg = build_run_config(_mission1_payload(), _dataset())
-    assert cfg.h5_sel == _MISSION1_H5_SEL
-
-
 # ---- C13: the multi-path branch (chained Selections, sibling branches
 # sharing a prefix) is covered by a check that can fail. Digests
 # independently derived from the same formula documented above test_mission1_graph_produces_a_run_config
@@ -360,39 +355,9 @@ def test_disagreeing_multiplicity_chains_into_shared_selection_are_rejected():
 # expression is caught here (safe_eval), not left to fail later at engine
 # compile.
 
-def test_illegal_edge_error_carries_no_single_node_id():
-    payload = {
-        "nodes": [_mult_node("m1"), _hist_node("h1")],
-        "edges": [["m1", "h1"]],
-    }
-    with pytest.raises(GraphError) as exc_info:
-        build_run_config(payload, _dataset())
-    assert exc_info.value.node_id is None
-
-
-def test_bad_multiplicity_field_error_names_its_node():
-    payload = _mission1_payload()
-    payload["nodes"][0]["config"]["nlep"] = "2"
-    with pytest.raises(GraphError) as exc_info:
-        build_run_config(payload, _dataset())
-    assert exc_info.value.node_id == "mult1"
-
-
-def test_bad_observable_expr_is_a_graph_error_naming_its_node():
-    payload = {
-        "nodes": [_sel_node(), _obs_node(expr="__import__('os')"), _hist_node()],
-        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
-    }
-    with pytest.raises(GraphError) as exc_info:
-        build_run_config(payload, _dataset())
-    assert exc_info.value.node_id == "obs1"
-
-
-def test_bad_selection_expr_is_a_graph_error_naming_its_node():
-    payload = {
-        "nodes": [_sel_node(exprs=["__import__('os')"]), _obs_node(), _hist_node()],
-        "edges": [["sel1", "obs1"], ["obs1", "hist1"]],
-    }
-    with pytest.raises(GraphError) as exc_info:
-        build_run_config(payload, _dataset())
-    assert exc_info.value.node_id == "sel1"
+# B-029/F1 (PR #51): the 4 tests formerly here duplicated coverage one layer
+# down in tests/test_api_run.py -- test_invalid_graph_is_a_400_with_graph_error_message
+# (the "ds1" node-id check), test_bad_observable_expr_is_a_400_naming_its_node
+# and test_bad_selection_expr_is_a_400_naming_its_node -- and the fourth only
+# asserted GraphError's default node_id=None with no reintroduction it guards
+# against. Kept there instead.

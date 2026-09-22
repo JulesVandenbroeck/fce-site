@@ -296,6 +296,24 @@ class SelectionConfig:
         }
 
 
+def compute_h5_sel(energy: str, detector: str, mult_cuts: list, sel_exprs: list) -> str:
+    """``h5_sel`` per ``ui/graph.py``:1866,1877 -- covers ``energy``,
+    ``detector``, ``mult_cuts``, ``sel_exprs``. The one place this formula is
+    written out; every caller (``RunConfig.compute_h5_sel``, the nested-digest
+    check below, ``fce_web.graph``) goes through this function."""
+    mult_h5_base = energy + detector + str(mult_cuts)
+    return hashlib.md5((mult_h5_base + str(sel_exprs)).encode()).hexdigest()
+
+
+def compute_h5(h5_sel: str, observable: str, bins: str, min_: str, max_: str, target: str) -> str:
+    """``h5`` per ``ui/graph.py``:1881-1884 -- covers everything
+    :func:`compute_h5_sel` covers, plus ``observable``, ``bins``, ``min``,
+    ``max``, ``target``."""
+    return hashlib.md5(
+        (h5_sel + observable + bins + min_ + max_ + target).encode()
+    ).hexdigest()
+
+
 def _validate_nested_digests(cfg: "RunConfig") -> None:
     """Recompute and compare ``h5_sel``/``h5`` per selection and per
     histogram, not just at the top level.
@@ -306,11 +324,8 @@ def _validate_nested_digests(cfg: "RunConfig") -> None:
     disagrees with its own selection's cuts is exactly the silent,
     permanent cache miss the top-level check was meant to prevent.
     """
-    mult_h5_base = cfg.energy + cfg.detector + str(cfg.mult_cuts)
     for i, sel in enumerate(cfg.selections):
-        expected_h5_sel = hashlib.md5(
-            (mult_h5_base + str(sel.sel_exprs)).encode()
-        ).hexdigest()
+        expected_h5_sel = compute_h5_sel(cfg.energy, cfg.detector, cfg.mult_cuts, sel.sel_exprs)
         if sel.h5_sel != expected_h5_sel:
             raise RunConfigError(
                 f"'selections[{i}].h5_sel' ({sel.h5_sel}) does not match the value "
@@ -318,12 +333,7 @@ def _validate_nested_digests(cfg: "RunConfig") -> None:
                 f"({expected_h5_sel})"
             )
         for j, hist in enumerate(sel.histograms):
-            expected_h5 = hashlib.md5(
-                (
-                    expected_h5_sel + hist.observable + hist.bins
-                    + hist.min + hist.max + hist.target
-                ).encode()
-            ).hexdigest()
+            expected_h5 = compute_h5(expected_h5_sel, hist.observable, hist.bins, hist.min, hist.max, hist.target)
             if hist.h5 != expected_h5:
                 raise RunConfigError(
                     f"'selections[{i}].histograms[{j}].h5' ({hist.h5}) does not match "
@@ -362,17 +372,13 @@ class RunConfig:
     def compute_h5_sel(self) -> str:
         """``h5_sel`` per ``ui/graph.py``:1866,1877 -- covers ``energy``,
         ``detector``, ``mult_cuts``, ``sel_exprs``."""
-        mult_h5_base = self.energy + self.detector + str(self.mult_cuts)
-        return hashlib.md5((mult_h5_base + str(self.sel_exprs)).encode()).hexdigest()
+        return compute_h5_sel(self.energy, self.detector, self.mult_cuts, self.sel_exprs)
 
     def compute_h5(self) -> str:
         """``h5`` per ``ui/graph.py``:1881-1884 -- covers everything
         :meth:`compute_h5_sel` covers, plus ``observable``, ``bins``,
         ``min``, ``max``, ``target``."""
-        h5_sel = self.compute_h5_sel()
-        return hashlib.md5(
-            (h5_sel + self.observable + self.bins + self.min + self.max + self.target).encode()
-        ).hexdigest()
+        return compute_h5(self.compute_h5_sel(), self.observable, self.bins, self.min, self.max, self.target)
 
     @classmethod
     def from_dict(cls, data: dict) -> "RunConfig":
