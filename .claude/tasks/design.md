@@ -77,24 +77,19 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   cleanups.
 - **Depends on:** D-020 (#59, merged `7043e76`).
 - **Branch / PR:** `task/d-021-canvas-frame-pan` — #60
-- **Status:** in review prep — **cycle 2 re-dispatched 2026-09-22** from
-  [`handoff/d-021-design-2.md`](../handoff/d-021-design-2.md) into the existing worktree
-  `.claude/worktrees/agent-a3f0c5c43ddaa00dd` (no `isolation`, per §3). Previously: handed off (cycle 2).
-  The coder's watchdog fired at **90%** on cycle 2's *first* tool call, so cycle 2 produced two
-  commits and a handoff, not the four findings. Branch head `7b1c210`, pushed. **PR #60 body is
-  still cycle 1's** — C11/C12 are not appended, because there is no evidence to append.
+- **Status:** **in review (cycle 2)** — reviewer dispatched 2026-09-22 with PR #60 and nothing else.
+  Branch head `85a397e`, pushed; PR body now carries a Cycle 2 section with C11/C12 and their
+  PASS-then-RED mutation transcripts. **checks=12** (C1-C10 + C11 F2 probe + C12 F1 grid hit-test);
+  probe floor **54 + 1** in a new registered section `canvas-frame-node-extent-monotonic`.
   Cycle 1: `findings=4, scope=fail, verdict=rework` —
   [review](https://github.com/JulesVandenbroeck/fce-site/pull/60#issuecomment-5781891877).
-  **C1-C10 hold, checks=10, probe floor 54.**
-- **What cycle 2 actually landed, reconciled against git:**
-  - **F3 fixed** (`01b140c`) — anchor `git rm`'d from the branch; `git diff --stat main...HEAD` is
-    exactly the three scoped files, nothing under `.claude/` or `src/`. **`scope=fail` is cleared.**
-  - **F2 code landed, UNVERIFIED** (`7b1c210`, `canvas-frame.html:355-363`) — three-term `Math.max`
-    per axis, the reviewer's suggested form unmodified. **Never loaded in a browser, no probe.
-    Treat as untested code, not as F2 resolved.**
-  - **F1 and F4 not started.** Both agreed with on reading, neither disputed.
-  - **No verification run of any kind this cycle.** The last real numbers are cycle 1's at
-    `85f4665`. The 54 floor must be re-established before C11's probe can grow it.
+- **Free gate (§5.1) passed, re-run by me in a detached worktree at `85a397e`:** `--canvas-frame`
+  both sections PASS, 54 probes plus C11, figures byte-identical to the PR body (`n5` extent
+  7848.0x4228.7 inside 9048x5428.66); `--all` red set exactly `{board-lane-fill}`, exit 1.
+- **Cycle 2 closed F1, F2, F4; F3 was already fixed.** The coder checked the `moveNode`/`applyZoom`
+  recursion trap first and reports it does not hold — `moveNode` reads `sheet.w/h` but never calls
+  `applyZoom`, and `applyZoom` never calls `moveNode`. Only `verify.py` changed this cycle (+207/-16);
+  `canvas-frame.{html,css}` are unchanged from cycle 1, both mutation experiments reverted before commit.
 - **Trap the successor checks first:** `moveNode` (`canvas-frame.html:439-440`) clamps `n.x` to
   `sheet.w - NODE_W`, and `applyZoom` now derives `sheet.w` from node extent. Confirm `moveNode`
   never calls `applyZoom` or the clamp and the sizing are mutually recursive. It does not on a read;
