@@ -14,7 +14,15 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; every removed test nodeid named (collect-only diff vs main); suite green, flake8 0.
 - **Depends on:** nothing. Items from the 2026-09-17 sweep.
 - **Branch / PR:** `task/b-029-backlog-cleanup` — not yet opened
-- **Status:** in progress (cycle 1)
+- **Status:** cycle 1 in flight — **interrupted once** (session ended mid-task), resumed 2026-09-22.
+  Work was uncommitted in worktree `.claude/worktrees/agent-a1875123961c4f5af`, on branch
+  **`b029-work-local`**, not the task branch: runconfig.py, graph.py, jobs.py, test_api_events.py,
+  test_fixture_dataset.py, test_graph.py, test_jobs.py. Agent told to commit first, then
+  `git checkout task/b-029-backlog-cleanup && git merge b029-work-local`. If this session also dies,
+  **that worktree is where the work is** — check it before re-dispatching anything.
+- **Items:** PR #37 F13/**F14**, #33 **F7**, #31 F1-F5, #26 F1-F3, #54 F1/F2, #51 F1, #49 F2, #35 F17,
+  #45 F4 (PR-body only, expect N/A), plus `.flake8:16` missing `.venv` from `exclude`. 18 ids, enumerated
+  from the `## Done` entries below; the reviews themselves are PR comments and the coder reads them there.
 - **Review:** —
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
