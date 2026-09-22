@@ -14,7 +14,10 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; every removed test nodeid named (collect-only diff vs main); suite green, flake8 0.
 - **Depends on:** nothing. Items from the 2026-09-17 sweep.
 - **Branch / PR:** `task/b-029-backlog-cleanup` — not yet opened
-- **Status:** in progress (cycle 1)
+- **Status:** dispatched 2026-09-22 (cycle 1), worktree-isolated
+- **Items:** PR #37 F13/**F14**, #33 **F7**, #31 F1-F5, #26 F1-F3, #54 F1/F2, #51 F1, #49 F2, #35 F17,
+  #45 F4 (PR-body only, expect N/A), plus `.flake8:16` missing `.venv` from `exclude`. 18 ids, enumerated
+  from the `## Done` entries below; the reviews themselves are PR comments and the coder reads them there.
 - **Review:** —
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 

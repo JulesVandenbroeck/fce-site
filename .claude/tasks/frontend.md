@@ -14,7 +14,10 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; removed nodeids named; suite green.
 - **Depends on:** nothing.
 - **Branch / PR:** `task/f-013-backlog-cleanup` — not yet opened
-- **Status:** in progress (cycle 1)
+- **Status:** dispatched 2026-09-22 (cycle 1), worktree-isolated
+- **Items:** PR #42 F1-F4, #38 F7/F8, #36 F10, #32 F8/F9, #41 F1/F2, #40 F1, plus a judgement call on
+  `test_figure_holds_fixed_size_at_every_width`. 12 ids. A falling suite count must be shown to be a
+  *strengthening* (C3), the F-008 precedent.
 - **Review:** —
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 

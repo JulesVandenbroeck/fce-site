@@ -73,7 +73,10 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; no computed-style change; suite green.
 - **Depends on:** nothing.
 - **Branch / PR:** `task/d-019-backlog-cleanup` — not yet opened
-- **Status:** in progress (cycle 1)
+- **Status:** dispatched 2026-09-22 (cycle 1), worktree-isolated
+- **Items:** PR #48 F2-F4, #39 F12, #44 F4, #55 F8, plus a `--node-observable` token check. 7 ids.
+- **Scope widened by me:** `observable.css` added — PR #55's F8 lives there and the recorded scope
+  (`shell.css`, `chart.css`) would have left it permanently unswept.
 - **Review:** —
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
