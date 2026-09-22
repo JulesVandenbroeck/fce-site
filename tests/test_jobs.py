@@ -254,5 +254,21 @@ def test_evict_over_cap_keeps_running_jobs_and_caps_the_rest():
     assert all(reg._jobs[str(i)].status == "running" for i in range(5))
 
 
+def test_evict_over_cap_prunes_queue_owner_for_dropped_jobs():
+    """B-029/F14: an evicted job's ``events`` queue must stop being tracked
+    in ``_queue_owner`` too, or that dict grows without bound forever."""
+    reg = JobRegistry()
+    for i in range(jobs_module._MAX_JOBS + 2):
+        job = Job(id=str(i), mission_id="M-1", ctx=RunContext(), status="done")
+        reg._jobs[job.id] = job
+        reg._queue_owner[id(job.events)] = job.id
+
+    reg._evict_over_cap()
+
+    assert len(reg._queue_owner) == jobs_module._MAX_JOBS
+    remaining_ids = {job.id for job in reg._jobs.values()}
+    assert set(reg._queue_owner.values()) == remaining_ids
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-q"])

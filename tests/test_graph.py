@@ -291,11 +291,6 @@ def test_mult_cut_bad_values_are_rejected(field, bad_value, match):
         build_run_config(payload, _dataset())
 
 
-def test_valid_mult_cut_values_are_accepted():
-    cfg = build_run_config(_mission1_payload(), _dataset())
-    assert cfg.h5_sel == _MISSION1_H5_SEL
-
-
 # ---- C13: the multi-path branch (chained Selections, sibling branches
 # sharing a prefix) is covered by a check that can fail. Digests
 # independently derived from the same formula documented above test_mission1_graph_produces_a_run_config

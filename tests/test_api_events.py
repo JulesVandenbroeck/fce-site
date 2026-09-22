@@ -170,12 +170,11 @@ class _FakeRequest:
         return False
 
 
-# ---- C6/C9/C10/C11/C12/C13: production _drain, called directly and bounded
-# rather than through TestClient/HTTP, so a defect that removes the status
-# short-circuit or crosses two jobs' queues makes these fail fast instead of
-# hanging CI. runId is asserted per frame because it is now stamped where
-# each frame is produced (fce_web.jobs._make_ctx), not by the reading
-# stream, so a crossed queue can never launder itself as the right run. ----
+# Production _drain, called directly and bounded rather than through
+# TestClient/HTTP, so a defect that removes the status short-circuit or
+# crosses two jobs' queues makes these fail fast instead of hanging CI.
+# runId is asserted per frame from registry.owner_of, read at drain time,
+# so a crossed queue can never launder itself as the right run.
 
 def test_reconnect_after_drain_gets_one_done_frame(client):
     run_id = client.post("/api/run", json={"missionId": "M-1", "graph": _graph()}).json()["runId"]

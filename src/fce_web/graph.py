@@ -26,12 +26,11 @@ This module is pure: no HTTP, no filesystem, no module-level mutable state.
 from __future__ import annotations
 
 import graphlib
-import hashlib
 import math
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
-from fce_web.engine.runconfig import RunConfig
+from fce_web.engine.runconfig import RunConfig, compute_h5, compute_h5_sel
 from fce_web.safe_eval import UnsafeExpression, compile_expr
 
 # ponytail: fixed cap, not a mission-configurable setting -- raise it if a
@@ -256,9 +255,9 @@ def _check_terminals(nodes: Dict[str, _Node], children: Dict[str, List[str]]) ->
 _MULT_CUT_TYPES = (int, str, int, str, str, int, str)
 
 # path_filter.py:679-683 -- an op it doesn't recognise silently falls through
-# to ">=", and ltype.py:676 -- an ltype it doesn't recognise silently falls
-# back to `nlep` (all leptons). Both are wrong-physics-not-an-error, so the
-# values are enforced here, at the trust boundary, instead.
+# to ">=", and path_filter.py:676 -- an ltype it doesn't recognise silently
+# falls back to `nlep` (all leptons). Both are wrong-physics-not-an-error, so
+# the values are enforced here, at the trust boundary, instead.
 _MULT_OP_FIELDS = ("op_lep", "op_jet", "op_phot")
 _MULT_OPS = ("==", "<=", ">=")
 _MULT_LTYPES = ("Any", "Electron", "Muon")
@@ -428,7 +427,6 @@ def build_run_config(payload: dict, dataset: Dataset) -> RunConfig:
 
     paths = _histogram_paths(nodes, children, roots)
     mult_cuts = _shared_mult_cuts(nodes, paths)
-    mult_h5_base = dataset.energy + dataset.detector + str(mult_cuts)
 
     grouped: Dict[tuple, dict] = {}
     plot_idx = 0
@@ -448,7 +446,7 @@ def build_run_config(payload: dict, dataset: Dataset) -> RunConfig:
         key = _selection_group_key(path, nodes)
         if key not in grouped:
             sel_exprs = _selection_exprs(path, nodes)
-            h5_sel = hashlib.md5((mult_h5_base + str(sel_exprs)).encode()).hexdigest()
+            h5_sel = compute_h5_sel(dataset.energy, dataset.detector, mult_cuts, sel_exprs)
             last_sel_id = key[-1] if key else None
             sel_name = nodes[last_sel_id].config.get("name", last_sel_id) if last_sel_id else ""
             grouped[key] = {
@@ -465,12 +463,10 @@ def build_run_config(payload: dict, dataset: Dataset) -> RunConfig:
         histogram = _histogram_dict(hist_node, plot_idx)
         histogram["observable"] = observable_expr
         histogram["x_label"] = histogram["x_label"] or obs_node.config.get("label", "")
-        histogram["h5"] = hashlib.md5(
-            (
-                selection["h5_sel"] + observable_expr + histogram["bins"]
-                + histogram["min"] + histogram["max"] + histogram["target"]
-            ).encode()
-        ).hexdigest()
+        histogram["h5"] = compute_h5(
+            selection["h5_sel"], observable_expr, histogram["bins"], histogram["min"], histogram["max"],
+            histogram["target"],
+        )
         selection["histograms"].append(histogram)
         plot_idx += 1
 
