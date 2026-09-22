@@ -11,7 +11,43 @@ The sweep split the old list three ways:
 2. **Cleanup** — handed to **B-029 / F-013 / D-019** (one per role, see the role lists).
 3. **Dropped** — closed by later work, superseded, or history only. Listed at the bottom with the reason.
 
-Count: `grep -c '^- \*\*' .claude/tasks/backlog.md`. Add new findings under `## New`.
+Count: `grep -c '^- \*\*' .claude/tasks/backlog.md`. Add new findings under `## New`; the user-prioritised ones sit in `## Next up`.
+
+---
+
+## Next up — do these first
+
+Raised 2026-09-22 by the **user**, from driving the running app, and moved to the head of the
+backlog at their request. These are product direction on the
+graph canvas, not review findings — N12-N14 change what the canvas *is*, so they want a design pass
+before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
+
+- **N12 The canvas should be full-bleed, not a fixed box** (design + frontend). Today the node canvas
+  is a fixed-size region inset in the page. It should span the **full width of the site**. The two
+  side panels then **overlay** the canvas rather than sitting beside it and stealing width — the user
+  explicitly accepts the overlap, because the existing arrow buttons already collapse each panel.
+  Note D-018's standing caveat: at 1024/768 `.canvas-region` h-scroll can put the leftmost node out of
+  reach for coordinate clicks in e2e — full-bleed plus pan (N13) likely changes that failure mode, so
+  re-check the e2e coordinate helpers rather than assuming they still hold. _(user, 2026-09-22)_
+- **N13 The canvas must be an explorable map: pan and zoom** (frontend, with design). Nodes live on a
+  surface larger than the viewport. **Left-click-drag on empty canvas pans**; scroll (or equivalent)
+  **zooms in and out**. Open questions for the design pass, not assumptions: zoom limits, whether pan
+  is bounded or infinite, what happens to a left-drag that starts *on* a node (today that is presumably
+  node-move), and whether there is a reset/fit-to-content affordance. Pairs with N12 — a full-bleed
+  fixed surface without pan is a smaller win than either alone. _(user, 2026-09-22)_
+- **N14 Results belong in a bottom drawer, not below the canvas** (design + frontend). Move the
+  **Run Analysis** button to the **bottom screen border**. Analysis results must **not** flow in below
+  the canvas; they go in an **expandable panel that rises from the bottom**, the same interaction
+  family as the two side panels, with its own **arrow button sitting above the Run Analysis button**.
+  Pressing **Run Analysis auto-expands** that drawer. The collapse-chevron machinery is already in
+  `shell.js`/`shell.html` (see N11) — reuse it for the third edge rather than writing a second one.
+  _(user, 2026-09-22)_
+- **N15 A node that is expanded to edit does not retract to its collapsed size** (frontend, bug).
+  Expand a node to edit it, then un-expand: the node keeps its **expanded footprint** instead of
+  shrinking back. Almost certainly an inline/explicit height (or a stale measured height) set on
+  expand and never cleared on collapse — check the collapse path clears whatever the expand path set,
+  and confirm the fix on a node whose expanded content is taller than one line. Independent of
+  N12-N14; can ship on its own. _(user, 2026-09-22)_
 
 ---
 
@@ -119,37 +155,6 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   not six; the truth deck covers `X1`-`X5` only. `X6` is absent from the committed fixture and no
   mission needs it, but `tests/fixtures/golden/zpeak-dilepton.json` already carries its bins. Ask
   the next time a physics question goes to the user; not worth a round trip of its own.
-
-Raised 2026-09-22 by the **user**, from driving the running app. These are product direction on the
-graph canvas, not review findings — N12-N14 change what the canvas *is*, so they want a design pass
-before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
-
-- **N12 The canvas should be full-bleed, not a fixed box** (design + frontend). Today the node canvas
-  is a fixed-size region inset in the page. It should span the **full width of the site**. The two
-  side panels then **overlay** the canvas rather than sitting beside it and stealing width — the user
-  explicitly accepts the overlap, because the existing arrow buttons already collapse each panel.
-  Note D-018's standing caveat: at 1024/768 `.canvas-region` h-scroll can put the leftmost node out of
-  reach for coordinate clicks in e2e — full-bleed plus pan (N13) likely changes that failure mode, so
-  re-check the e2e coordinate helpers rather than assuming they still hold. _(user, 2026-09-22)_
-- **N13 The canvas must be an explorable map: pan and zoom** (frontend, with design). Nodes live on a
-  surface larger than the viewport. **Left-click-drag on empty canvas pans**; scroll (or equivalent)
-  **zooms in and out**. Open questions for the design pass, not assumptions: zoom limits, whether pan
-  is bounded or infinite, what happens to a left-drag that starts *on* a node (today that is presumably
-  node-move), and whether there is a reset/fit-to-content affordance. Pairs with N12 — a full-bleed
-  fixed surface without pan is a smaller win than either alone. _(user, 2026-09-22)_
-- **N14 Results belong in a bottom drawer, not below the canvas** (design + frontend). Move the
-  **Run Analysis** button to the **bottom screen border**. Analysis results must **not** flow in below
-  the canvas; they go in an **expandable panel that rises from the bottom**, the same interaction
-  family as the two side panels, with its own **arrow button sitting above the Run Analysis button**.
-  Pressing **Run Analysis auto-expands** that drawer. The collapse-chevron machinery is already in
-  `shell.js`/`shell.html` (see N11) — reuse it for the third edge rather than writing a second one.
-  _(user, 2026-09-22)_
-- **N15 A node that is expanded to edit does not retract to its collapsed size** (frontend, bug).
-  Expand a node to edit it, then un-expand: the node keeps its **expanded footprint** instead of
-  shrinking back. Almost certainly an inline/explicit height (or a stale measured height) set on
-  expand and never cleared on collapse — check the collapse path clears whatever the expand path set,
-  and confirm the fix on a node whose expanded content is taller than one line. Independent of
-  N12-N14; can ship on its own. _(user, 2026-09-22)_
 
 ---
 
