@@ -2227,3 +2227,95 @@ probe as a layout it never measured — the drawer half already reads its state 
 backlogged as **N16-N18**. F3 is worth re-reading before the next instrument is written: it is this
 project's blind-instrument shape caught while still latent, rather than after it certified something
 false.
+
+---
+
+### D-021 — The canvas frame, corrected: horizontal pan, grid beyond the sheet, honest load state
+
+- **Scope:** `docs/design-explorations/canvas-frame.{html,css}`, `docs/design-explorations/verify.py`. Nothing under `src/`.
+- **Branch / PR:** `task/d-021-canvas-frame-pan` — #60, merged `b3f8ef2`, 2026-09-22.
+- **Result:** 2 cycles + 1 handoff mid cycle 2. Clean gate, `findings=0, scope=pass, verdict=approve`. checks=12.
+- **Opened from** the user's two findings driving D-020's page on 2026-09-22, plus backlog N16 (= PR #59 F1), N17, N18 — all three closed here.
+
+#### The root cause, and why it was one and not three
+
+The task's hypothesis was that the user's two findings and PR #59's F1 shared a cause. They did.
+The canvas was never suppressing horizontal overflow — the sheet was a **fixed 1800x1200 SVG**. On a
+window wider than 1800 CSS px, or at any zoom where the scaled sheet came out smaller than the window,
+`scrollWidth == clientWidth`: zero horizontal scroll range, nothing to pan, flat `--panel` rather than
+graph paper beyond the sheet, and a node placed past the window edge unreachable rather than off-screen.
+One fixed page, three symptoms. The fix is in one place — `applyZoom` sizes the sheet to the window and
+rewrites the viewBox, the rendered size and both backing rects together, with a `resize` listener calling
+the same function.
+
+#### Cycle 1 — `findings=4, scope=fail, verdict=rework`
+
+Review: https://github.com/JulesVandenbroeck/fce-site/pull/60#issuecomment-5781891877
+
+- **F1** — C8's coverage guard compared the **SVG element's** `getBoundingClientRect()` to the viewport's,
+  which is unchanged when the paper rects *inside* it are not. The reviewer painted the backing over 1/3 of
+  the sheet and the section still passed while 4 of 5 sampled points hit-tested void. A blind instrument in
+  the §2 sense, and it had certified GREEN.
+- **F2** — the sheet was recomputed from scratch on every zoom, so zooming **in** shrank it and orphaned a
+  node placed at a lower zoom: the same defect reversed. **Clause-3 novel under §5.4** — no criterion had
+  gated it, the dispatch named the root cause ("a node becomes unreachable"), and the coder fixed the
+  zoom-out direction and stopped one step short. Same shape as B-006's unbounded `ast.Pow`.
+- **F3** — the 50%-usage anchor rode the task branch (worktree isolation refused the primary-checkout path),
+  so `scope=fail`. Same shape as B-018's F6. The orchestrator copied it into the primary checkout; the
+  branch `git rm`'d it.
+- **F4** — `_canvas_frame_set_state` slept a fixed 250 ms instead of waiting for the state it asked for.
+
+Two cycle-1 mutations did fire and are worth keeping: the pan-range assertion goes red with
+`canvas pan range 0x0` when the sheet is forced viewport-sized, and C10's state readback goes red with
+`a chevron did not reach the requested state`.
+
+#### The handoff mid cycle 2
+
+The coder's watchdog fired at **90% on cycle 2's first tool call**. Cycle 2 therefore produced two commits
+and a handoff rather than four findings: F3 fixed (`01b140c`), F2's code landed **unverified** (`7b1c210`,
+the reviewer's suggested three-term `Math.max` unmodified), F1 and F4 untouched, and **no verification run
+of any kind**. The session handed over at 92%. The protocol worked exactly as designed — the successor
+resumed from `handoff/d-021-design-2.md`, in the same worktree, with no `isolation` (§3), and lost nothing.
+
+#### Cycle 2 (resumed) — `findings=0, scope=pass, verdict=approve`
+
+- **C11 (F2)** — new registered section `canvas-frame-node-extent-monotonic`: at 1920, drag `n5` toward the
+  far edge at 50%, zoom to 200%, read the node's position and its own size back from the DOM, assert the
+  scaled extent fits the sheet the SVG paints. PASS at `7848.0x4228.7` inside `9048x5428.7`; RED with the
+  third `Math.max` term removed (`sheet = 4800x3600`). Reviewer reproduced both.
+- **C12 (F1)** — the coverage guard now asks `document.elementsFromPoint(x, y)` for `.canvas-grid` at the
+  four corners and centre of `#canvas-viewport`. RED under the reviewer's own mutation — backing rects
+  painted at 1/3 sheet size, SVG element size untouched — 9 of 54 probes failing with "void on the canvas".
+- **F4** — `wait_for_selector(f'{region}[data-state="{want}"]')`, timeout falling through to the caller's own
+  state comparison, so an unreached state is never silently mislabelled as reached.
+- **The trap was checked first and does not hold:** `moveNode` (`canvas-frame.html:445-452`) clamps to
+  `sheet.w - NODE_W` *before* `applyZoom` adds `maxX + NODE_W + SHEET_PAD`, so the new term grows the sheet
+  by at most one `SHEET_PAD` — no ratchet, no mutual recursion. Confirmed by the coder and again by the reviewer.
+- Only `verify.py` changed this cycle (+207/-16); `canvas-frame.{html,css}` are byte-identical to cycle 1,
+  both mutation experiments reverted before commit.
+
+#### Free gate (§5.1), re-run by the orchestrator at `85a397e`
+
+Detached worktree under `$HOME` (snap Firefox cannot read `/tmp`), primary checkout's venv,
+`PLAYWRIGHT_BROWSERS_PATH` exported. `--canvas-frame`: both sections PASS, 54 probes plus C11, the node
+extent and sheet figures **byte-identical to the PR body**. `--all`: red set exactly `{board-lane-fill}`,
+exit 1. Nothing to send back.
+
+#### Reviewer's note for future reviewers, recorded because it will bite again
+
+A naive copy of `docs/design-explorations/` to a sandbox elsewhere makes the section fail with a `#zoom-in`
+click timeout **purely because the page's `../../src/fce_web/static/css/tokens.css` link does not resolve**.
+The reviewer's mirror symlinked `src/`. The failure names nothing about the stylesheet.
+
+#### Still open for the user
+
+**Three unrequested deviations, all argued in PR #60's body and all reversible:** palette expanded width
+**368 -> 256** (it holds five short rows), the node chain re-laid out to a **212-unit pitch**, and the page
+**opens in Fit rather than at 100%** — 81% at 1440, 126% at 1920, 50% at 1024 and 768. All three are the
+mechanism by which C9 ("the whole pipeline visible on load") is met at 1440: a five-node left-to-right chain
+is wider than the clear band at 100% no matter where it sits, so something had to give. At 768 three of five
+nodes sit partly under the panels; every node is reachable by pan, which is what this task restored.
+
+The reviewer dropped two nits in writing rather than spending a cycle: a duplicated
+`from playwright.sync_api import ...` line, and the PR body's stale "Total checks: 1 registered section"
+header (its own footer correctly says 12).

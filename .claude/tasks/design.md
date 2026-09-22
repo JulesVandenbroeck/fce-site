@@ -68,58 +68,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-### D-021 — The canvas frame, corrected: horizontal pan, grid beyond the sheet, honest load state
-- **Scope:** `docs/design-explorations/canvas-frame.{html,css}`, `docs/design-explorations/verify.py`.
-  Touches nothing under `src/`.
-- **Accept:** C1-C5 in the dispatch — left-drag pans in **both** axes; the page still has no
-  horizontal scroll in all 27 probe layouts; the grid fills the canvas viewport at every zoom from
-  50% to 200%; the whole pipeline is visible on load with both panels expanded; N17/N18 instrument
-  cleanups.
-- **Depends on:** D-020 (#59, merged `7043e76`).
-- **Branch / PR:** `task/d-021-canvas-frame-pan` — #60
-- **Status:** **in review (cycle 2)** — reviewer dispatched 2026-09-22 with PR #60 and nothing else.
-  Branch head `85a397e`, pushed; PR body now carries a Cycle 2 section with C11/C12 and their
-  PASS-then-RED mutation transcripts. **checks=12** (C1-C10 + C11 F2 probe + C12 F1 grid hit-test);
-  probe floor **54 + 1** in a new registered section `canvas-frame-node-extent-monotonic`.
-  Cycle 1: `findings=4, scope=fail, verdict=rework` —
-  [review](https://github.com/JulesVandenbroeck/fce-site/pull/60#issuecomment-5781891877).
-- **Free gate (§5.1) passed, re-run by me in a detached worktree at `85a397e`:** `--canvas-frame`
-  both sections PASS, 54 probes plus C11, figures byte-identical to the PR body (`n5` extent
-  7848.0x4228.7 inside 9048x5428.66); `--all` red set exactly `{board-lane-fill}`, exit 1.
-- **Cycle 2 closed F1, F2, F4; F3 was already fixed.** The coder checked the `moveNode`/`applyZoom`
-  recursion trap first and reports it does not hold — `moveNode` reads `sheet.w/h` but never calls
-  `applyZoom`, and `applyZoom` never calls `moveNode`. Only `verify.py` changed this cycle (+207/-16);
-  `canvas-frame.{html,css}` are unchanged from cycle 1, both mutation experiments reverted before commit.
-- **Trap the successor checks first:** `moveNode` (`canvas-frame.html:439-440`) clamps `n.x` to
-  `sheet.w - NODE_W`, and `applyZoom` now derives `sheet.w` from node extent. Confirm `moveNode`
-  never calls `applyZoom` or the clamp and the sizing are mutually recursive. It does not on a read;
-  it was not exercised.
-- **Diagnosis (§5.4): a cycle, not a re-specification.** Nothing was dropped, and C6 shipped with a
-  command and was met. F2 is against a property no criterion ever gated — clause 3. Same shape as
-  B-006's unbounded `ast.Pow`: the dispatch named the root cause ("a node becomes unreachable") and
-  the coder fixed the zoom-out direction and stopped one step short of zoom-in.
-- **F1/F2 are the rework; F3/F4 are small.** F2: the sheet is recomputed from scratch on every zoom,
-  so zooming *in* shrinks it and orphans a node placed at a lower zoom — the same defect reversed.
-  F1: C8's guard compared the **SVG element's** rect to the viewport, which is unchanged when the
-  paper rects inside it are not — the reviewer painted the backing over 1/3 of the sheet and the
-  section still passed while 4 of 5 points hit-tested void.
-  F3: the anchor rode the branch — I have copied it into the primary checkout and the branch removes
-  it. F4: fixed 250ms sleep in `_canvas_frame_set_state` → `wait_for_selector`.
-- **Two cycle-1 mutations did fire, and are worth keeping:** the pan-range assertion goes red with
-  `canvas pan range 0x0` when the sheet is forced viewport-sized, and C10's state readback goes red
-  with `a chevron did not reach the requested state`.
-- **Unrequested deviations the user has not ruled on:** palette expanded width **368 -> 256**, the
-  node chain re-laid out to a 212-unit pitch at (700,900), and the page now **opens in Fit rather
-  than at 100%**. All three are the C9 mechanism and are argued in the PR body; reversible.
-- **Carve-out note:** `.claude/handoff/d-021-design.anchor.md` rode the task branch (worktree
-  isolation refused the primary-checkout path). Same shape as B-018's F6. Harmless here, but
-  bookkeeping is not supposed to ride a task branch.
-- **Carries:** the user's two findings from driving the page 2026-09-22, plus backlog **N16**
-  (= PR #59 F1), **N17**, **N18**.
-- **Note:** the two user findings and F1 are probably **one** root cause — a canvas surface with no
-  horizontal scrollable overflow gives no horizontal pan *and* makes `n4`/`n5` unreachable. Fix at
-  the root, not per symptom.
-- **History:** [`archive/design.md`](archive/design.md)
+_none._
 
 ## Ready
 
@@ -164,6 +113,21 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-021** — the canvas frame, corrected: horizontal pan, grid beyond the sheet, honest load state — #60, `b3f8ef2`, **2 cycles + 1 handoff mid cycle 2**, clean gate (`findings=0, scope=pass, verdict=approve`). checks=**12**.
+  Exploration only; nothing under `src/` touched. **One root cause, three symptoms:** the sheet was a fixed 1800x1200 SVG, so on a
+  window wider than that `scrollWidth == clientWidth` — no horizontal pan, no graph paper beyond the sheet, and a node placed past
+  the edge unreachable. `applyZoom` now sizes the sheet to the window *and* to node extent, and a `resize` listener calls it.
+  Probe floor **54 + 1**: `canvas-frame-no-h-scroll` grew 27 -> 54, plus a new registered section
+  `canvas-frame-node-extent-monotonic` (C11). Red set unchanged: `{board-lane-fill}`, reproduced by me pre-merge.
+  **Both new guards are mutation-proven by the reviewer, and C12 is the lesson:** cycle 1's coverage check compared the **SVG
+  element's** rect to the viewport, which is unchanged when the paper rects inside it are not — the reviewer painted the backing
+  over 1/3 of the sheet and the section stayed green while 4 of 5 points hit-tested void. It now uses `elementsFromPoint` for
+  `.canvas-grid`. **F2 was clause-3 novel** (§5.4): the dispatch named the root cause and the coder fixed zoom-*out* and stopped one
+  step short of zoom-*in* — same shape as B-006's unbounded `ast.Pow`.
+  **Three unrequested deviations, argued in the PR body and all reversible — the user has not ruled on them:** palette expanded
+  width **368 -> 256**, the node chain re-laid out to a 212-unit pitch, and the page now **opens in Fit rather than at 100%**
+  (81% at 1440, 126% at 1920, 50% at 1024/768). All three are the C9 mechanism. **Closes N16, N17, N18.**
+  **History:** [`archive/design.md`](archive/design.md).
 - **D-020** — the canvas frame: full-bleed canvas, overlay panels, pan/zoom, bottom results drawer — #59, `7043e76`, 1 cycle, clean gate (`findings=3, scope=pass, verdict=approve`).
   **Checkpoint — awaiting the user's ruling on the recommendation.** Exploration only; nothing under `src/` touched.
   Ships `docs/design-explorations/canvas-frame.{html,css}` + one append-only `verify.py` section,
@@ -271,6 +235,12 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md).
   including the counting lines themselves — it reported 86 against 78 real registrations. On
   `task/d-010-page-shell` at `cfd2a1d`: **78** registrations, **213** reporting calls, both by
   `ast.walk`. Do not reinstate a grep floor.
+- **`verify.py` on `main` at `b3f8ef2` (D-021): the canvas-frame guards are two registered sections** —
+  `canvas-frame-no-h-scroll` (**54** probes: 8 panel/drawer states + post-Run + 3 zoom probes, x 3 widths) and
+  `canvas-frame-node-extent-monotonic` (**1** probe, C11). Both are mutation-proven red by the reviewer.
+  **Sheet coverage is hit-tested with `document.elementsFromPoint` for `.canvas-grid`, never by comparing the SVG
+  element's `getBoundingClientRect()`** — that comparison was blind to the paint and is D-021's F1. Do not reinstate it.
+  `_canvas_frame_set_state` waits on `[data-state="<want>"]`; it must not go back to a fixed sleep (F4).
 - **`verify.py` on `main` at `63a6fd8`: 81 AST registrations / 217 reporting calls** (D-014).
   The fade affordance is guarded by `shell-canvas-fade-affordance` over **12 layouts**
   (4 palette/panel states x 1440/1024/768); it goes red if a cue is painted where the region

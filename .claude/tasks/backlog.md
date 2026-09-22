@@ -109,7 +109,7 @@ before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
 
 ## New
 
-- _(taken by D-021)_ **N16 The canvas-frame page opens with most of the graph under the panels** (design, D-020 F1).
+- _(CLOSED by D-021, #60, merged `b3f8ef2` 2026-09-22)_ **N16 The canvas-frame page opens with most of the graph under the panels** (design, D-020 F1).
   `docs/design-explorations/canvas-frame.html:409-430` (`buildGraph` node coordinates) — at load, both panels
   in their default `expanded` state, only **2 of 5** nodes are clear at 1440 (`n3` clipped at `left 980` against
   a panel edge of 1120; `n4` and `n5` entirely off-viewport); at 768 exactly **one** node is visible. The PR body
@@ -117,11 +117,11 @@ before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
   seeding the initial scroll/zoom so the pipeline lands between the two expanded panels, or one sentence in the
   recommendation's "What the overlay costs" saying the load state is deliberately covered and Fit is the first
   gesture. **Matters because this is the page the user rules on.** _(PR #59 F1)_
-- _(taken by D-021)_ **N17 `CANVAS_FRAME_DESIGN_WIDTHS` duplicates `SHELL_DESIGN_WIDTHS`** (design/tooling, trivial).
+- _(CLOSED by D-021, #60, merged `b3f8ef2` 2026-09-22)_ **N17 `CANVAS_FRAME_DESIGN_WIDTHS` duplicates `SHELL_DESIGN_WIDTHS`** (design/tooling, trivial).
   `docs/design-explorations/verify.py:8931` is byte-for-byte `verify.py:6200` in the same module. Delete it and
   use the existing one, or rename that one to `DESIGN_WIDTHS` — the widths are the project's, not either page's.
   _(PR #59 F2)_
-- _(taken by D-021)_ **N18 `_canvas_frame_set_state` labels probes by requested state, not measured** (design/tooling).
+- _(CLOSED by D-021, #60, merged `b3f8ef2` 2026-09-22)_ **N18 `_canvas_frame_set_state` labels probes by requested state, not measured** (design/tooling).
   `docs/design-explorations/verify.py:8934-8940` clicks the chevron at most once and never asserts the region
   reached `want`; the per-probe label at `:8987` then reports the *requested* palette/panel state, so a toggle
   that failed to fire would silently relabel a probe as a layout it never measured. The drawer already does this
