@@ -2108,3 +2108,54 @@ Reviews: PR #44 comments `5633915624` (rework) and the re-review (approve).
 - **C8 carries F-007's accessibility consequence:** `#run-button` gave up the `disabled` attribute to keep
   keyboard focus mid-run, so the browser's free busy affordance is gone and this CSS rule is the only one.
 
+
+### D-019 — Backlog cleanup sweep, design (merged 2026-09-22, PR #58, `34f5fc2`)
+
+### D-019 — Backlog cleanup sweep, design
+- **Scope:** `static/css/shell.css`, `static/css/chart.css`.
+- **Accept:** every listed item fixed or reported N/A in a PR-body table; no computed-style change; suite green.
+- **Depends on:** nothing.
+- **Branch / PR:** `task/d-019-backlog-cleanup` — not yet opened
+- **Status:** in review (cycle 1) — PR **#58**, head `5abdb46`
+- **Review:** dispatched. Gate re-run by me: **729 passed**, scope = `shell.css` + `chart.css` only.
+- **C4 was unsatisfiable and that is my defect — re-spec, not a cycle.** I required `verify.py --all` to show
+  exactly one red section. Verified myself: clean `main` gives `['board-lane-fill']`, this branch gives
+  `['git-diff-clean', 'git-diff-clean', 'bench-git-diff-clean', 'board-lane-fill']`, because
+  `check_git_diff` (`verify.py:1936`) exempts only `tokens.css` and the fonts from a D-002-era "touches nothing
+  under `src/`" invariant. **Any** task editing any other `src/` stylesheet trips it. Amended to C4' in a
+  [PR comment](https://github.com/JulesVandenbroeck/fce-site/pull/58#issuecomment-5776405688).
+  Third time I have imposed a floor without the feasibility arithmetic — after D-004's 1.15:1 and D-006's C10.
+- **My other defect:** the dispatch said PR #55's F8 was a docstring trim in `observable.css`. It is not — it is in
+  `tests/e2e/test_interior_style.py:3-11,28-32`, confirmed from the review comment. My scope widening to
+  `observable.css` rested on a false premise and the coder was right to report it N/A rather than reach into a
+  Python test file. **F8 is still open** and belongs to frontend.
+- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
+
+
+#### Post-mortem
+
+**Two defects in the dispatch, none in the work.** Both were mine and both are the same shape: a criterion whose
+instrument could not observe the property it certified.
+
+1. **C4 was unsatisfiable by construction.** I required `verify.py --all` to show exactly one red section,
+   `board-lane-fill`. `check_git_diff` (`docs/design-explorations/verify.py:1936`) enforces a D-002-era invariant
+   that a branch touches nothing under `src/` except `tokens.css` and the fonts, so **any** task editing any other
+   `src/` stylesheet trips `git-diff-clean` twice plus `bench-git-diff-clean`. Verified both sides myself: clean
+   `main` → `['board-lane-fill']`; this branch → four. No correct implementation of this task could have passed.
+   Amended to C4' by PR comment. **Third time I have imposed a floor without the feasibility arithmetic**, after
+   D-004's 1.15:1 pairwise floor and D-006's C10. → backlog N5.
+2. **C2's selector list omitted the only elements the change could reach.** I pinned "no computed-style change"
+   to `#palette`, `#mission-panel`, `#canvas-region`, `#results`, `.node__interior[open]` — a fixed layout list —
+   while the PR's one substantive change was the deleted `.reveal-frame`/`.reveal-band`/`.reveal-data` rule, which
+   that list does not contain. The criterion's instrument therefore could not have caught a regression in the one
+   thing worth guarding. The reviewer found this (F1), ran the missing measurement itself, and closed it.
+   **Rule earned: derive a C2-shaped selector list from the diff's own selectors, not from a fixed layout list.**
+
+**What the coder did right, recorded because it is the behaviour the floors exist to produce.** It hit the
+impossible C4, and instead of deleting or relabelling a section to go green — which `design.md`'s floors
+explicitly forbid — it reported the failure with a before/after revert proving the reds were structural. It also
+refused PR #55's F8 rather than reach into a Python test file outside design's ownership, and it checked the
+actual review comment to establish that my one-line reminder had named the wrong file.
+
+**Cost of the re-spec:** none in coder cycles. C4' was ruled by PR comment and the reviewer checked C4', so the
+amendment cost one comment rather than a round trip.

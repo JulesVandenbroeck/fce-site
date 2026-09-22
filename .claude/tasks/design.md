@@ -68,25 +68,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-### D-019 — Backlog cleanup sweep, design
-- **Scope:** `static/css/shell.css`, `static/css/chart.css`.
-- **Accept:** every listed item fixed or reported N/A in a PR-body table; no computed-style change; suite green.
-- **Depends on:** nothing.
-- **Branch / PR:** `task/d-019-backlog-cleanup` — not yet opened
-- **Status:** in review (cycle 1) — PR **#58**, head `5abdb46`
-- **Review:** dispatched. Gate re-run by me: **729 passed**, scope = `shell.css` + `chart.css` only.
-- **C4 was unsatisfiable and that is my defect — re-spec, not a cycle.** I required `verify.py --all` to show
-  exactly one red section. Verified myself: clean `main` gives `['board-lane-fill']`, this branch gives
-  `['git-diff-clean', 'git-diff-clean', 'bench-git-diff-clean', 'board-lane-fill']`, because
-  `check_git_diff` (`verify.py:1936`) exempts only `tokens.css` and the fonts from a D-002-era "touches nothing
-  under `src/`" invariant. **Any** task editing any other `src/` stylesheet trips it. Amended to C4' in a
-  [PR comment](https://github.com/JulesVandenbroeck/fce-site/pull/58#issuecomment-5776405688).
-  Third time I have imposed a floor without the feasibility arithmetic — after D-004's 1.15:1 and D-006's C10.
-- **My other defect:** the dispatch said PR #55's F8 was a docstring trim in `observable.css`. It is not — it is in
-  `tests/e2e/test_interior_style.py:3-11,28-32`, confirmed from the review comment. My scope widening to
-  `observable.css` rested on a false premise and the coder was right to report it N/A rather than reach into a
-  Python test file. **F8 is still open** and belongs to frontend.
-- **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
+_none._
 
 ## Ready
 
@@ -131,6 +113,14 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-019** — backlog cleanup sweep, design — #58, `34f5fc2`, 1 cycle + 1 re-spec (mine: C4 unsatisfiable), clean gate (`findings=1, scope=pass, verdict=approve`).
+  Suite floor **729** unchanged — no test file touched. −42 lines, all comment prose plus one dead rule; nothing added.
+  `chart.css` + `shell.css` only. **The deleted `.reveal-*{opacity:1;transform:none}` rule was proven a no-op by
+  runtime re-injection**, not by reading: the reviewer intercepted the `chart.css` response, restored the rule, drove a
+  real run and diffed computed styles in both motion modes — identical, and the instrument discriminates
+  (`.reveal-band` reads `none` vs `matrix(...)` across modes, so it was not dead). Two N/A calls both independently
+  confirmed: `--node-observable` is live in 4 files, and PR #55's F8 is in `tests/e2e/test_interior_style.py`,
+  not this stylesheet. **F8 therefore stays open and is frontend's** — backlog N6.
 - **D-018** — styled the four node interiors — #55, `ac97b42`, 2 cycles + 1 re-spec (mine: scope pointed at a check location D-016 never left), clean gate (`findings=1, scope=pass, verdict=approve`).
   Suite floor **729**. `observable.css` only; guard `tests/e2e/test_interior_style.py` (colour/no UA fallback, grown height, no h-scroll at 1440/1024/768). `.node__interior[open]` capped + scrollable, `flex-shrink: 0` load-bearing for `growNode`. Focus rings unguarded by test (C2 one-off). F8 docstring trim backlogged. **Closes M4 coding.**
 - **D-016** — results region and chart styling — #48, `bb4f355`, 1 cycle, clean gate (`findings=4, scope=pass, verdict=approve`).
