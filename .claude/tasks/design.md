@@ -77,8 +77,10 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   results drawer reusing the chevron family; a written recommendation answering N13's four open
   questions; no h-scroll in any panel/drawer state, checked in `verify.py`.
 - **Depends on:** nothing. Carries the user's N12/N13/N14 (backlog `## Next up`, 2026-09-22).
-- **Branch / PR:** `task/d-020-canvas-frame` — not yet opened
-- **Status:** dispatched (cycle 1), `effort: high`, worktree-isolated
+- **Branch / PR:** `task/d-020-canvas-frame` — #59
+- **Status:** in review (cycle 1). Free gate passed: red set on `main` and on the branch are both
+  `{board-lane-fill}`, difference empty; `canvas-frame-no-h-scroll` passes standalone. Both
+  reproduced by me in the primary checkout, 2026-09-22.
 - **Checkpoint:** yes — the user rules on the recommendation before any frontend task is raised.
 - **History:** [`archive/design.md`](archive/design.md)
 
