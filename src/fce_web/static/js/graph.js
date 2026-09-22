@@ -183,6 +183,11 @@ function growNode(id) {
   if (!fo) return;
   const div = fo.querySelector(".node");
   if (!div) return;
+  // .node is height:100% of the foreignObject, so scrollHeight would just
+  // read back whatever height was set last -- never shrinking on re-collapse
+  // -- unless the fo is first reset to its floor, forcing the (now shorter)
+  // interior to overflow it before the real content height is measured.
+  fo.setAttribute("height", NODE_H);
   fo.setAttribute("height", Math.max(NODE_H, Math.ceil(div.scrollHeight)));
   // Re-clamp against the freshly measured box -- growing near an edge (not
   // just dragging into one) must not spill the node off the canvas either.
