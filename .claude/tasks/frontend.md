@@ -9,60 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-015 — Full-bleed canvas, overlay panels, and a results drawer at the bottom edge
-- **Scope:** `src/fce_web/templates/shell.html`, `src/fce_web/static/js/shell.js`,
-  `tests/e2e/test_smoke.py`, `tests/e2e/test_run.py`. **No CSS** — D-022 styles it, and the page
-  will look wrong until D-022 lands. That is expected, not a defect.
-- **Accept:** C1 canvas spans the full viewport width and a panel expanding does not shrink it
-  (overlay, 3 widths x panel states); C2 `#run-control`/`#results` are out of the canvas region and
-  inside the drawer, asserted by DOM ancestry; C3 Run auto-expands a collapsed drawer, red when the
-  call is removed; C4 the drawer goes through the **same** `wireToggle`, a third call not a second
-  mechanism; C5 no horizontal page scroll in 24 probes (8 states x 3 widths); C6 suite floor **721**
-  + additions, flake8 0, nothing outside scope edited. checks=6.
-- **Depends on:** the canvas ruling 2026-09-22 (`design.md` `## Decisions in force` §8-9).
-  `docs/design-explorations/canvas-frame.{html,css}` is the approved reference — this is a **port of
-  a settled design**, not an exploration.
-- **Branch / PR:** `task/f-015-full-bleed-canvas` — not yet opened
-- **Status:** **in review (cycle 1)** — reviewer dispatched with PR #62 and the environment warning.
-  Head `1f069e4`. **Gate passed: 726 passed (721 + 5), flake8 0**, reproduced by me detached in the
-  primary checkout. checks=7, all 7 met.
-  **The C7 fix keeps the instrument strong rather than buying green:** `scroll_into_view_if_needed()`
-  on the element each raw `page.mouse` drag is about to use, plus a fresh `bounding_box()` at every
-  use instead of one read held from earlier in the test. Real root cause, and it is not the one I
-  guessed: with `.shell` → `.frame` and no CSS yet, the palette sits **below** the canvas in document
-  flow, so a `.click()`/`.check()` elsewhere in the same test scrolls the page and invalidates a
-  box captured earlier. The pointer path is untouched.
-  **C7's mutation was done without touching the repo:** a disposable rsynced copy outside the tree
-  with its own venv, `graph.js`'s `onMove` stubbed to `return;`, `test_graph.py` first `diff`'d
-  byte-identical to the branch's — RED at
-  `assert (moved["x"], moved["y"]) != (n1_start["x"], n1_start["y"])`, `(16, 16) != (16, 16)`.
-- **Previously:** re-specification (§5.4), not a cycle — PR #62 opened at `a8e1128`. C1-C5 met;
-  **C6 was unsatisfiable as I wrote it** — it demanded no regression *and* forbade editing the one
-  file it necessarily breaks. Scope amended to add `tests/e2e/test_graph.py`; **checks 6 → 7** (C7:
-  both tests pass and still exercise the real pointer path, mutation-shown).
-  Gate reproduced by me detached in the primary checkout on chromium-1234: **724 passed, 2 failed,
-  flake8 0** — the two failures exactly as the coder named them, so **not browser-dependent**; both
-  builds agree and the coder's report was accurate throughout.
-- **The two failures are D-018's caveat coming true, as the dispatch predicted.** `.shell` renamed to
-  `.frame`, so its old flex rule no longer matches and `#canvas-region`'s `overflow: auto` can scroll
-  the fixed 704x512 canvas partly out of view (one failure observed `svg_box.y = -393`); a coordinate
-  read once, up front, is stale by the time the pointer moves. Affected:
-  `test_pointer_places_drags_and_connects_nodes`,
-  `test_opened_node_near_bottom_edge_stays_inside_canvas_in_every_mode`.
-- **The fix must not lean on D-022.** `main` has to be green on this branch's own merit, and the
-  pointer test must keep driving real `pointerdown`/`pointermove`/`pointerup` — downgrading it to
-  `locator.click()` or skipping it would buy green by weakening the instrument, which is refused in
-  writing in the re-dispatch.
-- **The coder stopped at the scope boundary and reported instead of routing around it** — the
-  behaviour the rule exists to produce, and the reason this is my defect and not a cycle against it.
-- **Carries:** backlog **N12** and **N14**. N13 (pan/zoom) is **F-016** and is deliberately excluded.
-- **Watch:** D-018's caveat — at 1024/768 `.canvas-region` h-scroll could put the leftmost node out
-  of reach for the inline coordinate maths in `test_graph.py:109,121-122`. Full-bleed changes that
-  failure mode. `test_graph.py` is **outside** F-015's scope; if it breaks the coder reports rather
-  than edits, and I raise it.
-- **Dispatch carries the N19 environment warning** — the coder must `pip install -e .` inside its own
-  worktree and confirm `fce_web.__file__` resolves there, or its suite run exercises `main`'s code.
-- **History:** [`archive/frontend.md`](archive/frontend.md)
+_none._
 
 ## Ready
 
@@ -78,6 +25,20 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-015** — full-bleed canvas, overlay panels, results drawer at the bottom edge — #62, `dc2337f`, **1 cycle + 1 re-spec (mine)**, clean gate (`findings=5, scope=pass, verdict=approve`). checks=7. Suite floor **726** (721 + 5).
+  **Carries backlog N12 and N14.** No CSS by design — D-022 styles it. `#run-control`/`#results` moved out of `#canvas-region` into `<section id="drawer">`;
+  the drawer is a **third `wireToggle` call**, not a second mechanism (`shell.js:31` is the only definition, called three times — verified by the reviewer).
+  `.shell` → `.frame`; `graph.js`'s `CANVAS_W/CANVAS_H` and the `704x512` viewBox deliberately untouched, because N13 is **F-016**.
+  **The re-spec was mine:** C6 demanded no regression while my file scope forbade editing the one file the restructure necessarily breaks. Scope amended
+  to add `tests/e2e/test_graph.py`, checks 6 → 7. The coder stopped at the boundary and reported rather than routing around it.
+  **C7 kept the instrument strong rather than buying green:** `scroll_into_view_if_needed()` plus a fresh `bounding_box()` at each use, the raw
+  `page.mouse` path untouched. The real cause was not the one I guessed — unstyled, the palette sits **below** the canvas in flow, so a `.click()`
+  elsewhere in the same test scrolls the page and staled a box captured earlier. Reviewer confirmed neither test was weakened, and reproduced the
+  `onMove`-stub mutation independently: `(16, 16) != (16, 16)`.
+  **The reviewer mutated five separate things in a disposable copy outside the repo** — C1, C2, C3, C7 and `graph.js:229`'s re-clamp — every one red, every one restored.
+  F1, F2, F3, F5 backlogged as **N20-N23**; **F3 (nested region landmarks) is carried into F-016's dispatch**, not merely filed, because it is an accessibility regression this PR introduced.
+  **F4 is not this PR's and is now N24:** `test_observable_mode_is_config_not_identity` is flaky on `main` too (~1 in 10 file-level runs).
+  **History:** [`archive/frontend.md`](archive/frontend.md)
 - **F-014** — a re-collapsed node returns to its collapsed height — #61, `06e4108`, **1 cycle + 1 gate return that was mine, not the coder's**, clean gate (`findings=0, scope=pass, verdict=approve`). checks=3. Suite floor **721** (720 + 1).
   **Closes backlog N15.** One line of code plus a why-comment, in the single function all five `growNode(id)` call sites route through.
   **The root cause was not the obvious one, and scout's ground truth predicted that:** nothing sets an inline style, and `wireInteriorToggle` already

@@ -22,7 +22,7 @@ backlog at their request. These are product direction on the
 graph canvas, not review findings — N12-N14 change what the canvas *is*, so they want a design pass
 before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
 
-- **N12 The canvas should be full-bleed, not a fixed box** (design + frontend). Today the node canvas
+- _(CLOSED by F-015, #62, merged `dc2337f` 2026-09-23)_ **N12 The canvas should be full-bleed, not a fixed box** (design + frontend). Today the node canvas
   is a fixed-size region inset in the page. It should span the **full width of the site**. The two
   side panels then **overlay** the canvas rather than sitting beside it and stealing width — the user
   explicitly accepts the overlap, because the existing arrow buttons already collapse each panel.
@@ -35,7 +35,7 @@ before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
   is bounded or infinite, what happens to a left-drag that starts *on* a node (today that is presumably
   node-move), and whether there is a reset/fit-to-content affordance. Pairs with N12 — a full-bleed
   fixed surface without pan is a smaller win than either alone. _(user, 2026-09-22)_
-- **N14 Results belong in a bottom drawer, not below the canvas** (design + frontend). Move the
+- _(CLOSED by F-015, #62, merged `dc2337f` 2026-09-23)_ **N14 Results belong in a bottom drawer, not below the canvas** (design + frontend). Move the
   **Run Analysis** button to the **bottom screen border**. Analysis results must **not** flow in below
   the canvas; they go in an **expandable panel that rises from the bottom**, the same interaction
   family as the two side panels, with its own **arrow button sitting above the Run Analysis button**.
@@ -234,3 +234,29 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   make a per-worktree `pip install -e .` explicit in the dispatch template, or have `conftest.py`
   prepend the repo-local `src/`. Doing it properly needs the U1 dependency sign-off.
   _(orchestrator, 2026-09-23)_
+
+- **N20 `shell.js:60-62` re-reads state the setter is already idempotent about** (frontend, trivial).
+  The drawer auto-expand does `getElementById("drawer")` a second time and guards on
+  `dataset.state === "collapsed"` → `addEventListener("click", () => setDrawer(true));`, one line.
+  _(PR #62 F1, 2026-09-23)_
+- **N21 `test_smoke.py:382`/`:397` loop the same matrix twice** (frontend, tests). C1's 12 probes are a
+  strict subset of C5's 24 → fold `assert rect["width"] == width` into the C5 loop and delete the
+  other loop (~16 lines). The reviewer confirmed both mutations still bite from the merged loop.
+  _(PR #62 F2, 2026-09-23)_
+- **N22 Jinja header comment in `shell.html:1-27` restates task history** (frontend, trivial). ~27 lines
+  repeating N12/N13/N14 ids and PR deviations → keep only the overlay/`data-state` contract and
+  "pan/zoom is F-016's". _(PR #62 F5, 2026-09-23)_
+- **N23 Nested region landmarks in the results drawer** (frontend, **accessibility**).
+  `shell.html:105`/`:107` — `<section id="drawer" aria-label="Results drawer">` wraps
+  `<section id="results" aria-label="Run results">`, so a screen reader announces two nested regions
+  where one is meant. Drop the inner `aria-label` (nothing in `src/` or `tests/` queries it, grep
+  confirmed) or make `#results` a `<div>`, keeping the id `run.js` and the tests use.
+  **Introduced by F-015 and carried into F-016's dispatch rather than left to rot here** — accessibility
+  is on shared §6's never-simplify-away list. _(PR #62 F3, 2026-09-23)_
+- **N24 `test_observable_mode_is_config_not_identity` is flaky on `main`** (frontend, tests; **pre-existing**).
+  `test_graph.py:328`, ~1 failure in 10 file-level runs, reproduced by the reviewer on `origin/main`
+  as well as on PR #62's branch; 12/12 green in isolation. `.focus()` + Space on the `ObsGlobal` radio
+  sometimes does not take, leaving `mode == "ObsVectorSum"`. Presumed fix: await the radio's checked
+  state rather than firing a bare key press. **Consequence: the 726 suite floor is a true count but not
+  a stable green** — do not read a single clean run as proof, and do not let a future task "fix" it by
+  deleting the assertion. _(PR #62 F4, 2026-09-23)_
