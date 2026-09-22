@@ -278,6 +278,35 @@ def test_observable_node_grows_in_place_when_opened(index: LoadedPage) -> None:
     assert page.locator('dialog, [role="dialog"], .inspector, .flyout').count() == 0
 
 
+def test_recollapsed_node_returns_to_its_collapsed_height(index: LoadedPage) -> None:
+    """N15/F-014: a node grown open and then closed again must shrink back
+    to the same footprint it had before -- not keep the opened height.
+    ObsVectorSum's default panel (six checkboxes) is taller than one line,
+    so a one-line panel could not fail this."""
+    page = index.page
+    page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
+    fo = page.locator('foreignObject[data-node-id="n1"]')
+    collapsed_height = float(fo.get_attribute("height"))
+
+    summary = page.locator('.node[data-node-id="n1"] summary')
+    summary.focus()
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
+        f".getAttribute('height')) > {collapsed_height}"
+    )
+    opened_height = float(fo.get_attribute("height"))
+    assert opened_height > collapsed_height
+
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
+        f".getAttribute('height')) < {opened_height}"
+    )
+    reclosed_height = float(fo.get_attribute("height"))
+    assert reclosed_height == collapsed_height
+
+
 def test_observable_mode_is_config_not_identity(index: LoadedPage) -> None:
     """C3: the exported node's `kind` stays `Observable`; the chosen mode
     rides along as `config.mode`, for the server to resolve at submit.
