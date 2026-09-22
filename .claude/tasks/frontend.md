@@ -23,7 +23,20 @@ IDs are `F-nnn`, allocated in order and never reused.
   `docs/design-explorations/canvas-frame.{html,css}` is the approved reference — this is a **port of
   a settled design**, not an exploration.
 - **Branch / PR:** `task/f-015-full-bleed-canvas` — not yet opened
-- **Status:** **re-specification (§5.4) — not a cycle.** PR #62 opened at `a8e1128`. C1-C5 met;
+- **Status:** **in review (cycle 1)** — reviewer dispatched with PR #62 and the environment warning.
+  Head `1f069e4`. **Gate passed: 726 passed (721 + 5), flake8 0**, reproduced by me detached in the
+  primary checkout. checks=7, all 7 met.
+  **The C7 fix keeps the instrument strong rather than buying green:** `scroll_into_view_if_needed()`
+  on the element each raw `page.mouse` drag is about to use, plus a fresh `bounding_box()` at every
+  use instead of one read held from earlier in the test. Real root cause, and it is not the one I
+  guessed: with `.shell` → `.frame` and no CSS yet, the palette sits **below** the canvas in document
+  flow, so a `.click()`/`.check()` elsewhere in the same test scrolls the page and invalidates a
+  box captured earlier. The pointer path is untouched.
+  **C7's mutation was done without touching the repo:** a disposable rsynced copy outside the tree
+  with its own venv, `graph.js`'s `onMove` stubbed to `return;`, `test_graph.py` first `diff`'d
+  byte-identical to the branch's — RED at
+  `assert (moved["x"], moved["y"]) != (n1_start["x"], n1_start["y"])`, `(16, 16) != (16, 16)`.
+- **Previously:** re-specification (§5.4), not a cycle — PR #62 opened at `a8e1128`. C1-C5 met;
   **C6 was unsatisfiable as I wrote it** — it demanded no regression *and* forbade editing the one
   file it necessarily breaks. Scope amended to add `tests/e2e/test_graph.py`; **checks 6 → 7** (C7:
   both tests pass and still exercise the real pointer path, mutation-shown).
