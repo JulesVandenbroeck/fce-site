@@ -215,23 +215,9 @@ def _process_sample(sel_cfg, s, idx, active_samples, cfg,
 
 
 def _validate_sel_exprs(selections: list) -> None:
-    """Validate every selection expression in *selections* through
-    ``fce_web.safe_eval.compile_expr`` before any event is touched.
-
-    This is the early syntax/safety gate the reference engine got for free (as a side
-    effect, not by design) from the ``compile(preprocess_hep_expr(e), '<sel>', 'eval')``
-    loop that task B-015 removed from this module as dead code: that call was never read
-    afterwards (``path_filter.filter_raw_event_data`` always recompiles ``sel_exprs``
-    itself), but it *did* raise ``SyntaxError`` synchronously, before ``run_physics_loop``
-    did any work. Removing it without replacement silently downgraded that into a per-
-    worker exception swallowed by the ``except Exception`` in ``_process_sample``'s caller
-    loop below, surfacing only as one log line on a run that otherwise reports
-    ``processed_any=False`` -- indistinguishable from "no data found" (cycle-1 review,
-    M1). ``compile_expr`` is used here rather than a bare ``compile()`` because it is
-    bounded (``MAX_EXPR_LENGTH``, ``MAX_AST_NODES``, ``safe_eval.py:75,80``) and raises
-    :class:`~fce_web.safe_eval.UnsafeExpression` with a message written to be shown to the
-    student who typed the expression, per ``.claude/backend/CLAUDE.md`` section 3.2 --
-    neither property the removed ``compile()`` had.
+    """Gate every selection expression in *selections* through
+    ``fce_web.safe_eval.compile_expr`` before any event is touched; bounded and
+    student-legible, which a bare ``compile()`` was not.
     """
     for sel_cfg in selections:
         for expr in sel_cfg.get("sel_exprs", []):

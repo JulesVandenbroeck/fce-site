@@ -14,10 +14,10 @@ dataset, and not a licence to add a second one.
   hand-written kinematics. The user overruled that approach mid-task (2026-09-07): a synthetic
   schema is a guess at what the engine's real ROOT files look like, and a fixture cut from real
   simulation carries a real Z peak rather than one constructed to pass a test. `make_fixture.py`
-  is now a **downsampler**: every branch name, dtype and physics value in the fixture comes from
-  the real files at
+  is now a **downsampler**: every branch name, element dtype and physics value in the fixture
+  comes from the real files at
   <https://homepage.iihe.ac.be/~kskovpen/fce/datasets/IDEA/91GeV/>, unchanged except for event
-  count.
+  count (and the jagged branches' on-disk representation — see "Branch schema" below).
 - **Not the full dataset.** The real files are 51–166 MB each; this fixture keeps the first 2000
   events of each, ~750 KB total. It is not statistically representative of the full sample, only
   large enough to carry a real peak and exercise the pipeline.
@@ -30,17 +30,21 @@ dataset, and not a licence to add a second one.
 Every fixture file's `ntuple` TTree carries exactly 30 branches, identical to the real source
 files:
 
-- The 26 branches `engine/analytical_loop.py`'s key filter selects
+- The 24 branches `engine/analytical_loop.py`'s key filter selects
   (substring match on `pt`/`eta`/`phi`/`e`/`weight`/`btag`/`d0signif`/`z0signif`/`charge`,
   `analytical_loop.py:156-159`) and `engine/path_filter.py` reads by name
   (`path_filter.py:609-643`): `weight`, `MET_pt`, `MET_phi`, and `{electron,muon}_{pt,eta,phi,e,
   d0signif,z0signif}`, `jet_{pt,eta,phi,e,btag}`, `photon_{pt,eta,phi,e}`.
-- 4 more the engine never reads by name but the real files carry regardless: `MET_e`, `MET_eta`,
+- 6 more the engine never reads by name but the real files carry regardless: `MET_e`, `MET_eta`,
   and one counter branch per variable-length object (`electron_n`, `muon_n`, `jet_n`,
   `photon_n`) — a structural requirement of the TTree format for any jagged branch, not
   something `path_filter.py` looks up. (`electron_n`/`jet_n` happen to also match the engine's
   substring filter, since they contain the letter "e"; `muon_n`/`photon_n` do not. Harmless
-  either way — the engine only ever reads columns it names explicitly.)
+  either way — the engine only ever reads columns it names explicitly.) The real files store
+  these jagged branches as `std::vector<float>` (uproot: `AsJagged(AsDtype('>f4'),
+  header_bytes=10)`); the fixture stores them as counter-branch jagged arrays instead
+  (`header_bytes=0`). Names, element dtypes and values are identical; only this on-disk
+  representation differs, and the engine reads both forms fine.
 
 `tests/test_fixture_dataset.py::test_branch_set_matches_the_real_fixture_schema` asserts this set
 exactly, per sample.

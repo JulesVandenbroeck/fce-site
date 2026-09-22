@@ -145,6 +145,7 @@ def test_run_analysis_completes_against_the_fixture(tmp_path, monkeypatch):
     monkeypatch.setenv("FCE_HOME", str(tmp_path))
     tmp_dataset_dir = tmp_path / "datasets" / "IDEA" / "91GeV"
     shutil.copytree(DATASET_DIR, tmp_dataset_dir)
+    committed_before = sorted(os.listdir(DATASET_DIR))
 
     config = RunConfig.from_file(ANALYSIS_CONFIG)
     ctx = RunContext(n_workers=2)
@@ -155,9 +156,8 @@ def test_run_analysis_completes_against_the_fixture(tmp_path, monkeypatch):
         out_file = tmp_path / "output" / f"hist0_{sample}.root"
         assert out_file.exists(), f"missing {out_file}"
 
-    fixture_output_dir = os.path.join(FIXTURE_ROOT, "fixtures", "output")
-    assert not os.path.exists(fixture_output_dir), (
-        f"run_analysis wrote into the committed fixture tree: {fixture_output_dir}"
+    assert sorted(os.listdir(DATASET_DIR)) == committed_before, (
+        "run_analysis touched the committed fixture tree"
     )
 
 
