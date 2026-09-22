@@ -9,7 +9,29 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-015 — Full-bleed canvas, overlay panels, and a results drawer at the bottom edge
+- **Scope:** `src/fce_web/templates/shell.html`, `src/fce_web/static/js/shell.js`,
+  `tests/e2e/test_smoke.py`, `tests/e2e/test_run.py`. **No CSS** — D-022 styles it, and the page
+  will look wrong until D-022 lands. That is expected, not a defect.
+- **Accept:** C1 canvas spans the full viewport width and a panel expanding does not shrink it
+  (overlay, 3 widths x panel states); C2 `#run-control`/`#results` are out of the canvas region and
+  inside the drawer, asserted by DOM ancestry; C3 Run auto-expands a collapsed drawer, red when the
+  call is removed; C4 the drawer goes through the **same** `wireToggle`, a third call not a second
+  mechanism; C5 no horizontal page scroll in 24 probes (8 states x 3 widths); C6 suite floor **721**
+  + additions, flake8 0, nothing outside scope edited. checks=6.
+- **Depends on:** the canvas ruling 2026-09-22 (`design.md` `## Decisions in force` §8-9).
+  `docs/design-explorations/canvas-frame.{html,css}` is the approved reference — this is a **port of
+  a settled design**, not an exploration.
+- **Branch / PR:** `task/f-015-full-bleed-canvas` — not yet opened
+- **Status:** dispatched (cycle 1), `isolation: "worktree"`
+- **Carries:** backlog **N12** and **N14**. N13 (pan/zoom) is **F-016** and is deliberately excluded.
+- **Watch:** D-018's caveat — at 1024/768 `.canvas-region` h-scroll could put the leftmost node out
+  of reach for the inline coordinate maths in `test_graph.py:109,121-122`. Full-bleed changes that
+  failure mode. `test_graph.py` is **outside** F-015's scope; if it breaks the coder reports rather
+  than edits, and I raise it.
+- **Dispatch carries the N19 environment warning** — the coder must `pip install -e .` inside its own
+  worktree and confirm `fce_web.__file__` resolves there, or its suite run exercises `main`'s code.
+- **History:** [`archive/frontend.md`](archive/frontend.md)
 
 ## Ready
 
