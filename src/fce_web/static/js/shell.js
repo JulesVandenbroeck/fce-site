@@ -17,12 +17,17 @@
 // needs real mission data from content/missions/*.yaml, which is
 // F-005/backend's to supply. No client-side mission array to duplicate the
 // server-rendered title/brief.
-function wireToggle(regionId, btnId, glyphId, srId, bodyId, expandGlyph, collapseGlyph, noun) {
+// `glyphs` is the two-character "expanded-glyph, collapsed-glyph" pair as one
+// string (e.g. "‹›") -- one token per call site instead of two positional
+// glyph args, so a transposition between the two calls can't silently flip
+// which chevron means which state.
+function wireToggle(regionId, btnId, glyphId, srId, bodyId, glyphs, noun) {
   const region = document.getElementById(regionId);
   const btn = document.getElementById(btnId);
   const glyph = document.getElementById(glyphId);
   const sr = document.getElementById(srId);
   const body = document.getElementById(bodyId);
+  const [expandGlyph, collapseGlyph] = glyphs;
   btn.addEventListener("click", () => {
     const collapsed = region.dataset.state === "collapsed";
     region.dataset.state = collapsed ? "expanded" : "collapsed";
@@ -34,8 +39,8 @@ function wireToggle(regionId, btnId, glyphId, srId, bodyId, expandGlyph, collaps
 }
 
 function init() {
-  wireToggle("palette", "palette-toggle", "palette-toggle-glyph", "palette-toggle-sr", "palette-list", "‹", "›", "node palette");
-  wireToggle("mission-panel", "panel-toggle", "panel-toggle-glyph", "panel-toggle-sr", "mission-panel-body", "›", "‹", "mission panel");
+  wireToggle("palette", "palette-toggle", "palette-toggle-glyph", "palette-toggle-sr", "palette-list", "‹›", "node palette");
+  wireToggle("mission-panel", "panel-toggle", "panel-toggle-glyph", "panel-toggle-sr", "mission-panel-body", "›‹", "mission panel");
 }
 
 if (document.readyState === "loading") {

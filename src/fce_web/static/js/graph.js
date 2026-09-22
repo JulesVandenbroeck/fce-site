@@ -139,11 +139,12 @@ function clampToCanvas(x, y, w = NODE_W, h = NODE_H) {
 // from screen pixels to the SVG's user-unit space via the same CTM
 // clientToSvgPoint already uses -- not the foreignObject, which D-015 never
 // resizes past its collapsed width/height for an opened node.
-// Every caller routes through moveNodeTo, which only ever runs once a node
-// is already rendered (growNode bails out first if it is not) -- so this
-// never needs a not-yet-mounted fallback.
-function measuredSize(id) {
-  const div = foreignObjectFor(id).querySelector(".node");
+// Takes the already-looked-up foreignObject rather than an id: every caller
+// routes through moveNodeTo, which only ever runs once a node is already
+// rendered (growNode bails out first if it is not), so there is exactly one
+// DOM query per move, not two.
+function measuredSize(fo) {
+  const div = fo.querySelector(".node");
   const r = div.getBoundingClientRect();
   const p1 = clientToSvgPoint(r.left, r.top);
   const p2 = clientToSvgPoint(r.right, r.bottom);
@@ -218,15 +219,13 @@ function renderEdges() {
 function moveNodeTo(id, x, y) {
   const n = graphState.nodes.get(id);
   if (!n) return;
-  const { w, h } = measuredSize(id);
+  const fo = foreignObjectFor(id);
+  const { w, h } = measuredSize(fo);
   const clamped = clampToCanvas(x, y, w, h);
   n.x = clamped.x;
   n.y = clamped.y;
-  const fo = foreignObjectFor(id);
-  if (fo) {
-    fo.setAttribute("x", clamped.x);
-    fo.setAttribute("y", clamped.y);
-  }
+  fo.setAttribute("x", clamped.x);
+  fo.setAttribute("y", clamped.y);
   renderEdges();
 }
 
