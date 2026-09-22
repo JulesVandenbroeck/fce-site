@@ -23,7 +23,25 @@ IDs are `F-nnn`, allocated in order and never reused.
   `docs/design-explorations/canvas-frame.{html,css}` is the approved reference — this is a **port of
   a settled design**, not an exploration.
 - **Branch / PR:** `task/f-015-full-bleed-canvas` — not yet opened
-- **Status:** dispatched (cycle 1), `isolation: "worktree"`
+- **Status:** **re-specification (§5.4) — not a cycle.** PR #62 opened at `a8e1128`. C1-C5 met;
+  **C6 was unsatisfiable as I wrote it** — it demanded no regression *and* forbade editing the one
+  file it necessarily breaks. Scope amended to add `tests/e2e/test_graph.py`; **checks 6 → 7** (C7:
+  both tests pass and still exercise the real pointer path, mutation-shown).
+  Gate reproduced by me detached in the primary checkout on chromium-1234: **724 passed, 2 failed,
+  flake8 0** — the two failures exactly as the coder named them, so **not browser-dependent**; both
+  builds agree and the coder's report was accurate throughout.
+- **The two failures are D-018's caveat coming true, as the dispatch predicted.** `.shell` renamed to
+  `.frame`, so its old flex rule no longer matches and `#canvas-region`'s `overflow: auto` can scroll
+  the fixed 704x512 canvas partly out of view (one failure observed `svg_box.y = -393`); a coordinate
+  read once, up front, is stale by the time the pointer moves. Affected:
+  `test_pointer_places_drags_and_connects_nodes`,
+  `test_opened_node_near_bottom_edge_stays_inside_canvas_in_every_mode`.
+- **The fix must not lean on D-022.** `main` has to be green on this branch's own merit, and the
+  pointer test must keep driving real `pointerdown`/`pointermove`/`pointerup` — downgrading it to
+  `locator.click()` or skipping it would buy green by weakening the instrument, which is refused in
+  writing in the re-dispatch.
+- **The coder stopped at the scope boundary and reported instead of routing around it** — the
+  behaviour the rule exists to produce, and the reason this is my defect and not a cycle against it.
 - **Carries:** backlog **N12** and **N14**. N13 (pan/zoom) is **F-016** and is deliberately excluded.
 - **Watch:** D-018's caveat — at 1024/768 `.canvas-region` h-scroll could put the leftmost node out
   of reach for the inline coordinate maths in `test_graph.py:109,121-122`. Full-bleed changes that
