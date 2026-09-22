@@ -47,7 +47,23 @@ before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
   shrinking back. Almost certainly an inline/explicit height (or a stale measured height) set on
   expand and never cleared on collapse — check the collapse path clears whatever the expand path set,
   and confirm the fix on a node whose expanded content is taller than one line. Independent of
-  N12-N14; can ship on its own. _(user, 2026-09-22)_
+  N12-N14; can ship on its own. **Held 2026-09-22 by the user until D-020 lands**, because pan/zoom
+  introduces a transform that may change how node geometry is computed. _(user, 2026-09-22)_
+  **Ground truth, enumerated by `scout` 2026-09-22 — do not re-derive, and note it refutes the
+  obvious hypothesis.** Nothing anywhere sets an inline `style.width/height/minWidth/minHeight` on a
+  node: `graph.js` writes **only** the SVG `foreignObject` `height` attribute, at `graph.js:186`
+  inside `growNode` (`:181-194`), plus the initial `width`/`height` at `:708-709`. And the collapse
+  path is **not** missing a cleanup — `wireInteriorToggle` (`:237-245`) calls the *same* `growNode(id)`
+  on both open and close (`:243`), so the shrink is meant to happen by re-measuring
+  `div.scrollHeight`. So the defect is in the **measurement**, not in a stale value: the likeliest
+  cause is that `growNode` reads `scrollHeight` in the same tick as the `toggle` event, before the
+  browser has reflowed the now-closed `<details>` — and `observable.css:9-17`
+  (`.node__interior[open] { flex-shrink: 0; max-height: calc(var(--space-7)*6); overflow-y: auto }`)
+  is the geometry that makes the two states differ. `moveNodeTo` (`:219-230`) only *reads* size via
+  `measuredSize` (`:146-152`). Existing coverage that must stay green: `test_graph.py:258, 318, 339,
+  454, 480` and `test_interior_style.py:22` — note **none of them asserts that a re-collapsed node
+  returns to its collapsed height**, which is exactly why this shipped. That missing assertion is the
+  one runnable check the fix owes. _(scout, 2026-09-22)_
 
 ---
 

@@ -68,7 +68,19 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none._
+### D-020 — The canvas frame: full-bleed canvas, overlay panels, pan/zoom, bottom results drawer
+- **Scope:** `docs/design-explorations/canvas-frame.{html,css}` (+ its own JS inside the page),
+  `docs/design-explorations/verify.py` (append-only), `docs/design-explorations/README.md`.
+  Touches nothing under `src/`.
+- **Accept:** C1-C5 in the dispatch — full-bleed canvas with overlaying panels at 1440/1024/768;
+  pan + zoom with a keyboard equivalent and a reset affordance; bottom Run button and rising
+  results drawer reusing the chevron family; a written recommendation answering N13's four open
+  questions; no h-scroll in any panel/drawer state, checked in `verify.py`.
+- **Depends on:** nothing. Carries the user's N12/N13/N14 (backlog `## Next up`, 2026-09-22).
+- **Branch / PR:** `task/d-020-canvas-frame` — not yet opened
+- **Status:** dispatched (cycle 1), `effort: high`, worktree-isolated
+- **Checkpoint:** yes — the user rules on the recommendation before any frontend task is raised.
+- **History:** [`archive/design.md`](archive/design.md)
 
 ## Ready
 
