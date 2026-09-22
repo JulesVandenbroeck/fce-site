@@ -1,19 +1,7 @@
-/* chart.css — D-016. The results region markup F-007 shipped (#run-control,
- * #results) and the SVG histogram F-008's chart.js emits into #results-chart
- * — neither had any CSS before this file. Every colour, spacing, type and
- * timing value is a var() into tokens.css; the one exception is the note's
- * `max-width: 40ch`, a relative unit rather than a literal (design manual §4).
- *
- * Reveal contract (chart.js's own comment, armReveal): `.reveal-armed` is
- * added exactly once to `.chart-figure` and never removed, and is skipped
- * entirely under prefers-reduced-motion. So every rule below keys off
- * `.chart-figure.reveal-armed …` with `animation-fill-mode: forwards`, and
- * the *unarmed* state (no ancestor class — true on first paint and under
- * reduced motion alike) is written to already equal the settled end state:
- * full opacity, no transform. No separate reduced-motion query is needed for
- * that half; one is still added below as a second line of defence in case a
- * browser is told to prefer reduced motion after this class was already
- * armed by JS on an earlier interaction.
+/* chart.css — D-016. Styles #run-control and #results (F-007) and the SVG
+ * histogram chart.js emits into #results-chart (F-008). Reveal keys off
+ * `.chart-figure.reveal-armed`, set once by chart.js and skipped under
+ * prefers-reduced-motion; a media query below is a second line of defence.
  */
 
 /* ---- run control ----------------------------------------------------- */
@@ -161,12 +149,6 @@
 }
 
 /* ---- reveal: settled by default, ink-draw when armed --------------------- */
-.reveal-frame,
-.reveal-band,
-.reveal-data {
-  opacity: 1;
-  transform: none;
-}
 .chart-figure.reveal-armed .reveal-frame {
   transform-box: fill-box;
   animation: chart-fade-in var(--duration-fast) var(--ease-settle) both;
