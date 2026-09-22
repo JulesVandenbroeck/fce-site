@@ -77,7 +77,9 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   cleanups.
 - **Depends on:** D-020 (#59, merged `7043e76`).
 - **Branch / PR:** `task/d-021-canvas-frame-pan` — #60
-- **Status:** **handed off (cycle 2)** — see [`handoff/d-021-design-2.md`](../handoff/d-021-design-2.md).
+- **Status:** in review prep — **cycle 2 re-dispatched 2026-09-22** from
+  [`handoff/d-021-design-2.md`](../handoff/d-021-design-2.md) into the existing worktree
+  `.claude/worktrees/agent-a3f0c5c43ddaa00dd` (no `isolation`, per §3). Previously: handed off (cycle 2).
   The coder's watchdog fired at **90%** on cycle 2's *first* tool call, so cycle 2 produced two
   commits and a handoff, not the four findings. Branch head `7b1c210`, pushed. **PR #60 body is
   still cycle 1's** — C11/C12 are not appended, because there is no evidence to append.
