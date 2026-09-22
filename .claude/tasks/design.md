@@ -76,8 +76,18 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   50% to 200%; the whole pipeline is visible on load with both panels expanded; N17/N18 instrument
   cleanups.
 - **Depends on:** D-020 (#59, merged `7043e76`).
-- **Branch / PR:** `task/d-021-canvas-frame-pan` — not yet opened
-- **Status:** dispatched (cycle 1), `effort: high`, worktree-isolated
+- **Branch / PR:** `task/d-021-canvas-frame-pan` — #60
+- **Status:** in review (cycle 1). Free gate passed, reproduced by me in the primary checkout
+  2026-09-22: red set `{board-lane-fill}` on `main` and on the branch, difference empty; section
+  grew **27 -> 54 probes** (floor held); `panRange` non-zero on **both** axes at every zoom x width
+  (1440@100% = `1200x1200`), `sheetCoversViewport=True` in all 9 canvas probes. Root cause confirmed
+  real, not papered over.
+- **Unrequested deviations the user has not ruled on:** palette expanded width **368 -> 256**, the
+  node chain re-laid out to a 212-unit pitch at (700,900), and the page now **opens in Fit rather
+  than at 100%**. All three are the C9 mechanism and are argued in the PR body; reversible.
+- **Carve-out note:** `.claude/handoff/d-021-design.anchor.md` rode the task branch (worktree
+  isolation refused the primary-checkout path). Same shape as B-018's F6. Harmless here, but
+  bookkeeping is not supposed to ride a task branch.
 - **Carries:** the user's two findings from driving the page 2026-09-22, plus backlog **N16**
   (= PR #59 F1), **N17**, **N18**.
 - **Note:** the two user findings and F1 are probably **one** root cause — a canvas surface with no
