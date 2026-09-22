@@ -9,11 +9,27 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-014 — A re-collapsed node returns to its collapsed height
+- **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
+- **Accept:** C1 a node with multi-line expanded content, expanded then re-collapsed, returns to its
+  pre-expand footprint (`foreignObject` height read before/after/after); C2 that check is red with the
+  fix reverted, both transcripts reported; C3 suite floor **720** + additions, flake8 0, and
+  `test_graph.py:258,318,339,454,480` / `test_interior_style.py:22` stay green and unweakened.
+- **Depends on:** the canvas ruling 2026-09-22 (N15 was held until D-020 landed — it has).
+- **Branch / PR:** `task/f-014-node-collapse-height` — not yet opened
+- **Status:** dispatched (cycle 1), `isolation: "worktree"`
+- **Ground truth is in the dispatch, enumerated by `scout` 2026-09-22 — it refutes the obvious
+  hypothesis.** No inline style is ever set; `graph.js:186` writes only the `foreignObject` height, and
+  `wireInteriorToggle` (`:237-245`) calls the *same* `growNode` on open and close. The defect is in the
+  **measurement**, not a stale value — likeliest a `scrollHeight` read in the same tick as the `toggle`
+  event, before the closed `<details>` has reflowed.
+- **Closes:** backlog **N15**.
+- **History:** [`archive/frontend.md`](archive/frontend.md)
 
 ## Ready
 
-_none — D-018 (design) styles F-012's interiors; see `design.md`._
+_none — the canvas port (N12/N13/N14) is decomposed but not dispatched; see `design.md`
+`## Decisions in force` §8-9 and the note below._
 
 ## Blocked
 
