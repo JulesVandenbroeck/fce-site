@@ -533,3 +533,66 @@ by runtime monkeypatch rather than by editing the template. That is the F-008 pr
 whether the hazard was closed and not to re-litigate the form — left unsaid, that is how a third cycle gets spent
 on nothing. The reviewer then found F4, a *narrower* residue of the same hazard, and correctly declined to gate on
 it: the value it protects is `aria-hidden` decoration.
+
+---
+
+### F-014 — A re-collapsed node returns to its collapsed height
+
+- **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
+- **Branch / PR:** `task/f-014-node-collapse-height` — #61, merged `06e4108`, 2026-09-23.
+- **Result:** 1 cycle, `findings=0, scope=pass, verdict=approve`. checks=3. Suite floor 720 → **721**.
+- **Closes** backlog **N15**, reported by the user 2026-09-22 and held until the canvas design landed.
+
+#### The defect, and why the obvious hypothesis was wrong
+
+N15's own backlog entry guessed an inline height set on expand and never cleared on collapse. `scout`
+refuted that before dispatch: nothing anywhere sets an inline `style.width/height`, and
+`wireInteriorToggle` (`graph.js:237-245`) calls the **same** `growNode(id)` on both open and close, so
+the shrink was always meant to happen by re-measuring. The dispatch carried that refutation, and it is
+the reason the task took one cycle.
+
+The real cause, confirmed in a browser by the coder: `.node` is `height: 100%` of its `foreignObject`
+(`canvas.css:26-27`). `growNode` measured `div.scrollHeight` to pick the new `foreignObject` height —
+but `.node`'s own box was still the stale, expanded height at that moment, and the shrunk interior no
+longer overflowed it, so `scrollHeight` simply reported the div's own large height back. A
+**measurement** bug, not a stale-value bug.
+
+**Fix:** reset the `foreignObject` to its `NODE_H` floor immediately before measuring, so the shorter
+interior is forced to overflow that floor and `scrollHeight` reports its true content height. One line
+plus a why-comment, in the one function all five call sites (`graph.js:243,431,485,616,667`) route
+through — the ponytail root-cause fix rather than a guard per caller.
+
+#### The reviewer sharpened the falsifiability check
+
+C2 asked for the fix reverted and the test shown red; the coder did that (RED: `wait_for_function`
+timeout, the height never dropping). The reviewer ran a **second, sharper** mutation the PR had not:
+it added `+7` to the measured height so the node shrinks but not all the way back, and the equality
+assertion went red on its own — `assert 111.0 == 104.0`. So the check fails both ways that matter, no
+shrink and partial shrink, rather than only the first. It also drove the real app and recorded
+`heights collapsed/open/reclosed/reclosed2: 104 474 104 104` with focus staying on the summary.
+
+#### The gate return was mine, and it is the lesson worth keeping
+
+I ran the §5.1 gate from a **detached scratch worktree using the primary checkout's venv** and got
+2 failed / 719 passed against the coder's 721. I then diagnosed a playwright/chromium version skew
+(worktree venvs resolve 1.63.0/chromium-1243, the primary 1.62.0/chromium-1234, both builds in the
+shared cache) and sent the branch back.
+
+**Both conclusions were wrong.** `.venv/.../__editable__.fce_web-0.1.0.pth` is a plain path entry
+pinned to the **primary checkout's** `src/`, and `conftest.py` never prepends a repo-local `src/`. So
+pytest collected the branch's test files (path-based) while the app served to the browser was `main`'s
+— the branch's JS was never exercised. Both failures were that, including the sibling
+`test_observable_mode_is_config_not_identity` I had attributed to ordering leakage.
+
+The coder disproved the skew theory the right way rather than capitulating to it: it built a disposable
+venv pinned to playwright 1.62.0, ran the branch on **both** chromium builds, and got 721 on each. The
+head commit `adcb6e3` never moved; the entire round trip produced no code change.
+
+**Procedure fixed** in `orchestrator/CLAUDE.md` §5.1: the gate is run with the PR head checked out
+**detached in the primary checkout**, and `.venv/bin/python -c "import fce_web; print(fce_web.__file__)"`
+is the confirmation that the tree under test is the one you think it is. Also noted there: while the
+primary checkout is detached, `.claude/` is the *branch's* copy, so bookkeeping waits for `main`.
+Hazard filed as backlog **N19**, with the wrong diagnosis kept on the record because it was plausible.
+
+§2's *"an instrument that structurally cannot observe the property it certifies"* applies to the gate
+itself, not only to a coder's checks — and the gate is the one instrument nothing else double-checks.

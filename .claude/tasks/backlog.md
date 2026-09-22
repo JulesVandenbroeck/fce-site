@@ -42,7 +42,7 @@ before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
   Pressing **Run Analysis auto-expands** that drawer. The collapse-chevron machinery is already in
   `shell.js`/`shell.html` (see N11) — reuse it for the third edge rather than writing a second one.
   _(user, 2026-09-22)_
-- **N15 A node that is expanded to edit does not retract to its collapsed size** (frontend, bug).
+- _(CLOSED by F-014, #61, merged `06e4108` 2026-09-23)_ **N15 A node that is expanded to edit does not retract to its collapsed size** (frontend, bug).
   Expand a node to edit it, then un-expand: the node keeps its **expanded footprint** instead of
   shrinking back. Almost certainly an inline/explicit height (or a stale measured height) set on
   expand and never cleared on collapse — check the collapse path clears whatever the expand path set,

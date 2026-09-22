@@ -9,35 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-014 — A re-collapsed node returns to its collapsed height
-- **Scope:** `src/fce_web/static/js/graph.js`, `tests/e2e/test_graph.py`
-- **Accept:** C1 a node with multi-line expanded content, expanded then re-collapsed, returns to its
-  pre-expand footprint (`foreignObject` height read before/after/after); C2 that check is red with the
-  fix reverted, both transcripts reported; C3 suite floor **720** + additions, flake8 0, and
-  `test_graph.py:258,318,339,454,480` / `test_interior_style.py:22` stay green and unweakened.
-- **Depends on:** the canvas ruling 2026-09-22 (N15 was held until D-020 landed — it has).
-- **Branch / PR:** `task/f-014-node-collapse-height` — not yet opened
-- **Status:** **gate passed (2nd attempt) — dispatching the reviewer.** PR #61 at `adcb6e3`.
-  **721 passed, flake8 0**, reproduced by me with the head checked out **detached in the primary
-  checkout**. The coder's numbers were right all along.
-- **My first gate run was the broken instrument, and this is the lesson.** I ran it from a detached
-  worktree using the primary venv and got 2 failed / 719 passed, then diagnosed a playwright/chromium
-  skew and sent the branch back. Both were wrong. `__editable__.fce_web-0.1.0.pth` pins `fce_web` to
-  the **primary checkout's** `src/`, so that combination collects the branch's tests while serving
-  `main`'s app — the branch's JS was never exercised. The coder disproved the skew theory by re-running
-  on **both** chromium builds (1234 and 1243) and getting 721 on each. Cost: one round trip, no code
-  change; `adcb6e3` is untouched since it was first pushed. Procedure fixed in `orchestrator/CLAUDE.md`
-  §5.1; hazard filed as backlog **N19**.
-- **`test_observable_mode_is_config_not_identity` was collateral of the same fault**, not ordering
-  leakage as I claimed — it fails only when the wrong app is served, and does not reproduce once the
-  branch's source is actually under test. Nothing carries forward from it.
-- **Ground truth is in the dispatch, enumerated by `scout` 2026-09-22 — it refutes the obvious
-  hypothesis.** No inline style is ever set; `graph.js:186` writes only the `foreignObject` height, and
-  `wireInteriorToggle` (`:237-245`) calls the *same* `growNode` on open and close. The defect is in the
-  **measurement**, not a stale value — likeliest a `scrollHeight` read in the same tick as the `toggle`
-  event, before the closed `<details>` has reflowed.
-- **Closes:** backlog **N15**.
-- **History:** [`archive/frontend.md`](archive/frontend.md)
+_none._
 
 ## Ready
 
@@ -53,6 +25,16 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-014** — a re-collapsed node returns to its collapsed height — #61, `06e4108`, **1 cycle + 1 gate return that was mine, not the coder's**, clean gate (`findings=0, scope=pass, verdict=approve`). checks=3. Suite floor **721** (720 + 1).
+  **Closes backlog N15.** One line of code plus a why-comment, in the single function all five `growNode(id)` call sites route through.
+  **The root cause was not the obvious one, and scout's ground truth predicted that:** nothing sets an inline style, and `wireInteriorToggle` already
+  calls the *same* `growNode` on open and close. `.node` is `height: 100%` of its `foreignObject` (`canvas.css:26-27`), so `growNode`'s
+  `div.scrollHeight` read reported the div's own still-expanded box back rather than the shrunk interior's content height. The fix resets the
+  `foreignObject` to its `NODE_H` floor *before* measuring, forcing the shorter interior to overflow it. A measurement bug, not a stale value.
+  **The reviewer strengthened C2 beyond what the PR ran:** besides deleting the reset line (RED, no shrink at all), it mutated the measured height
+  `+7` so the node shrinks but not all the way, and the equality assertion went red on its own (`assert 111.0 == 104.0`). The check fails both ways that matter.
+  **My gate return was a false alarm and cost one round trip** — see the entry in `archive/frontend.md` and backlog **N19**. `adcb6e3` never moved.
+  **History:** [`archive/frontend.md`](archive/frontend.md)
 - **F-013** — backlog cleanup sweep, frontend — #57, `9c72521`, 2 cycles, clean gate (`findings=1, scope=pass, verdict=approve`).
   **Suite floor 729 → 728** (`test_mission_pager_has_nothing_to_page_to`, folded into its sibling and shown
   *stronger* by mutation, not merely shorter). `shell.js` 59 → 45 lines; `wireToggle` merged from two near-identical
