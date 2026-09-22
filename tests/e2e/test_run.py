@@ -296,3 +296,49 @@ def test_network_failure_shows_a_note_and_leaves_the_ui_alive(index: LoadedPage)
     assert note.inner_text() != ""
     assert page.locator("#run-button").get_attribute("aria-disabled") == "false"
     assert index.activity.page_errors == []
+
+
+# ---- F-015: the Run control and results move into a bottom drawer --------
+# (backlog N14). Ported from docs/design-explorations/canvas-frame.html.
+
+
+def test_run_control_and_results_live_in_the_drawer_not_the_canvas(index: LoadedPage) -> None:
+    """C2: #run-control and #results are no longer descendants of the
+    canvas region -- they are descendants of the results drawer."""
+    page = index.page
+    assert page.locator("#canvas-region #run-control").count() == 0
+    assert page.locator("#canvas-region #results").count() == 0
+    assert page.locator("#drawer #run-control").count() == 1
+    assert page.locator("#drawer #results").count() == 1
+
+
+def test_run_analysis_auto_expands_a_collapsed_drawer(index: LoadedPage) -> None:
+    """C3: pressing Run Analysis expands the drawer if it was collapsed.
+    Goes red if shell.js's auto-expand call on #run-button is removed --
+    the drawer would stay collapsed while #results-status still updates
+    invisibly underneath it."""
+    page = index.page
+    _place_mission1_chain(page)
+    assert page.locator("#drawer").get_attribute("data-state") == "collapsed"
+
+    page.locator("#run-button").click()
+    expect(page.locator("#drawer")).to_have_attribute("data-state", "expanded")
+
+
+def test_drawer_toggle_is_wired_like_the_two_side_panels(index: LoadedPage) -> None:
+    """C4: the drawer's own chevron flips `data-state` and `aria-expanded`
+    together, exactly as the palette's and mission panel's toggles do --
+    the same wireToggle call, not a second toggle mechanism."""
+    page = index.page
+    toggle = page.locator("#drawer-toggle")
+    assert page.locator("#drawer").get_attribute("data-state") == "collapsed"
+    assert toggle.get_attribute("aria-expanded") == "false"
+
+    toggle.focus()
+    page.keyboard.press("Enter")
+    assert page.locator("#drawer").get_attribute("data-state") == "expanded"
+    assert toggle.get_attribute("aria-expanded") == "true"
+
+    page.keyboard.press("Enter")
+    assert page.locator("#drawer").get_attribute("data-state") == "collapsed"
+    assert toggle.get_attribute("aria-expanded") == "false"
