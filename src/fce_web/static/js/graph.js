@@ -25,11 +25,11 @@
 //
 // F-006 also owns the `Observable` node's grow-in-place interior (source:
 // docs/design-explorations/observable.html): a native <details> holding a
-// radio-group mode toggle, ported as markup+behaviour only. The
-// exploration's per-mode forms are not built -- their values never reached
-// `config`, see buildObservableInterior's own comment -- so there is no
-// panel to switch visibility on; growNode() resizes the node's
-// foreignObject to its measured content box, no fixed numbers guessed.
+// radio-group mode toggle, ported as markup+behaviour only. F-011 built the
+// per-mode forms this header used to say were missing -- see
+// buildObservableInterior's own comment for how they wire into `config`.
+// growNode() resizes the node's foreignObject to its measured content box,
+// no fixed numbers guessed.
 //
 // VALID_CONNECTIONS below is a courtesy check only, trimmed to the four
 // palette kinds. `src/fce_web/graph.py`'s `VALID_CONNECTIONS` is the
@@ -127,11 +127,7 @@ function setStatus(text) {
   els.status.textContent = text;
 }
 
-// w/h default to the collapsed footprint (spawn placement, before the node
-// has any rendered box to measure); moveNodeTo passes the live measured
-// size instead -- the one clamp both opening and dragging route through
-// (F-009), so an opened Observable's real 159.5x232.3px box never relies on
-// the collapsed NODE_H to know where the bottom edge is.
+// w/h default to the collapsed size; moveNodeTo passes the measured box.
 function clampToCanvas(x, y, w = NODE_W, h = NODE_H) {
   return {
     x: Math.max(0, Math.min(CANVAS_W - w, x)),
@@ -143,10 +139,11 @@ function clampToCanvas(x, y, w = NODE_W, h = NODE_H) {
 // from screen pixels to the SVG's user-unit space via the same CTM
 // clientToSvgPoint already uses -- not the foreignObject, which D-015 never
 // resizes past its collapsed width/height for an opened node.
+// Every caller routes through moveNodeTo, which only ever runs once a node
+// is already rendered (growNode bails out first if it is not) -- so this
+// never needs a not-yet-mounted fallback.
 function measuredSize(id) {
-  const fo = foreignObjectFor(id);
-  const div = fo && fo.querySelector(".node");
-  if (!div) return { w: NODE_W, h: NODE_H };
+  const div = foreignObjectFor(id).querySelector(".node");
   const r = div.getBoundingClientRect();
   const p1 = clientToSvgPoint(r.left, r.top);
   const p2 = clientToSvgPoint(r.right, r.bottom);

@@ -226,7 +226,7 @@ def test_exported_nodes_is_a_list_accepted_by_build_run_config(index: LoadedPage
         "Histogram": {"bins": "50", "min": "60.0", "max": "120.0"},
     }
     payload = {
-        "nodes": [{"id": n["id"], "kind": n["kind"], "config": node_config[n["kind"]]} for n in graph["nodes"]],
+        "nodes": [{**n, "config": node_config[n["kind"]]} for n in graph["nodes"]],
         "edges": graph["edges"],
     }
 
@@ -401,7 +401,7 @@ def test_observable_interior_has_no_dead_controls(index: LoadedPage) -> None:
     page.keyboard.press("Enter")
 
     interior = page.locator('.node[data-node-id="n1"] .node__interior')
-    controls = interior.locator("input, select, textarea, button:not(summary)")
+    controls = interior.locator("input, select, textarea, button")
     assert controls.count() == 15
     kinds = [controls.nth(i).get_attribute("type") for i in range(controls.count())]
     assert kinds.count("radio") == 4  # the mode toggle
@@ -436,6 +436,21 @@ def _await_settled(page, node_id: str) -> None:
     )
 
 
+def _open_and_settle(page, node_id: str) -> None:
+    """Opens the node by keyboard, waits for the grow-in-place resize to
+    land, then waits for the reparent-restarted entrance animation to
+    settle (see _await_settled) before anything measures the node's box."""
+    fo = page.locator(f'foreignObject[data-node-id="{node_id}"]')
+    collapsed_height = float(fo.get_attribute("height"))
+    page.locator(f'.node[data-node-id="{node_id}"] summary').focus()
+    page.keyboard.press("Enter")
+    page.wait_for_function(
+        f"() => Number(document.querySelector('foreignObject[data-node-id=\"{node_id}\"]')"
+        f".getAttribute('height')) > {collapsed_height}"
+    )
+    _await_settled(page, node_id)
+
+
 def test_opened_node_near_bottom_edge_stays_inside_canvas_in_every_mode(index: LoadedPage) -> None:
     """C1: an Observable dragged low on the canvas, then opened, keeps its
     measured box (`.node`'s own `getBoundingClientRect`, not the
@@ -454,16 +469,7 @@ def test_opened_node_near_bottom_edge_stays_inside_canvas_in_every_mode(index: L
     page.mouse.move(*target, steps=5)
     page.mouse.up()
 
-    fo = page.locator('foreignObject[data-node-id="n1"]')
-    collapsed_height = float(fo.get_attribute("height"))
-    summary = page.locator('.node[data-node-id="n1"] summary')
-    summary.focus()
-    page.keyboard.press("Enter")
-    page.wait_for_function(
-        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
-        f".getAttribute('height')) > {collapsed_height}"
-    )
-    _await_settled(page, "n1")
+    _open_and_settle(page, "n1")
 
     for mode in ("ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom"):
         page.locator(f'.node[data-node-id="n1"] input[value="{mode}"]').check()
@@ -480,16 +486,7 @@ def test_dragging_opened_node_past_edges_clamps_by_measured_size(index: LoadedPa
     page = index.page
     page.locator('.palette__add[data-add-kind="Observable"]').click()  # n1
 
-    fo = page.locator('foreignObject[data-node-id="n1"]')
-    collapsed_height = float(fo.get_attribute("height"))
-    summary = page.locator('.node[data-node-id="n1"] summary')
-    summary.focus()
-    page.keyboard.press("Enter")
-    page.wait_for_function(
-        f"() => Number(document.querySelector('foreignObject[data-node-id=\"n1\"]')"
-        f".getAttribute('height')) > {collapsed_height}"
-    )
-    _await_settled(page, "n1")
+    _open_and_settle(page, "n1")
 
     svg_box = page.locator("#canvas-svg").bounding_box()
     handle = page.locator('.node[data-node-id="n1"] .node__handle')
@@ -504,7 +501,7 @@ def test_dragging_opened_node_past_edges_clamps_by_measured_size(index: LoadedPa
     node_box = page.locator('.node[data-node-id="n1"]').bounding_box()
     assert _inside(node_box, svg_box)
 
-    summary.focus()
+    page.locator('.node[data-node-id="n1"] summary').focus()
     page.keyboard.press("Enter")  # close it
     assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is None
     closed_box = page.locator('.node[data-node-id="n1"]').bounding_box()

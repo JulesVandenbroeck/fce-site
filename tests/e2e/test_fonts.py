@@ -33,12 +33,12 @@ def test_all_four_fonts_are_requested_and_served(page: Page, live_server: str) -
     name, and each response is a 200.
     """
     statuses: dict[str, int] = {}
-    page.on(
-        "response",
-        lambda response: statuses.__setitem__(response.url, response.status)
-        if "/static/fonts/" in response.url
-        else None,
-    )
+
+    def on_response(response):
+        if "/static/fonts/" in response.url:
+            statuses[response.url] = response.status
+
+    page.on("response", on_response)
 
     page.goto(f"{live_server}/", wait_until="networkidle")
     # Force the two faces nothing currently paints (see module docstring).
@@ -57,4 +57,4 @@ def test_all_four_fonts_are_requested_and_served(page: Page, live_server: str) -
     for path, label in FONT_PATHS.items():
         matches = {url: status for url, status in statuses.items() if url.endswith(path)}
         assert matches, f"{label} ({path}) was never requested"
-        assert list(matches.values()) == [200] * len(matches), f"{label} ({path}) did not return 200: {matches}"
+        assert set(matches.values()) == {200}, f"{label} ({path}) did not return 200: {matches}"
