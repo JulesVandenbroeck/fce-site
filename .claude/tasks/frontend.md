@@ -14,14 +14,15 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; removed nodeids named; suite green.
 - **Depends on:** nothing.
 - **Branch / PR:** `task/f-013-backlog-cleanup` — not yet opened
-- **Status:** cycle 1 in flight — **interrupted once** (session ended mid-task), resumed 2026-09-22.
-  Work was uncommitted in worktree `.claude/worktrees/agent-a6eedf75a4e06e296`, correctly on
-  `task/f-013-backlog-cleanup`: graph.js, shell.js, test_fonts.py, test_graph.py, test_shell.py.
-  If this session also dies, **that worktree is where the work is**.
-- **Items:** PR #42 F1-F4, #38 F7/F8, #36 F10, #32 F8/F9, #41 F1/F2, #40 F1, plus a judgement call on
-  `test_figure_holds_fixed_size_at_every_width`. 12 ids. A falling suite count must be shown to be a
-  *strengthening* (C3), the F-008 precedent.
-- **Review:** —
+- **Status:** in review (cycle 2) — PR **#57**, head `4bc5d74`
+- **Review:** cycle 1 `findings=3, scope=pass, verdict=rework` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/57#issuecomment-5776405265)).
+  F1 gating: the sweep deleted `measuredSize`'s unreachable guard but left the twin `if (fo)` on the same lookup
+  four lines below — the one outcome a task about deleting unreachable guards should not produce. F3 is
+  `wireToggle`'s 8 positional args with a transposable glyph pair. **F2 is mine** — my unpushed dispatch commit
+  `d2c08fb` sat on the branch point, so `.claude/tasks/*.md` showed in the PR diff; fixed by pushing main to `6ff54c1`.
+  Gate re-run by me: **728 passed**, flake8 0, one nodeid removed and mutation-verified.
+- **Suite floor:** 729 → **728** (`test_mission_pager_has_nothing_to_page_to`, folded into its sibling;
+  shown stronger, not merely shorter).
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
 ## Ready

@@ -73,14 +73,19 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; no computed-style change; suite green.
 - **Depends on:** nothing.
 - **Branch / PR:** `task/d-019-backlog-cleanup` — not yet opened
-- **Status:** cycle 1 in flight — **interrupted once** (session ended mid-task), resumed 2026-09-22.
-  Work was uncommitted in worktree `.claude/worktrees/agent-ad852472984d2f19e`, correctly on
-  `task/d-019-backlog-cleanup`: chart.css, shell.css only — **`observable.css` untouched, so PR #55's
-  F8 was still open at the interruption.** If this session also dies, **that worktree is where the work is**.
-- **Items:** PR #48 F2-F4, #39 F12, #44 F4, #55 F8, plus a `--node-observable` token check. 7 ids.
-- **Scope widened by me:** `observable.css` added — PR #55's F8 lives there and the recorded scope
-  (`shell.css`, `chart.css`) would have left it permanently unswept.
-- **Review:** —
+- **Status:** in review (cycle 1) — PR **#58**, head `5abdb46`
+- **Review:** dispatched. Gate re-run by me: **729 passed**, scope = `shell.css` + `chart.css` only.
+- **C4 was unsatisfiable and that is my defect — re-spec, not a cycle.** I required `verify.py --all` to show
+  exactly one red section. Verified myself: clean `main` gives `['board-lane-fill']`, this branch gives
+  `['git-diff-clean', 'git-diff-clean', 'bench-git-diff-clean', 'board-lane-fill']`, because
+  `check_git_diff` (`verify.py:1936`) exempts only `tokens.css` and the fonts from a D-002-era "touches nothing
+  under `src/`" invariant. **Any** task editing any other `src/` stylesheet trips it. Amended to C4' in a
+  [PR comment](https://github.com/JulesVandenbroeck/fce-site/pull/58#issuecomment-5776405688).
+  Third time I have imposed a floor without the feasibility arithmetic — after D-004's 1.15:1 and D-006's C10.
+- **My other defect:** the dispatch said PR #55's F8 was a docstring trim in `observable.css`. It is not — it is in
+  `tests/e2e/test_interior_style.py:3-11,28-32`, confirmed from the review comment. My scope widening to
+  `observable.css` rested on a false premise and the coder was right to report it N/A rather than reach into a
+  Python test file. **F8 is still open** and belongs to frontend.
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
 ## Ready

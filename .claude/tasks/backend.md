@@ -14,16 +14,16 @@ IDs are `B-nnn`, allocated in order and never reused.
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; every removed test nodeid named (collect-only diff vs main); suite green, flake8 0.
 - **Depends on:** nothing. Items from the 2026-09-17 sweep.
 - **Branch / PR:** `task/b-029-backlog-cleanup` — not yet opened
-- **Status:** cycle 1 in flight — **interrupted once** (session ended mid-task), resumed 2026-09-22.
-  Work was uncommitted in worktree `.claude/worktrees/agent-a1875123961c4f5af`, on branch
-  **`b029-work-local`**, not the task branch: runconfig.py, graph.py, jobs.py, test_api_events.py,
-  test_fixture_dataset.py, test_graph.py, test_jobs.py. Agent told to commit first, then
-  `git checkout task/b-029-backlog-cleanup && git merge b029-work-local`. If this session also dies,
-  **that worktree is where the work is** — check it before re-dispatching anything.
-- **Items:** PR #37 F13/**F14**, #33 **F7**, #31 F1-F5, #26 F1-F3, #54 F1/F2, #51 F1, #49 F2, #35 F17,
-  #45 F4 (PR-body only, expect N/A), plus `.flake8:16` missing `.venv` from `exclude`. 18 ids, enumerated
-  from the `## Done` entries below; the reviews themselves are PR comments and the coder reads them there.
-- **Review:** —
+- **Status:** in review (cycle 2) — PR **#56**, head `69eda7d`
+- **Review:** cycle 1 `findings=4, scope=fail, verdict=rework` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/56#issuecomment-5776251703)).
+  **F1 was the real one:** the replacement for #31 F4 was *itself* unfalsifiable — `FCE_HOME` is redirected to
+  `tmp_path`, so `sorted(os.listdir(DATASET_DIR)) == committed_before` certifies a property true by construction.
+  Cycle 2 deleted it rather than writing a third one. F2 docstring trim, F4 confirmed no-action.
+  **F3 was against my dispatch, not the coder** — my scope list omitted `engine/analytical_loop.py` while the item
+  I assigned (#26 F3) lives there. **Scope ratified as widened**; `scope=fail` carries no consequence.
+  Gate re-run by me on `69eda7d`: **721 passed**, flake8 0.
+- **Suite floor:** 729 → **721** (9 nodeids removed, 1 added), every one named by collect-only diff and
+  reproduced independently by me and by the reviewer.
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
 
 ## Ready
