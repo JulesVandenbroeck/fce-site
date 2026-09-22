@@ -68,21 +68,7 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-### D-020 — The canvas frame: full-bleed canvas, overlay panels, pan/zoom, bottom results drawer
-- **Scope:** `docs/design-explorations/canvas-frame.{html,css}` (+ its own JS inside the page),
-  `docs/design-explorations/verify.py` (append-only), `docs/design-explorations/README.md`.
-  Touches nothing under `src/`.
-- **Accept:** C1-C5 in the dispatch — full-bleed canvas with overlaying panels at 1440/1024/768;
-  pan + zoom with a keyboard equivalent and a reset affordance; bottom Run button and rising
-  results drawer reusing the chevron family; a written recommendation answering N13's four open
-  questions; no h-scroll in any panel/drawer state, checked in `verify.py`.
-- **Depends on:** nothing. Carries the user's N12/N13/N14 (backlog `## Next up`, 2026-09-22).
-- **Branch / PR:** `task/d-020-canvas-frame` — #59
-- **Status:** in review (cycle 1). Free gate passed: red set on `main` and on the branch are both
-  `{board-lane-fill}`, difference empty; `canvas-frame-no-h-scroll` passes standalone. Both
-  reproduced by me in the primary checkout, 2026-09-22.
-- **Checkpoint:** yes — the user rules on the recommendation before any frontend task is raised.
-- **History:** [`archive/design.md`](archive/design.md)
+_none._
 
 ## Ready
 
@@ -127,6 +113,17 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-020** — the canvas frame: full-bleed canvas, overlay panels, pan/zoom, bottom results drawer — #59, `7043e76`, 1 cycle, clean gate (`findings=3, scope=pass, verdict=approve`).
+  **Checkpoint — awaiting the user's ruling on the recommendation.** Exploration only; nothing under `src/` touched.
+  Ships `docs/design-explorations/canvas-frame.{html,css}` + one append-only `verify.py` section,
+  `canvas-frame-no-h-scroll` (27 probes, 3 widths x 8 panel/drawer states + post-Run), **mutation-proven red**
+  by the reviewer. Red set unchanged: `{board-lane-fill}` on `main` and on the branch, reproduced by me pre-merge.
+  83 text runs 0 below AA; 19 focus stops all visible; 0 `style=` attributes; 0 console errors.
+  **The four answers the user rules on:** zoom **50-200%**; pan **bounded** to an 1800x1200 sheet (which is what
+  buys native keyboard pan and scrollbars); a left-drag **starting on a node still moves that node**, decided by
+  where the drag begins rather than by a mode; **one** affordance, **Fit**, not a separate reset-to-100%.
+  F1 (the page opens with 3 of 5 nodes under the panels at 1440 — the PR's "moved into the clear band" claim did
+  not reproduce), F2 and F3 backlogged as N16-N18. **History:** [`archive/design.md`](archive/design.md).
 - **D-019** — backlog cleanup sweep, design — #58, `34f5fc2`, 1 cycle + 1 re-spec (mine: C4 unsatisfiable), clean gate (`findings=1, scope=pass, verdict=approve`).
   Suite floor **729** unchanged — no test file touched. −42 lines, all comment prose plus one dead rule; nothing added.
   `chart.css` + `shell.css` only. **The deleted `.reveal-*{opacity:1;transform:none}` rule was proven a no-op by

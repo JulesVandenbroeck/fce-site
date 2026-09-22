@@ -2159,3 +2159,71 @@ actual review comment to establish that my one-line reminder had named the wrong
 
 **Cost of the re-spec:** none in coder cycles. C4' was ruled by PR comment and the reviewer checked C4', so the
 amendment cost one comment rather than a round trip.
+
+---
+
+### D-020 — The canvas frame: full-bleed canvas, overlay panels, pan/zoom, bottom results drawer
+
+**#59, merged `7043e76`, 2026-09-22. 1 cycle, clean gate (`findings=3, scope=pass, verdict=approve`).
+Reviewer: Opus at raised effort. Coder: Opus at `effort: high`, worktree-isolated.**
+
+Carries the user's N12/N13/N14, raised 2026-09-22 from driving the running app and promoted to the
+head of the backlog at their request. The user chose "one exploration, all three" over splitting it,
+on the argument that panel overlay, a bottom drawer and pan all compete for the same canvas edges and
+deciding them separately risks re-ruling. N15 (the collapse-footprint bug) was held behind this task
+by the same ruling, because pan/zoom introduces a transform that may change how node geometry is
+computed.
+
+**Deliverable is a checkpoint, not a change to the app.** `docs/design-explorations/canvas-frame.html`
++ `.css`, one append-only `verify.py` section, one `README.md` entry. Nothing under `src/`.
+
+**What the page settles.** The canvas is `inset: 0` of the frame and both panels are out of flow at
+`left`/`right` with `z-index: 2` (`canvas-frame.css:59-72, 206-225`), so a panel width change
+structurally cannot reach the canvas — that is the whole of the full-bleed change. Zoom is native CSS
+scaling of a fixed-`viewBox` SVG plus `overflow: auto`, not a transform-and-library, which is what
+buys native keyboard pan and real scrollbars. The drawer is a **third `wireToggle` call site** with
+the shape lifted from `src/fce_web/static/js/shell.js` — same `data-state` on the region,
+`aria-expanded` on the button, `hidden` on the controlled body, two-character chevron-pair string —
+so porting it needs one extra call and one extra region, not a second mechanism. Run calls the same
+returned setter the chevron does, so the two cannot disagree.
+
+**The recommendation, for the user's ruling:** zoom **50-200%**; pan **bounded** to an 1800x1200
+sheet; a left-drag **starting on a node still moves that node**, decided by where the drag begins
+rather than by a mode; **one** affordance, **Fit**, not a separate reset-to-100%.
+
+**The consequence for the frontend tasks that follow, and it is the important one.** This frame makes
+the standing e2e coordinate-click caveat *worse*, not better. A node's screen position now depends on
+two pieces of state — the viewport's scroll offset and the zoom — so it is no longer a 1024/768 edge
+case but the normal condition at every width. Tests must locate nodes by element (`data-node-id`,
+`locator.click()`, which scrolls into view), and where a coordinate is genuinely needed (a drag, a
+drop on empty paper) press Fit first and read the node's live `getBoundingClientRect()`.
+
+**The free gate, and why it was cheap.** Red set on `main` `{board-lane-fill}`, red set on the branch
+`{board-lane-fill}`, difference empty; `canvas-frame-no-h-scroll` passes standalone. Both reproduced
+by me in the primary checkout before dispatching the review. The dispatch deliberately refused to gate
+on an absolute red set and asked for the *difference* instead — backlog N5 records that `verify.py`'s
+`check_git_diff` gives design tasks false reds and that D-019's C4 was got wrong by naming "exactly
+one". The relative form cost nothing and cannot rot.
+
+**What the raised-effort review bought.** Two pasted figures in the PR body did not reproduce, and the
+reviewer distinguished them correctly rather than filing both the same way:
+- **Fit "→ 89%, scroll 71,124"** — stale, not wrong. From a clean load the reviewer gets ≈103% and
+  `scroll 393,114`, identical after 4 consecutive presses and after zooming to the ceiling first, so
+  Fit *is* deterministic and idempotent, which is what C2 actually requires. The coder had measured
+  after its own node-drag step changed the graph bbox.
+- **"the graph was moved into the clear band"** — did not hold, and became F1. At load with both
+  panels expanded, 2 of 5 nodes are clear at 1440; at 768, one. The page whose job is to sell the
+  overlay opens on a graph that reads as broken.
+
+It also mutation-tested the one check it was given — appending a 10px div past `clientWidth` whenever
+the palette is expanded, monkeypatched, no repo file edited — and got 15 failing layouts named
+individually, then `PASS` on restore. That is the `ponytail` test rule working as intended: one check,
+and the review's job is to prove it can go red.
+
+**Findings.** F1 (load state, above), F2 (`verify.py:8931` `CANVAS_FRAME_DESIGN_WIDTHS` is a
+byte-for-byte duplicate of `SHELL_DESIGN_WIDTHS` at `:6200`), F3 (`_canvas_frame_set_state` labels
+probes by *requested* rather than *measured* state, so a toggle that failed to fire would relabel a
+probe as a layout it never measured — the drawer half already reads its state back). All three
+backlogged as **N16-N18**. F3 is worth re-reading before the next instrument is written: it is this
+project's blind-instrument shape caught while still latent, rather than after it certified something
+false.
