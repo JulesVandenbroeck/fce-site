@@ -96,9 +96,7 @@ main > h1 {
   color: var(--ink-70);
   white-space: nowrap;
 }
-/* Collapsed: the title is removed from flow (not merely hidden) so the
- * head shrinks to just the toggle, which stays centred inside the 64px
- * clipped rail instead of being pushed out of it (F10). */
+/* Collapsed: title removed from flow so the head shrinks to just the toggle. */
 .palette[data-state="collapsed"] .palette__title { display: none; }
 .palette[data-state="collapsed"] .palette__head {
   padding: var(--space-2);
@@ -126,9 +124,7 @@ main > h1 {
   flex-direction: column;
   gap: var(--space-2);
 }
-/* shell.js sets the [hidden] attribute on collapse; without this the
- * display: flex above wins over the UA [hidden]{display:none} rule and the
- * list keeps painting, clipped, in the collapsed rail (F9). */
+/* display:flex above beats UA [hidden] */
 .palette__list[hidden] { display: none; }
 
 .palette__add {
@@ -180,14 +176,8 @@ main > h1 {
 }
 
 /* ---- canvas region (middle, always present, never covered) -------------- */
-/* D-016/C1: at 1440 with both side panels expanded this region has ~752px
- * to work with and .canvas-wrap alone is a fixed 704px, so a *row* of
- * canvas-wrap + run-control + results (D-016's two new occupants) leaves
- * ~48px for both of the latter -- not enough, and it was pushing the node
- * canvas itself half off the region's left edge (flex auto-margins overflow
- * symmetrically). Column stacks all three instead; each centres on the
- * region's cross axis via `align-items: center`, so a `margin: auto` hack
- * on .canvas-wrap is no longer what does the centring. */
+/* Column stack: canvas-wrap, run-control and results each centre via
+ * `align-items: center`; no `margin: auto` centring hack needed. */
 .canvas-region {
   flex: 1 1 0;
   min-width: calc(var(--space-7) * 6);
@@ -259,11 +249,7 @@ main > h1 {
   cursor: pointer;
 }
 .mission-panel__pager:hover:not(:disabled) { background: var(--hover-bg); }
-/* Both pagers are `disabled` until a mission 2 exists to page to (F-010).
- * `--ink-45` is named for exactly this in tokens.css's own comment -- "a
- * disabled glyph" -- and relies on WCAG 1.4.3's exemption for inactive
- * controls rather than the 4.5:1 text floor: this is an icon glyph a
- * student cannot activate, not prose they are meant to read. */
+/* disabled glyph: --ink-45, WCAG 1.4.3 inactive-control exemption */
 .mission-panel__pager:disabled {
   cursor: default;
   color: var(--ink-45);
@@ -299,7 +285,7 @@ main > h1 {
   cursor: pointer;
 }
 .mission-panel__toggle:hover { background: var(--hover-bg); }
-/* Collapsed: pagers and label leave flow so the head shrinks to the toggle (F11). */
+/* Collapsed: pagers and label leave flow so the head shrinks to the toggle. */
 .mission-panel[data-state="collapsed"] :is(.mission-panel__pager, .mission-panel__label) {
   display: none;
 }
