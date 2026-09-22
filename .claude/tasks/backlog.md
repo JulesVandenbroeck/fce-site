@@ -212,3 +212,15 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   **B-013 m1 conftest `__debug__` guard**, **B-012 m6**, **B-007 perturbed-doc test** — churn with
   no defect behind it; ponytail says no.
 - **`--node-observable` token** (D-013) — check folded into D-019; drop if it exists.
+
+- **N19 Agent worktree venvs install a newer playwright than the primary checkout** (tooling; bites
+  every frontend and design task). Found on F-014's gate, 2026-09-23. A fresh worktree venv resolved
+  **playwright 1.63.0 → chromium-1243**; the primary checkout is **1.62.0 → chromium-1234**. Both
+  builds coexist in the shared `~/.cache/ms-playwright`, so a coder and the gate can run the same
+  e2e suite against **different browsers** and get different results with no warning anywhere. F-014
+  passed 721 in the worktree and 719 in the primary checkout for exactly this reason, and the
+  difference was a real behavioural difference in layout reflow, not flake. Every suite floor in
+  `backend.md` `## Contracts in force` was measured in the primary checkout, so that is the
+  reference environment. Options: pin playwright in `pyproject.toml` (needs the U1 dependency
+  sign-off), or have the dispatch template tell coders to run the suite with the primary venv.
+  **Until this is fixed, the §5.1 free gate is the only thing catching it.** _(orchestrator, 2026-09-23)_
