@@ -14,13 +14,16 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Accept:** every listed item fixed or reported N/A in a PR-body table; removed nodeids named; suite green.
 - **Depends on:** nothing.
 - **Branch / PR:** `task/f-013-backlog-cleanup` — not yet opened
-- **Status:** in review (cycle 2) — PR **#57**, head `4bc5d74`
+- **Status:** in review (cycle 2) — PR **#57**, head `4dbdc67`
 - **Review:** cycle 1 `findings=3, scope=pass, verdict=rework` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/57#issuecomment-5776405265)).
-  F1 gating: the sweep deleted `measuredSize`'s unreachable guard but left the twin `if (fo)` on the same lookup
-  four lines below — the one outcome a task about deleting unreachable guards should not produce. F3 is
-  `wireToggle`'s 8 positional args with a transposable glyph pair. **F2 is mine** — my unpushed dispatch commit
-  `d2c08fb` sat on the branch point, so `.claude/tasks/*.md` showed in the PR diff; fixed by pushing main to `6ff54c1`.
-  Gate re-run by me: **728 passed**, flake8 0, one nodeid removed and mutation-verified.
+  F1 fixed — the twin `if (fo)` guard on the same lookup is gone and the lookup is hoisted once into
+  `moveNodeTo`, verified against all three callers (pointer drag, keyboard nudge, `growNode` re-clamp).
+  F3 fixed by the **first of the two forms the reviewer itself offered** (one glyph-pair string, not an options
+  object), declared in the PR body rather than chosen silently — a legitimate pick between the reviewer's own
+  alternatives, not a deviation. **F2 was mine** and is closed by pushing `main` to `6ff54c1`.
+  Criteria appended C6/C7, **checks 5 → 7**; the count never fell.
+  Gate re-run by me on `4dbdc67`: **728 passed**, flake8 0, scope = the 5 frontend files, `.claude/tasks/*.md`
+  gone from the diff.
 - **Suite floor:** 729 → **728** (`test_mission_pager_has_nothing_to_page_to`, folded into its sibling;
   shown stronger, not merely shorter).
 - **History:** [`archive/backlog-2026-09-17.md`](archive/backlog-2026-09-17.md)
