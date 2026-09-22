@@ -48,3 +48,9 @@ screenshots/
 # dispatches; they are scratch checkouts, not project content. Removing a
 # worktree is permitted (orchestrator manual §3) — deleting a branch is not.
 .claude/worktrees/
+
+# The physics answer key, supplied by the user 2026-09-22. Deliberately NOT
+# committed (the user's ruling): 4.1 MB, and the repo does not need to carry it.
+# Its content is written up in docs/physics-truth.md, which cites it by slide
+# number and stands on its own. If you need the file itself, ask the user.
+.claude/bin/

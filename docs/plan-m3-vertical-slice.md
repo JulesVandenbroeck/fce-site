@@ -279,8 +279,9 @@ reviewer can drive one. It is the single hard blocker on the milestone.
       (`analytical_loop.py:154-159`).
       Check: open each with `uproot` and assert the branch-name set.
 - [ ] **C2** The sample set matches the three documented processes plus pseudo-data — `X1` (Z→2ℓ),
-      `X2` (Z→2q), `X3` (Z→2ℓ+γ), `data` (brief §3). `X4`/`X5` are **not** fabricated: they are
-      undocumented and mission 3 is blocked on the user identifying them.
+      `X2` (Z→2q), `X3` (Z→2ℓ+γ), `data` (brief §3). `X4`/`X5` are **not** fabricated: they were
+      undocumented when this criterion was written (identified 2026-09-22; the fixture still
+      carries the three samples this criterion names, so the criterion itself stands).
 - [ ] **C3** The fixture is physically meaningful, not noise: the invariant mass of the two
       leading leptons in `X1` peaks at the Z mass within tolerance.
       Check: compute m(l₁,l₂) over `X1` directly from the file; assert the modal bin is within
@@ -797,7 +798,10 @@ Each is a candidate later; none is a gap to be helpfully filled.
 - The completed-mission box on the canvas (**D-011**) — needs M5, since nothing can be completed.
 - Event displays during a run (**D-012**) — deferred to **M6** by the user's 2026-09-01 ruling.
   M3 ships the phase label and the bar, and that is deliberate rather than an oversight.
-- Mission 3 content — **blocked** on the user identifying samples `X4` and `X5` (brief §9).
+- Mission 3 content — was **blocked** on identifying `X4`/`X5`. **Unblocked 2026-09-22**, and the
+  premise turned out to be wrong: `X4`/`X5` are ordinary backgrounds and the search signal is
+  separate, hidden in `data`. See [`physics-truth.md`](physics-truth.md). Out of M3's scope
+  either way — this line is kept so the historical constraint is not misread as current.
 
 ## Risks
 

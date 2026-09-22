@@ -57,7 +57,32 @@ Count: `grep -c '^- \*\*' .claude/tasks/backlog.md`. Add new findings under `## 
 
 ## New
 
-_none._
+Raised 2026-09-22 from the truth deck (`docs/physics-truth.md`). None is dispatched; all three
+belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
+
+- **N1 The `d0` label is probably wrong** (frontend; **before any M-4 copy is written**).
+  `.d0` on a lepton is an impact-parameter *significance*, not a distance: the ROOT branch is
+  `d0signif` (`engine/analytical_loop.py:159`), read as `electron_d0signif`/`muon_d0signif`
+  (`engine/path_filter.py:622,630`), then **renamed to `d0`** at `:700,710` and stored by
+  `_make_lepton` at `:204`. Nothing downstream records the rename. `static/js/expr.js:34-44`
+  gives every property a unit and a histogram range preset — **check what it claims for `d0`**.
+  If it says millimetres, that is a live mislabel in student-facing text, not future work. Also
+  explains why the truth deck's M-4 axis runs 300–2000, which is absurd for a length.
+  _(truth deck, slide 7)_
+- **N2 Fixture has no new physics and no `X4`/`X5`** (backend; blocks running M-3 or M-4 offline).
+  `tests/fixtures/datasets/IDEA/91GeV/` holds `X1`, `X2`, `X3`, `data` only. Both searches look
+  for an excess **in `data`** over the stack, so authoring or reviewing either mission end to end
+  needs a fixture whose `data` actually contains the signal, plus `X4`/`X5` for a faithful
+  background. A task against B-018's `tests/fixtures/make_fixture.py`. _(truth deck, slides 6-7)_
+- **N4 Two backend-owned comments now say something false** (backend, trivial, fold into any
+  future fixture task). `tests/fixtures/README.md:24` and `tests/fixtures/make_fixture.py:55-56`
+  both say `X4`/`X5`/`X6` "are undocumented". `X4` and `X5` were identified 2026-09-22; only `X6`
+  still is. The *decision* they justify — keeping them out of the fixture — is unchanged, so this
+  is wording, not behaviour. Not worth its own task. _(truth deck)_
+- **N3 `X6` is unidentified** (needs the user, blocks nothing). Seven sample files exist upstream,
+  not six; the truth deck covers `X1`-`X5` only. `X6` is absent from the committed fixture and no
+  mission needs it, but `tests/fixtures/golden/zpeak-dilepton.json` already carries its bins. Ask
+  the next time a physics question goes to the user; not worth a round trip of its own.
 
 ---
 

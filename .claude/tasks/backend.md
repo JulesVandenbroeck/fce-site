@@ -208,6 +208,21 @@ panel clip. The figure is correct and *unreadable on this fixture*. Backlogged.
 
 The facts a future dispatch consumes. Everything else about these tasks is in the archive.
 
+- **The physics truth is known as of 2026-09-22** — [`docs/physics-truth.md`](../../docs/physics-truth.md).
+  `X4` = νν̄γ, `X5` = γγ, both ordinary backgrounds. The **new physics is hidden in `data`**, is
+  **not** one of `X1`–`X6`, and there are **two** of them — Z → eμ (mission **M-3**) and a
+  long-lived 70 GeV heavy neutrino (**M-4**). Mission content is no longer blocked.
+  Three consequences for backend work:
+  - **No engine or evaluator change is needed to author either search.** Both expressions are in
+    the current vocabulary: `nel == 1 and nmu == 1` with `(l1.p4 + l2.p4).mass`, and `abs(l1.d0)`
+    — `abs` is in `SAFE_BUILTINS` (`safe_eval.py:102`) and `CALLABLE_NAMES` (`:118`), `d0` is in
+    `ALLOWED_ATTRS`. Verified by `scout`, 2026-09-22.
+  - **`.d0` is an impact-parameter *significance*, not a distance.** The ROOT branch `d0signif`
+    is renamed to `d0` at `engine/path_filter.py:700,710` before `_make_lepton` stores it
+    (`:204`). Do not "fix" the name without checking every consumer; do not label it a length.
+  - **`X6` exists** — seven upstream files, not six, and its bins are already in
+    `tests/fixtures/golden/zpeak-dilepton.json`. Still unidentified; blocks nothing.
+
 - `run_physics_loop(cfg: dict, active_samples: List[str], ctx: RunContext) -> RunResult` (B-009)
 - `run_analysis(config, ctx, env=None) -> RunResult` — stops before plotting/fitting (B-011)
 - Cache digests: `h5_sel=c9873a70ca371612fc24cf976ff7fd5c`, `h5=fbb913c18c34530d355fdd949974ac58`

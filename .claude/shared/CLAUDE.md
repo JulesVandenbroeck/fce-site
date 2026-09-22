@@ -195,8 +195,9 @@ condition applied to each event. Cuts remove background — but they remove sign
 the craft is finding cuts that improve the ratio. A **cutflow** shows how many events
 survive each successive cut.
 
-**Samples.** Each simulated process is a separate dataset. In FCE they are named `X1`…`X5`
-plus `data`, which is the pseudo-data students actually analyse. Each simulated event
+**Samples.** Each simulated process is a separate dataset. In FCE they are named `X1`…`X6`
+plus `data`, which is the pseudo-data students actually analyse — and `data` is where the
+new physics hides, so it is not merely the sum of the simulations. Each simulated event
 carries a **weight** so the simulation reproduces the real expected rate.
 **Luminosity** measures how much data was collected; event counts scale with it.
 
@@ -207,15 +208,28 @@ What the samples are:
 | `X1` | Z → two leptons | Two leptons whose invariant mass is the Z mass, ≈ 91 GeV. This is the clean case, and the thing mission 1 is about. |
 | `X2` | Z → two quarks | Two **jets**, no leptons. Far more common than X1 — the Z decays to quarks most of the time — so it dominates the raw event count and is removed almost entirely by asking for two leptons. |
 | `X3` | Z → two leptons **and** a photon | Two leptons plus a photon. The catch: the photon carried energy away, so the *two-lepton* mass comes out **below** 91 GeV and smears out the left side of the peak. Add the photon's four-vector back and the Z mass reappears. |
-| `X4` | *not yet documented* | — |
-| `X5` | *not yet documented* | — |
+| `X4` | e⁺e⁻ → νν̄γ | Nothing in the detector but a photon and a momentum imbalance — the two neutrinos escape. This is why `MET` has to be taught. |
+| `X5` | e⁺e⁻ → γγ | Two photons and nothing else. At the Z pole the diphoton mass *is* √s, so it piles into one bin at ≈ 91 GeV — the cleanest signature in the set. |
+| `X6` | *unidentified* | A seventh sample exists upstream and is in the golden file. Not covered by the truth document. Blocks nothing today. |
 
 `X3` is the interesting one pedagogically: it is a real Z that does not *look* like one
-unless you account for the photon. Do not present it as junk background.
+unless you account for the photon. Do not present it as junk background. Note it covers
+**both** channels, `qq̄γ` and `ℓ⁺ℓ⁻γ`, not only the dilepton one.
 
-`X4` and `X5` are unknown as of 2026-08-15 and the orchestrator has raised it with the
-user. Mission 3 — the search — needs one of them, so **no mission-3 content may be
-authored until they are identified.**
+**`X4` and `X5` were identified on 2026-09-22 and mission content is no longer blocked.**
+Three things follow, and they are the ones a coder can get wrong from this table alone:
+
+- **The new physics is not one of `X1`–`X6`.** It is a separate signal hidden in `data`, and
+  there are **two** of them — charged lepton flavour violation (Z → eμ) and a long-lived heavy
+  neutrino. They are missions **M-3** and **M-4**. Missions are `M-1`…`M-4` *with* a hyphen;
+  milestones are `M1`…`M6` *without* one. They are different things.
+- **The `X<n>` ids are per-energy labels, not process names.** `X1` is Z → ℓℓ at 91 GeV and
+  tt̄ at 365 GeV. V1 is 91 GeV only, so the table above holds — but never assume the id.
+- **The cuts and observables live in [`docs/physics-truth.md`](../../docs/physics-truth.md),
+  deliberately not here.** That file is the answer key: what each sample's isolating analysis
+  is, and what the new physics looks like. It is read by mission-authoring tasks only, which is
+  why it is not in this file — this one is loaded on every dispatch. **Nothing in it is
+  student-facing copy.**
 
 **Scoring the result.** A fit (via `pyhf`) returns two numbers. **Signal strength μ** is
 how much signal was found relative to prediction — 1.0 means exactly as predicted, 0 means

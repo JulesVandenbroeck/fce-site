@@ -79,9 +79,11 @@ are available, the objective and how to check it, hints, and success copy.
 missions unlock more. Students are never shown a wall of controls they have no reason to
 understand yet.
 
-### The three V1 missions — 91 GeV, the Z pole
+### The four V1 missions — 91 GeV, the Z pole
 
-An arc of *see → clean → discover*.
+An arc of *see → clean → discover → and discover something harder*. It was three missions until
+2026-09-22; the truth deck revealed **two** new-physics signals rather than one, and the user
+ruled that both are worth a mission.
 
 **M-1 · First Light.** Plot the invariant mass of the two leading leptons and find the
 peak. The student assembles the minimal pipeline — data, require two leptons, observable,
@@ -99,24 +101,46 @@ past a threshold while retaining a stated fraction of signal. Teaches the real t
 every cut that removes background removes some signal too — and, for students who get
 there, that the better move is sometimes to *fix* the measurement rather than cut.
 
-**M-3 · The Unknown.** A search. One signal sample is hiding in the data; the student must
-find cuts that expose it and run a fit. **Objective:** reach significance Z above 3σ
-(evidence), with 5σ as the stretch goal. Teaches μ, Z, and what "discovery" actually means.
-This is the payoff the other two missions exist to set up. *Blocked: the signal must be
-`X4` or `X5`, and neither is identified yet.*
+**M-3 · The Unknown.** A search, and the payoff the first two missions exist to set up. There
+is an excess in the data that none of the simulated processes accounts for: an electron and a
+muon whose invariant mass is the Z mass. A Z cannot decay that way — lepton flavour is
+conserved, so a Z gives ee or μμ, never eμ. The student finds the channel, sees a bump standing
+over nothing, and runs a fit. **Objective:** reach significance Z above 3σ (evidence), with 5σ
+as the stretch goal. Teaches μ, Z, and what "discovery" actually means. Deliberately built on
+M-1's skill — the observable is again an invariant mass — so the novelty is the *idea*, not the
+mechanics.
+
+**M-4 · The Particle That Travelled.** A second search, harder, and about geometry rather than
+mass. Standard Model leptons are made at the collision point; this signal's leptons are not —
+they come from a heavy neutrino that lived long enough to fly a measurable distance before
+decaying. The student plots impact-parameter significance and finds events far out in a tail
+where the prediction has simply ended. **Objective:** as M-3, evidence at 3σ. Teaches that a
+search is not always a bump hunt, and that *where* a particle decayed is a measurement too.
+This is the stretch mission; M-3 is the one every student should reach.
+
+> **Missions are `M-1`…`M-4`, with a hyphen. Milestones are `M1`…`M6`, without one.** They are
+> different things and they now overlap numerically. Always write the hyphen for a mission.
+
+The answers to all four — the processes, and the cuts and observables that isolate them — are in
+[`physics-truth.md`](physics-truth.md). **That file is the answer key and none of it is
+student-facing copy.**
 
 ### What the samples are
 
-Decided 2026-08-15. `config/samples.json` names five simulated processes per energy plus
-`data`; the reference repo does not document them. Three are now known:
+Decided 2026-08-15, completed 2026-09-22. `config/samples.json` names the simulated processes
+per energy plus `data`; the reference repo does not document them. **`X1`–`X5` are now known**,
+from the truth deck the user supplied — see [`physics-truth.md`](physics-truth.md), which also
+carries the cut and observable that isolates each one. A sixth simulated sample, `X6`, exists
+upstream and is still unidentified.
 
 | Sample | Process | Role in the missions |
 |---|---|---|
 | `X1` | Z → two leptons | **The signal for missions 1 and 2.** Two leptons, invariant mass at ≈ 91 GeV. This is the peak students are looking for. |
 | `X2` | Z → two quarks | Two jets, no leptons. The Z decays hadronically far more often than leptonically, so this dominates the raw event count — and then a "require two leptons" cut removes essentially all of it. A satisfying first cut: enormous effect, obvious reason. |
-| `X3` | Z → two leptons + a photon | A real Z that does not look like one. The photon carried energy away, so the *two-lepton* mass lands **below** 91 GeV, smearing the left side of the peak. |
-| `X4` | *unknown* | — |
-| `X5` | *unknown* | — |
+| `X3` | Z → two leptons + a photon, **and** Z → two quarks + a photon | A real Z that does not look like one. The photon carried energy away, so the *two-lepton* mass lands **below** 91 GeV, smearing the left side of the peak. |
+| `X4` | Two neutrinos + a photon | Nothing in the detector but a photon and a momentum imbalance — the neutrinos escape. The reason missing energy has to be taught at all. |
+| `X5` | Two photons | Two photons and nothing else. At the Z pole the diphoton mass *is* the collision energy, so it lands in a single bin at ≈ 91 GeV — the sharpest thing in the dataset. |
+| `X6` | *unidentified* | Exists upstream and in the golden file; not in the truth deck. Blocks nothing — it is not in the committed fixture and no mission needs it. |
 
 **`X3` is the best teaching material in the dataset and must not be framed as junk.** It is
 a correct Z decay that a naive analysis mismeasures. The intended arc: a student sees a
@@ -125,10 +149,28 @@ adds the photon's four-vector back and watches it fall into the peak (correct). 
 genuine physics insight reachable by a 16-year-old, and it is exactly what mission 2 should
 be built around.
 
-> **Still open — needs the user.** `X4` and `X5` are undocumented. **Mission 3 is blocked
-> until they are identified**: it is a search, so its signal has to be one of them, and its
-> objective significance has to be measured against the real datasets rather than guessed.
-> Missions 1 and 2 can be authored now.
+### The new physics is not one of these
+
+**Resolved 2026-09-22, and it overturns an assumption this brief carried for a month.** The
+brief used to say mission 3's signal "must be `X4` or `X5`". That was wrong. `X4` and `X5` are
+ordinary Standard-Model backgrounds, as the table above now shows.
+
+The new physics is a **separate signal, hidden in `data`** — so `data` is not the sum of the
+simulated samples, and the gap between them is the thing the game is about. There are **two**
+such signals at 91 GeV, which is why there are now four missions rather than three:
+
+| | Process | Why the Standard Model cannot do it |
+|---|---|---|
+| **M-3** | Z → e μ | Lepton flavour. A Z gives ee or μμ, never eμ. |
+| **M-4** | A long-lived heavy neutrino, 70 GeV | Geometry. Its lepton does not point back to the collision point. |
+
+The cuts, observables and signatures are in [`physics-truth.md`](physics-truth.md). **Both are
+buildable with the analysis vocabulary the app already has** — no engine change is needed to
+author either.
+
+> **Still open.** The **objective thresholds** — how many σ a student can actually reach on each
+> mission — are *not* in the truth deck. Every significance panel in it is blank. They have to be
+> measured against the real datasets, not guessed. See §8 item 3.
 
 ---
 
@@ -375,6 +417,15 @@ Deliberate exclusions. Each is a candidate later; none is a gap to be helpfully 
   language. Short sentences, plain words, no idiom, no wordplay. Physics vocabulary is the
   deliberate exception — it is the thing being taught.
 - **Samples `X1`, `X2`, `X3`.** *(2026-08-15)* See §3. Missions 1 and 2 are unblocked.
+- **Samples `X4`, `X5`, and the new physics.** *(2026-09-22)* The user supplied the reference
+  tool author's truth deck. `X4` is νν̄γ and `X5` is γγ — both ordinary backgrounds, which
+  **overturns the standing assumption that mission 3's signal was one of them**. The new physics
+  is a separate signal hidden in `data`, and there are two of them: charged lepton flavour
+  violation (Z → eμ) and a long-lived 70 GeV heavy neutrino. **The mission arc therefore grows
+  from three missions to four** — the user's ruling, same date. Everything, including the cut and
+  observable for each, is in [`physics-truth.md`](physics-truth.md); that file is the answer key
+  and is not student-facing. The obligation it creates: `X6` is now visible as a seventh sample
+  nobody has identified, and mission objective *thresholds* are still unmeasured (item 3 below).
 - **The node-graph style — Bench.** *(2026-09-01)* Chosen at the M1 checkpoint from the three
   built explorations. A free canvas, drag-to-connect, persisting `{id, x, y}` per node plus an
   edge list; the plot lives outside the graph in its own results region. The D-007 comparison
@@ -385,9 +436,10 @@ Deliberate exclusions. Each is a candidate later; none is a gap to be helpfully 
 
 ### Still open
 
-1. **Samples `X4` and `X5`.** Undocumented. **Blocks mission 3 entirely** — a search needs a
-   signal, and it has to be one of these two. Also sets M-3's achievable significance, which
-   must be measured, not guessed. Needs the user.
+1. **Sample `X6`.** Unidentified — the truth deck covers `X1`–`X5` only, and there are seven
+   files upstream, not six. **This blocks nothing**: `X6` is not in the committed fixture and no
+   mission needs it. It is listed so it stops being invisible. Worth one question to the user the
+   next time a physics question comes up, not on its own.
 2. **Dataset distribution.** ROOT files come from `https://homepage.iihe.ac.be/~kskovpen/fce/datasets/`
    via a `files.txt` inventory. Total size for 91 GeV, and whether a teacher pre-downloads
    or the server fetches on first run, is **still unresolved for deployment**.
@@ -397,5 +449,8 @@ Deliberate exclusions. Each is a candidate later; none is a gap to be helpfully 
    the clone cheap. It exists so every role can run and review the full pipe offline; it is a
    test fixture and says nothing about how a classroom gets real data. `shared/CLAUDE.md` §3
    carries the carve-out against the never-commit-ROOT rule.
-3. **Objective tolerances.** How close is close enough on the M-1 peak position, and how
-   forgiving should M-2's purity threshold be. Set from real data, then playtested.
+3. **Objective tolerances, and the two search thresholds.** How close is close enough on the
+   M-1 peak position, and how forgiving should M-2's purity threshold be. Set from real data,
+   then playtested. **Extended 2026-09-22:** M-3 and M-4 need the same treatment and cannot
+   borrow it from anywhere — the truth deck's every "Significance (observed/expected)" panel is
+   blank, so how many sigma either search can actually reach is unknown until it is run.
