@@ -68,7 +68,22 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
 
 ## In progress
 
-_none._
+### D-021 — The canvas frame, corrected: horizontal pan, grid beyond the sheet, honest load state
+- **Scope:** `docs/design-explorations/canvas-frame.{html,css}`, `docs/design-explorations/verify.py`.
+  Touches nothing under `src/`.
+- **Accept:** C1-C5 in the dispatch — left-drag pans in **both** axes; the page still has no
+  horizontal scroll in all 27 probe layouts; the grid fills the canvas viewport at every zoom from
+  50% to 200%; the whole pipeline is visible on load with both panels expanded; N17/N18 instrument
+  cleanups.
+- **Depends on:** D-020 (#59, merged `7043e76`).
+- **Branch / PR:** `task/d-021-canvas-frame-pan` — not yet opened
+- **Status:** dispatched (cycle 1), `effort: high`, worktree-isolated
+- **Carries:** the user's two findings from driving the page 2026-09-22, plus backlog **N16**
+  (= PR #59 F1), **N17**, **N18**.
+- **Note:** the two user findings and F1 are probably **one** root cause — a canvas surface with no
+  horizontal scrollable overflow gives no horizontal pan *and* makes `n4`/`n5` unreachable. Fix at
+  the root, not per symptom.
+- **History:** [`archive/design.md`](archive/design.md)
 
 ## Ready
 
