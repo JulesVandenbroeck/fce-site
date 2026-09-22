@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>D-020 — the canvas frame: full-bleed canvas, overlay panels, pan/zoom, bottom drawer</title>
+<link rel="stylesheet" href="../../src/fce_web/static/css/tokens.css" />
+<link rel="stylesheet" href="canvas-frame.css" />
+</head>
+<body>
+
+<!-- ================================================================== -->
+<!-- THE FRAME — one viewport-tall stage. The canvas fills it edge to    -->
+<!-- edge; palette, mission panel and results drawer are overlays on top -->
+<!-- of it, so opening any of them never narrows the canvas (N12).       -->
+<!-- The written recommendation sits BELOW this frame, in normal         -->
+<!-- document flow, and is exploration prose rather than part of the UI. -->
+<!-- ================================================================== -->
+<div class="frame" id="frame">
+
+  <!-- ---- the canvas: full-bleed, pans and zooms (N13) --------------- -->
+  <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
+    <div class="canvas-viewport" id="canvas-viewport" tabindex="0" role="group"
+         aria-label="Analysis canvas — drag the background to pan, arrow keys to pan by keyboard, scroll or the zoom buttons to zoom">
+      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 1800 1200" width="1800" height="1200">
+        <defs>
+          <!-- Graph-paper rule, drawn inside the SVG so it scales with the
+               zoom: a grid that stayed a fixed CSS pattern would give no
+               sense of scale, which is the whole point of a map. -->
+          <pattern id="grid-fine" width="28" height="28" patternUnits="userSpaceOnUse">
+            <path d="M28 0 L0 0 0 28" class="grid-line grid-line--fine" />
+          </pattern>
+          <pattern id="grid-coarse" width="140" height="140" patternUnits="userSpaceOnUse">
+            <rect width="140" height="140" fill="url(#grid-fine)" />
+            <path d="M140 0 L0 0 0 140" class="grid-line grid-line--coarse" />
+          </pattern>
+          <marker id="frame-arrowhead" viewBox="0 0 8 8" refX="7" refY="4"
+                  markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead" />
+          </marker>
+        </defs>
+        <rect class="canvas-bg" x="0" y="0" width="1800" height="1200" />
+        <rect class="canvas-grid" x="0" y="0" width="1800" height="1200" fill="url(#grid-coarse)" />
+        <g id="edges-layer"></g>
+        <g id="nodes-layer"></g>
+      </svg>
+    </div>
+
+    <!-- Zoom controls: real buttons, so zoom and reset have a keyboard
+         path without a hidden key chord. Wheel is the pointer shortcut. -->
+    <div class="zoom-controls" id="zoom-controls" role="group" aria-label="Canvas zoom">
+      <button class="zoom-controls__btn" id="zoom-out" type="button" aria-label="Zoom out">&minus;</button>
+      <output class="zoom-controls__readout" id="zoom-readout" for="zoom-out zoom-in">100%</output>
+      <button class="zoom-controls__btn" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+      <button class="zoom-controls__btn zoom-controls__btn--fit" id="zoom-fit" type="button">Fit</button>
+    </div>
+
+    <p class="canvas-status" id="canvas-status" aria-live="polite">Drag the paper to pan. Scroll to zoom.
+      Tab onto the canvas, then use the arrow keys.</p>
+  </section>
+
+  <!-- ---- LEFT overlay: "Add a node" -------------------------------- -->
+  <aside class="palette" id="palette" data-state="expanded" aria-labelledby="palette-title">
+    <div class="palette__head">
+      <span class="palette__title" id="palette-title">Add a node</span>
+      <button class="palette__toggle" id="palette-toggle" type="button"
+              aria-expanded="true" aria-controls="palette-list">
+        <span class="palette__toggle-glyph" id="palette-toggle-glyph" aria-hidden="true">&#8249;</span>
+        <span class="sr-only" id="palette-toggle-sr">Collapse the node palette</span>
+      </button>
+    </div>
+    <ul class="palette__list" id="palette-list">
+      <li><button class="palette__add palette__add--multiplicity" type="button" data-add-kind="Multiplicity">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Multiplicity</span>
+          </button></li>
+      <li><button class="palette__add palette__add--selection" type="button" data-add-kind="Selection">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Selection</span>
+          </button></li>
+      <li><button class="palette__add palette__add--observable" type="button" data-add-kind="Observable">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Observable</span>
+          </button></li>
+      <li><button class="palette__add palette__add--histogram" type="button" data-add-kind="Histogram">
+            <span class="palette__add-swatch" aria-hidden="true"></span>
+            <span class="palette__add-label">Histogram</span>
+          </button></li>
+      <li class="palette__locked" aria-disabled="true">
+        <span class="lock-tag">locked</span> Node kind — opens in a later mission
+      </li>
+    </ul>
+  </aside>
+
+  <!-- ---- RIGHT overlay: the mission panel -------------------------- -->
+  <aside class="mission-panel" id="mission-panel" data-state="expanded" aria-label="Mission">
+    <div class="mission-panel__head">
+      <button class="mission-panel__pager" id="pager-back" type="button" aria-label="Previous mission">&#8249;</button>
+      <span class="mission-panel__label" id="mission-label" data-mission-id="m3"><span class="mission-panel__code">M-3</span> · The Unknown</span>
+      <button class="mission-panel__pager" id="pager-forward" type="button" aria-label="Next mission">&#8250;</button>
+      <button class="mission-panel__toggle" id="panel-toggle" type="button"
+              aria-expanded="true" aria-controls="mission-panel-body">
+        <span class="mission-panel__toggle-glyph" id="panel-toggle-glyph" aria-hidden="true">&#8250;</span>
+        <span class="sr-only" id="panel-toggle-sr">Collapse the mission panel</span>
+      </button>
+    </div>
+    <div class="mission-panel__body" id="mission-panel-body">
+      <p class="mission-panel__brief" id="mission-brief">There is an excess in the data that none of the
+        simulated processes accounts for. Find the channel, then run a fit.</p>
+      <p class="mission-panel__margin">Try an electron and a muon together — a Z cannot do that.</p>
+    </div>
+  </aside>
+
+  <!-- ---- BOTTOM overlay: the results drawer (N14) ------------------- -->
+  <!-- Same collapse shape as the two side panels: data-state on the      -->
+  <!-- region, aria-expanded on the toggle, hidden on the controlled body,-->
+  <!-- one chevron that flips. The arrow sits directly above Run.         -->
+  <section class="drawer" id="drawer" data-state="collapsed" aria-label="Run results">
+    <div class="drawer__body" id="drawer-body" hidden>
+      <p class="drawer__status" id="drawer-status" aria-live="polite">Not run yet.</p>
+      <table class="cutflow">
+        <caption class="cutflow__caption">Cutflow — events surviving each step</caption>
+        <thead>
+          <tr><th scope="col">Step</th><th scope="col">Events</th><th scope="col">Kept</th></tr>
+        </thead>
+        <tbody id="cutflow-body">
+          <tr><th scope="row">All events</th><td>240 000</td><td>100%</td></tr>
+          <tr><th scope="row">Two leptons</th><td>18 420</td><td>7.7%</td></tr>
+          <tr><th scope="row">One e, one &mu;</th><td>1 106</td><td>0.5%</td></tr>
+        </tbody>
+      </table>
+      <p class="fit-readout">
+        <span class="fit-readout__label">signal strength</span>
+        <span class="fit-readout__value">&mu; = 0.94 &plusmn; 0.21</span>
+      </p>
+      <p class="fit-readout fit-readout--significance">
+        <span class="fit-readout__label">significance</span>
+        <span class="fit-readout__value fit-readout__value--crossed">Z = 5.2&sigma;</span>
+        <span class="fit-readout__note">past 5&sigma; — discovery</span>
+      </p>
+    </div>
+
+    <div class="drawer__handle-row">
+      <button class="drawer__toggle" id="drawer-toggle" type="button"
+              aria-expanded="false" aria-controls="drawer-body">
+        <span class="drawer__toggle-glyph" id="drawer-toggle-glyph" aria-hidden="true">&#8963;</span>
+        <span class="sr-only" id="drawer-toggle-sr">Expand the results drawer</span>
+      </button>
+    </div>
+
+    <div class="drawer__run-row">
+      <button class="run-button" id="run-button" type="button">Run analysis</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- ================================================================== -->
+<!-- The written recommendation (C5). Exploration prose, below the frame.-->
+<!-- ================================================================== -->
+<main class="notes" id="recommendation">
+  <h1>D-020 — the canvas frame</h1>
+  <p class="notes__lede">What is above this line is the proposal: the canvas spans the page, the two
+    side panels and the results drawer float over it, and the canvas is an explorable map rather
+    than a fixed 704&times;512 plate. What follows answers the questions that re-framing forces,
+    and says what it costs.</p>
+
+  <h2>N13's four open questions</h2>
+
+  <h3>Zoom limits: 50% to 200%</h3>
+  <p>A node card's title is set at <code>--text-sm</code>, 14px. At 50% it renders at 7px: still
+    recognisable as a card of a known colour, which is what a student needs when they are looking
+    for where a node <em>is</em>, but not readable — so 50% is exactly the floor where zooming out
+    stops being navigation and starts being blindness. Below it there is nothing left to see, since
+    the graph is a few dozen cards, not a thousand. The ceiling is 200% because a node card carries
+    a fixed amount of text: past double size it has no more detail to give, so further zoom only
+    costs the student the context of the neighbouring nodes. Both limits are enforced in one place
+    and the buttons disable at them, so the control tells you when you have arrived rather than
+    silently doing nothing.</p>
+
+  <h3>Pan: bounded, to the surface</h3>
+  <p>Bounded. The surface is a fixed 1800&times;1200 sheet and panning is the browser's own
+    <code>overflow: auto</code> scrolling of it, so the student cannot pan into empty space and lose
+    the graph. That choice buys three things for free that infinite pan would have made us build:
+    scrollbars, which are the only honest indicator of how much sheet is left; keyboard panning, via
+    the arrow keys on the focused viewport, which N13 requires and which no custom transform-based
+    pan gets without being written; and a trivial answer to "where am I", because position is a
+    scroll offset rather than an unbounded coordinate. The cost is a ceiling on how large a graph
+    can grow, and the answer to that is a larger sheet, not an unbounded one.</p>
+
+  <h3>A left-drag that starts on a node still moves that node</h3>
+  <p>It must, because that is what it does today and a gesture that changes meaning between builds is
+    worse than either meaning. The rule is decided by where the drag <em>starts</em>, not by a mode:
+    a drag beginning on a node card moves it, a drag beginning on the paper pans. This is the same
+    convention every map-with-objects editor uses, it needs no modifier key — so it survives a
+    trackpad and a tablet, which <code>design-brief.md</code> §4 requires of every gesture — and it
+    is why the node's drag handle keeps its <code>grab</code> cursor while the paper gets its own.
+    Panning and node-moving never both fire, because the pan handler ignores any pointerdown whose
+    target is inside a node card.</p>
+
+  <h3>One reset affordance, and it is "Fit"</h3>
+  <p>Yes, and one rather than two. "Fit" scales and scrolls so the whole graph is on screen, which is
+    a known state that a "reset to 100%" button is not: after reset at 100% a student whose graph has
+    grown past the viewport is still lost, just lost at a familiar magnification. Fit is also the
+    answer to "I have panned somewhere and I cannot find my nodes", which is the only reason anyone
+    presses a reset button on a map. It is a real <code>&lt;button&gt;</code>, so it is on the tab
+    order, and it is the deterministic state any test or screenshot should return the canvas to
+    before it measures anything.</p>
+
+  <h2>What the overlay costs</h2>
+  <p>The panels now cover canvas instead of taking width from it, and that is a real trade rather
+    than a free win. At 1440 the palette covers the leftmost 368px and the mission panel the
+    rightmost 320px of a full-width canvas; the middle 752px is always clear. At 1024 the two
+    together cover 624 of 1024, leaving 400px clear. At 768 they cover 384 of 768 — exactly
+    half — and the clear strip is 384px, the same working width the old side-by-side layout gave,
+    except that now the covered half still exists underneath and is one pan away. That is the whole
+    argument for the change: what is behind a panel is recoverable by panning or by collapsing the
+    panel, where width taken away was not recoverable at all.</p>
+  <p>What a student loses when both panels are open: the two outer thirds of what is on screen, and,
+    specifically, any node they have parked under a panel. Three things keep that from biting. The
+    canvas underneath keeps panning while a panel is open, so a covered node is reachable without
+    touching the panel. Both panels already collapse to a 64px strip with one click, which the user
+    has accepted as the mitigation. And Fit is measured against the viewport, not against the clear
+    strip, so it will place nodes under an open panel — which is the honest behaviour, but it means
+    the collapse chevrons have to stay visible and obvious, never fade out. The results drawer costs
+    less: collapsed it is a bar at the bottom edge, and expanded it covers the lower part of the
+    canvas only while a student is reading a result they just asked for.</p>
+
+  <h2>The e2e coordinate-click caveat: yes, this changes it, and for the worse</h2>
+  <p>The standing caveat is that at 1024 and 768 <code>.canvas-region</code>'s horizontal scroll can
+    put the leftmost node outside the clickable area, so an e2e test clicking by coordinate misses.
+    Under this frame that is no longer an edge case at narrow widths — it is the normal condition at
+    every width, because the canvas surface is deliberately larger than the viewport and the visible
+    window into it now depends on two pieces of state, the scroll offset and the zoom. A coordinate
+    computed from a node's model position is wrong unless both are known.</p>
+  <p>What the frontend tasks that follow need to do about it: stop clicking by coordinate. Every node
+    is a real element with a stable <code>data-node-id</code>, and Playwright's
+    <code>locator.click()</code> scrolls it into view and hits its centre, which is correct at any
+    zoom and any scroll offset. Where a test genuinely needs a coordinate — a drag, a drop on empty
+    paper — it should press Fit first, read the node's live
+    <code>getBoundingClientRect()</code>, and work from that, never from the surface coordinate.
+    Assertions about position belong in surface units read back from the node, not in client pixels.
+    This is a bigger ask of the e2e suite than the old caveat was, and it is better to raise it now
+    than to discover it as flake.</p>
+
+  <h2>What was deliberately not built here</h2>
+  <p>No minimap: the sheet is bounded and Fit answers the same question in one button. No zoom-to-
+    selection, no pan inertia, no momentum easing — the design manual rules out springy motion, and
+    inertia on a bounded sheet mostly produces overshoot into an edge. No second gesture for zoom
+    beyond wheel and the buttons; pinch is the browser's own and is not ours to intercept.</p>
+</main>
+
+<!-- Inlined, not fetched by src=, for the same file:// module-script CORS
+     reason bench.html and shell.html give: an unflagged Chromium refuses a
+     cross-origin type="module" src= over file://. This is the only copy. -->
+<script type="module">
+/* D-020 exploration: the canvas frame. Not part of the shipping app.
+ *
+ * Three things are being shown, and they are deliberately built out of
+ * platform features rather than a pan/zoom library:
+ *
+ *   pan   — the browser's own `overflow: auto` on .canvas-viewport. A
+ *           left-drag on the paper writes scrollLeft/scrollTop; the arrow
+ *           keys do the same thing natively once the viewport has focus,
+ *           which is how N13's keyboard requirement is met without code.
+ *   zoom  — one `--zoom` custom property scaling the SVG's rendered size
+ *           against a fixed viewBox. The browser rescales everything,
+ *           including the foreignObject node cards and the grid pattern.
+ *   drawer— the same wireToggle shape as static/js/shell.js, given a
+ *           third call site rather than a second mechanism.
+ */
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const SURFACE_W = 1800;
+const SURFACE_H = 1200;
+const NODE_W = 172;
+const NODE_H = 104;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.0;
+const ZOOM_STEP = 0.25;
+const FIT_PAD = 40;
+
+// ---- the graph. nodes/edges only; nothing about zoom or scroll is here.
+const graphState = {
+  nodes: [
+    { id: "n1", kind: "Multiplicity", x: 420,  y: 150, title: "Multiplicity", body: "at least 2 leptons" },
+    { id: "n2", kind: "Selection",    x: 700,  y: 320, title: "Selection",    body: "l1.pt > 20" },
+    { id: "n3", kind: "Selection",    x: 980,  y: 150, title: "Selection",    body: "one e, one mu" },
+    { id: "n4", kind: "Observable",   x: 1280, y: 360, title: "Observable",   body: "(l1.p4 + l2.p4).mass" },
+    { id: "n5", kind: "Histogram",    x: 1560, y: 640, title: "Histogram",    body: "40 bins, 0-120 GeV" },
+  ],
+  edges: [["n1", "n2"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"]],
+};
+
+// ---- ui state. Never read by the graph above.
+let zoom = 1;
+
+const viewport = document.getElementById("canvas-viewport");
+const svg = document.getElementById("canvas-svg");
+const nodesLayer = document.getElementById("nodes-layer");
+const edgesLayer = document.getElementById("edges-layer");
+const readout = document.getElementById("zoom-readout");
+const zoomIn = document.getElementById("zoom-in");
+const zoomOut = document.getElementById("zoom-out");
+const nodeEls = {};
+const edgeEls = {};
+
+const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+
+// ---- zoom ---------------------------------------------------------------
+function applyZoom() {
+  svg.setAttribute("width", SURFACE_W * zoom);
+  svg.setAttribute("height", SURFACE_H * zoom);
+  readout.textContent = `${Math.round(zoom * 100)}%`;
+  zoomIn.disabled = zoom >= ZOOM_MAX - 0.001;
+  zoomOut.disabled = zoom <= ZOOM_MIN + 0.001;
+}
+
+/* Zoom about a point, so wheel-zoom keeps whatever is under the cursor under
+ * the cursor. With no anchor (the buttons, the keyboard) it holds the centre
+ * of the viewport, which is the only sensible anchor when there is no
+ * pointer to ask. */
+function setZoom(next, anchorX, anchorY) {
+  const prev = zoom;
+  const wanted = clampZoom(next);
+  if (Math.abs(wanted - prev) < 0.001) return;
+  const r = viewport.getBoundingClientRect();
+  const ax = (anchorX === undefined ? r.left + r.width / 2 : anchorX) - r.left;
+  const ay = (anchorY === undefined ? r.top + r.height / 2 : anchorY) - r.top;
+  const cx = (viewport.scrollLeft + ax) / prev;
+  const cy = (viewport.scrollTop + ay) / prev;
+  zoom = wanted;
+  applyZoom();
+  viewport.scrollLeft = cx * zoom - ax;
+  viewport.scrollTop = cy * zoom - ay;
+}
+
+/* The one reset affordance (see the recommendation): scale and scroll so the
+ * whole graph is on screen. A known state, which "back to 100%" is not. */
+function fit() {
+  const bb = nodesLayer.getBBox();
+  const r = viewport.getBoundingClientRect();
+  zoom = clampZoom(Math.min(
+    r.width / (bb.width + 2 * FIT_PAD),
+    r.height / (bb.height + 2 * FIT_PAD),
+  ));
+  applyZoom();
+  viewport.scrollLeft = (bb.x - FIT_PAD) * zoom;
+  viewport.scrollTop = (bb.y - FIT_PAD) * zoom;
+}
+
+// ---- nodes and edges ----------------------------------------------------
+function edgePath(a, b) {
+  const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2;
+  const x2 = b.x,          y2 = b.y + NODE_H / 2;
+  const dx = Math.max(40, (x2 - x1) / 2);
+  return `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`;
+}
+
+function redrawEdges() {
+  const byId = Object.fromEntries(graphState.nodes.map((n) => [n.id, n]));
+  graphState.edges.forEach(([a, b]) => {
+    edgeEls[`${a}-${b}`].setAttribute("d", edgePath(byId[a], byId[b]));
+  });
+}
+
+function moveNode(n, x, y) {
+  n.x = Math.max(0, Math.min(x, SURFACE_W - NODE_W));
+  n.y = Math.max(0, Math.min(y, SURFACE_H - NODE_H));
+  const fo = nodeEls[n.id];
+  fo.setAttribute("x", n.x);
+  fo.setAttribute("y", n.y);
+  redrawEdges();
+}
+
+/* A drag that STARTS on a node moves that node — the gesture is decided by
+ * where it begins, never by a mode. Deltas are divided by `zoom` because the
+ * pointer moves in client pixels and the node lives in surface units. */
+function startNodeDrag(n, handle, ev) {
+  if (ev.button !== 0) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  handle.setPointerCapture(ev.pointerId);
+  const ox = ev.clientX, oy = ev.clientY, sx = n.x, sy = n.y;
+  const onMove = (e) => moveNode(n, sx + (e.clientX - ox) / zoom, sy + (e.clientY - oy) / zoom);
+  const onUp = () => {
+    handle.removeEventListener("pointermove", onMove);
+    handle.removeEventListener("pointerup", onUp);
+  };
+  handle.addEventListener("pointermove", onMove);
+  handle.addEventListener("pointerup", onUp);
+}
+
+function buildGraph() {
+  graphState.edges.forEach(([a, b]) => {
+    const p = document.createElementNS(SVG_NS, "path");
+    p.setAttribute("class", "edge");
+    p.setAttribute("marker-end", "url(#frame-arrowhead)");
+    edgesLayer.appendChild(p);
+    edgeEls[`${a}-${b}`] = p;
+  });
+
+  graphState.nodes.forEach((n) => {
+    const fo = document.createElementNS(SVG_NS, "foreignObject");
+    fo.setAttribute("data-node-id", n.id);
+    fo.setAttribute("x", n.x);
+    fo.setAttribute("y", n.y);
+    fo.setAttribute("width", NODE_W);
+    fo.setAttribute("height", NODE_H);
+
+    const card = document.createElement("div");
+    card.className = `node-card node-card--${n.kind.toLowerCase()}`;
+    card.dataset.nodeKind = n.kind;
+
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "node-card__handle";
+    handle.setAttribute("aria-label", `Move the ${n.title} node`);
+    const title = document.createElement("span");
+    title.className = "node-card__title";
+    title.textContent = n.title;
+    handle.appendChild(title);
+
+    const body = document.createElement("p");
+    body.className = "node-card__body";
+    body.textContent = n.body;
+
+    handle.addEventListener("pointerdown", (ev) => startNodeDrag(n, handle, ev));
+    card.append(handle, body);
+    fo.appendChild(card);
+    nodesLayer.appendChild(fo);
+    nodeEls[n.id] = fo;
+  });
+  redrawEdges();
+}
+
+// ---- pan: a left-drag on the paper writes the viewport's own scroll ------
+function wirePan() {
+  viewport.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0 || ev.target.closest(".node-card")) return;
+    ev.preventDefault();
+    viewport.setPointerCapture(ev.pointerId);
+    viewport.classList.add("is-panning");
+    let px = ev.clientX, py = ev.clientY;
+    const onMove = (e) => {
+      viewport.scrollLeft -= e.clientX - px;
+      viewport.scrollTop -= e.clientY - py;
+      px = e.clientX;
+      py = e.clientY;
+    };
+    const onUp = () => {
+      viewport.classList.remove("is-panning");
+      viewport.removeEventListener("pointermove", onMove);
+      viewport.removeEventListener("pointerup", onUp);
+    };
+    viewport.addEventListener("pointermove", onMove);
+    viewport.addEventListener("pointerup", onUp);
+  });
+
+  // passive:false — the page must not scroll while the canvas zooms.
+  viewport.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    setZoom(zoom - Math.sign(ev.deltaY) * ZOOM_STEP, ev.clientX, ev.clientY);
+  }, { passive: false });
+}
+
+// ---- collapse: one shape, three call sites ------------------------------
+// Lifted from static/js/shell.js's wireToggle so the drawer is the same
+// machinery as the two side panels rather than a second one: data-state on
+// the region, aria-expanded on the button, hidden on the controlled body,
+// one chevron pair given as a two-character string.
+function wireToggle(regionId, btnId, glyphId, srId, bodyId, glyphs, noun) {
+  const region = document.getElementById(regionId);
+  const btn = document.getElementById(btnId);
+  const glyph = document.getElementById(glyphId);
+  const sr = document.getElementById(srId);
+  const body = document.getElementById(bodyId);
+  const [expandGlyph, collapseGlyph] = glyphs;
+  const set = (expanded) => {
+    region.dataset.state = expanded ? "expanded" : "collapsed";
+    body.hidden = !expanded;
+    btn.setAttribute("aria-expanded", String(expanded));
+    glyph.textContent = expanded ? expandGlyph : collapseGlyph;
+    sr.textContent = expanded ? `Collapse the ${noun}` : `Expand the ${noun}`;
+  };
+  btn.addEventListener("click", () => set(region.dataset.state === "collapsed"));
+  return set;
+}
+
+function init() {
+  buildGraph();
+  applyZoom();
+  wirePan();
+
+  zoomIn.addEventListener("click", () => setZoom(zoom + ZOOM_STEP));
+  zoomOut.addEventListener("click", () => setZoom(zoom - ZOOM_STEP));
+  document.getElementById("zoom-fit").addEventListener("click", fit);
+
+  wireToggle("palette", "palette-toggle", "palette-toggle-glyph", "palette-toggle-sr",
+             "palette-list", "‹›", "node palette");
+  wireToggle("mission-panel", "panel-toggle", "panel-toggle-glyph", "panel-toggle-sr",
+             "mission-panel-body", "›‹", "mission panel");
+  const setDrawer = wireToggle("drawer", "drawer-toggle", "drawer-toggle-glyph", "drawer-toggle-sr",
+                               "drawer-body", "⌄⌃", "results drawer");
+
+  // Run auto-expands the drawer (N14) through the same setter the chevron
+  // uses, so the two can never disagree about state.
+  document.getElementById("run-button").addEventListener("click", () => {
+    setDrawer(true);
+    document.getElementById("drawer-status").textContent =
+      "Run complete — 1 106 events in the eμ channel.";
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>

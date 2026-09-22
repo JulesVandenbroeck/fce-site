@@ -82,3 +82,29 @@ before a student has added anything. What it buys instead is answering a questio
 of the other two can from the persisted state alone: which pipeline stage a node is in,
 at a glance, independent of add order. This is the recommendation above, and its costs are
 accepted, not overlooked.
+
+---
+
+## D-020 — the canvas frame
+
+[`canvas-frame.html`](canvas-frame.html) (with [`canvas-frame.css`](canvas-frame.css)) is a
+later exploration and does not belong to the D-007 comparison above. It re-frames the page
+the user drove in the running app, on three changes they asked for:
+
+- the node canvas spans the **full page width**, and the "Add a node" palette and the mission
+  panel **overlay** it rather than taking width from it;
+- the canvas is an **explorable map** — left-drag on the paper pans, the arrow keys pan by
+  keyboard, scroll and the zoom buttons zoom between 50% and 200%, and one **Fit** button
+  returns it to a known state;
+- **Run analysis** sits on the bottom screen border, and results rise in a **drawer** from the
+  bottom edge with its own chevron directly above the Run button. Pressing Run auto-expands it.
+
+The page carries its own written recommendation below the frame, answering the four questions
+the re-framing leaves open (zoom limits, bounded or infinite pan, what a left-drag starting on
+a node does, and whether there is a reset affordance), stating what the overlay costs a student
+when both panels are open, and stating that the standing e2e coordinate-click caveat gets
+*worse* under this frame — node positions now depend on both scroll offset and zoom, so tests
+must locate nodes by element rather than by coordinate.
+
+Its one registered check is `canvas-frame-no-h-scroll` in [`verify.py`](verify.py):
+`python3 verify.py --canvas-frame`.
