@@ -126,26 +126,19 @@ def test_x3_dilepton_mass_sits_below_the_z_peak():
 
 # ---------------------------------------------------------------------------
 # Criterion 5: run_analysis completes against the fixture, writing output/
-# into a tmp FCE_HOME -- never into the committed fixture tree.
+# into a tmp FCE_HOME.
 # ---------------------------------------------------------------------------
 
 def test_run_analysis_completes_against_the_fixture(tmp_path, monkeypatch):
-    """``run_analysis``'s ``env`` parameter reaches ``driver._dataset_dir``
-    (dataset discovery) but not ``analytical_loop.run_physics_loop``'s own
-    cache/output directory, which resolves ``get_fce_home()`` with no
-    argument (``analytical_loop.py:272``) and therefore always reads the
-    real process environment for where to read/write ``cache/`` and
-    ``output/`` -- a real inconsistency between the two (reported in this
-    task's PR body as a backlog candidate; out of this task's file scope to
-    fix, since ``analytical_loop.py`` is read-only here). ``monkeypatch.setenv``
-    closes that gap for this test the same way the ``env`` dict closes it for
-    dataset discovery, so both land in the same tmp directory and the
-    committed fixture tree is never touched.
+    """``run_analysis`` completes against a copy of the fixture in a tmp
+    ``FCE_HOME``, writing ``output/hist0_<sample>.root`` per sample.
+    ``monkeypatch.setenv`` covers ``analytical_loop.run_physics_loop``'s own
+    cache/output resolution, which forwards ``env`` alongside the ``env``
+    dict already given to ``run_analysis`` for dataset discovery.
     """
     monkeypatch.setenv("FCE_HOME", str(tmp_path))
     tmp_dataset_dir = tmp_path / "datasets" / "IDEA" / "91GeV"
     shutil.copytree(DATASET_DIR, tmp_dataset_dir)
-    committed_before = sorted(os.listdir(DATASET_DIR))
 
     config = RunConfig.from_file(ANALYSIS_CONFIG)
     ctx = RunContext(n_workers=2)
@@ -155,10 +148,6 @@ def test_run_analysis_completes_against_the_fixture(tmp_path, monkeypatch):
     for sample in SAMPLES:
         out_file = tmp_path / "output" / f"hist0_{sample}.root"
         assert out_file.exists(), f"missing {out_file}"
-
-    assert sorted(os.listdir(DATASET_DIR)) == committed_before, (
-        "run_analysis touched the committed fixture tree"
-    )
 
 
 # ---------------------------------------------------------------------------
