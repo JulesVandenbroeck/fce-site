@@ -9,7 +9,30 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-016 — Pan and zoom on the canvas surface
+- **Scope:** `src/fce_web/static/js/graph.js`, `src/fce_web/templates/shell.html`,
+  `tests/e2e/test_graph.py`, `tests/e2e/test_smoke.py`. **No CSS** — D-022 styles it.
+- **Accept:** C1 left-drag pans both axes at 100% and 50%; C2 a drag starting on a node moves the node
+  and leaves scroll byte-identical; C3 keyboard pan reaches both axes; C4 zoom clamps to 50-200%;
+  **C5 the sheet stays monotonic in node extent — zooming in never orphans a node placed at a lower
+  zoom, shown red under a mutation dropping the extent term**; C6 Fit shows every node, and is the
+  only such affordance; C7 F-015's 24 no-h-scroll probes still pass; C8 the nested-landmark fix;
+  C9 suite floor **726** + additions, flake8 0, nothing weakened. checks=9.
+- **Depends on:** F-015 (#62, `dc2337f`) and the canvas ruling 2026-09-22
+  (`design.md` `## Decisions in force` §8-9).
+- **Branch / PR:** `task/f-016-canvas-pan-zoom` — not yet opened
+- **Status:** dispatched (cycle 1), `isolation: "worktree"`
+- **Carries:** backlog **N13**, and **N23** (PR #62 F3, the nested region landmarks) as C8 — carried
+  into the dispatch rather than left in the backlog, because it is an accessibility regression F-015
+  introduced and shared §6 does not let those wait.
+- **C5 is the known trap.** It is D-021's F2 recurring in a new file: the sheet recomputed from
+  scratch on every zoom shrinks when you zoom *in*, orphaning a node placed at a lower zoom. The
+  reference `applyZoom` in `canvas-frame.html` already carries the three-term `Math.max` that fixes
+  it. Rung 2 of the ladder is the whole task — that code is reviewed and mutation-tested; port it.
+- **Watch:** zoom changes the client-pixel → surface-unit mapping, so F-015's C7 coordinate fixes in
+  `test_graph.py` must be re-checked, not assumed. `graph.js:229` (post-growth re-clamp) and
+  `graph.js:803` (node-drag `onMove`) were both proven load-bearing by PR #62's reviewer.
+- **History:** [`archive/frontend.md`](archive/frontend.md)
 
 ## Ready
 
