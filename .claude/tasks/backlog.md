@@ -74,6 +74,27 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   for an excess **in `data`** over the stack, so authoring or reviewing either mission end to end
   needs a fixture whose `data` actually contains the signal, plus `X4`/`X5` for a faithful
   background. A task against B-018's `tests/fixtures/make_fixture.py`. _(truth deck, slides 6-7)_
+- **N5 `verify.py`'s `check_git_diff` gives every design task three false reds** (design/tooling).
+  `docs/design-explorations/verify.py:1936` enforces a D-002-era invariant that a branch touches nothing under
+  `src/` except `tokens.css` and the fonts. Any task editing any other `src/` stylesheet trips `git-diff-clean`
+  (twice) and `bench-git-diff-clean`, regardless of correctness — verified on D-019: clean `main` gives
+  `['board-lane-fill']`, D-019's branch gives four. Either widen the exemption to the shipped `static/css/`
+  stylesheets or retire the check. Until then **every design dispatch must state the expected red set, not
+  "exactly one"** — I got that wrong on D-019's C4. _(D-019, 2026-09-22)_
+- **N6 PR #55's F8 is still open, and it is frontend's** (frontend, trivial).
+  `tests/e2e/test_interior_style.py:3-11,28-32` — module docstring retells review history and calls a committed
+  script "uncommitted"; function docstring repeats a mutation transcript. One line each. D-019 could not take it
+  (design owns no Python) and **my dispatch wrongly said it lived in `observable.css`**. _(PR #55 F8)_
+- **N7 The e2e suite is not safe to run concurrently across worktrees** (process note, no code change).
+  Two full suites running at once in different worktrees contend on the live-server port: I saw
+  `test_observable_mode_is_config_not_identity` fail in a full run that overlapped another worktree's suite, then
+  pass 3/3 in isolation, 77/77 in e2e-only, and 728/728 on a clean re-run. **Gate one PR at a time**, or a green
+  branch will look red and cost a false cycle. _(orchestrator, 2026-09-22)_
+- **N8 `.venv` is an editable install rooted at the primary checkout** (process note, no code change).
+  Running the suite from any other worktree silently imports `src/fce_web` from the **primary checkout** unless
+  `PYTHONPATH=<worktree>/src` is set — so a worktree's own source changes are not what is being tested. PR #56's
+  reviewer lost a run to exactly this, and it would silently certify the wrong tree rather than error. Every
+  dispatch and every review that runs outside the primary checkout should set it. _(PR #56 review, 2026-09-22)_
 - **N4 Two backend-owned comments now say something false** (backend, trivial, fold into any
   future fixture task). `tests/fixtures/README.md:24` and `tests/fixtures/make_fixture.py:55-56`
   both say `X4`/`X5`/`X6` "are undocumented". `X4` and `X5` were identified 2026-09-22; only `X6`
