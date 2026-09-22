@@ -22,6 +22,11 @@
   <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
     <div class="canvas-viewport" id="canvas-viewport" tabindex="0" role="group"
          aria-label="Analysis canvas — drag the background to pan, arrow keys to pan by keyboard, scroll or the zoom buttons to zoom">
+      <!-- viewBox, width, height and the two backing rects are all written by
+           applyZoom(): the sheet is sized at every zoom to cover the viewport
+           with paper to spare, so there is never a void to pan into and never
+           an axis without a scroll range. The literals here are only what the
+           first paint shows before the script runs. -->
       <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 1800 1200" width="1800" height="1200">
         <defs>
           <!-- Graph-paper rule, drawn inside the SVG so it scales with the
@@ -178,8 +183,16 @@
     and the buttons disable at them, so the control tells you when you have arrived rather than
     silently doing nothing.</p>
 
-  <h3>Pan: bounded, to the surface</h3>
-  <p>Bounded. The surface is a fixed 1800&times;1200 sheet and panning is the browser's own
+  <h3>Pan: bounded, to a sheet that is never smaller than the window</h3>
+  <p><strong>Corrected in D-021.</strong> The sheet is no longer a fixed 1800&times;1200 page: it keeps
+    that as a minimum and is then grown, at every zoom, until it covers the window with 600 units of
+    paper to spare on each side. A fixed page was one bug with three faces &mdash; on a window wider
+    than 1800px, and at any zoom where the page came out smaller than the window, the canvas had
+    <em>no horizontal scroll range at all</em>. So there was nothing to pan sideways, the area beyond
+    the page was blank instead of graph paper, and a node parked past the window edge was unreachable
+    rather than merely off-screen. A sheet that follows the window answers all three at once, and the
+    grid is painted across the whole of it.</p>
+  <p>Still bounded, though, and panning is still the browser's own
     <code>overflow: auto</code> scrolling of it, so the student cannot pan into empty space and lose
     the graph. That choice buys three things for free that infinite pan would have made us build:
     scrollbars, which are the only honest indicator of how much sheet is left; keyboard panning, via
@@ -198,7 +211,10 @@
     Panning and node-moving never both fire, because the pan handler ignores any pointerdown whose
     target is inside a node card.</p>
 
-  <h3>One reset affordance, and it is "Fit"</h3>
+  <h3>One reset affordance, it is "Fit", and the page now opens in it</h3>
+  <p><strong>D-021:</strong> the load state <em>is</em> Fit, aimed at the clear strip, because the
+    first thing a student sees has to be the whole pipeline and a five-node chain is wider than that
+    strip at 100%. At 1440 that works out at 81%; on a 1920 window, 126%.</p>
   <p>Yes, and one rather than two. "Fit" scales and scrolls so the whole graph is on screen, which is
     a known state that a "reset to 100%" button is not: after reset at 100% a student whose graph has
     grown past the viewport is still lost, just lost at a familiar magnification. Fit is also the
@@ -209,9 +225,10 @@
 
   <h2>What the overlay costs</h2>
   <p>The panels now cover canvas instead of taking width from it, and that is a real trade rather
-    than a free win. At 1440 the palette covers the leftmost 368px and the mission panel the
-    rightmost 320px of a full-width canvas; the middle 752px is always clear. At 1024 the two
-    together cover 624 of 1024, leaving 400px clear. At 768 they cover 384 of 768 — exactly
+    than a free win. At 1440 the palette covers the leftmost 256px (D-021 narrowed it from 368, to
+    buy back clear band) and the mission panel the rightmost 320px of a full-width canvas; the middle
+    864px is always clear. At 1024 the two together cover 512 of 1024, leaving 512px clear. At 768
+    they cover 384 of 768 — exactly
     half — and the clear strip is 384px, the same working width the old side-by-side layout gave,
     except that now the covered half still exists underneath and is one pan away. That is the whole
     argument for the change: what is behind a panel is recoverable by panning or by collapsing the
@@ -220,9 +237,12 @@
     specifically, any node they have parked under a panel. Three things keep that from biting. The
     canvas underneath keeps panning while a panel is open, so a covered node is reachable without
     touching the panel. Both panels already collapse to a 64px strip with one click, which the user
-    has accepted as the mitigation. And Fit is measured against the viewport, not against the clear
-    strip, so it will place nodes under an open panel — which is the honest behaviour, but it means
-    the collapse chevrons have to stay visible and obvious, never fade out. The results drawer costs
+    has accepted as the mitigation. And Fit — <strong>corrected in D-021</strong> — is now measured
+    against the clear strip rather than against the whole viewport, and centres the graph in it, so
+    the page opens with the whole pipeline between the panels instead of with two of five nodes
+    underneath them. The collapse chevrons still have to stay visible and obvious, never fade out,
+    because below about 1024 the strip is too narrow to hold the pipeline at the 50% zoom floor and
+    the outer nodes do sit under a panel until the student pans or collapses one. The drawer costs
     less: collapsed it is a bar at the bottom edge, and expanded it covers the lower part of the
     canvas only while a student is reading a result they just asked for.</p>
 
@@ -272,29 +292,45 @@
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-const SURFACE_W = 1800;
-const SURFACE_H = 1200;
+/* D-021. The sheet is no longer a fixed 1800x1200 page. It has a minimum
+ * size, and beyond that it is grown at each zoom until it covers the viewport
+ * with SHEET_PAD of paper to spare on every side. One change, three symptoms:
+ * a page smaller than the window left void around it rather than graph paper,
+ * and a page no wider than the window left `scrollWidth == clientWidth`,
+ * which is zero horizontal pan range -- which is also why a node placed past
+ * the window edge was unreachable rather than merely off-screen. */
+const SHEET_MIN_W = 2400;
+const SHEET_MIN_H = 1800;
+const SHEET_PAD = 600;      // surface units of spare paper beyond the viewport
 const NODE_W = 172;
 const NODE_H = 104;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
 const ZOOM_STEP = 0.25;
-const FIT_PAD = 40;
+const FIT_PAD = 24;
 
 // ---- the graph. nodes/edges only; nothing about zoom or scroll is here.
 const graphState = {
   nodes: [
-    { id: "n1", kind: "Multiplicity", x: 420,  y: 150, title: "Multiplicity", body: "at least 2 leptons" },
-    { id: "n2", kind: "Selection",    x: 700,  y: 320, title: "Selection",    body: "l1.pt > 20" },
-    { id: "n3", kind: "Selection",    x: 980,  y: 150, title: "Selection",    body: "one e, one mu" },
-    { id: "n4", kind: "Observable",   x: 1280, y: 360, title: "Observable",   body: "(l1.p4 + l2.p4).mass" },
-    { id: "n5", kind: "Histogram",    x: 1560, y: 640, title: "Histogram",    body: "40 bins, 0-120 GeV" },
+    /* D-021: the chain was 1140 surface units wide and 594 tall and did not
+     * fit the band between the two panels at any readable zoom, so two of the
+     * five nodes opened underneath a panel (PR #59 F1). Same five nodes, same
+     * left-to-right flow, laid out on a 212-unit pitch so Fit can put the
+     * whole pipeline in that band. The origin is well inside the sheet rather
+     * than near (0,0) so the scroll offset Fit wants is always reachable --
+     * scrollTop cannot go negative, and a clamped Fit is an off-centre graph. */
+    { id: "n1", kind: "Multiplicity", x: 700,  y: 900,  title: "Multiplicity", body: "at least 2 leptons" },
+    { id: "n2", kind: "Selection",    x: 912,  y: 1050, title: "Selection",    body: "l1.pt > 20" },
+    { id: "n3", kind: "Selection",    x: 1124, y: 930,  title: "Selection",    body: "one e, one mu" },
+    { id: "n4", kind: "Observable",   x: 1336, y: 1090, title: "Observable",   body: "(l1.p4 + l2.p4).mass" },
+    { id: "n5", kind: "Histogram",    x: 1548, y: 1230, title: "Histogram",    body: "40 bins, 0-120 GeV" },
   ],
   edges: [["n1", "n2"], ["n2", "n3"], ["n3", "n4"], ["n4", "n5"]],
 };
 
 // ---- ui state. Never read by the graph above.
 let zoom = 1;
+const sheet = { w: SHEET_MIN_W, h: SHEET_MIN_H };   // surface units, rewritten by applyZoom
 
 const viewport = document.getElementById("canvas-viewport");
 const svg = document.getElementById("canvas-svg");
@@ -303,15 +339,29 @@ const edgesLayer = document.getElementById("edges-layer");
 const readout = document.getElementById("zoom-readout");
 const zoomIn = document.getElementById("zoom-in");
 const zoomOut = document.getElementById("zoom-out");
+const sheetRects = [svg.querySelector(".canvas-bg"), svg.querySelector(".canvas-grid")];
 const nodeEls = {};
 const edgeEls = {};
 
 const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
 
 // ---- zoom ---------------------------------------------------------------
+/* Grow the sheet to the zoom, then paint it. The grid is drawn in surface
+ * units, so its cells scale with the zoom rather than staying fixed in screen
+ * pixels: fixed cells would slide underneath the nodes as you zoom and read as
+ * a backdrop the graph floats on, where scaling cells read as one sheet of
+ * paper the student is moving over — and the cell is the only scale reference
+ * the map has. */
 function applyZoom() {
-  svg.setAttribute("width", SURFACE_W * zoom);
-  svg.setAttribute("height", SURFACE_H * zoom);
+  sheet.w = Math.max(SHEET_MIN_W, Math.ceil(viewport.clientWidth / zoom) + 2 * SHEET_PAD);
+  sheet.h = Math.max(SHEET_MIN_H, Math.ceil(viewport.clientHeight / zoom) + 2 * SHEET_PAD);
+  svg.setAttribute("viewBox", `0 0 ${sheet.w} ${sheet.h}`);
+  svg.setAttribute("width", sheet.w * zoom);
+  svg.setAttribute("height", sheet.h * zoom);
+  sheetRects.forEach((r) => {
+    r.setAttribute("width", sheet.w);
+    r.setAttribute("height", sheet.h);
+  });
   readout.textContent = `${Math.round(zoom * 100)}%`;
   zoomIn.disabled = zoom >= ZOOM_MAX - 0.001;
   zoomOut.disabled = zoom <= ZOOM_MIN + 0.001;
@@ -336,18 +386,38 @@ function setZoom(next, anchorX, anchorY) {
   viewport.scrollTop = cy * zoom - ay;
 }
 
+/* The strip of canvas no overlay covers, in viewport-local px: between the two
+ * panels, below the zoom toolbar, above the drawer. Read off the live elements
+ * so it follows their collapse state. */
+function clearBand() {
+  const v = viewport.getBoundingClientRect();
+  const left = document.getElementById("palette").getBoundingClientRect().right;
+  const right = document.getElementById("mission-panel").getBoundingClientRect().left;
+  const top = document.getElementById("zoom-controls").getBoundingClientRect().bottom;
+  const bottom = document.getElementById("drawer").getBoundingClientRect().top;
+  return {
+    x: left - v.left,
+    y: top - v.top,
+    w: Math.max(NODE_W, right - left),
+    h: Math.max(NODE_H, bottom - top),
+  };
+}
+
 /* The one reset affordance (see the recommendation): scale and scroll so the
- * whole graph is on screen. A known state, which "back to 100%" is not. */
+ * whole graph is on screen. A known state, which "back to 100%" is not.
+ * D-021: it aims at the clear band and centres the graph in it, rather than
+ * fitting the whole viewport and parking the result top-left — fitting the
+ * viewport is what put two of five nodes under a panel on load. */
 function fit() {
   const bb = nodesLayer.getBBox();
-  const r = viewport.getBoundingClientRect();
+  const band = clearBand();
   zoom = clampZoom(Math.min(
-    r.width / (bb.width + 2 * FIT_PAD),
-    r.height / (bb.height + 2 * FIT_PAD),
+    band.w / (bb.width + 2 * FIT_PAD),
+    band.h / (bb.height + 2 * FIT_PAD),
   ));
   applyZoom();
-  viewport.scrollLeft = (bb.x - FIT_PAD) * zoom;
-  viewport.scrollTop = (bb.y - FIT_PAD) * zoom;
+  viewport.scrollLeft = bb.x * zoom - band.x - (band.w - bb.width * zoom) / 2;
+  viewport.scrollTop = bb.y * zoom - band.y - (band.h - bb.height * zoom) / 2;
 }
 
 // ---- nodes and edges ----------------------------------------------------
@@ -366,8 +436,8 @@ function redrawEdges() {
 }
 
 function moveNode(n, x, y) {
-  n.x = Math.max(0, Math.min(x, SURFACE_W - NODE_W));
-  n.y = Math.max(0, Math.min(y, SURFACE_H - NODE_H));
+  n.x = Math.max(0, Math.min(x, sheet.w - NODE_W));
+  n.y = Math.max(0, Math.min(y, sheet.h - NODE_H));
   const fo = nodeEls[n.id];
   fo.setAttribute("x", n.x);
   fo.setAttribute("y", n.y);
@@ -492,6 +562,8 @@ function init() {
   buildGraph();
   applyZoom();
   wirePan();
+  // A window resize changes how much sheet the viewport needs; same one call.
+  window.addEventListener("resize", applyZoom);
 
   zoomIn.addEventListener("click", () => setZoom(zoom + ZOOM_STEP));
   zoomOut.addEventListener("click", () => setZoom(zoom - ZOOM_STEP));
@@ -511,6 +583,10 @@ function init() {
     document.getElementById("drawer-status").textContent =
       "Run complete — 1 106 events in the eμ channel.";
   });
+
+  // Open on Fit, not on an arbitrary 100% corner of the sheet: the first thing
+  // a student sees has to be the whole pipeline, inside the clear band.
+  fit();
 }
 
 if (document.readyState === "loading") {

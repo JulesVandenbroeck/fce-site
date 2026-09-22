@@ -8928,16 +8928,37 @@ def _dispatch_shell_section(name: str, pw: Playwright) -> bool:
 # =========================================================================
 
 CANVAS_FRAME_HTML = HERE / "canvas-frame.html"
-CANVAS_FRAME_DESIGN_WIDTHS: tuple[int, ...] = (1440, 1024, 768)
+# D-021 C10: the widths are SHELL_DESIGN_WIDTHS (defined above, same module,
+# same three numbers). The byte-for-byte duplicate this section used to carry
+# is gone. It keeps its shell-specific name rather than being renamed, because
+# renaming it would mean editing the D-010 shell sections that use it, and
+# those are append-only.
 
 
-def _canvas_frame_set_state(page: Page, region: str, toggle: str, want: str) -> None:
+def _canvas_frame_set_state(page: Page, region: str, toggle: str, want: str) -> str:
     """Drive one collapse region to `want` through its own chevron button,
     never by writing the attribute -- so the page's real toggle handler is
-    what produces the state being measured."""
+    what produces the state being measured.
+
+    Returns the state the region is actually in afterwards, read back from the
+    DOM. D-021 C10: the caller labels and asserts on what came back, not on
+    what was asked for, so a chevron that failed to fire fails the probe
+    instead of silently relabelling it as a layout that was never measured."""
     if page.eval_on_selector(region, "el => el.dataset.state") != want:
         page.click(toggle)
         page.wait_for_timeout(250)  # let the width transition settle
+    return page.eval_on_selector(region, "el => el.dataset.state")
+
+
+def _canvas_frame_zoom(page: Page, percent: int) -> None:
+    """Drive the canvas to an exact zoom through its own buttons. Walk down to
+    the 50% floor first, which is the one zoom the page can be put in from any
+    starting point, then step up by the page's own 25-point step."""
+    while not page.is_disabled("#zoom-out"):
+        page.click("#zoom-out")
+    for _ in range({50: 0, 100: 2, 200: 6}[percent]):
+        page.click("#zoom-in")
+    page.wait_for_timeout(120)
 
 
 def check_canvas_frame_no_h_scroll(pw: Playwright) -> bool:
@@ -8956,10 +8977,20 @@ def check_canvas_frame_no_h_scroll(pw: Playwright) -> bool:
 
     The drawer is driven into its expanded state twice over: once through
     its chevron and once through the Run button, because Run auto-expanding
-    the drawer is a second, independent path into the widest layout."""
+    the drawer is a second, independent path into the widest layout.
+
+    D-021 criteria C6/C7/C8 extend the same section with the other half of
+    the property, because the two are one mechanism and a checker that held
+    only one half is what let them be traded against each other: the *page*
+    must not scroll horizontally, and at the same time the *canvas* must --
+    inside itself, in both axes, at every zoom. Nine more probes per width:
+    at 50%, 100% and 200%, the canvas has a non-zero scroll range on each
+    axis (no range is no pan, which was the reported defect) and the sheet
+    covers the whole canvas viewport (no void to pan into)."""
     section(
-        "D-020 C4 -- canvas-frame-no-h-scroll: no horizontal page scroll, "
-        "8 states (palette x panel x drawer) + post-Run, x 3 widths"
+        "D-020 C4 + D-021 C6/C7/C8 -- canvas-frame-no-h-scroll: no horizontal page "
+        "scroll, 8 states (palette x panel x drawer) + post-Run, and canvas pan range "
+        "+ sheet coverage at 3 zooms, x 3 widths"
     )
 
     states = [
@@ -8971,26 +9002,31 @@ def check_canvas_frame_no_h_scroll(pw: Playwright) -> bool:
     reports: list[str] = []
     failures: list[str] = []
 
-    for width in CANVAS_FRAME_DESIGN_WIDTHS:
+    for width in SHELL_DESIGN_WIDTHS:
         browser = pw.chromium.launch()
         context = browser.new_context(viewport={"width": width, "height": 900})
         page = context.new_page()
         page.goto(CANVAS_FRAME_HTML.as_uri())
         page.wait_for_timeout(200)
 
-        for palette_state, panel_state, drawer_state in states:
-            _canvas_frame_set_state(page, "#palette", "#palette-toggle", palette_state)
-            _canvas_frame_set_state(page, "#mission-panel", "#panel-toggle", panel_state)
-            _canvas_frame_set_state(page, "#drawer", "#drawer-toggle", drawer_state)
+        for palette_want, panel_want, drawer_want in states:
+            got_palette = _canvas_frame_set_state(page, "#palette", "#palette-toggle", palette_want)
+            got_panel = _canvas_frame_set_state(page, "#mission-panel", "#panel-toggle", panel_want)
+            got_drawer = _canvas_frame_set_state(page, "#drawer", "#drawer-toggle", drawer_want)
             measured = page.evaluate(
                 """() => ({
                     scrollWidth: document.documentElement.scrollWidth,
                     clientWidth: document.documentElement.clientWidth,
-                    drawer: document.getElementById('drawer').dataset.state,
                 })"""
             )
-            name = f"{width}px palette={palette_state},panel={panel_state},drawer={measured['drawer']}"
+            # Labelled with what was measured, never with what was asked for.
+            name = f"{width}px palette={got_palette},panel={got_panel},drawer={got_drawer}"
             reports.append(f"{name}: scrollWidth={measured['scrollWidth']} clientWidth={measured['clientWidth']}")
+            if (got_palette, got_panel, got_drawer) != (palette_want, panel_want, drawer_want):
+                failures.append(
+                    f"{name}: a chevron did not reach the requested state "
+                    f"palette={palette_want},panel={panel_want},drawer={drawer_want}"
+                )
             if measured["scrollWidth"] > measured["clientWidth"] + 1:
                 failures.append(
                     f"{name}: document.documentElement.scrollWidth {measured['scrollWidth']}px "
@@ -9020,15 +9056,53 @@ def check_canvas_frame_no_h_scroll(pw: Playwright) -> bool:
                 f"{name}: document.documentElement.scrollWidth {after_run['scrollWidth']}px "
                 f"> clientWidth {after_run['clientWidth']}px"
             )
+
+        # D-021 C6/C8. Three probes at each of three zooms: a non-zero pan
+        # range on each axis, and a sheet that covers the canvas viewport.
+        # Panels back to their default expanded state first, which is the
+        # layout the user meets.
+        _canvas_frame_set_state(page, "#drawer", "#drawer-toggle", "collapsed")
+        _canvas_frame_set_state(page, "#palette", "#palette-toggle", "expanded")
+        _canvas_frame_set_state(page, "#mission-panel", "#panel-toggle", "expanded")
+        for percent in (50, 100, 200):
+            _canvas_frame_zoom(page, percent)
+            canvas = page.evaluate(
+                """() => {
+                    const v = document.getElementById('canvas-viewport');
+                    const r = v.getBoundingClientRect();
+                    const s = document.getElementById('canvas-svg').getBoundingClientRect();
+                    return {
+                        rangeX: v.scrollWidth - v.clientWidth,
+                        rangeY: v.scrollHeight - v.clientHeight,
+                        covers: s.left <= r.left + 0.5 && s.top <= r.top + 0.5
+                                && s.right >= r.right - 0.5 && s.bottom >= r.bottom - 0.5,
+                        zoom: document.getElementById('zoom-readout').textContent,
+                    };
+                }"""
+            )
+            name = f"{width}px canvas at zoom={canvas['zoom']}"
+            reports.append(
+                f"{name}: panRange={canvas['rangeX']}x{canvas['rangeY']} sheetCoversViewport={canvas['covers']}"
+            )
+            if canvas["zoom"] != f"{percent}%":
+                failures.append(f"{name}: wanted zoom {percent}%, the readout says {canvas['zoom']}")
+            if canvas["rangeX"] <= 0 or canvas["rangeY"] <= 0:
+                failures.append(
+                    f"{name}: canvas pan range {canvas['rangeX']}x{canvas['rangeY']}; "
+                    f"an axis with zero range cannot be panned"
+                )
+            if not canvas["covers"]:
+                failures.append(f"{name}: the sheet does not cover the canvas viewport -- void on the canvas")
         browser.close()
 
-    probes = (len(states) + 1) * len(CANVAS_FRAME_DESIGN_WIDTHS)
+    probes = (len(states) + 1 + 3 * 3) * len(SHELL_DESIGN_WIDTHS)
     ok = not failures
     line(
-        f"document.documentElement.scrollWidth <= clientWidth in all {probes} layouts "
-        f"(8 states + 1 post-Run state, x {len(CANVAS_FRAME_DESIGN_WIDTHS)} widths)",
+        f"no horizontal page scroll, and canvas pan range on both axes with full sheet "
+        f"coverage, in all {probes} probes (8 states + 1 post-Run state + 3 probes x 3 zooms, "
+        f"x {len(SHELL_DESIGN_WIDTHS)} widths)",
         ok,
-        "; ".join(reports) if ok else f"{len(failures)} failing layout(s): {failures}",
+        "; ".join(reports) if ok else f"{len(failures)} failing probe(s): {failures}",
     )
     return ok
 
