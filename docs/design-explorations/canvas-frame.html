@@ -353,8 +353,15 @@ const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
  * paper the student is moving over — and the cell is the only scale reference
  * the map has. */
 function applyZoom() {
-  sheet.w = Math.max(SHEET_MIN_W, Math.ceil(viewport.clientWidth / zoom) + 2 * SHEET_PAD);
-  sheet.h = Math.max(SHEET_MIN_H, Math.ceil(viewport.clientHeight / zoom) + 2 * SHEET_PAD);
+  /* The third term is what makes the sizing monotonic in the content the sheet
+   * holds: without it the sheet shrinks on zoom-in and a node parked out on
+   * the wide 50% sheet falls outside the scroll range at 200% -- the same
+   * unreachable-node defect this task exists to fix, in reverse (PR #60 F2). */
+  const nodes = graphState.nodes;
+  sheet.w = Math.max(SHEET_MIN_W, Math.ceil(viewport.clientWidth / zoom) + 2 * SHEET_PAD,
+                     Math.max(...nodes.map((n) => n.x)) + NODE_W + SHEET_PAD);
+  sheet.h = Math.max(SHEET_MIN_H, Math.ceil(viewport.clientHeight / zoom) + 2 * SHEET_PAD,
+                     Math.max(...nodes.map((n) => n.y)) + NODE_H + SHEET_PAD);
   svg.setAttribute("viewBox", `0 0 ${sheet.w} ${sheet.h}`);
   svg.setAttribute("width", sheet.w * zoom);
   svg.setAttribute("height", sheet.h * zoom);
