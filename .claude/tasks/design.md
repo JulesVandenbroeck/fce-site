@@ -77,11 +77,24 @@ are no longer the same object. The engine is not modified. Also in `backend.md`
   cleanups.
 - **Depends on:** D-020 (#59, merged `7043e76`).
 - **Branch / PR:** `task/d-021-canvas-frame-pan` — #60
-- **Status:** in review (cycle 1). Free gate passed, reproduced by me in the primary checkout
-  2026-09-22: red set `{board-lane-fill}` on `main` and on the branch, difference empty; section
-  grew **27 -> 54 probes** (floor held); `panRange` non-zero on **both** axes at every zoom x width
-  (1440@100% = `1200x1200`), `sheetCoversViewport=True` in all 9 canvas probes. Root cause confirmed
-  real, not papered over.
+- **Status:** in rework (cycle 2 dispatched). Cycle 1: `findings=4, scope=fail, verdict=rework`
+  — [review](https://github.com/JulesVandenbroeck/fce-site/pull/60#issuecomment-5781891877).
+  **C1-C10 hold, checks=10, probe floor 54.** Cycle 2 adds C11 (sheet never drops content it holds)
+  and C12 (C8's void guard becomes a real `elementsFromPoint` hit test), both gated on a mutation.
+- **Diagnosis (§5.4): a cycle, not a re-specification.** Nothing was dropped, and C6 shipped with a
+  command and was met. F2 is against a property no criterion ever gated — clause 3. Same shape as
+  B-006's unbounded `ast.Pow`: the dispatch named the root cause ("a node becomes unreachable") and
+  the coder fixed the zoom-out direction and stopped one step short of zoom-in.
+- **F1/F2 are the rework; F3/F4 are small.** F2: the sheet is recomputed from scratch on every zoom,
+  so zooming *in* shrinks it and orphans a node placed at a lower zoom — the same defect reversed.
+  F1: C8's guard compared the **SVG element's** rect to the viewport, which is unchanged when the
+  paper rects inside it are not — the reviewer painted the backing over 1/3 of the sheet and the
+  section still passed while 4 of 5 points hit-tested void.
+  F3: the anchor rode the branch — I have copied it into the primary checkout and the branch removes
+  it. F4: fixed 250ms sleep in `_canvas_frame_set_state` → `wait_for_selector`.
+- **Two cycle-1 mutations did fire, and are worth keeping:** the pan-range assertion goes red with
+  `canvas pan range 0x0` when the sheet is forced viewport-sized, and C10's state readback goes red
+  with `a chevron did not reach the requested state`.
 - **Unrequested deviations the user has not ruled on:** palette expanded width **368 -> 256**, the
   node chain re-laid out to a 212-unit pitch at (700,900), and the page now **opens in Fit rather
   than at 100%**. All three are the C9 mechanism and are argued in the PR body; reversible.
