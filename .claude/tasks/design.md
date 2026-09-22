@@ -64,6 +64,23 @@ one at submit** from the mission's declared dataset. The student's graph and the
 are no longer the same object. The engine is not modified. Also in `backend.md`
 `## Contracts in force`; `docs/api.md:29-34` still marks `POST /api/run` undefined.
 
+**The canvas ruling, 2026-09-22.** The user drove `canvas-frame.html` after D-021 merged and ruled
+**"everything works as intended."** That closes the D-020 checkpoint and settles both open questions:
+
+8. **D-020's four recommendations are ACCEPTED as the design.** Zoom **50-200%**; pan **bounded** to a
+   sheet (which is what buys native keyboard pan and scrollbars); a left-drag **starting on a node still
+   moves that node**, decided by where the drag begins rather than by a mode; **one** affordance, **Fit**,
+   not a separate reset-to-100%. This answers N13's four open questions — they are no longer open.
+9. **D-021's three unrequested deviations are ACCEPTED and carry into the port.** Palette expanded width
+   **368 -> 256**; the node chain at a **212-unit pitch**; the page **opens in Fit rather than at 100%**
+   (81% at 1440, 126% at 1920, 50% at 1024/768). They are the mechanism by which the whole pipeline is
+   visible on load, and a port that drops them re-opens D-021's C9.
+
+**Consequence: N12, N13 and N14 are designed and are now a port, not an exploration.**
+`docs/design-explorations/canvas-frame.{html,css}` is the reference the port is written against, and
+`verify.py`'s two canvas sections are the behaviour it must reproduce. The port lands in `src/` and is
+split frontend-then-design, never parallel (shared/CLAUDE.md §4).
+
 ---
 
 ## In progress
