@@ -386,24 +386,12 @@ def _set_state(page, region_id: str, toggle_id: str, state: str) -> None:
         page.locator(f"#{toggle_id}").click()
 
 
-def test_canvas_region_width_is_unaffected_by_either_side_panel(index: LoadedPage) -> None:
-    """C1: opening the palette or the mission panel overlays the canvas
-    rather than narrowing it -- the canvas region's rendered width equals
-    the viewport width in every combination, at 1440/1024/768."""
-    page = index.page
-    for width in _FRAME_WIDTHS:
-        page.set_viewport_size({"width": width, "height": 900})
-        for palette_state in ("expanded", "collapsed"):
-            _set_state(page, "palette", "palette-toggle", palette_state)
-            for panel_state in ("expanded", "collapsed"):
-                _set_state(page, "mission-panel", "panel-toggle", panel_state)
-                rect = page.locator("#canvas-region").bounding_box()
-                assert rect["width"] == width, (width, palette_state, panel_state, rect)
-
-
 def test_no_horizontal_page_scroll_in_any_panel_or_drawer_state(index: LoadedPage) -> None:
-    """C5: no combination of palette / mission-panel / drawer state opens a
-    horizontal page scrollbar, at any of the three widths -- 24 probes."""
+    """C1+C5: opening the palette or the mission panel overlays the canvas
+    rather than narrowing it -- the canvas region's rendered width equals
+    the viewport width -- and no combination of palette / mission-panel /
+    drawer state opens a horizontal page scrollbar, at any of the three
+    widths -- 24 probes."""
     page = index.page
     for width in _FRAME_WIDTHS:
         page.set_viewport_size({"width": width, "height": 900})
@@ -413,6 +401,8 @@ def test_no_horizontal_page_scroll_in_any_panel_or_drawer_state(index: LoadedPag
                 _set_state(page, "mission-panel", "panel-toggle", panel_state)
                 for drawer_state in ("expanded", "collapsed"):
                     _set_state(page, "drawer", "drawer-toggle", drawer_state)
+                    rect = page.locator("#canvas-region").bounding_box()
+                    assert rect["width"] == width, (width, palette_state, panel_state, drawer_state, rect)
                     scroll_width = page.evaluate("document.documentElement.scrollWidth")
                     client_width = page.evaluate("document.documentElement.clientWidth")
                     assert scroll_width == client_width, (

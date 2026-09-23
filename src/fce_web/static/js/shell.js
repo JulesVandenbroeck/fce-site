@@ -24,17 +24,19 @@
 // needs real mission data from content/missions/*.yaml, which is
 // F-005/backend's to supply. No client-side mission array to duplicate the
 // server-rendered title/brief.
-// `glyphs` is the two-character "expanded-glyph, collapsed-glyph" pair as one
-// string (e.g. "‹›") -- one token per call site instead of two positional
-// glyph args, so a transposition between the two calls can't silently flip
-// which chevron means which state.
-function wireToggle(regionId, btnId, glyphId, srId, bodyId, glyphs, noun) {
+// shell.html already carries one glyph literally -- whichever one matches
+// the region's initial `data-state` -- so that one is read from the DOM
+// instead of being repeated here (N11); `otherGlyph` is the single
+// character for the opposite state, the only one this call needs to pass.
+function wireToggle(regionId, btnId, glyphId, srId, bodyId, otherGlyph, noun) {
   const region = document.getElementById(regionId);
   const btn = document.getElementById(btnId);
   const glyph = document.getElementById(glyphId);
   const sr = document.getElementById(srId);
   const body = document.getElementById(bodyId);
-  const [expandGlyph, collapseGlyph] = glyphs;
+  const startsExpanded = region.dataset.state === "expanded";
+  const expandGlyph = startsExpanded ? glyph.textContent : otherGlyph;
+  const collapseGlyph = startsExpanded ? otherGlyph : glyph.textContent;
   const set = (expanded) => {
     region.dataset.state = expanded ? "expanded" : "collapsed";
     body.hidden = !expanded;
@@ -47,19 +49,18 @@ function wireToggle(regionId, btnId, glyphId, srId, bodyId, glyphs, noun) {
 }
 
 function init() {
-  wireToggle("palette", "palette-toggle", "palette-toggle-glyph", "palette-toggle-sr", "palette-list", "‹›", "node palette");
-  wireToggle("mission-panel", "panel-toggle", "panel-toggle-glyph", "panel-toggle-sr", "mission-panel-body", "›‹", "mission panel");
+  wireToggle("palette", "palette-toggle", "palette-toggle-glyph", "palette-toggle-sr", "palette-list", "›", "node palette");
+  wireToggle("mission-panel", "panel-toggle", "panel-toggle-glyph", "panel-toggle-sr", "mission-panel-body", "‹", "mission panel");
   const setDrawer = wireToggle(
-    "drawer", "drawer-toggle", "drawer-toggle-glyph", "drawer-toggle-sr", "drawer-body", "⌄⌃", "results drawer"
+    "drawer", "drawer-toggle", "drawer-toggle-glyph", "drawer-toggle-sr", "drawer-body", "⌄", "results drawer"
   );
 
-  // N14: pressing Run Analysis auto-expands the drawer if it is collapsed,
-  // through the same setter the chevron uses, so the two can never
-  // disagree about state. run.js owns what happens to the run itself; this
-  // listener only ever touches drawer UI state.
-  document.getElementById("run-button").addEventListener("click", () => {
-    if (document.getElementById("drawer").dataset.state === "collapsed") setDrawer(true);
-  });
+  // N14: pressing Run Analysis auto-expands the drawer, through the same
+  // setter the chevron uses (so the two can never disagree about state) --
+  // setDrawer(true) is idempotent on an already-expanded drawer, so no
+  // collapsed-state guard is needed here. run.js owns what happens to the
+  // run itself; this listener only ever touches drawer UI state.
+  document.getElementById("run-button").addEventListener("click", () => setDrawer(true));
 }
 
 if (document.readyState === "loading") {

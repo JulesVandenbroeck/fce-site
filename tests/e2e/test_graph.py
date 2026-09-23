@@ -13,6 +13,7 @@ per the F-005 PR body's contract -- `nodes` is a list, matching what
 """
 
 import json
+import re
 
 from playwright.sync_api import expect
 
@@ -349,6 +350,14 @@ def test_observable_mode_is_config_not_identity(index: LoadedPage) -> None:
     summary = page.locator('.node[data-node-id="n1"] summary')
     summary.focus()
     page.keyboard.press("Enter")
+    # wireInteriorToggle's own `toggle` handler re-focuses `summary` itself,
+    # and dispatches that as its own task rather than synchronously with the
+    # keypress (see test_opened_observable_node_is_brought_to_front's own
+    # comment) -- wait for that re-focus to land before moving focus onward,
+    # or it can steal focus back off the radio a moment later and turn the
+    # keyboard Space below into a second summary toggle instead of a
+    # selection.
+    expect(summary).to_be_focused()
     # .focus() + Space, not .check()'s real pointer click: the interior is
     # unstyled until D-018, and VectorSum's now-larger default panel (six
     # checkboxes) can grow the node tall enough that a screen click on an
@@ -608,6 +617,26 @@ def test_drag_on_empty_canvas_pans_both_axes_at_100_and_50_percent(index: Loaded
         _drag(page, start, (start[0] - 80, start[1] - 60))
         after = _scroll_offset(page)
         assert after[0] != before[0] and after[1] != before[1], (zoom_out_clicks, before, after)
+
+
+def test_pointercancel_mid_pan_clears_is_panning(index: LoadedPage) -> None:
+    """N31: a cancelled pointer -- the browser taking over for a system
+    gesture, e.g. -- must still tear the pan down, or `is-panning` sticks
+    and the pointermove listener leaks. A real `touchcancel` via CDP, not a
+    scripted `dispatchEvent`: Chromium only ever fires `lostpointercapture`
+    off a genuine cancel, so this exercises the actual teardown path."""
+    page = index.page
+    wrap = page.locator("#canvas-wrap")
+    wrap.scroll_into_view_if_needed()
+    box = wrap.bounding_box()
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+    cdp = page.context.new_cdp_session(page)
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]})
+    expect(wrap).to_have_class(re.compile(r"\bis-panning\b"))
+
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchCancel", "touchPoints": []})
+    expect(wrap).not_to_have_class(re.compile(r"\bis-panning\b"))
 
 
 def test_drag_starting_on_a_node_moves_it_and_does_not_pan(index: LoadedPage) -> None:

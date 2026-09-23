@@ -257,13 +257,18 @@ function wirePan() {
       px = moveEv.clientX;
       py = moveEv.clientY;
     }
-    function onUp() {
+    // lostpointercapture -- not pointerup -- so a cancelled pointer (the
+    // browser taking over for a system gesture, e.g.) still tears the pan
+    // down instead of leaving `is-panning` stuck and `onMove` listening
+    // forever (N31): capture is released on pointerup AND pointercancel
+    // alike, and this fires for both.
+    function onRelease() {
       els.wrap.classList.remove("is-panning");
       els.wrap.removeEventListener("pointermove", onMove);
-      els.wrap.removeEventListener("pointerup", onUp);
+      els.wrap.removeEventListener("lostpointercapture", onRelease);
     }
     els.wrap.addEventListener("pointermove", onMove);
-    els.wrap.addEventListener("pointerup", onUp);
+    els.wrap.addEventListener("lostpointercapture", onRelease);
   });
 
   // passive:false -- the page must not scroll while the canvas zooms.
