@@ -89,7 +89,7 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 - **Scope:** `shell.css`, `tests/e2e/test_canvas_style.py`, `docs/design-explorations/verify.py` (`check_git_diff` only)
 - **Accept:** C1 N27 collapse reclaims canvas (guard red without the fix); C2 N25/N26 probe selector earned or cut; C3 N29 `main` scoped via CSS; C4 N5 CSS-only branch → red set `{board-lane-fill}`, a JS/py change still trips it; C5 floor 738. checks=5.
 - **Branch / PR:** `task/d-025-design-sweep` — #70
-- **Status:** in review (cycle 1). Gate on `94578f2`: 739 passed, flake8 0; verify on the real branch is still the N5 set, because the branch also touches its own e2e guard (the body is honest about this). N28 dropped: it is a stale evidence line in the body of an already-merged PR, and nothing needs changing.
+- **Status:** **review not done — the reviewer was stopped at the session handoff (2026-09-23). Re-dispatch `code-reviewer` with "Review PR #70." only.** Gate on `94578f2`: 739 passed, flake8 0; verify on the real branch is still the N5 set, because the branch also touches its own e2e guard (the body is honest about this). N28 dropped: it is a stale evidence line in the body of an already-merged PR, and nothing needs changing.
 
 
 ## Ready
