@@ -13,7 +13,6 @@ per the F-005 PR body's contract -- `nodes` is a list, matching what
 """
 
 import json
-from pathlib import Path
 
 from playwright.sync_api import expect
 
@@ -28,8 +27,6 @@ PALETTE_KINDS = ("Multiplicity", "Selection", "Observable", "Histogram")
 # literals since a test file can't import a JS module.
 _NODE_W = 160
 _NODE_H = 104
-
-CANVAS_FRAME_CSS = Path(__file__).resolve().parents[2] / "docs" / "design-explorations" / "canvas-frame.css"
 
 
 def _graph(page) -> dict:
@@ -576,30 +573,9 @@ def test_dragging_opened_node_past_edges_clamps_by_measured_size(index: LoadedPa
 
 # ---- F-016: pan and zoom on the canvas surface ---------------------------
 #
-# canvas.css/shell.css predate D-022 (last touched at D-019, before F-015's
-# markup restructure) and do not yet give #canvas-wrap `overflow: auto` or
-# leave the SVG's own width/height attributes alone (shell.css still forces
-# `.canvas-svg { width: 100% }` and a fixed `.canvas-wrap` width) -- so
-# without extra CSS there is no scroll range to pan and no rendered size
-# change to measure for zoom. That CSS is design's file, not this task's
-# (D-022 ships it). These tests inject the already-approved
-# docs/design-explorations/canvas-frame.css, which styles exactly the
-# selectors this port uses (`.canvas-viewport`, `.canvas-svg`,
-# `#zoom-controls`, `.frame`, `.canvas-region`), plus two ID-selector
-# overrides for the two shell.css rules that would otherwise still win by
-# loading later than nothing -- not invented behaviour, the CSS contract
-# D-022 is expected to ship, applied so the real JS/DOM mechanism can be
-# exercised in a real browser today.
-def _use_panzoom_css(page) -> None:
-    page.add_style_tag(path=str(CANVAS_FRAME_CSS))
-    page.add_style_tag(content="#canvas-wrap { width: auto; } #canvas-svg { width: auto; height: auto; }")
-    # graph.js sizes the sheet once at page load, against whatever CSS was
-    # active then (the stale, fixed-width production rules) -- a `resize`
-    # is the same recompute applyZoom already does for a real window resize,
-    # so it is the honest way to have it re-measure under the CSS just added.
-    page.evaluate("window.dispatchEvent(new Event('resize'))")
-
-
+# D-022 shipped shell.css's real `#canvas-wrap { overflow: auto }` and scroll
+# range (a `.canvas-wrap::after` spacer), so these run against the production
+# stylesheets -- no injected CSS, no ID-selector overrides (C10).
 def _scroll_offset(page):
     return page.evaluate(
         "() => { const w = document.getElementById('canvas-wrap'); return [w.scrollLeft, w.scrollTop]; }"
@@ -616,7 +592,6 @@ def _drag(page, start, end, steps=5):
 def test_drag_on_empty_canvas_pans_both_axes_at_100_and_50_percent(index: LoadedPage) -> None:
     """C1: a left-drag on empty canvas pans in both axes, at 100% and 50%."""
     page = index.page
-    _use_panzoom_css(page)
     wrap = page.locator("#canvas-wrap")
     wrap.scroll_into_view_if_needed()
 
@@ -626,7 +601,11 @@ def test_drag_on_empty_canvas_pans_both_axes_at_100_and_50_percent(index: Loaded
         before = _scroll_offset(page)
         box = wrap.bounding_box()
         start = (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
-        _drag(page, start, (start[0] + 80, start[1] + 60))
+        # Up-left: scrollLeft/scrollTop start at 0 (top-left of the sheet) and
+        # can't go negative, so a down-right drag from there is clamped to a
+        # no-op by the browser -- not a pan bug, a direction bug. Dragging
+        # up-left is the one direction guaranteed to move off that floor.
+        _drag(page, start, (start[0] - 80, start[1] - 60))
         after = _scroll_offset(page)
         assert after[0] != before[0] and after[1] != before[1], (zoom_out_clicks, before, after)
 
@@ -634,7 +613,6 @@ def test_drag_on_empty_canvas_pans_both_axes_at_100_and_50_percent(index: Loaded
 def test_drag_starting_on_a_node_moves_it_and_does_not_pan(index: LoadedPage) -> None:
     """C2: the drag's meaning is decided by where it starts, not a mode."""
     page = index.page
-    _use_panzoom_css(page)
     page.locator('.palette__add[data-add-kind="Multiplicity"]').click()  # n1
 
     handle = page.locator('.node[data-node-id="n1"] .node__handle')
@@ -656,7 +634,6 @@ def test_keyboard_pans_the_focused_canvas_on_both_axes(index: LoadedPage) -> Non
     """C3: arrow keys pan once the canvas has focus -- native `overflow:
     auto` scrolling of the focused, tabindex=0 #canvas-wrap, no JS of ours."""
     page = index.page
-    _use_panzoom_css(page)
     wrap = page.locator("#canvas-wrap")
     wrap.focus()
     expect(wrap).to_be_focused()
@@ -674,7 +651,6 @@ def test_keyboard_pans_the_focused_canvas_on_both_axes(index: LoadedPage) -> Non
 def test_zoom_clamps_between_50_and_200_percent(index: LoadedPage) -> None:
     """C4."""
     page = index.page
-    _use_panzoom_css(page)
 
     for _ in range(10):  # well past the 200% ceiling
         if page.locator("#zoom-in").is_disabled():
@@ -695,7 +671,6 @@ def test_node_extent_stays_inside_the_sheet_after_zooming_in(index: LoadedPage) 
     """C5, D-021's F2: a node dragged to the far edge at 50% must not be
     orphaned outside the sheet once zoomed back in to 200%."""
     page = index.page
-    _use_panzoom_css(page)
     page.locator('.palette__add[data-add-kind="Multiplicity"]').click()  # n1
 
     page.locator("#zoom-out").click()
@@ -724,7 +699,6 @@ def test_fit_shows_the_whole_graph_and_is_the_only_reset_control(index: LoadedPa
     """C6: Fit is the one reset affordance -- pan and zoom away, press it,
     and every node is back inside the visible canvas."""
     page = index.page
-    _use_panzoom_css(page)
     for kind in ("Multiplicity", "Selection"):
         page.locator(f'.palette__add[data-add-kind="{kind}"]').click()
 
@@ -745,8 +719,3 @@ def test_fit_shows_the_whole_graph_and_is_the_only_reset_control(index: LoadedPa
     # One affordance only -- no separate reset-to-100% control.
     assert page.locator("#zoom-controls button").count() == 3  # zoom-out, zoom-in, zoom-fit
     assert page.locator('button:has-text("Reset")').count() == 0
-
-
-
-
-
