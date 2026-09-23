@@ -9,12 +9,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### B-030 — Fixture-test dead line + stale X4/X5 comments (backlog N10 + N4)
-- **Scope:** `tests/test_fixture_dataset.py`, `tests/fixtures/README.md`, `tests/fixtures/make_fixture.py` (comment only)
-- **Accept:** C1 dead `setenv` removed (proven dead by bogus-dir run); C2 comments name X4/X5, X6 still unknown; C3 no fixture bytes; C4 floor 729, flake8 0. checks=4.
-- **Branch / PR:** `task/b-030-fixture-comment-sweep` — #65
-- **Status:** in review (cycle 1). Gate: 643 unit passed, flake8 0, fixture bytes unchanged (no e2e file touched).
-
+_none._
 
 ## Ready
 
@@ -53,6 +48,7 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-030** — dead `setenv` in `test_fixture_dataset.py` + stale X4/X5 comments (N10 + N4) — #65, `b6011c4`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor 729 unchanged. Reviewer's stray 1-failed run was e2e port contention with my concurrent #66 gate (N7), not this PR.
 - **B-029** — backlog cleanup sweep, backend — #56, `07ef418`, 2 cycles, clean gate (`findings=2, scope=pass, verdict=approve`).
   **Suite floor 729 → 721** (9 nodeids removed, 1 added; every one named by collect-only diff, reproduced by me and
   the reviewer). −142 lines net. Two real defects fixed: **`jobs.py` `_queue_owner` now pruned on eviction** (#37 F14,

@@ -150,7 +150,7 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   `tests/e2e` alone — **twice, independently: by me and by PR #56's reviewer**, on branches that touch no frontend
   file. May be N7's port contention or may be genuine; N7 is the cheaper hypothesis to rule out first. Until then it
   will keep costing false cycles. _(B-029 c2 review + orchestrator, 2026-09-22)_
-- **N10 One dead line and a false docstring clause in `test_fixture_dataset.py`** (backend, trivial).
+- _(CLOSED by B-030, #65, `b6011c4`)_ **N10 One dead line and a false docstring clause in `test_fixture_dataset.py`** (backend, trivial).
   `:139-141` — `monkeypatch.setenv` does *not* cover `run_physics_loop`'s cache/output resolution; the `env` dict
   does (`driver.py:162` → `analytical_loop.py:266` → `paths.py:27`). Proven: forcing `setenv` to a bogus dir leaves
   the test passing. Delete the line and the `monkeypatch` parameter, cut the docstring to its first sentence.
@@ -181,7 +181,7 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   `PYTHONPATH=<worktree>/src` is set — so a worktree's own source changes are not what is being tested. PR #56's
   reviewer lost a run to exactly this, and it would silently certify the wrong tree rather than error. Every
   dispatch and every review that runs outside the primary checkout should set it. _(PR #56 review, 2026-09-22)_
-- **N4 Two backend-owned comments now say something false** (backend, trivial, fold into any
+- _(CLOSED by B-030, #65, `b6011c4`)_ **N4 Two backend-owned comments now say something false** (backend, trivial, fold into any
   future fixture task). `tests/fixtures/README.md:24` and `tests/fixtures/make_fixture.py:55-56`
   both say `X4`/`X5`/`X6` "are undocumented". `X4` and `X5` were identified 2026-09-22; only `X6`
   still is. The *decision* they justify — keeping them out of the fixture — is unchanged, so this
