@@ -2319,3 +2319,69 @@ nodes sit partly under the panels; every node is reachable by pan, which is what
 The reviewer dropped two nits in writing rather than spending a cycle: a duplicated
 `from playwright.sync_api import ...` line, and the PR body's stale "Total checks: 1 registered section"
 header (its own footer correctly says 12).
+
+
+---
+
+## D-022 — Port the canvas-frame stylesheets onto the merged shell (post-mortem, 2026-09-23)
+
+PR #63. Cycle 1 `2d5c164`, cycle 2 `a1336e2`. checks 8 -> 11. In review at session end.
+
+**Why the task existed.** `shell.css` was last touched at D-019, before F-015 restructured the shell,
+so the app on `main` was styled for markup that no longer existed. `scout` enumerated the damage
+rather than my guessing it: all five stale declarations were in `shell.css` and `canvas.css` had
+**none** — `:201` `.canvas-wrap { width: calc(var(--space-7)*11) }`, `:208-209`
+`.canvas-svg { width:100%; height:auto }`, `:189` `.canvas-region { overflow:auto }`, `:65`
+`.shell { width:100% }` for a `.shell` F-015 had renamed to `.frame`. The task lists had blamed both
+files; only one was at fault.
+
+**The ordering correction.** The previous session dispatched F-016 (frontend pan/zoom) first and it
+blocked: `scrollLeft` assignment silently no-ops on an element with no scroll range, and the stale CSS
+forbade overflow. D-022 was re-ordered ahead of it. That diagnosis held up.
+
+**Two orchestrator defects, both mine.**
+1. **C4's check command was a blind instrument.** I wrote `-k "h_scroll or no_h_scroll"`, which
+   **collects 0 tests on `main`** — no F-015 test name contains either substring, so it would have
+   passed vacuously. The coder caught it and ran the two real tests by name. This is §2's
+   "what would this print if the property were false?" failing again, in my own dispatch.
+2. **C11's property was never gated.** Cycle 1's C2 gated that the panels are overlays and the canvas
+   spans the frame; it did **not** gate that the canvas content is *reachable*. The reviewer's F4
+   found the expanded palette permanently covering the left third of the canvas and clipping the
+   `aria-live` status line, unreachable because F-016's pan does not exist yet. That is why cycle 1
+   was a genuine cycle under §5.4 clause 3 rather than a re-specification.
+
+**The instrument lesson, and it is the one worth carrying forward.** Cycle 1's *new* drawer guard —
+written specifically to prove C3 — asserted `is_visible()`, which is **true for an element below the
+fold**. It certified GREEN while the drawer sat at y=951 in a 900px viewport, entirely off-screen,
+with a page-level scrollbar that should not have existed. The root cause was `.frame { height: 100svh }`
+stacked below `index.html`'s 137px `<h1>` and intro, making the document 1037px tall. Cycle 2 replaced
+the assertion with `getBoundingClientRect().bottom <= innerHeight` plus
+`scrollHeight <= innerHeight + 1`. A blind instrument written *by the check that was supposed to
+prevent blind instruments* is the sharpest form this failure has taken on the project.
+
+**The causal story that did not survive.** The coder diagnosed the three reddened `test_graph.py`
+tests as raw-coordinate clicking against a node spawned under the palette, and recommended a frontend
+follow-up moving `nextSpawnPoint()`'s origin. The reviewer disagreed in writing: the failures were
+measuring F4. Cycle 2 fixed C11 alone and all three went green with `test_graph.py` byte-unchanged.
+**The reviewer was right and the coder's follow-up is superseded — do not file it.** This is the second
+time on this task a coder diagnosis failed on checking, which is why the cycle-2 review was told to
+verify the claim rather than accept the report.
+
+**F3 was ruled non-deferrable by me.** The coder proposed merging with three known failures filed as
+follow-up. Those tests are 20/20 green on `main`; merging would have turned `main` red whoever owned
+the root cause. Design was told to fix the geometry, forbidden from touching `test_graph.py`, and told
+to stop and report if the tests stayed red after C11 rather than force them.
+
+**Where the scroll range actually comes from, and its ceiling.** Not from the svg having real extent —
+from a `.canvas-wrap::after` spacer sized `calc(var(--space-7)*26)` (1664x1210, the svg's 11:8 ratio),
+invisible and `pointer-events:none`. The coder's first attempt scaled `.canvas-svg` directly and
+reverted it after finding it rescales every node's on-screen position. The spacer carries a
+`ponytail:` comment naming F-016 as the upgrade path. **When F-016 lands a real pan surface, delete the
+spacer and re-point C1's guard.**
+
+**Scope rulings made in the dispatch, so they are not re-litigated.** Templates were read-only
+including class attributes, because `graph.js` queries `#canvas-wrap`/`#nodes-layer` by name and
+F-015's markup had just been reviewed; the reference's `.canvas-viewport` rules were adapted onto
+production's `.canvas-wrap` with neither class renamed. And the D-018 precedent was made explicit: a
+design task may ship **one** e2e file asserting only about computed style and layout, so the reviewer
+does not read it as a scope violation.

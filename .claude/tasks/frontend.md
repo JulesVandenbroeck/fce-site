@@ -50,6 +50,17 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Second, independent bug the coder flagged:** freshly-placed nodes spawn at (16,16), directly under
   the expanded palette overlay in the full-bleed layout. Any test dragging a freshly-spawned node may
   need the palette collapsed first. Unrelated to the pan bug; do not conflate them.
+- **D-022 UPDATE, 2026-09-23 — the blocker diagnosis was CONFIRMED, and resuming is now cheap.**
+  D-022 (#63, head `a1336e2`) is in review and its cycle-2 gate is green (729 passed, 0 failed).
+  It fixed exactly what this entry predicted: `.canvas-wrap` now has real scroll range, and
+  `main`/`.frame` no longer stack two `100svh` boxes. **Resume F-016 only after #63 merges**, then
+  re-run the C1/C2 pan tests FIRST — the `scrollLeft` no-op may simply be gone. If it is, most of
+  this entry's dead-end list is moot.
+  **Two things D-022 settled that change this dispatch:** (a) the spawn-at-(16,16)-under-the-palette
+  bug noted below is **fixed in CSS** — `.canvas-wrap` is inset by `--palette-w`/`--panel-w`, so do
+  **not** change `nextSpawnPoint()`; (b) the `.canvas-wrap::after` spacer that manufactures the scroll
+  range carries a `ponytail:` comment naming F-016 as its upgrade path — **when this task lands a real
+  pan surface, delete that spacer and re-point D-022's C1 guard.**
 - **Carries:** backlog **N13**, and **N23** (PR #62 F3, the nested region landmarks) as C8 — carried
   into the dispatch rather than left in the backlog, because it is an accessibility regression F-015
   introduced and shared §6 does not let those wait.

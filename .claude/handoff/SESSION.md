@@ -1,70 +1,63 @@
-# Session handoff — 2026-09-23 (F-016 cycle 1 interrupted)
+# Session handoff — 2026-09-23 (D-022 cycle 2 in review)
 
-**Why:** 5-hour usage limit reached 87% and climbing, past §10's 75% soft stop. 0 sub-agents running
-— F-016's coder had already handed itself off at its own trigger before I stopped dispatching.
-**Milestone:** post-M4, the user's canvas re-architecture. D-021, F-014 and F-015 merged this session;
-F-016 blocked; D-022 is the next dispatch and its ordering was corrected.
+**Why:** the user called a slow handoff. Not a budget stop. **One sub-agent was deliberately left
+running** — the D-022 cycle-2 reviewer — on the user's explicit instruction not to recall it.
+**Milestone:** post-M4, the user's canvas re-architecture. D-022 is one verdict from merging;
+F-016 is the only other live task.
 
 ## Read first
 1. This file.
-2. `.claude/handoff/f-016-frontend-1.md` — the only in-flight task, and it carries a real dead end.
-3. `.claude/tasks/{frontend,design}.md` — current as of this commit.
+2. **`gh pr view 63 --comments`** — the cycle-2 review may have landed after this was written.
+   That verdict is the first thing you need and it is not in this file.
+3. `.claude/tasks/{design,frontend}.md` — current as of this commit.
+4. `.claude/handoff/f-016-frontend-1.md` — only when you actually re-dispatch F-016.
 
 Do not load `.claude/tasks/archive/` or `backlog.md`. Same reason as always.
 
 ## The user's standing instruction
-**"Continue with all tasks in series without requesting input from user."** Given 2026-09-23 and still
-in force. Do not stop at checkpoints to ask; dispatch, gate, review, merge, repeat. The §7 hard stops
-(3-cycle limit, a new third-party dependency, a physics or student-facing-number change) still apply.
-The canvas design itself is settled — the user ruled "everything works as intended" on 2026-09-22;
-that ruling is written up as `design.md` `## Decisions in force` §8-9 and is not to be re-opened.
+**"Continue with all tasks in series without requesting input from user."** Given 2026-09-23, still
+in force, and it survived this handoff. Dispatch, gate, review, merge, repeat. The §7 hard stops
+(3-cycle limit, a new dependency, a physics or student-facing-number change) still apply. The canvas
+design is settled — `design.md` `## Decisions in force` §8-9 — and is not to be re-opened.
 
 ## In flight
 
 | Task | Role | Branch | PR | Cycle | State | Handoff |
 |---|---|---|---|---|---|---|
-| F-016 | frontend | `task/f-016-canvas-pan-zoom` @ `87582e8` | **none, deliberately** | 1 | C3/C6/C8 pass; C1/C2 blocked; C5 suspect; C4/C7/C9 not run | `handoff/f-016-frontend-1.md` |
+| D-022 | design | `task/d-022-canvas-frame-css` | #63 @ `a1336e2` | 2 | **in review, reviewer still running at handoff.** Gate green: 729 passed, 0 failed, flake8 0. All 11 criteria reported met, F1-F6 reported fixed. | — |
+| F-016 | frontend | `task/f-016-canvas-pan-zoom` @ `87582e8` | **none, deliberately** | 1 | handed off last session; C1/C2 blocked on the canvas overflow D-022 just fixed | `handoff/f-016-frontend-1.md` |
 
-**The missing PR is correct, not an omission.** The coder declined to open one for code failing its
-own acceptance criteria. Do not treat that as an incomplete handoff.
+**F-016's missing PR is correct, not an omission.** Its coder declined to open one for code failing
+its own criteria.
 
 ## Git as of this commit
 
-    origin/task/f-016-canvas-pan-zoom  87582e8 (pushed)
-      src/fce_web/static/js/graph.js, src/fce_web/templates/shell.html, tests/e2e/test_graph.py
-    gh pr list --state open   ->  (none)
-    main: F-014 #61 06e4108, F-015 #62 dc2337f, D-021 #60 b3f8ef2 all merged
+    main                               42bf1e9 (pushed)
+    origin/task/d-022-canvas-frame-css a1336e2  #63 OPEN
+    origin/task/f-016-canvas-pan-zoom  87582e8  no PR
+    gh pr list --state open  ->  #63 only
 
 Re-run before you act. If it disagrees with the table above, **git is right.**
 
 ## First moves, in order
-
-1. **Dispatch D-022 (design) — NOT F-016.** The frontend-then-design ordering was my error for this
-   pair. `canvas.css`/`shell.css` are stale (last touched at D-019, before F-015's restructure) and
-   still force `.canvas-svg { width: 100% }` plus a fixed `.canvas-wrap` width, so the canvas has no
-   horizontal scroll range. Entry and scope are in `design.md` `## Ready`.
-2. **Then resume F-016** from its handoff, using the §3 resume block. Its worktree is
+1. **Collect the D-022 cycle-2 verdict** — `gh pr view 63 --comments`. If the reviewer never posted,
+   its findings are lost with the session: re-dispatch a cycle-2 review with the PR number, the
+   cycle-1 comment URL (`#issuecomment-5790586615`) and the F1-F6 IDs. That is not a new cycle.
+2. **On `verdict=approve`: post the review verbatim with `gh pr comment 63`, then
+   `gh pr merge 63 --merge`** (not squash, not rebase, not --delete-branch), and write the `## Done`
+   line immediately — suite floor **726 -> 729**. On `verdict=rework` it is **cycle 3, the §5.7 limit**;
+   converge or escalate to the user, do not dispatch a fourth.
+3. **Then resume F-016** from `handoff/f-016-frontend-1.md` using the §3 resume block. Its worktree is
    `.claude/worktrees/agent-a70512847d39d2c49`, still on the branch — **omit `isolation`**, this is a
-   re-dispatch. Tell it to check `scrollWidth > clientWidth` on `#canvas-wrap` **before** touching
-   `wirePan` again: if D-022 fixed the overflow, the bug is likely gone, and if it is not, that one
-   measurement still splits the search space in half.
-3. **Re-audit F-016's C5 once C1/C2 pass.** It currently passes and may be trivially true, because the
-   drag it depends on silently no-ops. A criterion that cannot fail is §2's blind instrument.
-4. **Suite floor is 726 but is NOT a stable green** — backlog N24, `test_observable_mode_is_config_not_identity`
-   is flaky ~1 in 10 on `main` itself. Do not let a task "fix" it by weakening the assertion, and do
-   not attribute it to a branch without reproducing it on `main`.
-
-## Gate procedure — read §5.1, it changed this session
-Run the free gate with the PR head checked out **detached in the primary checkout**, never from a
-scratch worktree: `__editable__.fce_web-0.1.0.pth` pins `fce_web` to the primary checkout's `src/`,
-so a worktree run serves `main`'s app while collecting the branch's tests. Confirm with
-`.venv/bin/python -c "import fce_web; print(fce_web.__file__)"`. This falsified F-014's gate and cost
-a round trip. Backlog **N19**. Note `.claude/` is the *branch's* copy while detached — return to
-`main` before writing bookkeeping.
+   re-dispatch. Tell it to re-run the C1/C2 pan tests **first**: D-022 fixed the missing scroll range,
+   so the `scrollLeft` no-op may simply be gone, and most of its dead-end list would then be moot.
+4. **F-016 must delete the `.canvas-wrap::after` spacer** when it lands a real pan surface, and
+   re-point D-022's C1 guard. The spacer carries a `ponytail:` comment saying so.
+5. **Do not file a `nextSpawnPoint()` follow-up.** D-022 cycle 1 proposed one; cycle 2 disproved it.
 
 ## Waiting on the user
-- Nothing blocking. The canvas ruling is made; D-020's checkpoint is closed.
-- **N15 is closed** (F-014). **N12/N14 closed** (F-015). **N13 is F-016, in flight.**
+- Nothing blocking.
 
 ## Not carried over
-- Nothing. N16-N18 closed by D-021; N19-N24 are filed in the backlog with full diagnoses.
+- **A worktree left behind:** `worktree-agent-afa4536e026de1f8d` (D-022 cycle 1's isolation branch).
+  Branches are never deleted; `git worktree remove` on the directory is permitted if it is in the way.

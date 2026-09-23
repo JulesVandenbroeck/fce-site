@@ -86,64 +86,25 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 ## In progress
 
 ### D-022 — Port the canvas-frame stylesheets onto the merged shell
-- **Scope:** `src/fce_web/static/css/` — `shell.css`, `canvas.css`, and whatever new file the frame
-  needs. **CSS only**; markup and JS belong to frontend.
-- **Accept:** the merged F-015 markup (`.frame`, full-bleed canvas, overlay palette/mission panel,
-  bottom drawer) is styled from `docs/design-explorations/canvas-frame.css`; the canvas surface is
-  allowed **real overflow** so it can scroll; F-015's 24 no-h-scroll probes still pass at 1440/1024/768.
+- **Scope:** `src/fce_web/static/css/shell.css`, `canvas.css`, `tests/e2e/test_canvas_style.py`.
+  **CSS only**; templates read-only on this task, class attributes included.
+- **Accept:** C1 `#canvas-wrap` has real scroll range; C2 panels are overlays on a full-bleed canvas;
+  C3 drawer at the viewport bottom edge; C4 F-015's no-h-scroll probes; C5 tokens only; C6 no
+  `#zoom-controls`; C7 reduced motion + focus; C8 suite floor; C9 the three `test_graph.py` tests
+  green; C10 whole suite green; C11 canvas content not covered by a panel. **checks=11.**
 - **Depends on:** F-015 (#62, `dc2337f`, merged). Does **not** depend on F-016.
-- **RUN THIS BEFORE RESUMING F-016 — the ordering was my error.** `canvas.css`/`shell.css` are stale
-  (last touched at D-019, before F-015's restructure) and still force `.canvas-svg { width: 100% }`
-  and a fixed `.canvas-wrap` width, so the canvas has **no horizontal scroll range at all**. That is
-  both a live defect on `main` today and the probable cause of F-016's blocker — `scrollLeft`
-  assignment silently no-ops on an element that cannot overflow. See `frontend.md` F-016.
-- **Do not style `#zoom-controls`** — that markup does not exist on `main`; it arrives with F-016.
-  Styling it now would be speculative. A later small design task picks it up.
-- **Branch / PR:** `task/d-022-canvas-frame-css` — #63 (`2d5c164`)
-- **Status:** in rework (cycle 2), dispatched 2026-09-23. checks 8 -> **11** (C9/C10/C11 added).
+- **Branch / PR:** `task/d-022-canvas-frame-css` — #63, head `a1336e2` (cycle 2)
+- **Status:** **in review (cycle 2) at session end — the review was still running when the session
+  handed over.** Collect its verdict before doing anything else with this PR.
 - **Review:** cycle 1 — `findings=6, scope=pass, verdict=rework`, posted verbatim to
   [PR #63](https://github.com/JulesVandenbroeck/fce-site/pull/63#issuecomment-5790586615).
-  F1/F2/F4/F5/F6 back to design; F3 is C9. **§5.4 diagnosis: a CYCLE, clause 3** — nothing was
-  dropped from an earlier cycle, C3 and C8 both shipped with commands, and F4 is against a
-  property no criterion of mine gated (canvas content *reachable*, not merely full-bleed).
-- **F2 is the instrument lesson of this task:** the drawer guard asserted `is_visible()`, true for
-  an element below the fold, so it certified GREEN while the drawer sat entirely off-screen at
-  y=951 in a 900px viewport. §2's blind instrument, in the coder's own new check this time.
-- **F3 cannot be deferred and I ruled it so in the dispatch.** The three `test_graph.py` tests are
-  20/20 green on `main` and red here; merging turns `main` red whoever owns the root cause. The
-  reviewer's read is that they measure F4 (palette covering the canvas origin), not raw-coordinate
-  clicking as the coder diagnosed. Design fixes the geometry and may **not** touch `test_graph.py`;
-  if they stay red after C11 it becomes a frontend task, and the coder is told to stop and say so.
-- **Gate PASSED, and the 3 failures are real, reproduced by me, and NOT a gate return.** The coder
-  reported 728 collected / 725 passed / 3 failed and named the failures rather than hiding them.
-  I reproduced all of it detached in the primary checkout (`import fce_web` confirmed to resolve to
-  the primary `src/`): 728 collected = 726 + its 2 new; scope is exactly `shell.css` +
-  `tests/e2e/test_canvas_style.py`, both in scope. The three `test_graph.py` failures are
-  **3 passed on `main`, 3 failed on the branch** — branch-induced, not pre-existing.
-- **The regression is cross-role and is frontend's, not design's — do not send it back to design.**
-  Making the canvas full-bleed with overlay panels is the merged design (§8-9); it exposes that
-  `graph.js`'s `nextSpawnPoint()` puts the first node at SVG (16,16), now under the expanded palette.
-  This is D-020's F1 recurring in production and the very consequence ruling §6 anticipated.
-  **One caution for whoever fixes it:** the coder's spawn-point diagnosis does not obviously explain
-  the failure I actually saw — `assert _inside(node_box, svg_box)` with the node at `y=2.53` and the
-  svg at `y=137.53`, i.e. the node *above* the canvas, which reads like clamp math disagreeing with
-  the new rendered svg position rather than a palette overlap. Verify before accepting the diagnosis.
-- **C4's check command was MINE and was a blind instrument (§2).** `-k "h_scroll or no_h_scroll"`
-  collects **0 tests on `main`** — no F-015 test name contains either substring, so it would have
-  passed vacuously. The coder caught it and ran the two real tests by name instead. My defect.
-- **Watch at review:** the scroll range is bought with a `.canvas-wrap::after` spacer sized to a
-  hard-coded `calc(var(--space-7)*26)`, not by the svg having real extent. That is the reviewer's
-  to rule on; recorded here so the question is not lost if the review does not reach it.
-- **Scope rulings carried into the dispatch:** templates are **read-only on this task**, class
-  attributes included — `graph.js` queries `#canvas-wrap`/`#nodes-layer` by name and F-015's markup
-  was reviewed five days ago. The reference's `.canvas-viewport` rules are adapted onto production's
-  `.canvas-wrap`; **neither class is renamed.** And design may ship **one** e2e file asserting only about
-  computed style and layout (`tests/e2e/test_canvas_style.py`) — the D-018 precedent, now explicit so
-  the reviewer does not read it as a scope violation.
-- **The defect, enumerated by `scout` 2026-09-23, not guessed:** all five stale declarations are in
-  `shell.css`, and `canvas.css` has **none**. `shell.css:201` `.canvas-wrap { width: calc(var(--space-7)*11) }`,
-  `:208-209` `.canvas-svg { width:100%; height:auto }`, `:189` `.canvas-region { overflow:auto }`,
-  `:65` `.shell { width:100% }`. `.shell` no longer exists — F-015 renamed it `.frame`.
+  §5.4 diagnosis: **a cycle, clause 3.** Cycle 2 reports F1-F6 all fixed and all 11 criteria met.
+- **Cycle-2 gate PASSED, reproduced by me** detached in the primary checkout: **729 passed, 0 failed**,
+  flake8 0, scope still the two in-scope files. **Suite floor 726 -> 729 on merge.**
+- **Do not file a `nextSpawnPoint()` frontend follow-up.** Cycle 1 proposed one; cycle 2 disproved it.
+  The three `test_graph.py` regressions went green from the **C11 CSS inset alone** — the palette was
+  covering the canvas origin. `graph.js` is not to be changed for this.
+- **History:** [`archive/design.md`](archive/design.md)
 
 ## Ready
 
