@@ -20,8 +20,8 @@ IDs are `F-nnn`, allocated in order and never reused.
   C9 suite floor **726** + additions, flake8 0, nothing weakened. checks=9.
 - **Depends on:** F-015 (#62, `dc2337f`) and the canvas ruling 2026-09-22
   (`design.md` `## Decisions in force` §8-9).
-- **Branch / PR:** `task/f-016-canvas-pan-zoom` — not yet opened
-- **Status:** **handed off again 2026-09-23 @ `e706e7a` — [`handoff/f-016-frontend-2.md`](../handoff/f-016-frontend-2.md). BLOCKED on D-023** (`#zoom-controls` has no production CSS; renders under the palette, every zoom click intercepted). scrollLeft mystery SOLVED: D-022's scroll range + a test dragging toward the clamped origin. C2/C3/C8/C10 met; C1(50%)/C4/C5/C6 wait on D-023. Earlier: re-dispatched 2026-09-23 (cycle 1 resume, no isolation, C10 added: tests on production CSS; checks=10).** Previously handed off (cycle 1) — see [`handoff/f-016-frontend-1.md`](../handoff/f-016-frontend-1.md).**
+- **Branch / PR:** `task/f-016-canvas-pan-zoom` — **#67** (carries D-023 #64)
+- **Status:** **in review (cycle 1), 2026-09-23. Gate reproduced on `b07449e`: 737 passed, flake8 0. C11 added (stray `#}` from #64 F2); checks=11.** Earlier: handed off again 2026-09-23 @ `e706e7a` — [`handoff/f-016-frontend-2.md`](../handoff/f-016-frontend-2.md). BLOCKED on D-023** (`#zoom-controls` has no production CSS; renders under the palette, every zoom click intercepted). scrollLeft mystery SOLVED: D-022's scroll range + a test dragging toward the clamped origin. C2/C3/C8/C10 met; C1(50%)/C4/C5/C6 wait on D-023. Earlier: re-dispatched 2026-09-23 (cycle 1 resume, no isolation, C10 added: tests on production CSS; checks=10).** Previously handed off (cycle 1) — see [`handoff/f-016-frontend-1.md`](../handoff/f-016-frontend-1.md).**
   Branch `task/f-016-canvas-pan-zoom` @ `87582e8`, pushed. **No PR, deliberately** — C1/C2 fail, and
   the coder judged that opening a PR for code failing its own criteria would be a false report. That
   was the right call; do not read the missing PR as an incomplete handoff.
