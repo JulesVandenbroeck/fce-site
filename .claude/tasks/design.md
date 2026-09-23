@@ -85,10 +85,6 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-_none._
-
-## Ready
-
 ### D-022 — Port the canvas-frame stylesheets onto the merged shell
 - **Scope:** `src/fce_web/static/css/` — `shell.css`, `canvas.css`, and whatever new file the frame
   needs. **CSS only**; markup and JS belong to frontend.
@@ -103,7 +99,22 @@ _none._
   assignment silently no-ops on an element that cannot overflow. See `frontend.md` F-016.
 - **Do not style `#zoom-controls`** — that markup does not exist on `main`; it arrives with F-016.
   Styling it now would be speculative. A later small design task picks it up.
-- **Branch / PR:** not yet opened
+- **Branch / PR:** `task/d-022-canvas-frame-css` — not yet opened
+- **Status:** dispatched (cycle 1), 2026-09-23. checks=8. `isolation: worktree`.
+- **Scope rulings carried into the dispatch:** templates are **read-only on this task**, class
+  attributes included — `graph.js` queries `#canvas-wrap`/`#nodes-layer` by name and F-015's markup
+  was reviewed five days ago. The reference's `.canvas-viewport` rules are adapted onto production's
+  `.canvas-wrap`; **neither class is renamed.** And design may ship **one** e2e file asserting only about
+  computed style and layout (`tests/e2e/test_canvas_style.py`) — the D-018 precedent, now explicit so
+  the reviewer does not read it as a scope violation.
+- **The defect, enumerated by `scout` 2026-09-23, not guessed:** all five stale declarations are in
+  `shell.css`, and `canvas.css` has **none**. `shell.css:201` `.canvas-wrap { width: calc(var(--space-7)*11) }`,
+  `:208-209` `.canvas-svg { width:100%; height:auto }`, `:189` `.canvas-region { overflow:auto }`,
+  `:65` `.shell { width:100% }`. `.shell` no longer exists — F-015 renamed it `.frame`.
+
+## Ready
+
+_none._
 
 ## Blocked
 
