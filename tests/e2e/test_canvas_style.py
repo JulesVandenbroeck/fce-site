@@ -46,6 +46,40 @@ def test_canvas_wrap_scrolls_and_overlays_are_absolute(browser: Browser, live_se
             context.close()
 
 
+def test_collapsing_palette_gives_its_width_back_to_the_canvas(browser: Browser, live_server: str) -> None:
+    """C1 (D-025/N27): collapsing the palette shrinks `#canvas-wrap`'s own
+    left padding to the collapsed width, so its content-box left edge moves
+    left by (expanded - collapsed) px -- the canvas actually gets the space
+    back, not just the palette shrinking underneath it."""
+    for width in (1440, 768):
+        context = browser.new_context(viewport={"width": width, "height": 900})
+        page = context.new_page()
+        try:
+            page.goto(f"{live_server}/", wait_until="networkidle")
+
+            def rect_and_pad() -> tuple[float, float]:
+                return tuple(
+                    page.eval_on_selector(
+                        "#canvas-wrap",
+                        "el => [el.getBoundingClientRect().left, "
+                        "parseFloat(getComputedStyle(el).paddingLeft)]",
+                    )
+                )
+
+            rect_left_exp, pad_exp = rect_and_pad()
+            page.locator("#palette-toggle").click()
+            page.wait_for_timeout(50)
+            rect_left_col, pad_col = rect_and_pad()
+
+            expected_shift = pad_exp - pad_col  # (expanded - collapsed) padding
+            actual_shift = (rect_left_exp + pad_exp) - (rect_left_col + pad_col)
+
+            assert expected_shift > 0, (width, pad_exp, pad_col)
+            assert abs(actual_shift - expected_shift) <= 1, (width, actual_shift, expected_shift)
+        finally:
+            context.close()
+
+
 def _drawer_at_bottom_edge(page) -> None:
     """F2: `is_visible()` alone stays true for an element below the fold, so
     it certified the drawer green while it sat off-screen (cycle 1). This
@@ -71,6 +105,12 @@ def test_canvas_top_left_is_not_covered_by_a_panel(browser: Browser, live_server
         try:
             page.goto(f"{live_server}/", wait_until="networkidle")
 
+            # D-025/N25+N26: this probe is top-left, so it can only ever land
+            # on the palette side -- `.mission-panel` never fires here, and
+            # `.palette__head` is redundant with `.palette` (closest() walks
+            # ancestors, and the head is always inside the palette). Cut to
+            # the one term that can actually fire; the right edge is accepted
+            # as scroll-reachable rather than probed symmetrically here.
             covered = page.evaluate(
                 "() => {"
                 " const wrap = document.getElementById('canvas-wrap');"
@@ -79,7 +119,7 @@ def test_canvas_top_left_is_not_covered_by_a_panel(browser: Browser, live_server
                 " const x = rect.left + padLeft + 2;"
                 " const y = rect.top + 2;"
                 " const el = document.elementFromPoint(x, y);"
-                " return !!(el && el.closest('.palette, .palette__head, .mission-panel'));"
+                " return !!(el && el.closest('.palette'));"
                 "}"
             )
             assert not covered, width
