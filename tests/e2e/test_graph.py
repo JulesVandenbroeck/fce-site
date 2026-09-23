@@ -13,6 +13,7 @@ per the F-005 PR body's contract -- `nodes` is a list, matching what
 """
 
 import json
+from pathlib import Path
 
 from playwright.sync_api import expect
 
@@ -22,6 +23,13 @@ from fce_web.graph import Dataset, build_run_config
 from fce_web.engine.runconfig import RunConfig
 
 PALETTE_KINDS = ("Multiplicity", "Selection", "Observable", "Histogram")
+
+# F-016's own node size constants (graph.js's NODE_W/NODE_H) -- duplicated as
+# literals since a test file can't import a JS module.
+_NODE_W = 160
+_NODE_H = 104
+
+CANVAS_FRAME_CSS = Path(__file__).resolve().parents[2] / "docs" / "design-explorations" / "canvas-frame.css"
 
 
 def _graph(page) -> dict:
@@ -564,3 +572,181 @@ def test_dragging_opened_node_past_edges_clamps_by_measured_size(index: LoadedPa
     assert page.locator('.node[data-node-id="n1"] details').get_attribute("open") is None
     closed_box = page.locator('.node[data-node-id="n1"]').bounding_box()
     assert _inside(closed_box, svg_box)
+
+
+# ---- F-016: pan and zoom on the canvas surface ---------------------------
+#
+# canvas.css/shell.css predate D-022 (last touched at D-019, before F-015's
+# markup restructure) and do not yet give #canvas-wrap `overflow: auto` or
+# leave the SVG's own width/height attributes alone (shell.css still forces
+# `.canvas-svg { width: 100% }` and a fixed `.canvas-wrap` width) -- so
+# without extra CSS there is no scroll range to pan and no rendered size
+# change to measure for zoom. That CSS is design's file, not this task's
+# (D-022 ships it). These tests inject the already-approved
+# docs/design-explorations/canvas-frame.css, which styles exactly the
+# selectors this port uses (`.canvas-viewport`, `.canvas-svg`,
+# `#zoom-controls`, `.frame`, `.canvas-region`), plus two ID-selector
+# overrides for the two shell.css rules that would otherwise still win by
+# loading later than nothing -- not invented behaviour, the CSS contract
+# D-022 is expected to ship, applied so the real JS/DOM mechanism can be
+# exercised in a real browser today.
+def _use_panzoom_css(page) -> None:
+    page.add_style_tag(path=str(CANVAS_FRAME_CSS))
+    page.add_style_tag(content="#canvas-wrap { width: auto; } #canvas-svg { width: auto; height: auto; }")
+    # graph.js sizes the sheet once at page load, against whatever CSS was
+    # active then (the stale, fixed-width production rules) -- a `resize`
+    # is the same recompute applyZoom already does for a real window resize,
+    # so it is the honest way to have it re-measure under the CSS just added.
+    page.evaluate("window.dispatchEvent(new Event('resize'))")
+
+
+def _scroll_offset(page):
+    return page.evaluate(
+        "() => { const w = document.getElementById('canvas-wrap'); return [w.scrollLeft, w.scrollTop]; }"
+    )
+
+
+def _drag(page, start, end, steps=5):
+    page.mouse.move(*start)
+    page.mouse.down()
+    page.mouse.move(*end, steps=steps)
+    page.mouse.up()
+
+
+def test_drag_on_empty_canvas_pans_both_axes_at_100_and_50_percent(index: LoadedPage) -> None:
+    """C1: a left-drag on empty canvas pans in both axes, at 100% and 50%."""
+    page = index.page
+    _use_panzoom_css(page)
+    wrap = page.locator("#canvas-wrap")
+    wrap.scroll_into_view_if_needed()
+
+    for zoom_out_clicks in (0, 2):  # 100%, then two steps down to 50%
+        for _ in range(zoom_out_clicks):
+            page.locator("#zoom-out").click()
+        before = _scroll_offset(page)
+        box = wrap.bounding_box()
+        start = (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        _drag(page, start, (start[0] + 80, start[1] + 60))
+        after = _scroll_offset(page)
+        assert after[0] != before[0] and after[1] != before[1], (zoom_out_clicks, before, after)
+
+
+def test_drag_starting_on_a_node_moves_it_and_does_not_pan(index: LoadedPage) -> None:
+    """C2: the drag's meaning is decided by where it starts, not a mode."""
+    page = index.page
+    _use_panzoom_css(page)
+    page.locator('.palette__add[data-add-kind="Multiplicity"]').click()  # n1
+
+    handle = page.locator('.node[data-node-id="n1"] .node__handle')
+    handle.scroll_into_view_if_needed()
+    scroll_before = _scroll_offset(page)
+    node_before = _node_by_id(_graph(page), "n1")
+
+    handle_box = handle.bounding_box()
+    start = (handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
+    _drag(page, start, (start[0] + 40, start[1] + 30))
+
+    node_after = _node_by_id(_graph(page), "n1")
+    scroll_after = _scroll_offset(page)
+    assert (node_after["x"], node_after["y"]) != (node_before["x"], node_before["y"])
+    assert scroll_after == scroll_before
+
+
+def test_keyboard_pans_the_focused_canvas_on_both_axes(index: LoadedPage) -> None:
+    """C3: arrow keys pan once the canvas has focus -- native `overflow:
+    auto` scrolling of the focused, tabindex=0 #canvas-wrap, no JS of ours."""
+    page = index.page
+    _use_panzoom_css(page)
+    wrap = page.locator("#canvas-wrap")
+    wrap.focus()
+    expect(wrap).to_be_focused()
+
+    before = _scroll_offset(page)
+    for _ in range(25):
+        page.keyboard.press("ArrowRight")
+    for _ in range(25):
+        page.keyboard.press("ArrowDown")
+    after = _scroll_offset(page)
+    assert after[0] > before[0]
+    assert after[1] > before[1]
+
+
+def test_zoom_clamps_between_50_and_200_percent(index: LoadedPage) -> None:
+    """C4."""
+    page = index.page
+    _use_panzoom_css(page)
+
+    for _ in range(10):  # well past the 200% ceiling
+        if page.locator("#zoom-in").is_disabled():
+            break
+        page.locator("#zoom-in").click()
+    assert page.locator("#zoom-readout").inner_text() == "200%"
+    assert page.locator("#zoom-in").is_disabled()
+
+    for _ in range(20):  # well past the 50% floor
+        if page.locator("#zoom-out").is_disabled():
+            break
+        page.locator("#zoom-out").click()
+    assert page.locator("#zoom-readout").inner_text() == "50%"
+    assert page.locator("#zoom-out").is_disabled()
+
+
+def test_node_extent_stays_inside_the_sheet_after_zooming_in(index: LoadedPage) -> None:
+    """C5, D-021's F2: a node dragged to the far edge at 50% must not be
+    orphaned outside the sheet once zoomed back in to 200%."""
+    page = index.page
+    _use_panzoom_css(page)
+    page.locator('.palette__add[data-add-kind="Multiplicity"]').click()  # n1
+
+    page.locator("#zoom-out").click()
+    page.locator("#zoom-out").click()  # 50%
+
+    handle = page.locator('.node[data-node-id="n1"] .node__handle')
+    handle.scroll_into_view_if_needed()
+    svg_box = page.locator("#canvas-svg").bounding_box()
+    handle_box = handle.bounding_box()
+    start = (handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
+    target = (svg_box["x"] + svg_box["width"] - 5, svg_box["y"] + svg_box["height"] - 5)
+    _drag(page, start, target, steps=8)
+
+    for _ in range(6):
+        page.locator("#zoom-in").click()  # back up to 200%
+
+    node = _node_by_id(_graph(page), "n1")
+    sheet = page.evaluate(
+        "() => document.getElementById('canvas-svg').getAttribute('viewBox').split(' ').slice(2).map(Number)"
+    )
+    assert node["x"] + _NODE_W <= sheet[0]
+    assert node["y"] + _NODE_H <= sheet[1]
+
+
+def test_fit_shows_the_whole_graph_and_is_the_only_reset_control(index: LoadedPage) -> None:
+    """C6: Fit is the one reset affordance -- pan and zoom away, press it,
+    and every node is back inside the visible canvas."""
+    page = index.page
+    _use_panzoom_css(page)
+    for kind in ("Multiplicity", "Selection"):
+        page.locator(f'.palette__add[data-add-kind="{kind}"]').click()
+
+    page.locator("#zoom-out").click()
+    page.locator("#zoom-out").click()
+    wrap = page.locator("#canvas-wrap")
+    wrap.scroll_into_view_if_needed()
+    box = wrap.bounding_box()
+    _drag(page, (box["x"] + box["width"] / 2, box["y"] + box["height"] / 2), (box["x"] + 5, box["y"] + 5))
+
+    page.locator("#zoom-fit").click()
+
+    wrap_box = wrap.bounding_box()
+    for node_id in ("n1", "n2"):
+        node_box = page.locator(f'.node[data-node-id="{node_id}"]').bounding_box()
+        assert _inside(node_box, wrap_box), (node_id, node_box, wrap_box)
+
+    # One affordance only -- no separate reset-to-100% control.
+    assert page.locator("#zoom-controls button").count() == 3  # zoom-out, zoom-in, zoom-fit
+    assert page.locator('button:has-text("Reset")').count() == 0
+
+
+
+
+
