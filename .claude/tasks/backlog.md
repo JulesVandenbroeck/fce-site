@@ -131,7 +131,7 @@ before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
 Raised 2026-09-22 from the truth deck (`docs/physics-truth.md`). None is dispatched; all three
 belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
 
-- **N1 The `d0` label is probably wrong** (frontend; **before any M-4 copy is written**).
+- **N1 The `d0` label IS wrong — CONFIRMED by scout 2026-09-23: `expr.js:41` ships `label: "transverse impact parameter (d0)", unit: "mm", range: [-1, 1]` to students; no other hit. Awaiting the user's ruling on the replacement (§7: student-facing).** Was: The `d0` label is probably wrong (frontend; **before any M-4 copy is written**).
   `.d0` on a lepton is an impact-parameter *significance*, not a distance: the ROOT branch is
   `d0signif` (`engine/analytical_loop.py:159`), read as `electron_d0signif`/`muon_d0signif`
   (`engine/path_filter.py:622,630`), then **renamed to `d0`** at `:700,710` and stored by
