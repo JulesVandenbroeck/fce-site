@@ -155,7 +155,7 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   does (`driver.py:162` → `analytical_loop.py:266` → `paths.py:27`). Proven: forcing `setenv` to a bogus dir leaves
   the test passing. Delete the line and the `monkeypatch` parameter, cut the docstring to its first sentence.
   Rides along on any later backend touch of this file. _(PR #56 c2 F5)_
-- **N11 The expanded-state chevron is written twice and nothing checks they agree** (frontend, two lines).
+- _(CLOSED by F-018, #69, `427a0f2`)_ **N11 The expanded-state chevron is written twice and nothing checks they agree** (frontend, two lines).
   `shell.js:43-44` + `shell.html:20,88` — once as the template's `&#8249;`/`&#8250;`, once as `glyphs[0]`.
   Transposing a pair leaves all 77 e2e tests green. Fix: read the expanded glyph from the DOM at wire time
   (`const expandGlyph = glyph.textContent;`) and pass only the collapsed one. Not gating — the value is
@@ -167,7 +167,7 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   `['board-lane-fill']`, D-019's branch gives four. Either widen the exemption to the shipped `static/css/`
   stylesheets or retire the check. Until then **every design dispatch must state the expected red set, not
   "exactly one"** — I got that wrong on D-019's C4. _(D-019, 2026-09-22)_
-- **N6 PR #55's F8 is still open, and it is frontend's** (frontend, trivial).
+- _(CLOSED by F-018, #69, `427a0f2`)_ **N6 PR #55's F8 is still open, and it is frontend's** (frontend, trivial).
   `tests/e2e/test_interior_style.py:3-11,28-32` — module docstring retells review history and calls a committed
   script "uncommitted"; function docstring repeats a mutation transcript. One line each. D-019 could not take it
   (design owns no Python) and **my dispatch wrongly said it lived in `observable.css`**. _(PR #55 F8)_
@@ -235,15 +235,15 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   prepend the repo-local `src/`. Doing it properly needs the U1 dependency sign-off.
   _(orchestrator, 2026-09-23)_
 
-- **N20 `shell.js:60-62` re-reads state the setter is already idempotent about** (frontend, trivial).
+- _(CLOSED by F-018, #69, `427a0f2`)_ **N20 `shell.js:60-62` re-reads state the setter is already idempotent about** (frontend, trivial).
   The drawer auto-expand does `getElementById("drawer")` a second time and guards on
   `dataset.state === "collapsed"` → `addEventListener("click", () => setDrawer(true));`, one line.
   _(PR #62 F1, 2026-09-23)_
-- **N21 `test_smoke.py:382`/`:397` loop the same matrix twice** (frontend, tests). C1's 12 probes are a
+- _(CLOSED by F-018, #69, `427a0f2`)_ **N21 `test_smoke.py:382`/`:397` loop the same matrix twice** (frontend, tests). C1's 12 probes are a
   strict subset of C5's 24 → fold `assert rect["width"] == width` into the C5 loop and delete the
   other loop (~16 lines). The reviewer confirmed both mutations still bite from the merged loop.
   _(PR #62 F2, 2026-09-23)_
-- **N22 Jinja header comment in `shell.html:1-27` restates task history** (frontend, trivial). ~27 lines
+- _(CLOSED by F-018, #69, `427a0f2`)_ **N22 Jinja header comment in `shell.html:1-27` restates task history** (frontend, trivial). ~27 lines
   repeating N12/N13/N14 ids and PR deviations → keep only the overlay/`data-state` contract and
   "pan/zoom is F-016's". _(PR #62 F5, 2026-09-23)_
 - _(CLOSED by F-016, #67)_ **N23 Nested region landmarks in the results drawer** (frontend, **accessibility**).
@@ -253,7 +253,7 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
   confirmed) or make `#results` a `<div>`, keeping the id `run.js` and the tests use.
   **Introduced by F-015 and carried into F-016's dispatch rather than left to rot here** — accessibility
   is on shared §6's never-simplify-away list. _(PR #62 F3, 2026-09-23)_
-- **N24** _(seen again on #67's review 2026-09-23; the reviewer suggests the focusable, scrollable `#canvas-wrap` may add timing sensitivity, so wait on `[open]` before pressing Space)_ **`test_observable_mode_is_config_not_identity` is flaky on `main`** (frontend, tests; **pre-existing**).
+- _(CLOSED by F-018, #69, `427a0f2`)_ **N24** _(seen again on #67's review 2026-09-23; the reviewer suggests the focusable, scrollable `#canvas-wrap` may add timing sensitivity, so wait on `[open]` before pressing Space)_ **`test_observable_mode_is_config_not_identity` is flaky on `main`** (frontend, tests; **pre-existing**).
   `test_graph.py:328`, ~1 failure in 10 file-level runs, reproduced by the reviewer on `origin/main`
   as well as on PR #62's branch; 12/12 green in isolation. `.focus()` + Space on the `ObsGlobal` radio
   sometimes does not take, leaving `mode == "ObsVectorSum"`. Presumed fix: await the radio's checked
@@ -265,6 +265,7 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
 - **N26** — `tests/e2e/test_canvas_style.py:83` (D-022 #63 F8): the selector `'.palette, .palette__head, .mission-panel'` carries two terms that can never fire — the probe only samples the top-left, so `.mission-panel` is unreachable, and `.palette__head` is a descendant of `.palette` so `closest('.palette')` already matches it. Cut to `closest('.palette')`, or add N25's right-edge probe and earn the `.mission-panel` term. Design-owned.
 - **N27** — `shell.css:117` (D-022 #63 F9): the canvas inset is pinned to the palette's **expanded** footprint regardless of `data-state`, so collapsing the palette (256 -> 64px, measured) reclaims no canvas — a 192px dead gutter at 1440, 128px at 768. **The collapse control currently buys the student nothing.** Fix is one rule driving the custom property off state (`.frame:has(.palette[data-state="collapsed"]) { --palette-w: ... }`), or a `ponytail:` line recording the trade-off so it is not re-litigated. Design-owned.
 - **N28** — PR #63 body, C6 (D-022 #63 F10): the evidence line claims `grep -rn 'zoom' src/fce_web/static/css/` is empty, but cycle 2's own comment reintroduces "pan/zoom" at `shell.css:121,123`. **The criterion is met and the code is correct** — only the stated check is stale. Restate it as the check actually made: `grep -rn 'zoom-controls' ...`. Documentation-accuracy only.
-- **N31** — `graph.js:257-265` (F-016 #67 F2): `wirePan` ignores `pointercancel`, so a cancelled pan (touch, alt-tab) leaves `is-panning` and the move listener attached. Replace the `pointerup` listener with one `lostpointercapture` (the capture is on `els.wrap`). Frontend, trivial.
+- **N32** — `tests/e2e/test_graph.py:353-360` (F-018 #69 F1): the 7-line comment above `expect(summary).to_be_focused()` repeats the neighbouring test's comment; cut it to 1 line. Frontend, trivial.
+- _(CLOSED by F-018, #69, `427a0f2`)_ **N31** — `graph.js:257-265` (F-016 #67 F2): `wirePan` ignores `pointercancel`, so a cancelled pan (touch, alt-tab) leaves `is-panning` and the move listener attached. Replace the `pointerup` listener with one `lostpointercapture` (the capture is on `els.wrap`). Frontend, trivial.
 - _(CLOSED by D-024, #68, `c2b7b0c`)_ **N30** — `shell.css:156` (D-023 #64 F1): `.zoom-controls { z-index: 3 }` is inert — mutated to 1/auto the guard stays green; the centred toolbar never overlaps a panel. Delete it and the "needed" clause at `:147`. Design, trivial.
 - **N29** — `shell.css:47-50` (D-022 #63 F11): `main { display:flex; flex-direction:column; height:100svh }` is **unscoped**, and `main` lives in `base.html:17` — i.e. every future page, not just the shell. No consequence today because `index.html` is the only page. **Scope it before a second template lands** (a class on the shell's own wrapper, or `main:has(.frame)`). Latent; cheap now, a confusing layout bug later. Design-owned.

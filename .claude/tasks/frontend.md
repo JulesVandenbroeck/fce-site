@@ -9,12 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-018 — Frontend backlog sweep (N6, N11, N20, N21, N22, N24, N31)
-- **Scope:** `shell.js`, `graph.js`, `shell.html`, `test_smoke.py`, `test_graph.py`, `test_interior_style.py` (docstrings only)
-- **Accept:** C1 N20 one-liner; C2 N11 glyph from DOM; C3 N21 merged loop, both mutations still red; C4 N22+N6 comment/docstring trims, leaked-comment test green; C5 N31 `lostpointercapture` + a check that goes red; C6 N24 de-flaked (20/20); C7 floor 738, flake8 0. checks=7.
-- **Branch / PR:** `task/f-018-frontend-sweep` — #69
-- **Status:** in review (cycle 1). Gate reproduced on `726f500`: 738 passed, flake8 0.
-
+_none._
 
 ## Ready
 
@@ -30,6 +25,7 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-018** — frontend backlog sweep (N6, N11, N20, N21, N22, N24, N31) — #69, `427a0f2`, 1 cycle, clean gate (`findings=1, scope=pass, verdict=approve`). Suite floor **738** (−1 folded loop, +1 pointercancel check). N24 de-flaked by waiting for summary focus (20/20). `wirePan` tears down on `lostpointercapture`, mutation-proven. F1 (7-line comment → 1) → N32.
 - **F-016** — canvas pan (left-drag + keyboard) and zoom 50-200% with one Fit affordance — #67, `1075a03`, **1 cycle across 2 handoffs + 1 stacked design task (D-023 #64)**, clean gate (`findings=2, scope=pass, verdict=approve`). checks=11. Suite floor **737**. Closes N13 and N23.
   The `scrollLeft` no-op was two things: no scroll range (fixed by D-022) and a test that dragged toward the clamped origin. Then the zoom buttons had no CSS and sat under the palette, which D-023 fixed. C5 and C11 are mutation-proven. F1 (N24 flake, maybe now timing-sensitive) appended to N24. F2 (`wirePan` has no `pointercancel` handling) → N31. The `.canvas-wrap::after` spacer is now redundant → D-024.
 - **F-017** — `d0` labelled "impact parameter significance (d0)", no unit, range preset [-50, 50] (99.09% of fixture values) — #66, `8f89578`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). User ruling 2026-09-23. Suite floor **730**. Closes N1.
