@@ -21,7 +21,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Depends on:** F-015 (#62, `dc2337f`) and the canvas ruling 2026-09-22
   (`design.md` `## Decisions in force` §8-9).
 - **Branch / PR:** `task/f-016-canvas-pan-zoom` — not yet opened
-- **Status:** **handed off (cycle 1) — see [`handoff/f-016-frontend-1.md`](../handoff/f-016-frontend-1.md).**
+- **Status:** **re-dispatched 2026-09-23 (cycle 1 resume, no isolation, C10 added: tests on production CSS; checks=10).** Previously handed off (cycle 1) — see [`handoff/f-016-frontend-1.md`](../handoff/f-016-frontend-1.md).**
   Branch `task/f-016-canvas-pan-zoom` @ `87582e8`, pushed. **No PR, deliberately** — C1/C2 fail, and
   the coder judged that opening a PR for code failing its own criteria would be a false report. That
   was the right call; do not read the missing PR as an incomplete handoff.
