@@ -100,7 +100,20 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 - **Do not style `#zoom-controls`** — that markup does not exist on `main`; it arrives with F-016.
   Styling it now would be speculative. A later small design task picks it up.
 - **Branch / PR:** `task/d-022-canvas-frame-css` — #63 (`2d5c164`)
-- **Status:** in review (cycle 1). checks=8.
+- **Status:** in rework (cycle 2), dispatched 2026-09-23. checks 8 -> **11** (C9/C10/C11 added).
+- **Review:** cycle 1 — `findings=6, scope=pass, verdict=rework`, posted verbatim to
+  [PR #63](https://github.com/JulesVandenbroeck/fce-site/pull/63#issuecomment-5790586615).
+  F1/F2/F4/F5/F6 back to design; F3 is C9. **§5.4 diagnosis: a CYCLE, clause 3** — nothing was
+  dropped from an earlier cycle, C3 and C8 both shipped with commands, and F4 is against a
+  property no criterion of mine gated (canvas content *reachable*, not merely full-bleed).
+- **F2 is the instrument lesson of this task:** the drawer guard asserted `is_visible()`, true for
+  an element below the fold, so it certified GREEN while the drawer sat entirely off-screen at
+  y=951 in a 900px viewport. §2's blind instrument, in the coder's own new check this time.
+- **F3 cannot be deferred and I ruled it so in the dispatch.** The three `test_graph.py` tests are
+  20/20 green on `main` and red here; merging turns `main` red whoever owns the root cause. The
+  reviewer's read is that they measure F4 (palette covering the canvas origin), not raw-coordinate
+  clicking as the coder diagnosed. Design fixes the geometry and may **not** touch `test_graph.py`;
+  if they stay red after C11 it becomes a frontend task, and the coder is told to stop and say so.
 - **Gate PASSED, and the 3 failures are real, reproduced by me, and NOT a gate return.** The coder
   reported 728 collected / 725 passed / 3 failed and named the failures rather than hiding them.
   I reproduced all of it detached in the primary checkout (`import fce_web` confirmed to resolve to
