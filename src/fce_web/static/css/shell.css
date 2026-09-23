@@ -91,19 +91,11 @@ main > h1 {
   inset: 0;
 }
 
-/* The scrolling element (D-022's defect fix): `overflow: auto` on a box
- * with a real scrollable area is what fixes it. `::after` rather than
- * sizing `.canvas-svg` itself: scaling the svg's own rendered box would
- * scale everything inside it, including every node's on-screen position --
- * graph.js's node coordinates are still in the fixed 704x512 surface
- * (shell.html's own comment; F-016's job, not this one), and the existing
- * e2e suite clicks nodes by their current on-screen position
- * (docs/design-explorations/canvas-frame.html's own caveat on exactly
- * this). An invisible, unclickable spacer sized past every viewport this
- * task targets gives #canvas-wrap real range in both directions without
- * moving anything drawn inside it -- the opposite of the bug this
- * replaces, which forced `.canvas-svg` to `width: 100%` and collapsed the
- * range to zero. */
+/* The scrolling element (D-022's defect fix, superseded by F-016): `overflow:
+ * auto` on a box with a real scrollable area. F-016's applyZoom (graph.js)
+ * now sizes `.canvas-svg`'s own rendered width/height past #canvas-wrap's
+ * client box on every axis, so the wrap's scroll range comes from the real
+ * pan/zoom surface -- no manufactured spacer needed. */
 .canvas-wrap {
   position: absolute;
   inset: 0;
@@ -111,25 +103,8 @@ main > h1 {
   background: var(--panel);
   /* D-022 cycle 2, F4: the svg and `.canvas-status` are normal-flow
    * children, so this padding shifts them clear of the palette/panel
-   * overlays that sit at `.frame`'s own left/right edges. `::after` below
-   * is position:absolute, so it ignores padding (positions off the
-   * padding *edge*, not inset by it) and keeps its own scroll-range job
-   * unaffected. */
+   * overlays that sit at `.frame`'s own left/right edges. */
   padding: 0 var(--panel-w) 0 var(--palette-w);
-}
-/* ponytail: this spacer manufactures scroll range for a canvas surface
- * nothing can occupy yet -- there is no pan/zoom (F-016). Its only
- * consumer is the C1 e2e guard. Delete it once F-016 lands a real
- * scrollable/zoomable surface; the guard should then assert against that
- * instead. */
-.canvas-wrap::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: calc(var(--space-7) * 26);
-  height: calc(var(--space-7) * 26 * 8 / 11);
-  pointer-events: none;
 }
 .canvas-svg {
   display: block;
@@ -144,16 +119,14 @@ main > h1 {
 
 /* ---- zoom controls: an overlay toolbar, clear of both panels -------------
  * Ported from docs/design-explorations/canvas-frame.css:145-184 (D-023).
- * z-index above .palette/.mission-panel (2) so it is never intercepted by
- * either overlay; centred on `.frame`, which at every supported width
- * clears both panels' expanded footprint (D-022 cycle 2's --palette-w /
- * --panel-w stay well under half the frame). */
+ * Centred on `.frame`, which at every supported width clears both panels'
+ * expanded footprint (D-022 cycle 2's --palette-w / --panel-w stay well
+ * under half the frame). */
 .zoom-controls {
   position: absolute;
   top: var(--space-3);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 3;
   display: flex;
   align-items: center;
   gap: var(--space-1);
