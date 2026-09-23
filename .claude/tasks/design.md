@@ -99,8 +99,28 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
   assignment silently no-ops on an element that cannot overflow. See `frontend.md` F-016.
 - **Do not style `#zoom-controls`** — that markup does not exist on `main`; it arrives with F-016.
   Styling it now would be speculative. A later small design task picks it up.
-- **Branch / PR:** `task/d-022-canvas-frame-css` — not yet opened
-- **Status:** dispatched (cycle 1), 2026-09-23. checks=8. `isolation: worktree`.
+- **Branch / PR:** `task/d-022-canvas-frame-css` — #63 (`2d5c164`)
+- **Status:** in review (cycle 1). checks=8.
+- **Gate PASSED, and the 3 failures are real, reproduced by me, and NOT a gate return.** The coder
+  reported 728 collected / 725 passed / 3 failed and named the failures rather than hiding them.
+  I reproduced all of it detached in the primary checkout (`import fce_web` confirmed to resolve to
+  the primary `src/`): 728 collected = 726 + its 2 new; scope is exactly `shell.css` +
+  `tests/e2e/test_canvas_style.py`, both in scope. The three `test_graph.py` failures are
+  **3 passed on `main`, 3 failed on the branch** — branch-induced, not pre-existing.
+- **The regression is cross-role and is frontend's, not design's — do not send it back to design.**
+  Making the canvas full-bleed with overlay panels is the merged design (§8-9); it exposes that
+  `graph.js`'s `nextSpawnPoint()` puts the first node at SVG (16,16), now under the expanded palette.
+  This is D-020's F1 recurring in production and the very consequence ruling §6 anticipated.
+  **One caution for whoever fixes it:** the coder's spawn-point diagnosis does not obviously explain
+  the failure I actually saw — `assert _inside(node_box, svg_box)` with the node at `y=2.53` and the
+  svg at `y=137.53`, i.e. the node *above* the canvas, which reads like clamp math disagreeing with
+  the new rendered svg position rather than a palette overlap. Verify before accepting the diagnosis.
+- **C4's check command was MINE and was a blind instrument (§2).** `-k "h_scroll or no_h_scroll"`
+  collects **0 tests on `main`** — no F-015 test name contains either substring, so it would have
+  passed vacuously. The coder caught it and ran the two real tests by name instead. My defect.
+- **Watch at review:** the scroll range is bought with a `.canvas-wrap::after` spacer sized to a
+  hard-coded `calc(var(--space-7)*26)`, not by the svg having real extent. That is the reviewer's
+  to rule on; recorded here so the question is not lost if the review does not reach it.
 - **Scope rulings carried into the dispatch:** templates are **read-only on this task**, class
   attributes included — `graph.js` queries `#canvas-wrap`/`#nodes-layer` by name and F-015's markup
   was reviewed five days ago. The reference's `.canvas-viewport` rules are adapted onto production's
