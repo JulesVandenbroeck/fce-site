@@ -61,6 +61,13 @@ def test_index_page_shows_its_heading(index: LoadedPage) -> None:
     assert index.page.locator("h1").inner_text().strip() == "FCE-site"
 
 
+def test_index_page_has_no_leaked_jinja_comment_text(index: LoadedPage) -> None:
+    """F-016 C11: shell.html's opening Jinja comment must stay one comment.
+    A stray early `#}` would leave its remainder (the "Two kinds of state
+    stay apart" paragraph) as literal page text."""
+    assert index.page.content().count("Two kinds of state") == 0
+
+
 def test_index_page_logs_no_console_errors(index: LoadedPage) -> None:
     """Nothing the page loads writes an error to the console."""
     assert index.activity.console_errors == []

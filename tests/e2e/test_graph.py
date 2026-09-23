@@ -676,6 +676,8 @@ def test_node_extent_stays_inside_the_sheet_after_zooming_in(index: LoadedPage) 
     page.locator("#zoom-out").click()
     page.locator("#zoom-out").click()  # 50%
 
+    node_before = _node_by_id(_graph(page), "n1")
+
     handle = page.locator('.node[data-node-id="n1"] .node__handle')
     handle.scroll_into_view_if_needed()
     svg_box = page.locator("#canvas-svg").bounding_box()
@@ -683,6 +685,12 @@ def test_node_extent_stays_inside_the_sheet_after_zooming_in(index: LoadedPage) 
     start = (handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
     target = (svg_box["x"] + svg_box["width"] - 5, svg_box["y"] + svg_box["height"] - 5)
     _drag(page, start, target, steps=8)
+
+    node_dragged = _node_by_id(_graph(page), "n1")
+    # The drag must actually have moved the node -- otherwise the extent
+    # assertion below would hold trivially with the node parked at its spawn
+    # point, and prove nothing about the sheet growing to contain it.
+    assert (node_dragged["x"], node_dragged["y"]) != (node_before["x"], node_before["y"])
 
     for _ in range(6):
         page.locator("#zoom-in").click()  # back up to 200%
