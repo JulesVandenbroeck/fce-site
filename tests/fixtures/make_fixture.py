@@ -52,8 +52,9 @@ SOURCE_URL_BASE = "https://homepage.iihe.ac.be/~kskovpen/fce/datasets/IDEA/91GeV
 SOURCE_HOME = os.environ.get("FCE_SOURCE_HOME", os.path.expanduser("~/.fce"))
 SOURCE_DIR = os.path.join(SOURCE_HOME, "datasets", "IDEA", "91GeV")
 
-# X4/X5/X6 exist upstream but are undocumented (design-brief.md §3) and out of
-# scope for this fixture -- mission 3 is blocked on the user identifying them.
+# X4 (e+e- -> nu nubar gamma) and X5 (e+e- -> gamma gamma) were identified
+# 2026-09-22; X6 is still unidentified. All three stay out of this fixture
+# regardless -- the decision to keep the fixture to X1/X2/X3/data is unchanged.
 SAMPLES = ("X1", "X2", "X3", "data")
 
 # Object-kind prefixes the real files group their jagged branches under
