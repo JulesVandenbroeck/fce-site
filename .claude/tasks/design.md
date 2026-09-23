@@ -85,26 +85,7 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-### D-022 — Port the canvas-frame stylesheets onto the merged shell
-- **Scope:** `src/fce_web/static/css/shell.css`, `canvas.css`, `tests/e2e/test_canvas_style.py`.
-  **CSS only**; templates read-only on this task, class attributes included.
-- **Accept:** C1 `#canvas-wrap` has real scroll range; C2 panels are overlays on a full-bleed canvas;
-  C3 drawer at the viewport bottom edge; C4 F-015's no-h-scroll probes; C5 tokens only; C6 no
-  `#zoom-controls`; C7 reduced motion + focus; C8 suite floor; C9 the three `test_graph.py` tests
-  green; C10 whole suite green; C11 canvas content not covered by a panel. **checks=11.**
-- **Depends on:** F-015 (#62, `dc2337f`, merged). Does **not** depend on F-016.
-- **Branch / PR:** `task/d-022-canvas-frame-css` — #63, head `a1336e2` (cycle 2)
-- **Status:** **in review (cycle 2) at session end — the review was still running when the session
-  handed over.** Collect its verdict before doing anything else with this PR.
-- **Review:** cycle 1 — `findings=6, scope=pass, verdict=rework`, posted verbatim to
-  [PR #63](https://github.com/JulesVandenbroeck/fce-site/pull/63#issuecomment-5790586615).
-  §5.4 diagnosis: **a cycle, clause 3.** Cycle 2 reports F1-F6 all fixed and all 11 criteria met.
-- **Cycle-2 gate PASSED, reproduced by me** detached in the primary checkout: **729 passed, 0 failed**,
-  flake8 0, scope still the two in-scope files. **Suite floor 726 -> 729 on merge.**
-- **Do not file a `nextSpawnPoint()` frontend follow-up.** Cycle 1 proposed one; cycle 2 disproved it.
-  The three `test_graph.py` regressions went green from the **C11 CSS inset alone** — the palette was
-  covering the canvas origin. `graph.js` is not to be changed for this.
-- **History:** [`archive/design.md`](archive/design.md)
+_none._
 
 ## Ready
 
@@ -149,6 +130,13 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-022** — ported the canvas-frame stylesheets onto the merged shell — #63, `a81aba0`, 2 cycles, clean gate (`findings=5, scope=pass, verdict=approve`). checks=**11**. Suite floor 726 -> **729**.
+  `shell.css` + a new design-owned guard `tests/e2e/test_canvas_style.py`; `canvas.css` needed nothing. **Fixes a live defect that was on `main` for four days:** `shell.css` was last touched at D-019, before F-015's restructure, so the app was styled for markup that no longer existed — `.shell` had been renamed `.frame`, and `.canvas-wrap`'s fixed width plus `.canvas-svg { width:100% }` left the canvas with **no scroll range at all**.
+  **Two orchestrator defects, both mine.** C4's check was `-k "h_scroll or no_h_scroll"`, which **collects 0 tests on `main`** — it would have passed vacuously; the coder caught it. And C11's property (canvas content *reachable*, not merely full-bleed) was never gated, which is why cycle 1 was a genuine cycle under §5.4 clause 3.
+  **The instrument lesson:** cycle 1's *new* drawer guard asserted `is_visible()`, true for an element below the fold, and certified GREEN while the drawer sat at y=951 in a 900px viewport. Cycle 2's replacement is mutation-proven red at exactly `1037.53125 <= 901`, cycle 1's own measured number.
+  **A coder diagnosis that failed on checking, twice.** Cycle 1 blamed `nextSpawnPoint()` for three reddened `test_graph.py` tests and proposed a frontend follow-up. The reviewer said they were measuring the palette covering the canvas origin; cycle 2 fixed the CSS inset alone and all 20 went green with `test_graph.py` and `graph.js` **byte-unchanged from `main`**, verified by the reviewer. **Do not file that follow-up.**
+  **Carries a tracked deferral:** the `.canvas-wrap::after` spacer (1664x1210) manufactures the scroll range because nothing can occupy the surface yet. It has a `ponytail:` comment naming F-016 as the upgrade path — **F-016 deletes it and re-points C1's guard.**
+  F7-F11 backlogged as **N25-N29**. **History:** [`archive/design.md`](archive/design.md)
 - **D-021** — the canvas frame, corrected: horizontal pan, grid beyond the sheet, honest load state — #60, `b3f8ef2`, **2 cycles + 1 handoff mid cycle 2**, clean gate (`findings=0, scope=pass, verdict=approve`). checks=**12**.
   Exploration only; nothing under `src/` touched. **One root cause, three symptoms:** the sheet was a fixed 1800x1200 SVG, so on a
   window wider than that `scrollWidth == clientWidth` — no horizontal pan, no graph paper beyond the sheet, and a node placed past
@@ -271,6 +259,14 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md).
   including the counting lines themselves — it reported 86 against 78 real registrations. On
   `task/d-010-page-shell` at `cfd2a1d`: **78** registrations, **213** reporting calls, both by
   `ast.walk`. Do not reinstate a grep floor.
+- **The canvas inset is pinned to the palette's EXPANDED width and that is a known trade-off** (D-022,
+  #63 F9 / backlog N27). `.canvas-wrap`'s `padding: 0 var(--panel-w) 0 var(--palette-w)` does not react
+  to `data-state`, so collapsing the palette reclaims no canvas — 192px of dead gutter at 1440. Known,
+  merged deliberately, filed. **Do not report it as a new defect.**
+- **The `.canvas-wrap::after` spacer is scaffolding with an owner** (D-022). It manufactures
+  `#canvas-wrap`'s 1664x1210 scroll range because nothing can occupy the surface until F-016 lands a
+  real pan/zoom surface. It carries a `ponytail:` comment naming that upgrade path. **F-016 deletes it
+  and re-points D-022's C1 guard — it is not permanent dead space.**
 - **`verify.py` on `main` at `b3f8ef2` (D-021): the canvas-frame guards are two registered sections** —
   `canvas-frame-no-h-scroll` (**54** probes: 8 panel/drawer states + post-Run + 3 zoom probes, x 3 widths) and
   `canvas-frame-node-extent-monotonic` (**1** probe, C11). Both are mutation-proven red by the reviewer.

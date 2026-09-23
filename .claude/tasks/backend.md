@@ -254,8 +254,14 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **720 passed**; flake8 0. Confirmed by the orchestrator on `main` at `9c72521`, 2026-09-22,
-  after B-029 (−8) and F-013 (−1) merged. `verify.py --all` exits 1 with only `board-lane-fill` red.
+- Suite floor **729 passed**; flake8 0. Confirmed by the orchestrator in the primary checkout on `main`
+  at `a81aba0`, 2026-09-23, after D-022 (+3) merged. Path since 720: F-014 +1 (721), F-015 +5 (726),
+  D-022 +3 (729). `verify.py --all` still exits 1 with only `board-lane-fill` red, on purpose.
+  **Known flake, not a floor break:** `test_observable_mode_is_config_not_identity` fails ~1 run in 10
+  on `main` itself (backlog N24). Reproduce on `main` before blaming any branch, and never "fix" it
+  by weakening the assertion.
+- Superseded: suite floor **720 passed**; flake8 0. Confirmed on `main` at `9c72521`, 2026-09-22,
+  after B-029 (−8) and F-013 (−1) merged.
 - **`compute_h5_sel` / `compute_h5` are module-level functions in `engine/runconfig.py`** (B-029, #33 F7).
   `RunConfig`'s methods, `_validate_nested_digests` and `graph.build_run_config` all call the one copy.
   **Do not transcribe the digest formula again.** Digests themselves are unchanged.
