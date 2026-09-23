@@ -9,7 +9,12 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### B-030 — Fixture-test dead line + stale X4/X5 comments (backlog N10 + N4)
+- **Scope:** `tests/test_fixture_dataset.py`, `tests/fixtures/README.md`, `tests/fixtures/make_fixture.py` (comment only)
+- **Accept:** C1 dead `setenv` removed (proven dead by bogus-dir run); C2 comments name X4/X5, X6 still unknown; C3 no fixture bytes; C4 floor 729, flake8 0. checks=4.
+- **Branch / PR:** `task/b-030-fixture-comment-sweep` — pending
+- **Status:** dispatched 2026-09-23 (cycle 1), in parallel with D-023 (no shared files)
+
 
 ## Ready
 
