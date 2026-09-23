@@ -85,7 +85,13 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-_none._
+### D-023 — Port the zoom-controls styling (stacked on F-016)
+- **Scope:** `src/fce_web/static/css/shell.css`, `tests/e2e/test_canvas_style.py`.
+- **Accept:** port `.zoom-controls*` from `canvas-frame.css:145-184`; zoom buttons hit-test as themselves (not the palette) at 1440/1024/768 x palette expanded/collapsed; F-016's pan/zoom tests go green; suite floor, flake8 0.
+- **Depends on:** F-016's markup — so the branch is **stacked**: `task/d-023-zoom-controls-css` from `origin/task/f-016-canvas-pan-zoom`, PR **base = the F-016 branch**, merged into it by me, then F-016's PR carries both.
+- **Branch / PR:** `task/d-023-zoom-controls-css` — pending
+- **Status:** dispatched 2026-09-23 (cycle 1)
+
 
 ## Ready
 

@@ -1,42 +1,46 @@
-# F-016 anchor — frontend, canvas pan/zoom
+# F-016 anchor — frontend, canvas pan/zoom (cycle 1, resumed)
 
-Worktree: .claude/worktrees/agent-a70512847d39d2c49, branch not yet created
-(still on worktree-agent-a70512847d39d2c49 — MUST `git checkout -b
-task/f-016-canvas-pan-zoom` before committing). Sandbox refuses writes
-outside this worktree — this anchor could not be placed in the primary
-checkout as instructed; note that in the handoff/report if reached.
+Worktree: .claude/worktrees/agent-a70512847d39d2c49, branch
+task/f-016-canvas-pan-zoom, merged origin/main (D-022 #63) in cleanly.
 
-## Decisions
-- Port canvas-frame.html's applyZoom/setZoom/fit/wirePan almost verbatim into
-  graph.js. Keep existing ids (#canvas-wrap, #canvas-svg, #nodes-layer,
-  #edges-layer, #canvas-status) — do NOT rename to canvas-viewport/node-card.
-  Add class `canvas-viewport` onto #canvas-wrap as a styling hook (D-022).
-- Replace fixed CANVAS_W/CANVAS_H with mutable `sheet` object grown by
-  applyZoom (monotonic — max of viewport-derived, SHEET_MIN, node-extent
-  terms). clampToCanvas/nextSpawnPoint now read sheet.w/sheet.h.
-- Add #zoom-controls markup (zoom-out/zoom-in/zoom-fit buttons + output
-  readout) inside #canvas-region, copied from canvas-frame.html verbatim.
-- Pan: pointerdown on #canvas-wrap, skip if `ev.target.closest(".node")`
-  (existing node class, NOT `.node-card`). Wheel = zoom (passive:false).
-- Keyboard pan: native — tabindex=0 + role=group on #canvas-wrap, no JS,
-  browser scrolls the focused scrollable element on arrow keys.
+## Resolved this session
+- The handoff's "scrollLeft no-ops in pointermove" mystery: TWO separate
+  causes, both now understood.
+  1. D-022 (merged) gave `#canvas-wrap` real overflow/scroll range in
+     production shell.css. That part of the mystery is gone.
+  2. The WIP C1 test dragged down-right from the origin (scrollLeft/Top
+     start at 0, drag requested negative, browser clamps to 0 -- looked
+     like "no-op" but was correct clamping). Confirmed via a scrollLeft
+     setter probe: `SET scrollLeft -16 at graph.js:255 onMove`. Fixed the
+     test to drag up-left instead -- confirmed panning now works at 100%
+     zoom (scrollLeft/Top go 0,0 -> 80,60).
+- graph.js's wirePan/applyZoom/setZoom/fit logic itself is NOT the problem.
+  Did not touch graph.js.
 
-## Dead end / real blocker found
-canvas.css/shell.css are STALE (last touched D-019, before F-015's markup
-restructure) — `.canvas-wrap` is CSS-fixed-width, `.canvas-svg{width:100%}`,
-no `overflow:auto` anywhere useful. Confirmed empirically: scrollLeft is a
-no-op without `overflow != visible`. Production page CANNOT visually pan/zoom
-until D-022 ships equivalent of canvas-frame.css. I CANNOT touch CSS (scope).
-**Resolution:** e2e tests inject docs/design-explorations/canvas-frame.css
-via `page.add_style_tag(path=...)` to exercise the real JS/DOM mechanism
-under the CSS contract D-022 will supply — disclosed plainly in PR body, not
-hidden. test_smoke.py's existing C7 h-scroll test is NOT touched by this
-(tests real prod page, unaffected).
+## Real remaining blocker (CSS, out of scope)
+`#zoom-controls` (and its buttons) has ZERO CSS in production shell.css/
+canvas.css -- grep confirms no `.zoom-controls` rule anywhere shipped.
+Unstyled, it flows at `#canvas-region`'s top-left (0,0), full width, so
+`#zoom-out`/`#zoom-in`/`#zoom-fit` sit directly under the expanded
+`.palette` overlay (z-index 2) at every viewport width. Confirmed via
+`getBoundingClientRect`: zoom-out at x:0-26, palette spans x:0-256.
+Collapsing the palette doesn't help either (collapsed width 64px still
+covers zoom-out's 0-26 span). This blocks every test that must click a
+zoom button: C1's 50%-zoom half, C4, C5, C6.
+canvas-frame.css (the approved reference) already has the fix:
+`.zoom-controls { position: absolute; top: var(--space-3); left: 50%;
+transform: translateX(-50%); ...}` (lines ~145-184) -- never ported into
+shell.css by D-022, which only covered `.frame`/`.canvas-region`/
+`.canvas-wrap`. This needs a small design-owned CSS change; not something
+frontend can fix within its file scope (shell.css/canvas.css are read-only
+here, and no inline `style=`/JS-set styling is allowed either).
 
 ## Next step
-shell.html structural comment done. Still need: canvas-wrap tabindex/role/
-aria-label + canvas-viewport class, zoom-controls markup, graph.js changes
-(constants, applyZoom/setZoom/fit/wirePan, init() wiring, clampToCanvas),
-then test_graph.py new tests (C1-C6), confirm test_smoke.py C7
-untouched/passing, F3 aria-label fix (shell.html #results nested landmark →
-drop label or change to div), full suite + flake8, PR.
+Report this to orchestrator as a blocker needing a short design task
+(port `.zoom-controls`/`.zoom-controls__btn`/`.zoom-controls__readout`
+from canvas-frame.css into shell.css). Do NOT open the PR per the
+dispatch's own instruction ("if C1/C2 still cannot be made to pass, do
+not open the PR"). C1 (full, both zoom levels), C4, C5, C6 cannot pass
+until that CSS lands. Work here (direction fix, CSS-injection removal
+from tests) is committed on the branch so the next cycle can resume
+directly once the CSS gap is closed.
