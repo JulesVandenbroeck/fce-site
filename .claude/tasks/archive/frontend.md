@@ -596,3 +596,71 @@ Hazard filed as backlog **N19**, with the wrong diagnosis kept on the record bec
 
 §2's *"an instrument that structurally cannot observe the property it certifies"* applies to the gate
 itself, not only to a coder's checks — and the gate is the one instrument nothing else double-checks.
+
+
+## F-016 — active entry at close (moved 2026-09-23)
+
+### F-016 — Pan and zoom on the canvas surface
+- **Scope:** `src/fce_web/static/js/graph.js`, `src/fce_web/templates/shell.html`,
+  `tests/e2e/test_graph.py`, `tests/e2e/test_smoke.py`. **No CSS** — D-022 styles it.
+- **Accept:** C1 left-drag pans both axes at 100% and 50%; C2 a drag starting on a node moves the node
+  and leaves scroll byte-identical; C3 keyboard pan reaches both axes; C4 zoom clamps to 50-200%;
+  **C5 the sheet stays monotonic in node extent — zooming in never orphans a node placed at a lower
+  zoom, shown red under a mutation dropping the extent term**; C6 Fit shows every node, and is the
+  only such affordance; C7 F-015's 24 no-h-scroll probes still pass; C8 the nested-landmark fix;
+  C9 suite floor **726** + additions, flake8 0, nothing weakened. checks=9.
+- **Depends on:** F-015 (#62, `dc2337f`) and the canvas ruling 2026-09-22
+  (`design.md` `## Decisions in force` §8-9).
+- **Branch / PR:** `task/f-016-canvas-pan-zoom` — **#67** (carries D-023 #64)
+- **Status:** **in review (cycle 1), 2026-09-23. Gate reproduced on `b07449e`: 737 passed, flake8 0. C11 added (stray `#}` from #64 F2); checks=11.** Earlier: handed off again 2026-09-23 @ `e706e7a` — [`handoff/f-016-frontend-2.md`](../handoff/f-016-frontend-2.md). BLOCKED on D-023** (`#zoom-controls` has no production CSS; renders under the palette, every zoom click intercepted). scrollLeft mystery SOLVED: D-022's scroll range + a test dragging toward the clamped origin. C2/C3/C8/C10 met; C1(50%)/C4/C5/C6 wait on D-023. Earlier: re-dispatched 2026-09-23 (cycle 1 resume, no isolation, C10 added: tests on production CSS; checks=10).** Previously handed off (cycle 1) — see [`handoff/f-016-frontend-1.md`](../handoff/f-016-frontend-1.md).**
+  Branch `task/f-016-canvas-pan-zoom` @ `87582e8`, pushed. **No PR, deliberately** — C1/C2 fail, and
+  the coder judged that opening a PR for code failing its own criteria would be a false report. That
+  was the right call; do not read the missing PR as an incomplete handoff.
+  C3, C6, C8 verified passing; C4 implemented, test fixed but not re-run; **C5 passes but is suspect**
+  (it may be trivially true if the drag it depends on silently no-ops — re-audit after C1/C2);
+  C7 and C9 not run this cycle. Baseline re-confirmed on `main` before starting: **726 passed**.
+- **BLOCKED on a real bug, and the fix is probably a re-ordering, not a debugging session.**
+  `els.wrap.scrollLeft -= ...` inside a `pointermove` handler has zero effect on the real
+  `#canvas-wrap`, while (a) the same assignment works outside an event handler, (b) native keyboard
+  scrolling of the same element works (that is C3, passing), and (c) a synthetic div with matching
+  class, tabindex and ancestor chain scrolls correctly when dragged. Ruled out by the coder:
+  `setPointerCapture`, `preventDefault`, CSS cascade, and every relevant computed style on the
+  ancestor chain.
+- **My diagnosis, from the coder's own second note — for the successor to test FIRST, in two minutes.**
+  It reports that production `canvas.css`/`shell.css` are **stale**: last touched at D-019, before
+  F-015's restructure, and they still force `.canvas-svg { width: 100% }` and a fixed `.canvas-wrap`
+  width. If the content is never wider than the box, the element **has no horizontal scroll range**,
+  and `scrollLeft` assignment silently no-ops — while arrow keys still scroll the *vertical* range
+  that does exist. That is exactly D-021's root cause recurring in a new file: *no horizontal
+  scrollable overflow gives no horizontal pan.* The synthetic div worked because it had real overflow.
+  **Check `scrollWidth > clientWidth` on `#canvas-wrap` before debugging `wirePan` any further.**
+- **Consequence: D-022 must run BEFORE F-016 resumes.** My frontend-then-design ordering was wrong for
+  this pair — panning cannot be made to work, or even tested honestly, on a canvas the stylesheet
+  forbids to overflow. The stale CSS is already a live defect on `main` today, so D-022 stands on its
+  own and does not need F-016's markup.
+- **Second, independent bug the coder flagged:** freshly-placed nodes spawn at (16,16), directly under
+  the expanded palette overlay in the full-bleed layout. Any test dragging a freshly-spawned node may
+  need the palette collapsed first. Unrelated to the pan bug; do not conflate them.
+- **D-022 UPDATE, 2026-09-23 — the blocker diagnosis was CONFIRMED, and resuming is now cheap.**
+  D-022 (#63, head `a1336e2`) is in review and its cycle-2 gate is green (729 passed, 0 failed).
+  It fixed exactly what this entry predicted: `.canvas-wrap` now has real scroll range, and
+  `main`/`.frame` no longer stack two `100svh` boxes. **Resume F-016 only after #63 merges**, then
+  re-run the C1/C2 pan tests FIRST — the `scrollLeft` no-op may simply be gone. If it is, most of
+  this entry's dead-end list is moot.
+  **Two things D-022 settled that change this dispatch:** (a) the spawn-at-(16,16)-under-the-palette
+  bug noted below is **fixed in CSS** — `.canvas-wrap` is inset by `--palette-w`/`--panel-w`, so do
+  **not** change `nextSpawnPoint()`; (b) the `.canvas-wrap::after` spacer that manufactures the scroll
+  range carries a `ponytail:` comment naming F-016 as its upgrade path — **when this task lands a real
+  pan surface, delete that spacer and re-point D-022's C1 guard.**
+- **Carries:** backlog **N13**, and **N23** (PR #62 F3, the nested region landmarks) as C8 — carried
+  into the dispatch rather than left in the backlog, because it is an accessibility regression F-015
+  introduced and shared §6 does not let those wait.
+- **C5 is the known trap.** It is D-021's F2 recurring in a new file: the sheet recomputed from
+  scratch on every zoom shrinks when you zoom *in*, orphaning a node placed at a lower zoom. The
+  reference `applyZoom` in `canvas-frame.html` already carries the three-term `Math.max` that fixes
+  it. Rung 2 of the ladder is the whole task — that code is reviewed and mutation-tested; port it.
+- **Watch:** zoom changes the client-pixel → surface-unit mapping, so F-015's C7 coordinate fixes in
+  `test_graph.py` must be re-checked, not assumed. `graph.js:229` (post-growth re-clamp) and
+  `graph.js:803` (node-drag `onMove`) were both proven load-bearing by PR #62's reviewer.
+- **History:** [`archive/frontend.md`](archive/frontend.md)
+

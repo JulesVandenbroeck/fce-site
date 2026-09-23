@@ -29,7 +29,7 @@ before any of them is dispatched. N15 is a plain bug. Nothing is dispatched.
   Note D-018's standing caveat: at 1024/768 `.canvas-region` h-scroll can put the leftmost node out of
   reach for coordinate clicks in e2e — full-bleed plus pan (N13) likely changes that failure mode, so
   re-check the e2e coordinate helpers rather than assuming they still hold. _(user, 2026-09-22)_
-- **N13 The canvas must be an explorable map: pan and zoom** (frontend, with design). Nodes live on a
+- _(CLOSED by F-016, #67, `1075a03`)_ **N13 The canvas must be an explorable map: pan and zoom** (frontend, with design). Nodes live on a
   surface larger than the viewport. **Left-click-drag on empty canvas pans**; scroll (or equivalent)
   **zooms in and out**. Open questions for the design pass, not assumptions: zoom limits, whether pan
   is bounded or infinite, what happens to a left-drag that starts *on* a node (today that is presumably
@@ -246,14 +246,14 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
 - **N22 Jinja header comment in `shell.html:1-27` restates task history** (frontend, trivial). ~27 lines
   repeating N12/N13/N14 ids and PR deviations → keep only the overlay/`data-state` contract and
   "pan/zoom is F-016's". _(PR #62 F5, 2026-09-23)_
-- **N23 Nested region landmarks in the results drawer** (frontend, **accessibility**).
+- _(CLOSED by F-016, #67)_ **N23 Nested region landmarks in the results drawer** (frontend, **accessibility**).
   `shell.html:105`/`:107` — `<section id="drawer" aria-label="Results drawer">` wraps
   `<section id="results" aria-label="Run results">`, so a screen reader announces two nested regions
   where one is meant. Drop the inner `aria-label` (nothing in `src/` or `tests/` queries it, grep
   confirmed) or make `#results` a `<div>`, keeping the id `run.js` and the tests use.
   **Introduced by F-015 and carried into F-016's dispatch rather than left to rot here** — accessibility
   is on shared §6's never-simplify-away list. _(PR #62 F3, 2026-09-23)_
-- **N24 `test_observable_mode_is_config_not_identity` is flaky on `main`** (frontend, tests; **pre-existing**).
+- **N24** _(seen again on #67's review 2026-09-23; the reviewer suggests the focusable, scrollable `#canvas-wrap` may add timing sensitivity, so wait on `[open]` before pressing Space)_ **`test_observable_mode_is_config_not_identity` is flaky on `main`** (frontend, tests; **pre-existing**).
   `test_graph.py:328`, ~1 failure in 10 file-level runs, reproduced by the reviewer on `origin/main`
   as well as on PR #62's branch; 12/12 green in isolation. `.focus()` + Space on the `ObsGlobal` radio
   sometimes does not take, leaving `mode == "ObsVectorSum"`. Presumed fix: await the radio's checked
@@ -265,5 +265,6 @@ belong to M5/M6 mission authoring, and B-029/F-013/D-019 are in flight.
 - **N26** — `tests/e2e/test_canvas_style.py:83` (D-022 #63 F8): the selector `'.palette, .palette__head, .mission-panel'` carries two terms that can never fire — the probe only samples the top-left, so `.mission-panel` is unreachable, and `.palette__head` is a descendant of `.palette` so `closest('.palette')` already matches it. Cut to `closest('.palette')`, or add N25's right-edge probe and earn the `.mission-panel` term. Design-owned.
 - **N27** — `shell.css:117` (D-022 #63 F9): the canvas inset is pinned to the palette's **expanded** footprint regardless of `data-state`, so collapsing the palette (256 -> 64px, measured) reclaims no canvas — a 192px dead gutter at 1440, 128px at 768. **The collapse control currently buys the student nothing.** Fix is one rule driving the custom property off state (`.frame:has(.palette[data-state="collapsed"]) { --palette-w: ... }`), or a `ponytail:` line recording the trade-off so it is not re-litigated. Design-owned.
 - **N28** — PR #63 body, C6 (D-022 #63 F10): the evidence line claims `grep -rn 'zoom' src/fce_web/static/css/` is empty, but cycle 2's own comment reintroduces "pan/zoom" at `shell.css:121,123`. **The criterion is met and the code is correct** — only the stated check is stale. Restate it as the check actually made: `grep -rn 'zoom-controls' ...`. Documentation-accuracy only.
+- **N31** — `graph.js:257-265` (F-016 #67 F2): `wirePan` ignores `pointercancel`, so a cancelled pan (touch, alt-tab) leaves `is-panning` and the move listener attached. Replace the `pointerup` listener with one `lostpointercapture` (the capture is on `els.wrap`). Frontend, trivial.
 - **N30** — `shell.css:156` (D-023 #64 F1): `.zoom-controls { z-index: 3 }` is inert — mutated to 1/auto the guard stays green; the centred toolbar never overlaps a panel. Delete it and the "needed" clause at `:147`. Design, trivial.
 - **N29** — `shell.css:47-50` (D-022 #63 F11): `main { display:flex; flex-direction:column; height:100svh }` is **unscoped**, and `main` lives in `base.html:17` — i.e. every future page, not just the shell. No consequence today because `index.html` is the only page. **Scope it before a second template lands** (a class on the shell's own wrapper, or `main:has(.frame)`). Latent; cheap now, a confusing layout bug later. Design-owned.
