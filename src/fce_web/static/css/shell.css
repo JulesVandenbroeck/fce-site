@@ -142,6 +142,54 @@ main > h1 {
   border-top: var(--border-hairline) solid var(--paper-line);
 }
 
+/* ---- zoom controls: an overlay toolbar, clear of both panels -------------
+ * Ported from docs/design-explorations/canvas-frame.css:145-184 (D-023).
+ * z-index above .palette/.mission-panel (2) so it is never intercepted by
+ * either overlay; centred on `.frame`, which at every supported width
+ * clears both panels' expanded footprint (D-022 cycle 2's --palette-w /
+ * --panel-w stay well under half the frame). */
+.zoom-controls {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--chrome-bg);
+  border: var(--border-hairline) solid var(--chrome-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-resting);
+}
+.zoom-controls__btn {
+  min-width: var(--space-5);
+  height: var(--space-5);
+  padding: 0 var(--space-2);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.zoom-controls__btn:hover:not(:disabled) { background: var(--hover-bg); }
+/* disabled = the limit has been reached; --ink-45 is the WCAG 1.4.3
+ * inactive-control exemption, and the readout beside it still says where. */
+.zoom-controls__btn:disabled { cursor: default; color: var(--ink-45); }
+.zoom-controls__btn--fit {
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.zoom-controls__readout {
+  min-width: calc(var(--space-6) + var(--space-2));
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-numeric);
+  color: var(--ink);
+}
+
 /* ---- overlays: the two side panels ----------------------------------------
  * Absolutely positioned and pinned to an edge of `.frame`, so a width
  * change on either one can never reach the canvas -- it is `inset: 0` of
