@@ -9,7 +9,12 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-018 — Frontend backlog sweep (N6, N11, N20, N21, N22, N24, N31)
+- **Scope:** `shell.js`, `graph.js`, `shell.html`, `test_smoke.py`, `test_graph.py`, `test_interior_style.py` (docstrings only)
+- **Accept:** C1 N20 one-liner; C2 N11 glyph from DOM; C3 N21 merged loop, both mutations still red; C4 N22+N6 comment/docstring trims, leaked-comment test green; C5 N31 `lostpointercapture` + a check that goes red; C6 N24 de-flaked (20/20); C7 floor 738, flake8 0. checks=7.
+- **Branch / PR:** `task/f-018-frontend-sweep` — pending
+- **Status:** dispatched 2026-09-23 (cycle 1, worktree)
+
 
 ## Ready
 
