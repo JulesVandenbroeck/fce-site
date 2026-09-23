@@ -85,7 +85,12 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-_none._
+### D-024 — Delete the `.canvas-wrap::after` spacer and inert `z-index: 3` (N30)
+- **Scope:** `shell.css`, `tests/e2e/test_canvas_style.py`
+- **Accept:** C1 spacer gone, guard re-pointed to the real scroll range from the SVG sheet (both axes, 3 widths, mutation-red); C2 z-index removed, hit-test guard green; C3 F-016 tests green; C4 floor 737, verify red set = N5 set. checks=4.
+- **Branch / PR:** `task/d-024-drop-canvas-spacer` — pending
+- **Status:** dispatched 2026-09-23 (cycle 1, worktree)
+
 
 ## Ready
 
