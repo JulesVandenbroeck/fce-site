@@ -21,7 +21,35 @@ IDs are `F-nnn`, allocated in order and never reused.
 - **Depends on:** F-015 (#62, `dc2337f`) and the canvas ruling 2026-09-22
   (`design.md` `## Decisions in force` §8-9).
 - **Branch / PR:** `task/f-016-canvas-pan-zoom` — not yet opened
-- **Status:** dispatched (cycle 1), `isolation: "worktree"`
+- **Status:** **handed off (cycle 1) — see [`handoff/f-016-frontend-1.md`](../handoff/f-016-frontend-1.md).**
+  Branch `task/f-016-canvas-pan-zoom` @ `87582e8`, pushed. **No PR, deliberately** — C1/C2 fail, and
+  the coder judged that opening a PR for code failing its own criteria would be a false report. That
+  was the right call; do not read the missing PR as an incomplete handoff.
+  C3, C6, C8 verified passing; C4 implemented, test fixed but not re-run; **C5 passes but is suspect**
+  (it may be trivially true if the drag it depends on silently no-ops — re-audit after C1/C2);
+  C7 and C9 not run this cycle. Baseline re-confirmed on `main` before starting: **726 passed**.
+- **BLOCKED on a real bug, and the fix is probably a re-ordering, not a debugging session.**
+  `els.wrap.scrollLeft -= ...` inside a `pointermove` handler has zero effect on the real
+  `#canvas-wrap`, while (a) the same assignment works outside an event handler, (b) native keyboard
+  scrolling of the same element works (that is C3, passing), and (c) a synthetic div with matching
+  class, tabindex and ancestor chain scrolls correctly when dragged. Ruled out by the coder:
+  `setPointerCapture`, `preventDefault`, CSS cascade, and every relevant computed style on the
+  ancestor chain.
+- **My diagnosis, from the coder's own second note — for the successor to test FIRST, in two minutes.**
+  It reports that production `canvas.css`/`shell.css` are **stale**: last touched at D-019, before
+  F-015's restructure, and they still force `.canvas-svg { width: 100% }` and a fixed `.canvas-wrap`
+  width. If the content is never wider than the box, the element **has no horizontal scroll range**,
+  and `scrollLeft` assignment silently no-ops — while arrow keys still scroll the *vertical* range
+  that does exist. That is exactly D-021's root cause recurring in a new file: *no horizontal
+  scrollable overflow gives no horizontal pan.* The synthetic div worked because it had real overflow.
+  **Check `scrollWidth > clientWidth` on `#canvas-wrap` before debugging `wirePan` any further.**
+- **Consequence: D-022 must run BEFORE F-016 resumes.** My frontend-then-design ordering was wrong for
+  this pair — panning cannot be made to work, or even tested honestly, on a canvas the stylesheet
+  forbids to overflow. The stale CSS is already a live defect on `main` today, so D-022 stands on its
+  own and does not need F-016's markup.
+- **Second, independent bug the coder flagged:** freshly-placed nodes spawn at (16,16), directly under
+  the expanded palette overlay in the full-bleed layout. Any test dragging a freshly-spawned node may
+  need the palette collapsed first. Unrelated to the pan bug; do not conflate them.
 - **Carries:** backlog **N13**, and **N23** (PR #62 F3, the nested region landmarks) as C8 — carried
   into the dispatch rather than left in the backlog, because it is an accessibility regression F-015
   introduced and shared §6 does not let those wait.

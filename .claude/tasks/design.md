@@ -89,7 +89,21 @@ _none._
 
 ## Ready
 
-_none._
+### D-022 — Port the canvas-frame stylesheets onto the merged shell
+- **Scope:** `src/fce_web/static/css/` — `shell.css`, `canvas.css`, and whatever new file the frame
+  needs. **CSS only**; markup and JS belong to frontend.
+- **Accept:** the merged F-015 markup (`.frame`, full-bleed canvas, overlay palette/mission panel,
+  bottom drawer) is styled from `docs/design-explorations/canvas-frame.css`; the canvas surface is
+  allowed **real overflow** so it can scroll; F-015's 24 no-h-scroll probes still pass at 1440/1024/768.
+- **Depends on:** F-015 (#62, `dc2337f`, merged). Does **not** depend on F-016.
+- **RUN THIS BEFORE RESUMING F-016 — the ordering was my error.** `canvas.css`/`shell.css` are stale
+  (last touched at D-019, before F-015's restructure) and still force `.canvas-svg { width: 100% }`
+  and a fixed `.canvas-wrap` width, so the canvas has **no horizontal scroll range at all**. That is
+  both a live defect on `main` today and the probable cause of F-016's blocker — `scrollLeft`
+  assignment silently no-ops on an element that cannot overflow. See `frontend.md` F-016.
+- **Do not style `#zoom-controls`** — that markup does not exist on `main`; it arrives with F-016.
+  Styling it now would be speculative. A later small design task picks it up.
+- **Branch / PR:** not yet opened
 
 ## Blocked
 
