@@ -86,10 +86,27 @@ const NODE_W = 160;
 // gives it real layout -- an overflowing port is invisible to hit-testing
 // even though getBoundingClientRect still reports it.
 const NODE_H = 104;
-const CANVAS_W = 704;
-const CANVAS_H = 512;
 const NUDGE = 12;
 const NUDGE_BIG = 40;
+
+// ---- pan/zoom (F-016, ported from docs/design-explorations/canvas-frame.html)
+// The canvas is a bounded "sheet" the SVG's viewBox covers -- #canvas-wrap
+// pans it via its own native `overflow: auto` scrolling (never a free
+// transform, per the N13 ruling: that is what buys real scrollbars and
+// keyboard arrow-key panning for free), and zoom scales the SVG's rendered
+// width/height against that viewBox. `sheet` starts at the floor and is
+// only ever grown, in applyZoom -- see its own comment for why that
+// direction is load-bearing (D-021's monotonic-sheet rule, this task's C5).
+const SHEET_MIN_W = 1200;
+const SHEET_MIN_H = 900;
+const SHEET_PAD = 240; // surface units of spare paper beyond the viewport
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.0;
+const ZOOM_STEP = 0.25;
+const FIT_PAD = 24;
+
+let zoom = 1;
+const sheet = { w: SHEET_MIN_W, h: SHEET_MIN_H }; // surface units, rewritten by applyZoom
 
 // The only state this module keeps.
 const graphState = {
@@ -128,11 +145,136 @@ function setStatus(text) {
 }
 
 // w/h default to the collapsed size; moveNodeTo passes the measured box.
+// Clamps against the live `sheet`, not a fixed canvas size -- the sheet
+// only grows (applyZoom), so a node already placed near its far edge never
+// becomes unreachable as the sheet grows around it.
 function clampToCanvas(x, y, w = NODE_W, h = NODE_H) {
   return {
-    x: Math.max(0, Math.min(CANVAS_W - w, x)),
-    y: Math.max(0, Math.min(CANVAS_H - h, y)),
+    x: Math.max(0, Math.min(sheet.w - w, x)),
+    y: Math.max(0, Math.min(sheet.h - h, y)),
   };
+}
+
+const clampZoom = (z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+
+// Grow the sheet to the zoom, then paint it. The third term in each Math.max
+// is what makes the sizing monotonic in the content it holds: without it the
+// sheet would shrink on zoom-in and a node parked out on a wide 50% sheet
+// would fall outside the scroll range at 200% -- D-021's F2, the defect
+// this task's C5 exists to keep fixed.
+function applyZoom() {
+  const nodes = Array.from(graphState.nodes.values());
+  const maxNodeX = nodes.length ? Math.max(...nodes.map((n) => n.x)) : 0;
+  const maxNodeY = nodes.length ? Math.max(...nodes.map((n) => n.y)) : 0;
+  sheet.w = Math.max(
+    SHEET_MIN_W,
+    Math.ceil(els.wrap.clientWidth / zoom) + 2 * SHEET_PAD,
+    maxNodeX + NODE_W + SHEET_PAD
+  );
+  sheet.h = Math.max(
+    SHEET_MIN_H,
+    Math.ceil(els.wrap.clientHeight / zoom) + 2 * SHEET_PAD,
+    maxNodeY + NODE_H + SHEET_PAD
+  );
+  els.svg.setAttribute("viewBox", `0 0 ${sheet.w} ${sheet.h}`);
+  els.svg.setAttribute("width", sheet.w * zoom);
+  els.svg.setAttribute("height", sheet.h * zoom);
+  els.canvasBg.setAttribute("width", sheet.w);
+  els.canvasBg.setAttribute("height", sheet.h);
+  els.zoomReadout.textContent = `${Math.round(zoom * 100)}%`;
+  els.zoomIn.disabled = zoom >= ZOOM_MAX - 0.001;
+  els.zoomOut.disabled = zoom <= ZOOM_MIN + 0.001;
+}
+
+// Zoom about a point, so wheel-zoom keeps whatever is under the cursor under
+// the cursor. With no anchor (the buttons) it holds the centre of the
+// viewport, which is the only sensible anchor with no pointer to ask.
+function setZoom(next, anchorX, anchorY) {
+  const prev = zoom;
+  const wanted = clampZoom(next);
+  if (Math.abs(wanted - prev) < 0.001) return;
+  const r = els.wrap.getBoundingClientRect();
+  const ax = (anchorX === undefined ? r.left + r.width / 2 : anchorX) - r.left;
+  const ay = (anchorY === undefined ? r.top + r.height / 2 : anchorY) - r.top;
+  const cx = (els.wrap.scrollLeft + ax) / prev;
+  const cy = (els.wrap.scrollTop + ay) / prev;
+  zoom = wanted;
+  applyZoom();
+  els.wrap.scrollLeft = cx * zoom - ax;
+  els.wrap.scrollTop = cy * zoom - ay;
+}
+
+// The strip of canvas no overlay covers, in viewport-local px: between the
+// two side panels, below the zoom toolbar, above the drawer.
+function clearBand() {
+  const v = els.wrap.getBoundingClientRect();
+  const left = document.getElementById("palette").getBoundingClientRect().right;
+  const right = document.getElementById("mission-panel").getBoundingClientRect().left;
+  const top = document.getElementById("zoom-controls").getBoundingClientRect().bottom;
+  const bottom = document.getElementById("drawer").getBoundingClientRect().top;
+  return {
+    x: left - v.left,
+    y: top - v.top,
+    w: Math.max(NODE_W, right - left),
+    h: Math.max(NODE_H, bottom - top),
+  };
+}
+
+// The one reset affordance (N13): scale and scroll so the whole graph is on
+// screen -- a known state, which "back to 100%" is not. With no nodes yet
+// there is nothing to fit around, so this just resets zoom/scroll instead of
+// asking an empty #nodes-layer for a bounding box.
+function fit() {
+  if (graphState.nodes.size === 0) {
+    zoom = 1;
+    applyZoom();
+    els.wrap.scrollLeft = 0;
+    els.wrap.scrollTop = 0;
+    return;
+  }
+  const bb = els.nodesLayer.getBBox();
+  const band = clearBand();
+  zoom = clampZoom(Math.min(band.w / (bb.width + 2 * FIT_PAD), band.h / (bb.height + 2 * FIT_PAD)));
+  applyZoom();
+  els.wrap.scrollLeft = bb.x * zoom - band.x - (band.w - bb.width * zoom) / 2;
+  els.wrap.scrollTop = bb.y * zoom - band.y - (band.h - bb.height * zoom) / 2;
+}
+
+// A left-drag that STARTS on the paper pans; one that starts on a node moves
+// that node instead (startNodeDrag/startConnectDrag, below) -- decided by
+// where the drag begins, never by a mode.
+function wirePan() {
+  els.wrap.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0 || ev.target.closest(".node")) return;
+    ev.preventDefault();
+    els.wrap.setPointerCapture(ev.pointerId);
+    els.wrap.classList.add("is-panning");
+    let px = ev.clientX;
+    let py = ev.clientY;
+    function onMove(moveEv) {
+      els.wrap.scrollLeft -= moveEv.clientX - px;
+      els.wrap.scrollTop -= moveEv.clientY - py;
+      px = moveEv.clientX;
+      py = moveEv.clientY;
+    }
+    function onUp() {
+      els.wrap.classList.remove("is-panning");
+      els.wrap.removeEventListener("pointermove", onMove);
+      els.wrap.removeEventListener("pointerup", onUp);
+    }
+    els.wrap.addEventListener("pointermove", onMove);
+    els.wrap.addEventListener("pointerup", onUp);
+  });
+
+  // passive:false -- the page must not scroll while the canvas zooms.
+  els.wrap.addEventListener(
+    "wheel",
+    (ev) => {
+      ev.preventDefault();
+      setZoom(zoom - Math.sign(ev.deltaY) * ZOOM_STEP, ev.clientX, ev.clientY);
+    },
+    { passive: false }
+  );
 }
 
 // The node element's own rendered box (getBoundingClientRect), converted
@@ -989,12 +1131,25 @@ function init() {
   els = {
     wrap: document.getElementById("canvas-wrap"),
     svg: document.getElementById("canvas-svg"),
+    canvasBg: document.getElementById("canvas-bg"),
     nodesLayer: document.getElementById("nodes-layer"),
     edgesLayer: document.getElementById("edges-layer"),
     status: document.getElementById("canvas-status"),
     paletteButtons: Array.from(document.querySelectorAll(".palette__add")),
+    zoomIn: document.getElementById("zoom-in"),
+    zoomOut: document.getElementById("zoom-out"),
+    zoomFit: document.getElementById("zoom-fit"),
+    zoomReadout: document.getElementById("zoom-readout"),
   };
   wirePalette();
+  wirePan();
+  els.zoomIn.addEventListener("click", () => setZoom(zoom + ZOOM_STEP));
+  els.zoomOut.addEventListener("click", () => setZoom(zoom - ZOOM_STEP));
+  els.zoomFit.addEventListener("click", fit);
+  // A window resize changes how much sheet the viewport needs; same one call
+  // applyZoom already uses for a zoom change.
+  window.addEventListener("resize", applyZoom);
+  applyZoom();
   persistUI();
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && graphState.keyboardArmed) {

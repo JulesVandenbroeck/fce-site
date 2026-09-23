@@ -12,9 +12,18 @@
    classes below are the ones docs/design-explorations/canvas-frame.css
    already expects, ported rather than invented.
 
-   Pan/zoom on the canvas surface (N13) is deliberately NOT here -- that is
-   F-016's task. The canvas keeps its fixed 704x512 viewBox and graph.js's
-   own CANVAS_W/CANVAS_H untouched.
+   Pan/zoom on the canvas surface (N13, F-016): #canvas-wrap also carries the
+   `canvas-viewport` class docs/design-explorations/canvas-frame.css already
+   styles (`overflow: auto`, absolute-inset-0) -- D-022's job to bring
+   canvas.css/shell.css to that rule, this port assumes it. The canvas is a
+   bounded, larger-than-viewport "sheet": #canvas-wrap pans it via native
+   `overflow: auto` scrolling -- no free transform, so keyboard arrow-key
+   panning and real scrollbars come from the platform once that CSS lands.
+   Zoom scales the SVG's rendered width/height against a `viewBox` graph.js
+   grows to fit the window and every node's position (never shrinks it --
+   D-021's monotonic-sheet rule). #zoom-controls is the keyboard/pointer path
+   for zoom and the one "Fit" affordance; graph.js's applyZoom/setZoom/fit
+   are ported from canvas-frame.html's own.
 
    Two kinds of state stay apart, per docs/design-brief.md §4:
      - the graph (nodes/edges) -- the engine's business, F-005's to add and
@@ -26,22 +35,33 @@
 <div class="frame" id="frame">
 
   <section class="canvas-region" id="canvas-region" aria-label="Analysis canvas region">
-    <div class="canvas-wrap" id="canvas-wrap">
-      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512"
-           role="group" aria-label="Analysis canvas -- drag nodes to arrange, drag between ports to connect">
+    <div class="canvas-wrap canvas-viewport" id="canvas-wrap" tabindex="0" role="group"
+         aria-label="Analysis canvas -- drag nodes to arrange, drag between ports to connect, drag empty canvas to pan, arrow keys to pan, scroll or the zoom buttons to zoom">
+      <svg class="canvas-svg" id="canvas-svg" viewBox="0 0 704 512" width="704" height="512">
         <defs>
           <marker id="canvas-arrowhead" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6"
                   orient="auto-start-reverse">
             <path d="M0,0 L8,4 L0,8 Z" class="edge-arrowhead"></path>
           </marker>
         </defs>
-        <rect x="0" y="0" width="704" height="512" class="canvas-bg"></rect>
+        <rect x="0" y="0" width="704" height="512" class="canvas-bg" id="canvas-bg"></rect>
         <g id="edges-layer"></g>
         <g id="nodes-layer"></g>
       </svg>
-      <p class="canvas-status" id="canvas-status" aria-live="polite">Add a node from the palette,
-        or Tab onto the canvas to move around it.</p>
     </div>
+
+    {#- Real buttons, so zoom and Fit have a keyboard path -- wheel on the
+       canvas is the pointer shortcut. One affordance for "get back to a known
+       state": Fit, never a second "reset to 100%" control (N13). #}
+    <div class="zoom-controls" id="zoom-controls" role="group" aria-label="Canvas zoom">
+      <button class="zoom-controls__btn" id="zoom-out" type="button" aria-label="Zoom out">&minus;</button>
+      <output class="zoom-controls__readout" id="zoom-readout" for="zoom-out zoom-in">100%</output>
+      <button class="zoom-controls__btn" id="zoom-in" type="button" aria-label="Zoom in">+</button>
+      <button class="zoom-controls__btn zoom-controls__btn--fit" id="zoom-fit" type="button">Fit</button>
+    </div>
+
+    <p class="canvas-status" id="canvas-status" aria-live="polite">Add a node from the palette.
+      Drag empty canvas to pan, or Tab onto the canvas and use the arrow keys.</p>
   </section>
 
   <aside class="palette" id="palette" data-state="expanded" aria-labelledby="palette-title">
@@ -104,12 +124,16 @@
      #results-progress, #results-note, #results-chart. #}
   <section class="drawer" id="drawer" data-state="collapsed" aria-label="Results drawer">
     <div class="drawer__body" id="drawer-body" hidden>
-      <section class="results" id="results" aria-label="Run results">
+      {#- F-016/F3 carry-in (PR #62): dropped as a second, nested region
+         landmark inside the drawer's own -- a screen reader was announcing
+         two regions where one was meant. Plain div, same id, since run.js
+         and tests only ever query #results by id. #}
+      <div class="results" id="results">
         <p class="results__status" id="results-status" aria-live="polite">Not run yet.</p>
         <progress class="results__progress" id="results-progress" max="100" value="0" hidden></progress>
         <p class="results__note" id="results-note" aria-live="polite" hidden></p>
         <div class="results__chart" id="results-chart"></div>
-      </section>
+      </div>
     </div>
 
     <div class="drawer__handle-row">

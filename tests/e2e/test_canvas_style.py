@@ -87,6 +87,36 @@ def test_canvas_top_left_is_not_covered_by_a_panel(browser: Browser, live_server
             context.close()
 
 
+def test_zoom_controls_are_clickable_over_both_panels(browser: Browser, live_server: str) -> None:
+    """C2 (D-023): each zoom button hit-tests as itself -- elementFromPoint at
+    its own centre returns the button or a descendant, never the palette or
+    mission panel sitting under `.zoom-controls`' toolbar -- with the palette
+    both expanded and collapsed, and the mission panel expanded, at every
+    width."""
+    for width in WIDTHS:
+        for collapse_palette in (False, True):
+            context = browser.new_context(viewport={"width": width, "height": 900})
+            page = context.new_page()
+            try:
+                page.goto(f"{live_server}/", wait_until="networkidle")
+                if collapse_palette:
+                    page.locator("#palette-toggle").click()
+
+                for button_id in ("zoom-out", "zoom-in", "zoom-fit"):
+                    hits_self = page.evaluate(
+                        "(id) => {"
+                        " const btn = document.getElementById(id);"
+                        " const r = btn.getBoundingClientRect();"
+                        " const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);"
+                        " return !!(el && el.closest('#' + id) === btn);"
+                        "}",
+                        button_id,
+                    )
+                    assert hits_self, (width, collapse_palette, button_id)
+            finally:
+                context.close()
+
+
 def test_drawer_states_render_correctly(browser: Browser, live_server: str) -> None:
     """C3: the drawer sits at the bottom edge of the viewport -- not merely
     visible, actually reachable without scrolling the page -- and both
