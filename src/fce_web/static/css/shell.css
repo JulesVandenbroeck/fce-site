@@ -45,6 +45,9 @@ button:focus-visible,
 
 /* ---- page header (index.html, above the shell) --------------------------- */
 main {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
   padding: var(--space-3) 0 0;
 }
 main > h1 {
@@ -58,28 +61,122 @@ main > h1 {
   color: var(--ink-70);
 }
 
-/* ---- shell: three regions, one flex row ---------------------------------- */
-.shell {
-  display: flex;
-  align-items: stretch;
+/* ---- the frame: one viewport-tall stage, the canvas full-bleed under it -
+ * Ported at D-022 from docs/design-explorations/canvas-frame.css (D-020):
+ * the canvas fills `.frame` edge to edge; the palette, the mission panel
+ * and the results drawer float over it as overlays rather than sitting
+ * beside it, so opening any of them never narrows the canvas (N12/N14).
+ * Same vocabulary the exploration used, adapted onto the markup F-015
+ * actually shipped -- `.canvas-wrap`, not `.canvas-viewport` (shell.html's
+ * own comment); the class is not renamed either direction. */
+.frame {
+  position: relative;
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  /* Palette/mission-panel *expanded* footprints (D-022 cycle 2, F4/F6):
+   * named once here so `.canvas-wrap`'s inset padding and each panel's
+   * `[data-state="expanded"]` width read the same number. Sized to the
+   * expanded footprint always, not the current `data-state`, so the
+   * canvas content clears the panels' maximum reach rather than jumping
+   * when a panel toggles. */
+  --palette-w: calc(var(--space-7) * 4);
+  --panel-w: calc(var(--space-7) * 5);
 }
 
-/* ---- palette (left, collapses) ------------------------------------------- */
-.palette {
-  flex: 0 1 auto;
-  min-width: var(--space-7);
-  width: var(--space-7);
-  border-right: var(--border-hairline) solid var(--paper-line);
+/* ---- canvas region: full-bleed, under every overlay ----------------------- */
+.canvas-region {
+  position: absolute;
+  inset: 0;
+}
+
+/* The scrolling element (D-022's defect fix): `overflow: auto` on a box
+ * with a real scrollable area is what fixes it. `::after` rather than
+ * sizing `.canvas-svg` itself: scaling the svg's own rendered box would
+ * scale everything inside it, including every node's on-screen position --
+ * graph.js's node coordinates are still in the fixed 704x512 surface
+ * (shell.html's own comment; F-016's job, not this one), and the existing
+ * e2e suite clicks nodes by their current on-screen position
+ * (docs/design-explorations/canvas-frame.html's own caveat on exactly
+ * this). An invisible, unclickable spacer sized past every viewport this
+ * task targets gives #canvas-wrap real range in both directions without
+ * moving anything drawn inside it -- the opposite of the bug this
+ * replaces, which forced `.canvas-svg` to `width: 100%` and collapsed the
+ * range to zero. */
+.canvas-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
   background: var(--panel);
+  /* D-022 cycle 2, F4: the svg and `.canvas-status` are normal-flow
+   * children, so this padding shifts them clear of the palette/panel
+   * overlays that sit at `.frame`'s own left/right edges. `::after` below
+   * is position:absolute, so it ignores padding (positions off the
+   * padding *edge*, not inset by it) and keeps its own scroll-range job
+   * unaffected. */
+  padding: 0 var(--panel-w) 0 var(--palette-w);
+}
+/* ponytail: this spacer manufactures scroll range for a canvas surface
+ * nothing can occupy yet -- there is no pan/zoom (F-016). Its only
+ * consumer is the C1 e2e guard. Delete it once F-016 lands a real
+ * scrollable/zoomable surface; the guard should then assert against that
+ * instead. */
+.canvas-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--space-7) * 26);
+  height: calc(var(--space-7) * 26 * 8 / 11);
+  pointer-events: none;
+}
+.canvas-svg {
+  display: block;
+}
+.canvas-status {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-70);
+  border-top: var(--border-hairline) solid var(--paper-line);
+}
+
+/* ---- overlays: the two side panels ----------------------------------------
+ * Absolutely positioned and pinned to an edge of `.frame`, so a width
+ * change on either one can never reach the canvas -- it is `inset: 0` of
+ * the same frame either way (N12). --paper, not --panel: the panels are
+ * notebook pages laid ON the graph-paper canvas, so they read as a
+ * different surface, not as a hole in the same one. */
+.palette,
+.mission-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  background: var(--paper);
   overflow: hidden;
+  width: var(--space-7);
+  box-shadow: var(--shadow-lifted);
   transition: width var(--duration-base) var(--ease-settle);
 }
 @media (prefers-reduced-motion: reduce) {
-  .palette { transition: none; }
+  .palette,
+  .mission-panel { transition: none; }
 }
+.palette { left: 0; border-right: var(--border-hairline) solid var(--paper-line); }
+.mission-panel { right: 0; border-left: var(--border-hairline) solid var(--paper-line); }
+
+/* D-021's narrowed widths, carried over: the palette holds five short rows
+ * and does not need more than 4 x --space-7; the mission panel keeps 5.
+ * Read off `.frame`'s --palette-w/--panel-w (D-022 cycle 2) rather than
+ * repeating the calc(), so the canvas-content inset above can never drift
+ * from the width that actually needs clearing. */
 .palette[data-state="expanded"] {
-  width: calc(var(--space-7) * 5 + var(--space-6));
+  width: var(--palette-w);
+}
+.mission-panel[data-state="expanded"] {
+  width: var(--panel-w);
 }
 .palette__head {
   display: flex;
@@ -175,63 +272,6 @@ main > h1 {
   color: var(--ink);
 }
 
-/* ---- canvas region (middle, always present, never covered) -------------- */
-/* Column stack: canvas-wrap, run-control and results each centre via
- * `align-items: center`; no `margin: auto` centring hack needed. */
-.canvas-region {
-  flex: 1 1 0;
-  min-width: calc(var(--space-7) * 6);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  overflow: auto;
-  background: var(--paper);
-  position: relative;
-}
-/* The exploration's .canvas-wrap holds only the svg, at a fixed 704x512.
- * Ours also holds .canvas-status (F-004's addition, a real region this
- * markup needs styled) below it, so height is left to content instead of
- * forced to 512 -- the svg keeps its own 704x512 intrinsic size (attributes
- * in shell.html) and the status line adds its own height beneath it. Width
- * stays the fixed 11 x --space-7 = 704px design surface. */
-.canvas-wrap {
-  flex: 0 0 auto;
-  width: calc(var(--space-7) * 11);
-  border: var(--border-hairline) solid var(--paper-line);
-  border-radius: var(--radius);
-  background: var(--panel);
-}
-.canvas-svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.canvas-status {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-xs);
-  color: var(--ink-70);
-  border-top: var(--border-hairline) solid var(--paper-line);
-}
-
-/* ---- mission panel (right, expands + pages back through missions) ------- */
-.mission-panel {
-  flex: 0 1 auto;
-  min-width: var(--space-7);
-  width: var(--space-7);
-  border-left: var(--border-hairline) solid var(--paper-line);
-  background: var(--panel);
-  overflow: hidden;
-  transition: width var(--duration-base) var(--ease-settle);
-}
-@media (prefers-reduced-motion: reduce) {
-  .mission-panel { transition: none; }
-}
-.mission-panel[data-state="expanded"] {
-  width: calc(var(--space-7) * 5);
-}
 .mission-panel__head {
   display: flex;
   align-items: center;
@@ -299,20 +339,95 @@ main > h1 {
   color: var(--ink-70);
 }
 
-/* ---- narrow widths — the canvas keeps its floor, the panels step down ---
- * Same arithmetic as the exploration: at 1024 only the mission panel steps
- * down (1024 - 368 palette - 256 panel = 400 > 384 floor); at 768 both
- * sides drop to 3 x --space-7 = 192 (768 - 192 - 192 = exactly 384 floor,
- * confirmed flush against the viewport edge with no h-scroll — D-017). */
+/* ---- the results drawer: the third overlay, rising from the bottom ------
+ * `pointer-events: none` on the region and `auto` on every direct child
+ * (`.drawer__body`, `.drawer__handle-row`, `#run-control`) is what keeps
+ * the canvas clickable through the transparent strip either side of the
+ * drawer's own centred content. */
+.drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  /* F6: named once, read by `.drawer__body`, `.drawer__handle-row` and
+   * `.run-control` below -- all three used to repeat `min(56rem, 100%)`. */
+  --drawer-max-w: min(56rem, 100%);
+}
+.drawer > * { pointer-events: auto; }
+
+.drawer__body {
+  width: var(--drawer-max-w);
+  max-height: 40svh;
+  overflow: auto;
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel);
+  border: var(--border-hairline) solid var(--paper-line);
+  border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-lifted);
+  animation: drawer-rise var(--duration-base) var(--ease-settle);
+}
+.drawer__body[hidden] { display: none; }
+@keyframes drawer-rise {
+  from { transform: translateY(var(--space-5)); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer__body { animation: none; }
+}
+
+.drawer__handle-row {
+  display: flex;
+  justify-content: center;
+  width: var(--drawer-max-w);
+  padding: var(--space-1) 0;
+  background: var(--chrome-bg);
+  border: var(--border-hairline) solid var(--paper-line);
+  border-bottom: none;
+}
+.drawer[data-state="collapsed"] .drawer__handle-row {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.drawer__toggle {
+  width: var(--space-6);
+  height: var(--space-5);
+  border: var(--border-hairline) solid var(--chrome-border);
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  position: relative;
+}
+.drawer__toggle:hover { background: var(--hover-bg); }
+
+/* The run button's own look is chart.css's (`.run-control__button`); this
+ * is only the flush chrome band it sits on, matching `.drawer__handle-row`
+ * above it. */
+.run-control {
+  width: var(--drawer-max-w);
+  padding: 0;
+  background: var(--chrome-bg);
+  border: var(--border-hairline) solid var(--paper-line);
+  border-bottom: none;
+}
+
+/* ---- narrow widths -------------------------------------------------------
+ * Only the panels step down; the canvas is `inset: 0` at every width and so
+ * has nothing to give up. Same arithmetic as the exploration: 4 x --space-7
+ * at 1024, 3 x --space-7 at 768. */
 @media (max-width: 1024px) {
-  .mission-panel[data-state="expanded"] {
-    width: calc(var(--space-7) * 4);
+  .frame {
+    --panel-w: calc(var(--space-7) * 4);
   }
 }
 @media (max-width: 768px) {
-  .palette[data-state="expanded"],
-  .mission-panel[data-state="expanded"] {
-    width: calc(var(--space-7) * 3);
+  .frame {
+    --palette-w: calc(var(--space-7) * 3);
+    --panel-w: calc(var(--space-7) * 3);
   }
   main > h1,
   .page-intro {
