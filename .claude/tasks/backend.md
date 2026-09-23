@@ -255,7 +255,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **729 passed**; flake8 0. Confirmed by the orchestrator in the primary checkout on `main`
+- Suite floor **730 passed** after F-017 (#66, `8f89578`, +1), reproduced by me on the PR head 2026-09-23.
+- Superseded: suite floor **729 passed**; flake8 0. Confirmed by the orchestrator in the primary checkout on `main`
   at `a81aba0`, 2026-09-23, after D-022 (+3) merged. Path since 720: F-014 +1 (721), F-015 +5 (726),
   D-022 +3 (729). `verify.py --all` still exits 1 with only `board-lane-fill` red, on purpose.
   **Known flake, not a floor break:** `test_observable_mode_is_config_not_identity` fails ~1 run in 10

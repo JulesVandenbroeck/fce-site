@@ -73,12 +73,6 @@ IDs are `F-nnn`, allocated in order and never reused.
   `graph.js:803` (node-drag `onMove`) were both proven load-bearing by PR #62's reviewer.
 - **History:** [`archive/frontend.md`](archive/frontend.md)
 
-### F-017 — d0 labelled as impact-parameter significance, no unit (backlog N1)
-- **Scope:** `static/js/expr.js` + one e2e check. **User ruling 2026-09-23:** significance, no unit, range widened to fit real values; var name `d0` unchanged.
-- **Accept:** C1 label/no unit; C2 range covers ≥99% of fixture d0 (uproot-measured); C3 red under "mm" mutation; C4 floor 729, flake8 0. checks=4.
-- **Branch / PR:** `task/f-017-d0-significance-label` — #66
-- **Status:** in review (cycle 1). Gate reproduced: 730 passed, flake8 0. Range preset [-50, 50] (99.09% of 10,148 fixture values).
-
 ## Ready
 
 _none — the canvas port (N12/N13/N14) is decomposed but not dispatched; see `design.md`
@@ -93,6 +87,7 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-017** — `d0` labelled "impact parameter significance (d0)", no unit, range preset [-50, 50] (99.09% of fixture values) — #66, `8f89578`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). User ruling 2026-09-23. Suite floor **730**. Closes N1.
 - **F-015** — full-bleed canvas, overlay panels, results drawer at the bottom edge — #62, `dc2337f`, **1 cycle + 1 re-spec (mine)**, clean gate (`findings=5, scope=pass, verdict=approve`). checks=7. Suite floor **726** (721 + 5).
   **Carries backlog N12 and N14.** No CSS by design — D-022 styles it. `#run-control`/`#results` moved out of `#canvas-region` into `<section id="drawer">`;
   the drawer is a **third `wireToggle` call**, not a second mechanism (`shell.js:31` is the only definition, called three times — verified by the reviewer).
