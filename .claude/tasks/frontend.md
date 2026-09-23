@@ -76,8 +76,8 @@ IDs are `F-nnn`, allocated in order and never reused.
 ### F-017 — d0 labelled as impact-parameter significance, no unit (backlog N1)
 - **Scope:** `static/js/expr.js` + one e2e check. **User ruling 2026-09-23:** significance, no unit, range widened to fit real values; var name `d0` unchanged.
 - **Accept:** C1 label/no unit; C2 range covers ≥99% of fixture d0 (uproot-measured); C3 red under "mm" mutation; C4 floor 729, flake8 0. checks=4.
-- **Branch / PR:** `task/f-017-d0-significance-label` — pending
-- **Status:** dispatched 2026-09-23 (cycle 1, worktree)
+- **Branch / PR:** `task/f-017-d0-significance-label` — #66
+- **Status:** in review (cycle 1). Gate reproduced: 730 passed, flake8 0. Range preset [-50, 50] (99.09% of 10,148 fixture values).
 
 ## Ready
 
