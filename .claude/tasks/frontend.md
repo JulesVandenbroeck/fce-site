@@ -73,6 +73,12 @@ IDs are `F-nnn`, allocated in order and never reused.
   `graph.js:803` (node-drag `onMove`) were both proven load-bearing by PR #62's reviewer.
 - **History:** [`archive/frontend.md`](archive/frontend.md)
 
+### F-017 — d0 labelled as impact-parameter significance, no unit (backlog N1)
+- **Scope:** `static/js/expr.js` + one e2e check. **User ruling 2026-09-23:** significance, no unit, range widened to fit real values; var name `d0` unchanged.
+- **Accept:** C1 label/no unit; C2 range covers ≥99% of fixture d0 (uproot-measured); C3 red under "mm" mutation; C4 floor 729, flake8 0. checks=4.
+- **Branch / PR:** `task/f-017-d0-significance-label` — pending
+- **Status:** dispatched 2026-09-23 (cycle 1, worktree)
+
 ## Ready
 
 _none — the canvas port (N12/N13/N14) is decomposed but not dispatched; see `design.md`
