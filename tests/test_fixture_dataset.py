@@ -129,14 +129,10 @@ def test_x3_dilepton_mass_sits_below_the_z_peak():
 # into a tmp FCE_HOME.
 # ---------------------------------------------------------------------------
 
-def test_run_analysis_completes_against_the_fixture(tmp_path, monkeypatch):
+def test_run_analysis_completes_against_the_fixture(tmp_path):
     """``run_analysis`` completes against a copy of the fixture in a tmp
     ``FCE_HOME``, writing ``output/hist0_<sample>.root`` per sample.
-    ``monkeypatch.setenv`` covers ``analytical_loop.run_physics_loop``'s own
-    cache/output resolution, which forwards ``env`` alongside the ``env``
-    dict already given to ``run_analysis`` for dataset discovery.
     """
-    monkeypatch.setenv("FCE_HOME", str(tmp_path))
     tmp_dataset_dir = tmp_path / "datasets" / "IDEA" / "91GeV"
     shutil.copytree(DATASET_DIR, tmp_dataset_dir)
 

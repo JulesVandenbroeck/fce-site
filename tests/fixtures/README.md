@@ -21,9 +21,9 @@ dataset, and not a licence to add a second one.
 - **Not the full dataset.** The real files are 51–166 MB each; this fixture keeps the first 2000
   events of each, ~750 KB total. It is not statistically representative of the full sample, only
   large enough to carry a real peak and exercise the pipeline.
-- **Not X4/X5/X6.** Those exist upstream but are undocumented (`docs/design-brief.md` §3) and
-  mission 3 is blocked on the user identifying them. Fabricating a fixture for them would be
-  fabricating mission-3 content ahead of that ruling.
+- **Not X4/X5/X6.** X4 (e⁺e⁻ → νν̄γ) and X5 (e⁺e⁻ → γγ) were identified 2026-09-22; X6 is still
+  unidentified. They are left out of this fixture regardless — the decision to keep the fixture to
+  X1/X2/X3/data is unchanged by the identification.
 
 ## Branch schema
 
