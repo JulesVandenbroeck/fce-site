@@ -85,13 +85,7 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-### D-023 — Port the zoom-controls styling (stacked on F-016)
-- **Scope:** `src/fce_web/static/css/shell.css`, `tests/e2e/test_canvas_style.py`.
-- **Accept:** port `.zoom-controls*` from `canvas-frame.css:145-184`; zoom buttons hit-test as themselves (not the palette) at 1440/1024/768 x palette expanded/collapsed; F-016's pan/zoom tests go green; suite floor, flake8 0.
-- **Depends on:** F-016's markup — so the branch is **stacked**: `task/d-023-zoom-controls-css` from `origin/task/f-016-canvas-pan-zoom`, PR **base = the F-016 branch**, merged into it by me, then F-016's PR carries both.
-- **Branch / PR:** `task/d-023-zoom-controls-css` — pending
-- **Status:** dispatched 2026-09-23 (cycle 1)
-
+_none._
 
 ## Ready
 
@@ -136,6 +130,7 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-023** — zoom-controls styling ported to `shell.css` + hit-test guard in `test_canvas_style.py` — #64, **stacked: merged into `task/f-016-canvas-pan-zoom` at `4704a76`**, reaches `main` with F-016. 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`). Guard mutation-proven red. F1 (inert `z-index: 3`) → N30; F2 (stray `#}` in F-016's `shell.html:27`) → carried into F-016. Coder never corrected its false "verify.py does not exist" body line; my gate comment on #64 records the real verify run.
 - **D-022** — ported the canvas-frame stylesheets onto the merged shell — #63, `a81aba0`, 2 cycles, clean gate (`findings=5, scope=pass, verdict=approve`). checks=**11**. Suite floor 726 -> **729**.
   `shell.css` + a new design-owned guard `tests/e2e/test_canvas_style.py`; `canvas.css` needed nothing. **Fixes a live defect that was on `main` for four days:** `shell.css` was last touched at D-019, before F-015's restructure, so the app was styled for markup that no longer existed — `.shell` had been renamed `.frame`, and `.canvas-wrap`'s fixed width plus `.canvas-svg { width:100% }` left the canvas with **no scroll range at all**.
   **Two orchestrator defects, both mine.** C4's check was `-k "h_scroll or no_h_scroll"`, which **collects 0 tests on `main`** — it would have passed vacuously; the coder caught it. And C11's property (canvas content *reachable*, not merely full-bleed) was never gated, which is why cycle 1 was a genuine cycle under §5.4 clause 3.
