@@ -1,13 +1,9 @@
 """One test guarding the four node interiors' styling (D-018).
 
-Replaces the uncommitted `docs/design-explorations/interior_style_verify.py`
-(review cycle 1, F1): pytest never ran that script, so nothing guarded the
-styling after merge. This is collected by pytest and uses the existing
-`browser`/`live_server` fixtures from `tests/e2e/conftest.py`, adding none.
-
-Guards two real regressions this task hit (PR #55, C6/C8): a control falling
-back to UA default colours, and `.node__interior[open]` losing
-`flex-shrink: 0` and silently deadlocking `growNode()`'s height measurement.
+Uses the existing `browser`/`live_server` fixtures from `tests/e2e/conftest.py`,
+adding none. Guards a control falling back to UA default colours, and
+`.node__interior[open]` losing `flex-shrink: 0` and silently deadlocking
+`growNode()`'s height measurement.
 """
 
 from __future__ import annotations
@@ -20,15 +16,10 @@ WIDTHS = (1440, 1024, 768)
 
 
 def test_interior_styling_and_fit(browser: Browser, live_server: str) -> None:
-    """C1/C3/C6: every native control inside an opened interior carries this
-    task's paper/label-on-fill colours (not a UA fallback), Multiplicity's
-    opened node reaches its full grown height (not deadlocked by a missing
+    """Every native control inside an opened interior carries the
+    paper/label-on-fill colours (not a UA fallback), Multiplicity's opened
+    node reaches its full grown height (not deadlocked by a missing
     `flex-shrink: 0`), and no width produces page-level horizontal scroll.
-
-    Verified red under both review-cycle-1 mutations (PR #55 body, cycle 2):
-    `.node__interior[open] { flex-shrink: 1 }` fails the height assertion;
-    removing `background: var(--paper)` from the shared control rule fails
-    the colour assertions.
     """
     for width in WIDTHS:
         context = browser.new_context(viewport={"width": width, "height": 900})

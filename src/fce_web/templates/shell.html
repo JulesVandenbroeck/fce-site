@@ -1,33 +1,13 @@
-{#- The four-region app shell (F-004; restructured F-015 per
-   docs/design-explorations/canvas-frame.html, backlog N12/N14).
+{#- The four-region app shell: a full-bleed analysis canvas with the
+   palette, mission panel and results drawer as overlays pinned to an edge
+   of `#frame`, never narrowing the canvas. Included by any page that hosts
+   the canvas -- currently index.html only.
 
-   Included by any page that hosts the analysis canvas -- currently
-   index.html only.
-
-   The canvas is full-bleed: the palette, the mission panel and the results
-   drawer are overlays on top of it rather than sharing width with it (N12)
-   -- opening a panel never narrows the canvas, because each panel is pinned
-   to an edge of `#frame` instead of sitting beside the canvas in a row.
-   Unstyled by design until D-022 lands -- static/css/ is design's, and the
-   classes below are the ones docs/design-explorations/canvas-frame.css
-   already expects, ported rather than invented.
-
-   Pan/zoom on the canvas surface (N13, F-016): #canvas-wrap also carries the
-   `canvas-viewport` class docs/design-explorations/canvas-frame.css already
-   styles (`overflow: auto`, absolute-inset-0) -- D-022's job to bring
-   canvas.css/shell.css to that rule, this port assumes it. The canvas is a
-   bounded, larger-than-viewport "sheet": #canvas-wrap pans it via native
-   `overflow: auto` scrolling -- no free transform, so keyboard arrow-key
-   panning and real scrollbars come from the platform once that CSS lands.
-   Zoom scales the SVG's rendered width/height against a `viewBox` graph.js
-   grows to fit the window and every node's position (never shrinks it --
-   D-021's monotonic-sheet rule). #zoom-controls is the keyboard/pointer path
-   for zoom and the one "Fit" affordance; graph.js's applyZoom/setZoom/fit
-   are ported from canvas-frame.html's own.
+   Pan/zoom lives in graph.js, not here.
 
    Two kinds of state stay apart, per docs/design-brief.md §4:
-     - the graph (nodes/edges) -- the engine's business, F-005's to add and
-       serialise into the run payload. #nodes-layer is empty until then.
+     - the graph (nodes/edges) -- the engine's business, serialised into the
+       run payload. #nodes-layer is empty until graph.js populates it.
      - palette/panel/drawer collapsed-or-expanded -- UI state, carried only
        in each region's own `data-state` attribute, and never read by a run
        payload.
