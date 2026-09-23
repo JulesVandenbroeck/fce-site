@@ -62,6 +62,25 @@ def test_every_builder_output_compiles_under_safe_eval(index: LoadedPage) -> Non
         safe_eval.compile_expr(expr)  # raises UnsafeExpression on the first bad one
 
 
+def test_d0_is_labelled_as_significance_with_no_unit(index: LoadedPage) -> None:
+    """F-017: `d0` is the ROOT branch `d0signif` (d0/sigma, dimensionless)
+    renamed to `d0` in path_filter.py, not a length -- so its label must say
+    "significance" and it must carry no unit, and the histogram range must
+    fit the real values (measured with uproot against the fixture ROOT
+    files, see the PR body)."""
+    page = index.page
+    prop = page.evaluate(
+        """async () => {
+          const m = await import('/static/js/expr.js');
+          return m.PROPERTIES.find((p) => p.name === 'd0');
+        }"""
+    )
+    assert "significance" in prop["label"], prop
+    assert "mm" not in prop["label"], prop
+    assert prop["unit"] == "", prop
+    assert prop["range"] == [-50, 50], prop
+
+
 def test_changed_selection_changes_the_histogram(index: LoadedPage) -> None:
     """C5: the default mission-1 chain, then the same chain with its
     Selection row's cut tightened through the real interior (not a second

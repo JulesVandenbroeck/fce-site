@@ -38,7 +38,7 @@ export const PROPERTIES = [
   { name: "e", label: "energy (e)", unit: "GeV", range: [0, 200] },
   { name: "charge", label: "charge", unit: "", range: [-1, 1] },
   { name: "flavour", label: "flavour", unit: "", range: [0, 20] },
-  { name: "d0", label: "transverse impact parameter (d0)", unit: "mm", range: [-1, 1] },
+  { name: "d0", label: "impact parameter significance (d0)", unit: "", range: [-50, 50] },
   { name: "z0", label: "longitudinal impact parameter (z0)", unit: "mm", range: [-1, 1] },
   { name: "btag", label: "b-tag score", unit: "", range: [0, 1] },
 ];
