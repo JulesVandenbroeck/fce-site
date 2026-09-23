@@ -85,12 +85,7 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-### D-024 — Delete the `.canvas-wrap::after` spacer and inert `z-index: 3` (N30)
-- **Scope:** `shell.css`, `tests/e2e/test_canvas_style.py`
-- **Accept:** C1 spacer gone, guard re-pointed to the real scroll range from the SVG sheet (both axes, 3 widths, mutation-red); C2 z-index removed, hit-test guard green; C3 F-016 tests green; C4 floor 737, verify red set = N5 set. checks=4.
-- **Branch / PR:** `task/d-024-drop-canvas-spacer` — #68
-- **Status:** in review (cycle 1). Gate reproduced on `d567fbd`: 738 passed (= main's collected count), flake8 0. Only `shell.css` changed. The existing guard already asserts the real scroll range, and goes red under a `.canvas-svg` 100% pin.
-
+_none._
 
 ## Ready
 
@@ -135,6 +130,7 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-024** — deleted the `.canvas-wrap::after` spacer and the inert `.zoom-controls` `z-index: 3` — #68, `c2b7b0c`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor **738**. The scroll range now comes from F-016's `applyZoom` alone. The existing guard is mutation-proven red on the real surface. Closes N30.
 - **D-023** — zoom-controls styling ported to `shell.css` + hit-test guard in `test_canvas_style.py` — #64, **stacked: merged into `task/f-016-canvas-pan-zoom` at `4704a76`**, reaches `main` with F-016. 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`). Guard mutation-proven red. F1 (inert `z-index: 3`) → N30; F2 (stray `#}` in F-016's `shell.html:27`) → carried into F-016. Coder never corrected its false "verify.py does not exist" body line; my gate comment on #64 records the real verify run.
 - **D-022** — ported the canvas-frame stylesheets onto the merged shell — #63, `a81aba0`, 2 cycles, clean gate (`findings=5, scope=pass, verdict=approve`). checks=**11**. Suite floor 726 -> **729**.
   `shell.css` + a new design-owned guard `tests/e2e/test_canvas_style.py`; `canvas.css` needed nothing. **Fixes a live defect that was on `main` for four days:** `shell.css` was last touched at D-019, before F-015's restructure, so the app was styled for markup that no longer existed — `.shell` had been renamed `.frame`, and `.canvas-wrap`'s fixed width plus `.canvas-svg { width:100% }` left the canvas with **no scroll range at all**.
@@ -269,7 +265,7 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md).
   #63 F9 / backlog N27). `.canvas-wrap`'s `padding: 0 var(--panel-w) 0 var(--palette-w)` does not react
   to `data-state`, so collapsing the palette reclaims no canvas — 192px of dead gutter at 1440. Known,
   merged deliberately, filed. **Do not report it as a new defect.**
-- **The `.canvas-wrap::after` spacer is scaffolding with an owner** (D-022). It manufactures
+- _(RETIRED by D-024, #68, `c2b7b0c`: the spacer is deleted)_ **The `.canvas-wrap::after` spacer was scaffolding with an owner** (D-022). It manufactures
   `#canvas-wrap`'s 1664x1210 scroll range because nothing can occupy the surface until F-016 lands a
   real pan/zoom surface. It carries a `ponytail:` comment naming that upgrade path. **F-016 deletes it
   and re-points D-022's C1 guard — it is not permanent dead space.**
