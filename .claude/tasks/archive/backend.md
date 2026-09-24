@@ -2336,3 +2336,8 @@ worktrees contend on the live-server port; I produced a false failure that way a
 - **Scope:** `src/fce_web/store.py`, `tests/test_store.py`, `docs/teacher.md`
 - **Branch / PR:** `task/b-033-store` — #73, merged `5f67f5c`, 2026-09-24
 - **Review:** cycle 1, `findings=3, scope=pass, verdict=approve` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/73#issuecomment-5812634321)). Reviewer mutation: `purge_class` keeping the `classes` row → `test_purge_removes_every_row` red. Coder's `2 failed` e2e was concurrent-load contention with B-031's suite (N7); my gate 742+1, the test 3/3 alone; reviewer 743 green. Deviation accepted: `_main(argv, env)` so the CLI test does not mutate `os.environ`. F1-F3 → N35.
+
+
+### B-031 — mission loader (M5)
+- **Scope:** `pyproject.toml`, `missions.py`, `content/missions/m-{1,2}.yaml`, `app.py`, `tests/test_missions.py`; c2 +`graph.py` (public alias)
+- **PR:** #74, merged `5edfe0f`, 2026-09-24. c1 `findings=5, rework` (F1 test asserting met under widened tolerance — green under the no-tolerance mutant; F3 empty dir loaded `{}` silently). c2 `findings=1, approve`. `ObsVectorSum` confirmed by me against plan-m4's default chain; student copy no longer names it. Reviewer mutation `met = value is not None` → red.
