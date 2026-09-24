@@ -2349,3 +2349,7 @@ worktrees contend on the live-server port; I produced a false failure that way a
 
 ### B-035 — launcher without access log (M5)
 - **PR:** #77, merged `a854b35`, 2026-09-24. c1 `findings=1, rework` — `test_launcher` was vacuous (stubbed `uvicorn.run` exit → still green); c2 adds a `served` assert, both mutations red. Closes N35 and N38 F1.
+
+
+### B-034 — join, cookie, progress, completion (M5, CONTRACT)
+- **PR:** #78, merged `1ea4611`, 2026-09-24. Re-spec (mine): scope omitted `test_api_events.py`/`test_api_run.py`, whose anonymous M-2 submits C2 correctly 400s — second time this session after B-032; lesson in the anchor. c1 `findings=6, rework`: **F1 forged cookie (real class, unjoined nickname) echoed as joined, met run → 500 on the completions→students FK**; F2 `response.delete_cookie` dropped on own-JSONResponse 400s. c2 `findings=3, rework`: **F7 class purged mid-run → /result 500** (same FK, reached by timing). c3 `findings=1, approve`. Final mutations: `student_exists` → class-only → C10 red; → True for purged → C13 IntegrityError red.

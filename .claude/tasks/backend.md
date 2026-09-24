@@ -11,12 +11,7 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approved 2026-09-24.
 
-### B-034 — join, cookie, progress, completion recording (**CONTRACT**)
-- **Scope:** `routes/api.py`, `routes/pages.py`, `jobs.py`, `docs/api.md`, `tests/test_progress.py`
-- **Accept:** C1-C7 in PR body; folds N38 F2/F3. F-020/F-021/F-022 consume `docs/api.md` + page context read-only.
-- **Branch / PR:** `task/b-034-progress` — #78
-- **Status:** cycle 3 (LAST under §5.7) dispatched. c2 `findings=3, rework` — F7 purge mid-run → /result 500 on FK; F8/F9 comments.
-- **Review:** c1 `findings=6, rework` — **F1 forged cookie (unjoined nickname) shown as joined, met run → 500 on FK**; F2 stale cookie not cleared on /api/run 400s.
+_none._
 
 ## Ready
 
@@ -54,6 +49,7 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-034** — **CONTRACT**: `/api/join` (HttpOnly SameSite=Lax cookie), `GET /api/progress`, unlock gating on `/api/run`, completion recording + `objective.unlocked`, `GET /` page context — #78, `1ea4611`, **3 cycles (§5.7 limit) + 1 re-spec (mine)**, clean gate (`findings=1, scope=pass, verdict=approve`). Suite **751**. Contract: `docs/api.md` join/progress/"Page context" — **F-020/F-021/F-022 consume it read-only**. Cookie accepted only if `store.student_exists`. F10 → N39.
 - **B-035** — `python -m fce_web` launcher with `access_log=False` (default host `0.0.0.0`), teacher start docs; N35 store cleanups; N38 F1 card-gating test — #77, `a854b35`, 2 cycles, clean gate (`findings=0, scope=pass, verdict=approve`). Suite **750**. c1 F1: launcher test passed when the server never started. Closes N35, N38 F1.
 - **B-032** — runs know their mission: `missionId` validated (400), dataset from mission (`_V1_DATASET` gone), card/mode gating 400 naming the node, per-job `objective {missionId, met, value, message}` on `/result` incl. cache hits — #75, `38e9ccc`, 1 cycle + 1 re-spec (mine: scope omitted `test_api_events.py`) + stacked F-023 (#76), clean gate (`findings=3, scope=pass, verdict=approve`). Suite **748**. F1-F3 → N38, folded into B-034.
 - **B-031** — mission loader + startup validation, M-1/M-2 YAML, `missions.evaluate()`; PyYAML added — #74, `5edfe0f`, 2 cycles, clean gate (`findings=1, scope=pass, verdict=approve`). Suite **745** on main. `app.state.missions` dict; `Mission` frozen dataclass; `evaluate()` → `{met, value, message}`; `graph.OBSERVABLE_MODES` public. c1 F1 was a fake mutation test. F6 → N37 (folded into B-032).

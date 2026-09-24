@@ -13,14 +13,12 @@ _none._
 
 ## Ready
 
-_none — the canvas port (N12/N13/N14) is decomposed but not dispatched; see `design.md`
-`## Decisions in force` §8-9 and the note below._
+- **F-020** — join form (class code + nickname, "not your real name") — released by B-034 (#78). Contract `docs/api.md` `/api/join` + "Page context".
+- **F-021** — mission panel/pager + palette/mode gating from the page context — released by B-034; scout Q3 first. F-020 ∥ F-021 in worktrees if both touch disjoint templates.
 
 ## Blocked
 
 M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md).
-- **F-020** — join form (class code + nickname) — blocked on B-034.
-- **F-021** — mission panel/pager from server data; locked kinds/modes inert "opens in M-n" — blocked on B-034; scout Q3 first.
 - **F-022** — objective outcome after a run (margin note / completion + unlock) — blocked on F-021.
 
 ## Done
