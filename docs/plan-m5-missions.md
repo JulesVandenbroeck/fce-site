@@ -93,3 +93,17 @@ exactly `{board-lane-fill}`.
 
 1. Commit this as `docs/plan-m5-missions.md`; add B-031..B-034, F-020..F-022, D-027 to the task lists.
 2. Dispatch B-031 ∥ B-033 with worktree isolation.
+
+## Answers (scout, 2026-09-24)
+
+- **Q1.** `GraphError(ValueError)` carries `node_id` (`graph.py:49,67`); `api.py:54-55` turns it into
+  `400 {"error","nodeId"}`. Mode read in `_resolved_kind()` (`graph.py:123`); `_OBS_MODES` at `:92`;
+  kinds checked against `PALETTE_KINDS` in `_parse_nodes()` (`:90`, `:132-155`). Gating hooks there.
+- **Q1b.** `Job.mission_id` at `jobs.py:90`; `_V1_DATASET` defined `:66`, used once `:171`
+  (`submit`). Payload built `:255` via `_build_payload` (`:274-291`). **Cache hit returns early at
+  `:182-192`** through `_retag_payload(cached.payload, mission_id)` (`:187`) — so the objective must
+  be evaluated on that path too, not only after `_build_payload`.
+- **Q2.** Launched only as `uvicorn --factory fce_web.app:create_app` (docstring, `app.py:27`); no
+  `__main__`, no `[project.scripts]`, no `access_log` setting. **Uvicorn's default access log prints
+  the client IP**, so B-034 must ship a launcher (`python -m fce_web`) with `access_log=False` and
+  document it. Nothing in `src/` logs `request.client`.
