@@ -11,13 +11,23 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approved 2026-09-24.
 
+### B-034 — join, cookie, progress, completion recording (**CONTRACT**)
+- **Scope:** `routes/api.py`, `routes/pages.py`, `jobs.py`, `docs/api.md`, `tests/test_progress.py`
+- **Accept:** C1-C7 in PR body; folds N38 F2/F3. F-020/F-021/F-022 consume `docs/api.md` + page context read-only.
+- **Branch / PR:** `task/b-034-progress` — pending
+- **Status:** dispatched (cycle 1), worktree
+
+### B-035 — launcher without access log + N35 + N38 F1
+- **Scope:** `src/fce_web/__main__.py`, `app.py` (docstring), `store.py`, `tests/test_graph.py`, `docs/teacher.md`
+- **Branch / PR:** `task/b-035-launcher` — pending
+- **Status:** dispatched (cycle 1), worktree
+
 ## Ready
 
 _none._
 
 ## Blocked
 
-- **B-034** — **CONTRACT**: join/cookie/progress/completion + page context + `docs/api.md` — blocked on B-032, B-033; scout Q2 first. Reviewer raised effort.
 
 M2 plan (historical): `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
 
