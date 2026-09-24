@@ -25,10 +25,53 @@ contracts below are complete.
 
 | Method | Path | Purpose |
 |---|---|---|
+| `POST` | `/api/join` | Join a class under a nickname; sets the identity cookie |
+| `GET` | `/api/progress` | The joined student (or none) and every mission's unlock state |
 | `POST` | `/api/run` | Submit an analysis recipe; returns a run id |
 | `GET` | `/api/run/{id}/events` | SSE stream: progress, phase, completion |
 | `GET` | `/api/run/{id}/result` | Histogram data, cutflow, fit results |
 | `GET` | `/api/run/{id}/plot.png` | `mplhep` PNG export |
+
+### `POST /api/join`
+
+Task B-034. Joins a class under a nickname -- no accounts, no signing; class code + nickname
+*is* the identity (`docs/plan-m5-missions.md`, "Identity").
+
+```json
+{"classCode": "AU6JWL", "nickname": "quarkqueen"}
+```
+
+`400` with `{"error": "<student-legible message>"}` for an unknown `classCode`
+(`fce_web.store.class_exists`) or an invalid `nickname` (`fce_web.store.validate_nickname` --
+2-20 characters, letters/numbers/`_`/`-` only). Nothing is joined or stored either way.
+
+On success: `200` with the [progress body](#get-apiprogress-response) for the newly-joined
+student, and an **HttpOnly, `SameSite=Lax`** cookie (`fce_student`, value
+`"{classCode}:{nickname}"` -- safe as a plain split, since neither field can contain `:`) that
+identifies (class code, nickname) unambiguously to every later request. Joining is idempotent
+(`fce_web.store.join`): rejoining the same pair, from any browser, returns the same progress.
+
+### `GET /api/progress`
+
+Task B-034. The joined student (from the request's cookie) and every mission's unlock state.
+No body -- reads the cookie only.
+
+```json
+{
+  "student": {"classCode": "AU6JWL", "nickname": "quarkqueen"},
+  "missions": [
+    {"id": "M-1", "order": 1, "title": "First Light", "state": "done"},
+    {"id": "M-2", "order": 2, "title": "Cleaning the Signal", "state": "open"}
+  ]
+}
+```
+
+`"student"` is `null` when there is no cookie, or when the cookie names a class that no longer
+exists (purged) -- that cookie is cleared on the response and the requester is treated as not
+joined, never as an error. `"missions"` is ordered by `order`. Unlock rule: the first mission is
+always at least `"open"`; mission n+1 is `"open"` iff mission n is `"done"`; every other mission
+is `"locked"`. An anonymous requester (no cookie) sees the first mission `"open"` and everything
+else `"locked"`, the same as a freshly-joined student with no completions.
 
 ### `POST /api/run` request body
 
@@ -91,6 +134,14 @@ that node — the same `GraphError` shape as every other rejected graph above. T
 executes against is the mission's own `dataset` (`energy`/`detector`), never a hardcoded one.
 The browser also locks unavailable cards/modes in the palette (`docs/design-brief.md` §4), but
 that is a convenience only — the server is the actual gate.
+
+**Progress gating (task B-034).** The request's `fce_student` cookie (if any and if its class
+still exists) is read to check whether the requester has unlocked `missionId`, by the same rule
+as [`GET /api/progress`](#get-apiprogress): a mission whose state would be `"locked"` is a `400`
+with `{"error": "<student-legible message>", "nodeId": null}` — nothing is submitted. An
+anonymous request (no cookie) is allowed exactly for the first mission, the same as a
+freshly-joined student — but records no completion, since there is no student to record it
+against.
 
 ### `POST /api/run` response
 
@@ -433,7 +484,7 @@ its own mission. A run resolving to the same cached digest under two different m
 two different `objective`s.
 
 ```json
-{"missionId": "M-1", "met": true, "value": 91.4, "message": "Peak found at 91.4 GeV -- within 3 GeV of 91.19 GeV."}
+{"missionId": "M-1", "met": true, "value": 91.4, "message": "Peak found at 91.4 GeV -- within 3 GeV of 91.19 GeV.", "unlocked": "M-2"}
 ```
 
 | Field | Type | Nullable | Meaning |
@@ -442,3 +493,13 @@ two different `objective`s.
 | `met` | boolean | no | Whether the run satisfies the mission's objective. Always `false` for a mission whose `objective.type` is `"none"` (no automatic objective yet, e.g. M-2). |
 | `value` | number | yes | The measured quantity the objective checked (e.g. the histogram's peak position, in GeV) — `null` when there is nothing to report (a `"none"`-type objective, or no histogram data yet). |
 | `message` | string | no | A student-legible outcome line — a margin note ("your peak is at 82.5 GeV") on a miss, never an error. |
+| `unlocked` | string | yes | Task B-034. The id of the mission this result just opened, or `null`. Set only when `met` is `true` **and** the run was submitted by a joined student (a cookie naming an existing class) — a completion is recorded at that point (`fce_web.store.record_completion`, idempotent — recorded once no matter how many times `/result` is re-fetched for the same job) and `unlocked` names the mission one order after this one, if any exist. `null` for `met: false`, for an anonymous run (nothing is recorded), and for the last mission. |
+
+**Page context (task B-034).** `GET /` (`fce_web.routes.pages`) renders `templates/index.html`
+with, beyond the existing `title`:
+
+| Variable | Type | Meaning |
+|---|---|---|
+| `student` | object \| `null` | `{"classCode": str, "nickname": str}` for the joined student named by the request's cookie, or `null` if not joined (including a stale, purged-class cookie, which is cleared on this response). Same shape as `GET /api/progress`'s `student`. |
+| `missions` | object[] | Every mission, same shape as `GET /api/progress`'s `missions[]`: `{id, order, title, state}`. |
+| `current_mission` | object \| `null` | The mission to show by default: the first `"open"` mission, else the last `"done"` one, else the first mission. `null` only if no missions are loaded at all (unreachable in practice — `create_app` fails startup first). Shape: `{id, title, brief, hints: string[], cards: string[], observableModes: string[]}` — `cards`/`observableModes` are this mission's own palette gating (`docs/design-brief.md` §4), for the frontend to grey out everything else. |

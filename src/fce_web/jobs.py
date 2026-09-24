@@ -48,7 +48,7 @@ import threading
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Dict, Mapping, Optional
+from typing import Dict, Mapping, Optional, Tuple
 
 from fce_web.engine.driver import run_analysis
 from fce_web.engine.runconfig import RunConfig
@@ -57,13 +57,8 @@ from fce_web.paths import get_fce_home
 from fce_web.payload import build_histogram_payload
 from fce_web.runs import RunContext, RunResult
 
-# B-032: the real request path (`routes/api.py`) always resolves a mission
-# first and passes its own `Dataset`/cards/observable_modes into `submit`
-# explicitly -- this is only the fallback for a caller (this module's own
-# tests) that exercises the registry directly, with no mission in hand.
-# ponytail: same value `_V1_DATASET` used to hardcode, kept as a default so
-# `submit()` stays callable without first loading a mission; upgrade if the
-# registry ever needs to run with no dataset default at all.
+# ponytail: fallback for a caller with no mission in hand (this module's own tests) --
+# the real request path (`routes/api.py`) always passes its own mission-derived `Dataset`.
 _DEFAULT_DATASET = Dataset(energy="91 GeV", detector="IDEA")
 
 # ponytail: process-lifetime cap on how many finished jobs the registry
@@ -97,6 +92,13 @@ class Job:
     result: Optional[RunResult] = None
     payload: Optional[dict] = None
     error: Optional[str] = None
+    # (classCode, nickname) of the requester who submitted this run, or ``None`` for an
+    # anonymous request (B-034) -- captured at submit time from the request's own cookie,
+    # never inherited from a cache-hit donor job.
+    student: Optional[Tuple[str, str]] = None
+    # This job's own submitted graph, as JSON -- what a completion recording stores
+    # (B-034/C4). A cache-hit job gets its *own* submitter's graph, not the donor's.
+    graph_json: Optional[str] = None
 
 
 def _make_ctx(events: "queue.Queue") -> RunContext:
@@ -141,6 +143,8 @@ class JobRegistry:
         """
         self._env = env
         self._lock = threading.Lock()
+        # exposed read-only so routes needing `fce_web.store` (same optional-env
+        # convention) can share this app's env without `app.py` growing a second copy.
         self._jobs: Dict[str, Job] = OrderedDict()
         self._cache: Dict[str, str] = {}  # config digest -> finished job id
         # `output/hist{plot_idx}_{sample}.root` is addressed by *plot_idx*
@@ -164,6 +168,13 @@ class JobRegistry:
         # whichever `Job` the reading stream happens to hold.
         self._queue_owner: Dict[int, str] = {}
 
+    @property
+    def env(self) -> Optional[Mapping[str, str]]:
+        """This registry's environment mapping -- the same one passed to
+        ``create_app(env=...)``. Routes needing ``fce_web.store`` (B-034) read this
+        rather than ``app.py`` growing a second copy of the same value."""
+        return self._env
+
     def submit(
         self,
         graph: dict,
@@ -171,6 +182,7 @@ class JobRegistry:
         dataset: Optional[Dataset] = None,
         allowed_cards=PALETTE_KINDS,
         allowed_observable_modes=OBSERVABLE_MODES,
+        student: Optional[Tuple[str, str]] = None,
     ) -> Job:
         """Validate *graph* and start (or instantly resolve, on a cache
         hit) a run. Raises :class:`fce_web.graph.GraphError` for an invalid
@@ -180,10 +192,15 @@ class JobRegistry:
         it from ``app.state.missions`` and always passes it); *allowed_cards*
         and *allowed_observable_modes* are the mission's own palette gating
         (B-032/C3). All three default to "everything", for a caller with no
-        mission in hand.
+        mission in hand. *student* is ``(classCode, nickname)`` from the
+        requester's cookie, or ``None`` for an anonymous request (B-034) --
+        stamped onto the returned ``Job`` so ``/result`` can record a
+        completion later, from this submitter's own graph, never a cache
+        donor's.
         """
         config = build_run_config(graph, dataset or _DEFAULT_DATASET, allowed_cards, allowed_observable_modes)
         digest = _config_digest(config)
+        graph_json = json.dumps(graph, sort_keys=True)
 
         job_id = uuid.uuid4().hex
         events: "queue.Queue" = queue.Queue()
@@ -199,13 +216,17 @@ class JobRegistry:
                     events=events, status="done", cache_hit=True,
                     result=cached.result,
                     payload=_retag_payload(cached.payload, mission_id),
+                    student=student, graph_json=graph_json,
                 )
                 self._jobs[job.id] = job
                 self._evict_over_cap()
                 job.events.put({"type": "done", "status": "done"})
                 return job
 
-            job = Job(id=job_id, mission_id=mission_id, ctx=ctx, events=events)
+            job = Job(
+                id=job_id, mission_id=mission_id, ctx=ctx, events=events,
+                student=student, graph_json=graph_json,
+            )
             self._jobs[job.id] = job
             self._evict_over_cap()
 
