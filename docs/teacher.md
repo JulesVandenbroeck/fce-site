@@ -1,3 +1,20 @@
+# Starting the server
+
+```
+python -m fce_web
+```
+
+Binds `0.0.0.0:8000` by default, so students on the same classroom network reach it at
+`http://<your machine's LAN IP>:8000` (find that IP with your OS's usual network settings
+panel). Pass `--host 127.0.0.1` to refuse LAN connections and keep it to one laptop, or
+`--port <n>` to use a different port. This launch turns uvicorn's access log off, so no
+student's IP address is ever printed or logged (`docs/design-brief.md` §6) -- the documented
+alternative, `uvicorn --factory fce_web.app:create_app`, does not do that and should not be
+used for a classroom.
+
+All student data (class codes, nicknames, mission progress) lives in one SQLite file under
+`FCE_HOME` (default `~/.fce`, override with the `FCE_HOME` environment variable).
+
 # Teacher CLI
 
 Two commands, run from the server machine, in the project's virtualenv.

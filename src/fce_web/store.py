@@ -127,7 +127,7 @@ def completed_missions(code: str, nickname: str, env: Optional[Mapping[str, str]
     with _connect(env) as conn:
         rows = conn.execute(
             "SELECT mission_id FROM completions WHERE class_code = ? AND nickname = ?"
-            " ORDER BY completed_at",
+            " ORDER BY rowid",
             (code, nickname),
         ).fetchall()
     return [row[0] for row in rows]
@@ -136,10 +136,10 @@ def completed_missions(code: str, nickname: str, env: Optional[Mapping[str, str]
 def purge_class(code: str, env: Optional[Mapping[str, str]] = None) -> dict:
     """Delete a class and every student/completion row under it.
 
-    Returns a count dict. Raises ``ValueError`` if the class does not exist.
+    Returns a count dict. Raises ``ValueError`` if the class does not exist -- checked by the
+    ``classes`` delete itself removing 0 rows, inside the same transaction as the other two
+    deletes, so an unknown code rolls back rather than leaving a partial purge.
     """
-    if not class_exists(code, env):
-        raise ValueError(f"Class code '{code}' does not exist.")
     with _connect(env) as conn:
         completions = conn.execute(
             "DELETE FROM completions WHERE class_code = ?", (code,)
@@ -150,6 +150,8 @@ def purge_class(code: str, env: Optional[Mapping[str, str]] = None) -> dict:
         classes = conn.execute(
             "DELETE FROM classes WHERE code = ?", (code,)
         ).rowcount
+        if classes == 0:
+            raise ValueError(f"Class code '{code}' does not exist.")
     return {"classes": classes, "students": students, "completions": completions}
 
 
@@ -172,7 +174,6 @@ def _main(argv: Optional[list] = None, env: Optional[Mapping[str, str]] = None) 
         print(create_class(env=env))
         return 0
 
-    counts = None
     try:
         counts = purge_class(args.code, env=env)
     except ValueError as exc:

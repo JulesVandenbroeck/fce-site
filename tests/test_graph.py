@@ -361,3 +361,14 @@ def test_disagreeing_multiplicity_chains_into_shared_selection_are_rejected():
 # and test_bad_selection_expr_is_a_400_naming_its_node -- and the fourth only
 # asserted GraphError's default node_id=None with no reintroduction it guards
 # against. Kept there instead.
+
+
+# ---- N38 F1: a mission that gates out a kind the graph actually uses
+# raises GraphError naming the offending node, not just "somewhere in this
+# graph". Mission-1's payload has a Selection node; a mission offering only
+# Multiplicity must reject it by that node's id.
+
+def test_gated_kind_names_the_offending_node():
+    with pytest.raises(GraphError, match="sel1") as excinfo:
+        build_run_config(_mission1_payload(), _dataset(), allowed_cards=("Multiplicity",))
+    assert excinfo.value.node_id == "sel1"

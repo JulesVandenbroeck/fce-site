@@ -24,7 +24,10 @@ That is a requirement, not a coincidence: see ``docs_url`` below.
 
 Run it with::
 
-    uvicorn --factory fce_web.app:create_app
+    python -m fce_web
+
+which wraps uvicorn with ``access_log=False`` -- see ``fce_web.__main__`` for why a bare
+``uvicorn --factory fce_web.app:create_app`` is not the launch to document any more.
 """
 
 from pathlib import Path
