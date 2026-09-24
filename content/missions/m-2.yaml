@@ -1,0 +1,25 @@
+# M-2 -- Cleaning the Signal. Stub for M5: unlockable and viewable, but not
+# yet automatically gradeable -- objective type 'none' (docs/plan-m5-missions.md,
+# "User rulings" 1). Full objective and copy land in M6.
+id: M-2
+order: 2
+title: Cleaning the Signal
+brief: >
+  Same plot as before, but now everything else is mixed in too. Use cuts to
+  clear away the noise and keep your Z peak clean.
+dataset:
+  energy: "91 GeV"
+  detector: IDEA
+cards:
+  - Multiplicity
+  - Selection
+  - Observable
+  - Histogram
+observable_modes:
+  - ObsVectorSum
+objective:
+  type: none
+hints:
+  - "This mission isn't checked automatically yet -- more coming soon."
+success: >
+  Coming soon.

@@ -29,6 +29,8 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "jinja2",
+    # Mission definitions (content/missions/*.yaml), ruled in 2026-09-24 (B-031)
+    "pyyaml",
     # Physics engine, carried over from the reference repo
     "uproot",
     "boost-histogram",

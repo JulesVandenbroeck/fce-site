@@ -91,6 +91,12 @@ PALETTE_KINDS = ("Multiplicity", "Selection", "Observable", "Histogram")
 
 _OBS_MODES = ("ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom")
 
+#: Public alias of `_OBS_MODES`, for modules outside this one (e.g.
+#: `fce_web.missions`) that need the Observable mode tuple without reaching
+#: into a private name (F4, B-031 cycle 2). Every existing `_OBS_MODES` use
+#: in this file is unaffected.
+OBSERVABLE_MODES = _OBS_MODES
+
 # ui/graph.py:1719 -- one Multiplicity node's cut is this 7-tuple, in this
 # field order. `_load_mult_cuts` in runconfig.py enforces the same shape on
 # the way back out; reproduced here so a node's config dict translates to
