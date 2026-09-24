@@ -11,13 +11,6 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approved 2026-09-24.
 
-### B-032 — run wiring: missionId, dataset from mission, gating, `objective` on `/result`
-- **Scope:** `jobs.py`, `routes/api.py`, `graph.py`, `docs/api.md`, `tests/test_api_run.py` (+ `test_api_contract.py` if the doc parity test needs it)
-- **Accept:** C1-C6 in PR body; per-job objective incl. cache-hit path (Q1b); folds N37
-- **Depends on:** B-031 (done)
-- **Branch / PR:** `task/b-032-run-missions` — #75
-- **Status:** cycle 1 + **re-spec (mine)**: my scope omitted `tests/test_api_events.py` (5 tests use fake ids / `ObsCustom` under M-1). Stacked **F-023** fixes `shell.html:82` `data-mission-id="m1"` → `M-1` (12 e2e reds).
-
 ## Ready
 
 _none._
@@ -55,6 +48,7 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-032** — runs know their mission: `missionId` validated (400), dataset from mission (`_V1_DATASET` gone), card/mode gating 400 naming the node, per-job `objective {missionId, met, value, message}` on `/result` incl. cache hits — #75, `38e9ccc`, 1 cycle + 1 re-spec (mine: scope omitted `test_api_events.py`) + stacked F-023 (#76), clean gate (`findings=3, scope=pass, verdict=approve`). Suite **748**. F1-F3 → N38, folded into B-034.
 - **B-031** — mission loader + startup validation, M-1/M-2 YAML, `missions.evaluate()`; PyYAML added — #74, `5edfe0f`, 2 cycles, clean gate (`findings=1, scope=pass, verdict=approve`). Suite **745** on main. `app.state.missions` dict; `Mission` frozen dataclass; `evaluate()` → `{met, value, message}`; `graph.OBSERVABLE_MODES` public. c1 F1 was a fake mutation test. F6 → N37 (folded into B-032).
 - **B-033** — SQLite store + teacher CLI (`python -m fce_web.store create-class|purge`) — #73, `5f67f5c`, 1 cycle, clean gate (`findings=3, scope=pass, verdict=approve`). Suite 743 (739 + 4). Signatures in PR #73's body — **B-034 consumes them**. F1-F3 (dead line, purge pre-check race, `ORDER BY rowid`) → N35, folded into B-034's scope.
 - **B-030** — dead `setenv` in `test_fixture_dataset.py` + stale X4/X5 comments (N10 + N4) — #65, `b6011c4`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor 729 unchanged. Reviewer's stray 1-failed run was e2e port contention with my concurrent #66 gate (N7), not this PR.

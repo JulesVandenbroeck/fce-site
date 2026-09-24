@@ -2341,3 +2341,7 @@ worktrees contend on the live-server port; I produced a false failure that way a
 ### B-031 — mission loader (M5)
 - **Scope:** `pyproject.toml`, `missions.py`, `content/missions/m-{1,2}.yaml`, `app.py`, `tests/test_missions.py`; c2 +`graph.py` (public alias)
 - **PR:** #74, merged `5edfe0f`, 2026-09-24. c1 `findings=5, rework` (F1 test asserting met under widened tolerance — green under the no-tolerance mutant; F3 empty dir loaded `{}` silently). c2 `findings=1, approve`. `ObsVectorSum` confirmed by me against plan-m4's default chain; student copy no longer names it. Reviewer mutation `met = value is not None` → red.
+
+
+### B-032 — runs know their mission (M5)
+- **PR:** #75, merged `38e9ccc`, 2026-09-24. Scope: `jobs.py`, `routes/api.py`, `graph.py`, `docs/api.md`, `tests/test_api_run.py`; re-spec added `tests/test_api_events.py` (my omission — fake ids `A`/`B` and `ObsCustom` under M-1). Stacked F-023 (#76) fixed `shell.html`'s `m1`. Review c1 `findings=3, approve`; mutations: objective pinned to M-1 → C6 red; `_check_gating` no-op → C3 mode test red. F1 (card half of gating untested) → N38. Combined head gated 748 by me.

@@ -9,11 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-023 — browser sends the real mission id (stacked on B-032)
-- **Scope:** `templates/shell.html` (`:82` `data-mission-id`)
-- **Accept:** id is `M-1`; e2e suite re-run on B-032 + this; remaining reds reported, not fixed
-- **Branch / PR:** `task/f-023-mission-id` → base `task/b-032-run-missions`
-- **Status:** dispatched (cycle 1)
+_none._
 
 ## Ready
 
@@ -32,6 +28,7 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md).
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-023** — `shell.html` sends mission id `M-1`, not `m1` — #76, stacked into `task/b-032-run-missions` at `f6791d1`, reaches main with B-032 (`38e9ccc`). 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Mutation → 12 e2e red. F-021 replaces the literal with server-rendered data.
 - **F-019** — trimmed duplicated focus-timing comment in `test_graph.py` (N32) — #71, `4a9a198`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Floor 739 unchanged.
 - **F-018** — frontend backlog sweep (N6, N11, N20, N21, N22, N24, N31) — #69, `427a0f2`, 1 cycle, clean gate (`findings=1, scope=pass, verdict=approve`). Suite floor **738** (−1 folded loop, +1 pointercancel check). N24 de-flaked by waiting for summary focus (20/20). `wirePan` tears down on `lostpointercapture`, mutation-proven. F1 (7-line comment → 1) → N32.
 - **F-016** — canvas pan (left-drag + keyboard) and zoom 50-200% with one Fit affordance — #67, `1075a03`, **1 cycle across 2 handoffs + 1 stacked design task (D-023 #64)**, clean gate (`findings=2, scope=pass, verdict=approve`). checks=11. Suite floor **737**. Closes N13 and N23.
