@@ -350,13 +350,7 @@ def test_observable_mode_is_config_not_identity(index: LoadedPage) -> None:
     summary = page.locator('.node[data-node-id="n1"] summary')
     summary.focus()
     page.keyboard.press("Enter")
-    # wireInteriorToggle's own `toggle` handler re-focuses `summary` itself,
-    # and dispatches that as its own task rather than synchronously with the
-    # keypress (see test_opened_observable_node_is_brought_to_front's own
-    # comment) -- wait for that re-focus to land before moving focus onward,
-    # or it can steal focus back off the radio a moment later and turn the
-    # keyboard Space below into a second summary toggle instead of a
-    # selection.
+    # wireInteriorToggle re-focuses summary asynchronously (see test_opened_observable_node_is_brought_to_front).
     expect(summary).to_be_focused()
     # .focus() + Space, not .check()'s real pointer click: the interior is
     # unstyled until D-018, and VectorSum's now-larger default panel (six
