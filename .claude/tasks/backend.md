@@ -19,8 +19,8 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approv
 
 ### B-035 — launcher without access log + N35 + N38 F1
 - **Scope:** `src/fce_web/__main__.py`, `app.py` (docstring), `store.py`, `tests/test_graph.py`, `docs/teacher.md`
-- **Branch / PR:** `task/b-035-launcher` — pending
-- **Status:** dispatched (cycle 1), worktree
+- **Branch / PR:** `task/b-035-launcher` — #77
+- **Status:** in review (cycle 1); gate 749 + 1 N36 flake on `origin/task/b-035-launcher`, flake8 0. Default host `0.0.0.0`.
 
 ## Ready
 
