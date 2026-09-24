@@ -44,7 +44,10 @@ button:focus-visible,
 }
 
 /* ---- page header (index.html, above the shell) --------------------------- */
-main {
+/* D-025/N29: `:has(.frame)` scopes this to the shell page only -- any other
+ * page extending base.html's bare `<main>` keeps normal flow instead of
+ * being forced to a full-viewport flex column. */
+main:has(.frame) {
   display: flex;
   flex-direction: column;
   height: 100svh;
@@ -83,6 +86,18 @@ main > h1 {
    * when a panel toggles. */
   --palette-w: calc(var(--space-7) * 4);
   --panel-w: calc(var(--space-7) * 5);
+}
+/* D-025/N27: a collapsed panel's own width is already `var(--space-7)` (the
+ * base, non-`[data-state="expanded"]` rule below) at every breakpoint, so
+ * collapsing gives that side's inset back to the canvas by reading the same
+ * number here -- no second breakpoint table to keep in sync. `:has()` beats
+ * the plain `.frame` rule and the width media queries below on specificity
+ * alone, so this holds at every width without `!important`. */
+.frame:has(.palette[data-state="collapsed"]) {
+  --palette-w: var(--space-7);
+}
+.frame:has(.mission-panel[data-state="collapsed"]) {
+  --panel-w: var(--space-7);
 }
 
 /* ---- canvas region: full-bleed, under every overlay ----------------------- */
