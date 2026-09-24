@@ -18,13 +18,6 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approv
 - **Branch / PR:** `task/b-031-mission-loader` — #74
 - **Status:** in review (cycle 1); gate 749 passed, flake8 0 on `d05946c`. `ObsVectorSum` for M-1 confirmed by plan-m4's default chain.
 
-### B-033 — SQLite store + teacher CLI
-- **Scope:** `src/fce_web/store.py`, `tests/test_store.py`, `docs/teacher.md`
-- **Accept:** plan §Design "Store" + nickname rule; `python -m fce_web.store create-class|purge`
-- **Depends on:** —
-- **Branch / PR:** `task/b-033-store` — #73
-- **Status:** in review (cycle 1); gate 742+1 e2e fail under concurrent load (N7), test 3/3 alone; flake8 0 on `8cdf169`.
-
 ## Ready
 
 _none._
@@ -63,6 +56,7 @@ incident). Check `git symbolic-ref --short HEAD` before every bookkeeping commit
 One line per task. Full entries — scope, criteria, the cycle-by-cycle review record — in
 [`archive/backend.md`](archive/backend.md). Read it only when a history is actually in question.
 
+- **B-033** — SQLite store + teacher CLI (`python -m fce_web.store create-class|purge`) — #73, `5f67f5c`, 1 cycle, clean gate (`findings=3, scope=pass, verdict=approve`). Suite 743 (739 + 4). Signatures in PR #73's body — **B-034 consumes them**. F1-F3 (dead line, purge pre-check race, `ORDER BY rowid`) → N35, folded into B-034's scope.
 - **B-030** — dead `setenv` in `test_fixture_dataset.py` + stale X4/X5 comments (N10 + N4) — #65, `b6011c4`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor 729 unchanged. Reviewer's stray 1-failed run was e2e port contention with my concurrent #66 gate (N7), not this PR.
 - **B-029** — backlog cleanup sweep, backend — #56, `07ef418`, 2 cycles, clean gate (`findings=2, scope=pass, verdict=approve`).
   **Suite floor 729 → 721** (9 nodeids removed, 1 added; every one named by collect-only diff, reproduced by me and

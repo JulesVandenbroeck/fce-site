@@ -2330,3 +2330,9 @@ rooted at the primary checkout, so a suite run from any other worktree imports t
 `PYTHONPATH` is set — the reviewer lost a run to it, and it fails in the dangerous direction (it would certify the
 primary checkout while claiming to test the branch). And two full suites running concurrently in different
 worktrees contend on the live-server port; I produced a false failure that way and nearly spent a cycle on it.
+
+
+### B-033 — SQLite store and teacher CLI (M5)
+- **Scope:** `src/fce_web/store.py`, `tests/test_store.py`, `docs/teacher.md`
+- **Branch / PR:** `task/b-033-store` — #73, merged `5f67f5c`, 2026-09-24
+- **Review:** cycle 1, `findings=3, scope=pass, verdict=approve` ([comment](https://github.com/JulesVandenbroeck/fce-site/pull/73#issuecomment-5812634321)). Reviewer mutation: `purge_class` keeping the `classes` row → `test_purge_removes_every_row` red. Coder's `2 failed` e2e was concurrent-load contention with B-031's suite (N7); my gate 742+1, the test 3/3 alone; reviewer 743 green. Deviation accepted: `_main(argv, env)` so the CLI test does not mutate `os.environ`. F1-F3 → N35.
