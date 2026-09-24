@@ -18,7 +18,10 @@ _none — the canvas port (N12/N13/N14) is decomposed but not dispatched; see `d
 
 ## Blocked
 
-_none._
+M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md).
+- **F-020** — join form (class code + nickname) — blocked on B-034.
+- **F-021** — mission panel/pager from server data; locked kinds/modes inert "opens in M-n" — blocked on B-034; scout Q3 first.
+- **F-022** — objective outcome after a run (margin note / completion + unlock) — blocked on F-021.
 
 ## Done
 

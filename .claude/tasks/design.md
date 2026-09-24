@@ -93,7 +93,9 @@ _none._
 
 ## Blocked
 
-D-011/D-012 are unchanged below.
+- **D-027** — style join form, locked items, objective note, minimal completion mark (M5) — blocked on F-020, F-022.
+
+D-011/D-012 are unchanged below; D-011 moves to M6 (M5 ships only a minimal completion mark).
 Plan: [`docs/plan-m3-vertical-slice.md`](../../docs/plan-m3-vertical-slice.md).
 
 ### D-011 — The completed-mission box on the canvas

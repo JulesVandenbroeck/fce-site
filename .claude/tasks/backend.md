@@ -9,7 +9,21 @@ IDs are `B-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approved 2026-09-24.
+
+### B-031 — mission loader, startup validation, M-1/M-2 YAML, `evaluate()`
+- **Scope:** `pyproject.toml` (PyYAML), `src/fce_web/missions.py`, `content/missions/m-1.yaml`, `m-2.yaml`, `src/fce_web/app.py` (load at startup), `tests/test_missions.py`
+- **Accept:** plan §Design "Mission file" + "M-1 check"; bad file fails `create_app` naming file+field
+- **Depends on:** — (PyYAML ruled in by the user 2026-09-24)
+- **Branch / PR:** `task/b-031-mission-loader` — pending
+- **Status:** dispatched (cycle 1), worktree
+
+### B-033 — SQLite store + teacher CLI
+- **Scope:** `src/fce_web/store.py`, `tests/test_store.py`, `docs/teacher.md`
+- **Accept:** plan §Design "Store" + nickname rule; `python -m fce_web.store create-class|purge`
+- **Depends on:** —
+- **Branch / PR:** `task/b-033-store` — pending
+- **Status:** dispatched (cycle 1), worktree
 
 ## Ready
 
@@ -17,7 +31,8 @@ _none._
 
 ## Blocked
 
-_none for backend — B-022 moved to `## Ready`._
+- **B-032** — run wiring (missionId validated, dataset from mission, gating 400, `objective` on `/result`) — blocked on B-031; scout Q1 first. Reviewer raised effort.
+- **B-034** — **CONTRACT**: join/cookie/progress/completion + page context + `docs/api.md` — blocked on B-032, B-033; scout Q2 first. Reviewer raised effort.
 
 M2 plan (historical): `~/.claude/plans/plan-m2-now-so-jazzy-hummingbird.md`.
 
