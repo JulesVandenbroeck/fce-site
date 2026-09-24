@@ -15,7 +15,7 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approv
 - **Scope:** `routes/api.py`, `routes/pages.py`, `jobs.py`, `docs/api.md`, `tests/test_progress.py`
 - **Accept:** C1-C7 in PR body; folds N38 F2/F3. F-020/F-021/F-022 consume `docs/api.md` + page context read-only.
 - **Branch / PR:** `task/b-034-progress` — #78
-- **Status:** cycle 1 + **re-spec (mine, again)**: scope omitted `test_api_events.py` + `test_api_run.py`, whose anonymous M-2 submits C2 correctly 400s. Anchor file rode the branch — removing.
+- **Status:** in review (cycle 1, after re-spec: C8 two tests' setup, C9 anchor off branch); gate 749, flake8 0 on `origin/task/b-034-progress`. Test gained `"unlocked": None` key — accepted, C4 added the field.
 
 ### B-035 — launcher without access log + N35 + N38 F1
 - **Scope:** `src/fce_web/__main__.py`, `app.py` (docstring), `store.py`, `tests/test_graph.py`, `docs/teacher.md`
