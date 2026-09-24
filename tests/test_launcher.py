@@ -28,11 +28,13 @@ def test_launcher_prints_no_client_address(tmp_path):
         text=True,
         env={**os.environ, "FCE_HOME": str(tmp_path)},
     )
+    served = False
     try:
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
             try:
                 urllib.request.urlopen(f"http://127.0.0.1:{port}/openapi.json", timeout=1)
+                served = True
                 break
             except Exception:
                 if proc.poll() is not None:
@@ -45,6 +47,8 @@ def test_launcher_prints_no_client_address(tmp_path):
         except subprocess.TimeoutExpired:
             proc.kill()
             output, _ = proc.communicate()
+
+    assert served, f"launcher never answered a request; output:\n{output}"
 
     # An access-log line looks like: 127.0.0.1:54321 - "GET /openapi.json HTTP/1.1" 200 OK
     # The startup banner also contains "127.0.0.1:<port>" (the bind address, not a client),
