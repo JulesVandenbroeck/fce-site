@@ -2345,3 +2345,7 @@ worktrees contend on the live-server port; I produced a false failure that way a
 
 ### B-032 — runs know their mission (M5)
 - **PR:** #75, merged `38e9ccc`, 2026-09-24. Scope: `jobs.py`, `routes/api.py`, `graph.py`, `docs/api.md`, `tests/test_api_run.py`; re-spec added `tests/test_api_events.py` (my omission — fake ids `A`/`B` and `ObsCustom` under M-1). Stacked F-023 (#76) fixed `shell.html`'s `m1`. Review c1 `findings=3, approve`; mutations: objective pinned to M-1 → C6 red; `_check_gating` no-op → C3 mode test red. F1 (card half of gating untested) → N38. Combined head gated 748 by me.
+
+
+### B-035 — launcher without access log (M5)
+- **PR:** #77, merged `a854b35`, 2026-09-24. c1 `findings=1, rework` — `test_launcher` was vacuous (stubbed `uvicorn.run` exit → still green); c2 adds a `served` assert, both mutations red. Closes N35 and N38 F1.
