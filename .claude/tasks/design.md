@@ -85,11 +85,7 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-### D-025 — Design backlog sweep (N5, N25, N26, N27, N29)
-- **Scope:** `shell.css`, `tests/e2e/test_canvas_style.py`, `docs/design-explorations/verify.py` (`check_git_diff` only)
-- **Accept:** C1 N27 collapse reclaims canvas (guard red without the fix); C2 N25/N26 probe selector earned or cut; C3 N29 `main` scoped via CSS; C4 N5 CSS-only branch → red set `{board-lane-fill}`, a JS/py change still trips it; C5 floor 738. checks=5.
-- **Branch / PR:** `task/d-025-design-sweep` — #70
-- **Status:** in review (cycle 1) — reviewer re-dispatched 2026-09-24 with "Review PR #70." only. Gate on `94578f2`: 739 passed, flake8 0.
+_none._
 
 
 ## Ready
@@ -135,6 +131,7 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-025** — design backlog sweep (N5, N25, N26, N27, N29) — #70, `585bc1e`, 1 cycle, clean gate (`findings=5, scope=pass, verdict=approve`). Suite floor **739**. Collapsing the palette now reclaims canvas (`.frame:has(...)`), guard mutation-proven red (`assert 0 > 0`). `main` scoped. `check_git_diff` exempts all of `static/css/`. F3 (e2e-guard half of N5, policy) → N33; F1/F2/F4/F5 cleanups → N34.
 - **D-024** — deleted the `.canvas-wrap::after` spacer and the inert `.zoom-controls` `z-index: 3` — #68, `c2b7b0c`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor **738**. The scroll range now comes from F-016's `applyZoom` alone. The existing guard is mutation-proven red on the real surface. Closes N30.
 - **D-023** — zoom-controls styling ported to `shell.css` + hit-test guard in `test_canvas_style.py` — #64, **stacked: merged into `task/f-016-canvas-pan-zoom` at `4704a76`**, reaches `main` with F-016. 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`). Guard mutation-proven red. F1 (inert `z-index: 3`) → N30; F2 (stray `#}` in F-016's `shell.html:27`) → carried into F-016. Coder never corrected its false "verify.py does not exist" body line; my gate comment on #64 records the real verify run.
 - **D-022** — ported the canvas-frame stylesheets onto the merged shell — #63, `a81aba0`, 2 cycles, clean gate (`findings=5, scope=pass, verdict=approve`). checks=**11**. Suite floor 726 -> **729**.
@@ -266,7 +263,7 @@ One line per task. Full entries in [`archive/design.md`](archive/design.md).
   including the counting lines themselves — it reported 86 against 78 real registrations. On
   `task/d-010-page-shell` at `cfd2a1d`: **78** registrations, **213** reporting calls, both by
   `ast.walk`. Do not reinstate a grep floor.
-- **The canvas inset is pinned to the palette's EXPANDED width and that is a known trade-off** (D-022,
+- _(RETIRED by D-025, #70, `585bc1e`: collapse now reclaims canvas)_ **The canvas inset is pinned to the palette's EXPANDED width and that is a known trade-off** (D-022,
   #63 F9 / backlog N27). `.canvas-wrap`'s `padding: 0 var(--panel-w) 0 var(--palette-w)` does not react
   to `data-state`, so collapsing the palette reclaims no canvas — 192px of dead gutter at 1440. Known,
   merged deliberately, filed. **Do not report it as a new defect.**

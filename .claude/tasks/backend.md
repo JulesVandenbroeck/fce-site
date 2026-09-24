@@ -255,7 +255,8 @@ The facts a future dispatch consumes. Everything else about these tasks is in th
 - **Engine runs are serialised** across jobs by `JobRegistry._run_lock` (B-021). Jobs stay
   independently submitted, tracked and cancellable; only their disk I/O queues. Ceiling and upgrade
   path are in a `ponytail:` comment in `jobs.py`.
-- Suite floor **738 passed** on `main` at `1075a03` (F-016's 737 on its own head + F-017's +1 already on main). Confirmed by collect-only on main and a full run of the #68 head, 2026-09-23.
+- Suite floor **739 passed** on `main` at `585bc1e` (D-025 +1, reproduced by the reviewer 2026-09-24).
+- Superseded: suite floor **738 passed** on `main` at `1075a03` (F-016's 737 on its own head + F-017's +1 already on main). Confirmed by collect-only on main and a full run of the #68 head, 2026-09-23.
 - Superseded: suite floor **730 passed** after F-017 (#66, `8f89578`, +1), reproduced by me on the PR head 2026-09-23.
 - Superseded: suite floor **729 passed**; flake8 0. Confirmed by the orchestrator in the primary checkout on `main`
   at `a81aba0`, 2026-09-23, after D-022 (+3) merged. Path since 720: F-014 +1 (721), F-015 +5 (726),
