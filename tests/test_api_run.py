@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 import fce_web.jobs as jobs_module
 from fce_web.app import create_app
+from fce_web import store
 
 FIXTURE_ROOT = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(FIXTURE_ROOT, "fixtures", "datasets", "IDEA", "91GeV")
@@ -184,7 +185,12 @@ def test_locked_observable_mode_is_a_400_naming_its_node(client):
 # objective off the *cached* job instead of the *requesting* job's own
 # mission would report M-2 as met too.
 
-def test_objective_is_per_job_not_copied_from_the_cached_job(client):
+def test_objective_is_per_job_not_copied_from_the_cached_job(client, tmp_path):
+    # M-2 is locked until M-1 is done (B-034/C2) -- join so the M-1 run below
+    # unlocks it for real, the same join-then-run path test_progress.py uses.
+    code = store.create_class(env={"FCE_HOME": str(tmp_path)})
+    client.post("/api/join", json={"classCode": code, "nickname": "scout"})
+
     first = client.post("/api/run", json={"missionId": "M-1", "graph": _graph()}).json()
     first_result = _poll_result(client, first["runId"]).json()
     assert first_result["objective"]["met"] is True, first_result["objective"]
@@ -195,6 +201,7 @@ def test_objective_is_per_job_not_copied_from_the_cached_job(client):
     assert second_result["objective"] == {
         "missionId": "M-2", "met": False, "value": None,
         "message": "This mission has no automatic objective yet.",
+        "unlocked": None,
     }
 
 
