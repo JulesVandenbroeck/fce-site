@@ -36,10 +36,17 @@ from fastapi.templating import Jinja2Templates
 
 from fce_web import __version__
 from fce_web.jobs import JobRegistry
+from fce_web.missions import load_missions
 from fce_web.routes import api, pages
 
 #: Directory of the installed package; the anchor for every asset path below.
 PACKAGE_DIR = Path(__file__).resolve().parent
+
+#: ``content/missions/*.yaml`` lives at the repo root, sibling to ``src/`` --
+#: same packaging caveat as ``TEMPLATES_DIR``/``STATIC_DIR`` above: this
+#: resolves from a source checkout, editable or not, but not from a wheel
+#: that ships no package data for it.
+MISSIONS_DIR = PACKAGE_DIR.parent.parent / "content" / "missions"
 
 #: Jinja2 templates. Front-end owned -- rendered by name, never edited here.
 TEMPLATES_DIR = PACKAGE_DIR / "templates"
@@ -101,6 +108,11 @@ def create_app(env: Optional[Mapping[str, str]] = None) -> FastAPI:
     # through ``request.app.state`` instead of importing a global.
     app.state.templates = Jinja2Templates(directory=TEMPLATES_DIR)
     app.state.jobs = JobRegistry(env=env)
+    # Loaded once per app, validated eagerly: a malformed mission file fails
+    # `create_app` naming the file and field, rather than surfacing as a
+    # confusing runtime error the first time a student picks that mission
+    # (`fce_web.missions.MissionError`).
+    app.state.missions = load_missions(str(MISSIONS_DIR))
 
     app.mount(
         STATIC_URL_PATH,

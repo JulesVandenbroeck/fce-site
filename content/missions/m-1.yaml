@@ -1,0 +1,32 @@
+# M-1 -- First Light. See docs/design-brief.md §3 and
+# docs/plan-m5-missions.md for the design this implements.
+id: M-1
+order: 1
+title: First Light
+brief: >
+  Find the Z boson. Build a small chain: take the data, keep only events with
+  two leptons, add their four-vectors together, and take the mass of the
+  result. Plot it and look for a bump.
+dataset:
+  energy: "91 GeV"
+  detector: IDEA
+cards:
+  - Multiplicity
+  - Selection
+  - Observable
+  - Histogram
+observable_modes:
+  - ObsVectorSum
+objective:
+  type: peak_position
+  sample: data
+  target: 91.19
+  tolerance: 3.0
+hints:
+  - "A Z boson decays into two leptons. Start by asking for events with two leptons."
+  - "Add the two leptons' four-vectors, then take the mass of the sum. That is the ObsVectorSum card."
+  - "A histogram from 0 to 150 GeV shows the whole picture. Look for the tallest bar."
+success: >
+  You found it! The tall bar in your histogram sits at about 91 GeV -- the
+  mass of the Z boson. Every time two leptons come from a Z decay, they add
+  up to that same number, no matter which event you look at.
