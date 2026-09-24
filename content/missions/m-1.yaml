@@ -24,7 +24,7 @@ objective:
   tolerance: 3.0
 hints:
   - "A Z boson decays into two leptons. Start by asking for events with two leptons."
-  - "Add the two leptons' four-vectors, then take the mass of the sum. That is the ObsVectorSum card."
+  - "Add the two leptons' four-vectors together, then take the mass of the sum."
   - "A histogram from 0 to 150 GeV shows the whole picture. Look for the tallest bar."
 success: >
   You found it! The tall bar in your histogram sits at about 91 GeV -- the

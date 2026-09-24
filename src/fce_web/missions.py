@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Tuple
 
 import yaml
 
-from fce_web.graph import PALETTE_KINDS, _OBS_MODES as OBSERVABLE_MODES
+from fce_web.graph import OBSERVABLE_MODES, PALETTE_KINDS
 
 __all__ = ["Mission", "MissionError", "load_missions", "evaluate"]
 
@@ -169,6 +169,8 @@ def load_missions(content_dir: str) -> Dict[str, Mission]:
             _fail(path, "order", f"duplicate order {mission.order!r} (already used by {orders[mission.order]!r})")
         missions[mission.id] = mission
         orders[mission.order] = mission.id
+    if not missions:
+        _fail(content_dir, "<directory>", "contains no mission files")
     return missions
 
 
