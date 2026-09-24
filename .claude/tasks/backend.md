@@ -16,7 +16,8 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approv
 - **Accept:** plan §Design "Mission file" + "M-1 check"; bad file fails `create_app` naming file+field
 - **Depends on:** — (PyYAML ruled in by the user 2026-09-24)
 - **Branch / PR:** `task/b-031-mission-loader` — #74
-- **Status:** in review (cycle 1); gate 749 passed, flake8 0 on `d05946c`. `ObsVectorSum` for M-1 confirmed by plan-m4's default chain.
+- **Status:** cycle 2 dispatched (worktree `.claude/worktrees/agent-a684856433be3f05e`). Graph scope +`graph.py` for F4.
+- **Review:** c1 `findings=5, verdict=rework` — F1 fake mutation test, F3 empty dir loads silently; F5 mode confirmed by me (plan-m4), hint copy to lose the identifier.
 
 ## Ready
 
