@@ -9,12 +9,7 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-### F-019 — trim duplicated comment in test_graph.py (N32)
-- **Scope:** `tests/e2e/test_graph.py`
-- **Accept:** C1 comment one line, no code change; C2 floor 739.
-- **Branch / PR:** `task/f-019-test-comment-trim` — #71
-- **Status:** in review (cycle 1). Gate: flake8 0, 739 collected, 1 file in scope; full e2e run skipped (comments only, and D-026 was using the ports).
-
+_none._
 
 ## Ready
 
@@ -30,6 +25,7 @@ _none._
 Full entries are in [`archive/frontend.md`](archive/frontend.md). Read it only when a task's
 history is actually in question.
 
+- **F-019** — trimmed duplicated focus-timing comment in `test_graph.py` (N32) — #71, `4a9a198`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Floor 739 unchanged.
 - **F-018** — frontend backlog sweep (N6, N11, N20, N21, N22, N24, N31) — #69, `427a0f2`, 1 cycle, clean gate (`findings=1, scope=pass, verdict=approve`). Suite floor **738** (−1 folded loop, +1 pointercancel check). N24 de-flaked by waiting for summary focus (20/20). `wirePan` tears down on `lostpointercapture`, mutation-proven. F1 (7-line comment → 1) → N32.
 - **F-016** — canvas pan (left-drag + keyboard) and zoom 50-200% with one Fit affordance — #67, `1075a03`, **1 cycle across 2 handoffs + 1 stacked design task (D-023 #64)**, clean gate (`findings=2, scope=pass, verdict=approve`). checks=11. Suite floor **737**. Closes N13 and N23.
   The `scrollLeft` no-op was two things: no scroll range (fixed by D-022) and a test that dragged toward the clamped origin. Then the zoom buttons had no CSS and sat under the palette, which D-023 fixed. C5 and C11 are mutation-proven. F1 (N24 flake, maybe now timing-sensitive) appended to N24. F2 (`wirePan` has no `pointercancel` handling) → N31. The `.canvas-wrap::after` spacer is now redundant → D-024.
