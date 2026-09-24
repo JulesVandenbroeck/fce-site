@@ -9,7 +9,12 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-019 — trim duplicated comment in test_graph.py (N32)
+- **Scope:** `tests/e2e/test_graph.py`
+- **Accept:** C1 comment one line, no code change; C2 floor 739.
+- **Branch / PR:** `task/f-019-test-comment-trim` — pending
+- **Status:** dispatched 2026-09-24 (cycle 1, worktree)
+
 
 ## Ready
 
