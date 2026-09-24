@@ -15,8 +15,8 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approv
 - **Scope:** `jobs.py`, `routes/api.py`, `graph.py`, `docs/api.md`, `tests/test_api_run.py` (+ `test_api_contract.py` if the doc parity test needs it)
 - **Accept:** C1-C6 in PR body; per-job objective incl. cache-hit path (Q1b); folds N37
 - **Depends on:** B-031 (done)
-- **Branch / PR:** `task/b-032-run-missions` — pending
-- **Status:** dispatched (cycle 1), worktree
+- **Branch / PR:** `task/b-032-run-missions` — #75
+- **Status:** cycle 1 + **re-spec (mine)**: my scope omitted `tests/test_api_events.py` (5 tests use fake ids / `ObsCustom` under M-1). Stacked **F-023** fixes `shell.html:82` `data-mission-id="m1"` → `M-1` (12 e2e reds).
 
 ## Ready
 

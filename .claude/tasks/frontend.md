@@ -9,7 +9,11 @@ IDs are `F-nnn`, allocated in order and never reused.
 
 ## In progress
 
-_none._
+### F-023 — browser sends the real mission id (stacked on B-032)
+- **Scope:** `templates/shell.html` (`:82` `data-mission-id`)
+- **Accept:** id is `M-1`; e2e suite re-run on B-032 + this; remaining reds reported, not fixed
+- **Branch / PR:** `task/f-023-mission-id` → base `task/b-032-run-missions`
+- **Status:** dispatched (cycle 1)
 
 ## Ready
 
