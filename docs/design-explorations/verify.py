@@ -1922,27 +1922,26 @@ def check_network_and_errors(pw: Playwright) -> bool:
 # D-025/N5: widened from the original two D-002 paths (tokens.css, fonts/)
 # to all of static/css/ -- design owns that whole tree (shared/CLAUDE.md
 # §4), and a branch that only edits CSS was false-flagged red here.
-SHIPPED_DELIVERABLE_DIR = "src/fce_web/static/css/"
-SHIPPED_DELIVERABLE_DIR_FONTS = "src/fce_web/static/fonts/"
+SHIPPED_DELIVERABLE_DIRS = ("src/fce_web/static/css/", "src/fce_web/static/fonts/")
 
 
 def _is_shipped_deliverable(path: str) -> bool:
-    """True for anything under the two design-owned static dirs, nothing else.
+    """True for anything under the design-owned static dirs, nothing else.
 
     Any other file under `src/`, `tests/` or `content/` -- Python, JS,
     templates, mission data -- still trips the check.
     """
-    return path.startswith(SHIPPED_DELIVERABLE_DIR) or path.startswith(SHIPPED_DELIVERABLE_DIR_FONTS)
+    return path.startswith(SHIPPED_DELIVERABLE_DIRS)
 
 
 def check_git_diff() -> bool:
     """Confirm this branch has touched nothing under src/, tests/ or content/
-    except the two shipped D-002 deliverables, by diffing against main's
+    except the shipped design-owned deliverables, by diffing against main's
     merge-base rather than the index (see comment below for why that
     distinction matters)."""
     section(
         "git diff main...HEAD -- src/ tests/ content/ "
-        "(ships nothing but the D-002 token + font deliverables)"
+        "(ships nothing but design-owned static/css + fonts)"
     )
     # A bare `git diff -- <paths>` compares the working tree to the index —
     # it would read clean the moment everything is committed, regardless of
@@ -1975,7 +1974,7 @@ def check_git_diff() -> bool:
     ok = not offenders
     detail = ", ".join(offenders) if offenders else "none"
     line(
-        "No changes under src/, tests/ or content/ beyond the D-002 deliverables",
+        "No changes under src/, tests/ or content/ beyond design-owned static/css + fonts",
         ok,
         f"offending paths: {detail}",
     )

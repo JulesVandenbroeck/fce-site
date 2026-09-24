@@ -87,12 +87,7 @@ main > h1 {
   --palette-w: calc(var(--space-7) * 4);
   --panel-w: calc(var(--space-7) * 5);
 }
-/* D-025/N27: a collapsed panel's own width is already `var(--space-7)` (the
- * base, non-`[data-state="expanded"]` rule below) at every breakpoint, so
- * collapsing gives that side's inset back to the canvas by reading the same
- * number here -- no second breakpoint table to keep in sync. `:has()` beats
- * the plain `.frame` rule and the width media queries below on specificity
- * alone, so this holds at every width without `!important`. */
+/* D-025/N27: collapsing a panel gives its inset back to the canvas; `:has()` outranks `.frame` and the width media queries on specificity, so this holds at every width without `!important`. */
 .frame:has(.palette[data-state="collapsed"]) {
   --palette-w: var(--space-7);
 }
