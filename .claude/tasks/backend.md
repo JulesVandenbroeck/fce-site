@@ -15,7 +15,7 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approv
 - **Scope:** `routes/api.py`, `routes/pages.py`, `jobs.py`, `docs/api.md`, `tests/test_progress.py`
 - **Accept:** C1-C7 in PR body; folds N38 F2/F3. F-020/F-021/F-022 consume `docs/api.md` + page context read-only.
 - **Branch / PR:** `task/b-034-progress` — #78
-- **Status:** in review (cycle 2) at `f07d9a9`; merged-with-main gate 751, flake8 0.
+- **Status:** cycle 3 (LAST under §5.7) dispatched. c2 `findings=3, rework` — F7 purge mid-run → /result 500 on FK; F8/F9 comments.
 - **Review:** c1 `findings=6, rework` — **F1 forged cookie (unjoined nickname) shown as joined, met run → 500 on FK**; F2 stale cookie not cleared on /api/run 400s.
 
 ## Ready
