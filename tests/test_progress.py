@@ -110,3 +110,16 @@ def test_join_run_unlock_progress_persists_and_purge_clears_it(env) -> None:
         # The old cookie names a class that no longer exists -- not joined.
         after_purge = client2.get("/api/progress")
         assert after_purge.json()["student"] is None
+
+    # F7: the student's class is purged after submit but before the run's
+    # objective is checked -- record_completion's FK must not fire a 500;
+    # `/result` still returns 200, nothing recorded, unlocked stays null.
+    code3 = store.create_class(env=env)
+    with TestClient(create_app(env=env)) as client3:
+        client3.post("/api/join", json={"classCode": code3, "nickname": "purgee"})
+        run_id3 = client3.post("/api/run", json={"missionId": "M-1", "graph": _graph()}).json()["runId"]
+        store.purge_class(code3, env=env)
+        result3 = _poll_result(client3, run_id3)
+        assert result3.status_code == 200
+        assert result3.json()["objective"]["unlocked"] is None
+        assert store.completed_missions(code3, "purgee", env=env) == []

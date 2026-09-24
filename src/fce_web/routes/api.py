@@ -10,7 +10,7 @@ see ``docs/api.md``'s "Run progress event" section for the wire format.
 **Identity and progress (task B-034).** ``POST /api/join`` and
 ``GET /api/progress`` are the join/progress half of the contract; the cookie
 they set (``_COOKIE_NAME``) is what ``POST /api/run`` and ``GET /`` (see
-``fce_web.routes.pages``, which imports ``_resolve_student``/``_progress_body``
+``fce_web.routes.pages``, which imports ``_read_cookie``/``_mission_progress``
 from here rather than duplicating them) read back. Nothing here stores or
 logs anything beyond class code, nickname, mission id, graph and timestamp
 (``fce_web.store``) -- see ``.claude/backend/CLAUDE.md`` §5.
@@ -151,11 +151,6 @@ def build_router() -> APIRouter:
         completes -- ``JobRegistry.submit`` starts it on a background
         thread and returns the job's id immediately. An invalid graph
         never starts a run at all.
-
-        Does not clear a stale cookie itself (B-034 cycle 2, F2) -- a
-        gating 400 here never carries a ``Set-Cookie``. ``GET /api/progress``
-        and ``GET /`` are the endpoints documented to clear one
-        (``docs/api.md``).
         """
         mission = request.app.state.missions.get(body.missionId)
         if mission is None:
@@ -209,13 +204,9 @@ def build_router() -> APIRouter:
             missions = request.app.state.missions
             mission = missions[job.mission_id]
             objective = {"missionId": job.mission_id, **evaluate(mission, payload), "unlocked": None}
-            if objective["met"] and job.student:
-                env = request.app.state.jobs.env
+            env = request.app.state.jobs.env
+            if objective["met"] and job.student and store.student_exists(*job.student, env=env):
                 store.record_completion(*job.student, job.mission_id, job.graph_json, env=env)
-                # Same ordering `_mission_progress` uses (sorted by `.order`,
-                # next-in-list) rather than a bare `order + 1` -- the two must
-                # never be able to disagree on which mission unlocks next
-                # (B-034 cycle 2, F5).
                 ordered = sorted(missions.values(), key=lambda m: m.order)
                 idx = ordered.index(mission)
                 objective["unlocked"] = ordered[idx + 1].id if idx + 1 < len(ordered) else None
