@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 import fce_web.jobs as jobs_module
 import fce_web.routes.api as api_module
 from fce_web.app import create_app
+from fce_web import store
 
 FIXTURE_ROOT = os.path.dirname(os.path.abspath(__file__))
 DATASET_DIR = os.path.join(FIXTURE_ROOT, "fixtures", "datasets", "IDEA", "91GeV")
@@ -187,7 +188,17 @@ def test_reconnect_after_drain_gets_one_done_frame(client):
     assert result == [{"type": "done", "status": "done", "runId": run_id}]
 
 
-def test_two_concurrent_streams_do_not_interleave(client):
+def test_two_concurrent_streams_do_not_interleave(client, tmp_path):
+    # M-2 is locked until M-1 is done (B-034/C2). Both submissions below fire
+    # before either can be polled to completion, so unlock M-1 directly
+    # through the store (rather than the join-then-run path), then join so
+    # the client's own cookie carries the unlock into the M-2 submission.
+    env = {"FCE_HOME": str(tmp_path)}
+    code = store.create_class(env=env)
+    store.join(code, "scout", env=env)
+    store.record_completion(code, "scout", "M-1", "{}", env=env)
+    client.post("/api/join", json={"classCode": code, "nickname": "scout"})
+
     ids = {"a": client.post("/api/run", json={"missionId": "M-1", "graph": _graph("0.0", "200.0")}).json()["runId"],
            "b": client.post("/api/run", json={"missionId": "M-2", "graph": _graph("60.0", "120.0")}).json()["runId"]}
     registry = client.app.state.jobs

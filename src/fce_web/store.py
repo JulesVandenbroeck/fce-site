@@ -89,6 +89,17 @@ def class_exists(code: str, env: Optional[Mapping[str, str]] = None) -> bool:
     return row is not None
 
 
+def student_exists(code: str, nickname: str, env: Optional[Mapping[str, str]] = None) -> bool:
+    """Return whether *nickname* has joined class *code* (B-034 cycle 2, F1) --
+    ``class_exists`` alone is not enough: a cookie can name a real class with a
+    nickname nobody joined under."""
+    with _connect(env) as conn:
+        row = conn.execute(
+            "SELECT 1 FROM students WHERE class_code = ? AND nickname = ?", (code, nickname)
+        ).fetchone()
+    return row is not None
+
+
 def join(code: str, nickname: str, env: Optional[Mapping[str, str]] = None) -> None:
     """Register *nickname* under class *code*. Idempotent for the same pair.
 
