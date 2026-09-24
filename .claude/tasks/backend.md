@@ -15,7 +15,8 @@ M5 plan: [`docs/plan-m5-missions.md`](../../docs/plan-m5-missions.md) — approv
 - **Scope:** `routes/api.py`, `routes/pages.py`, `jobs.py`, `docs/api.md`, `tests/test_progress.py`
 - **Accept:** C1-C7 in PR body; folds N38 F2/F3. F-020/F-021/F-022 consume `docs/api.md` + page context read-only.
 - **Branch / PR:** `task/b-034-progress` — #78
-- **Status:** in review (cycle 1, after re-spec: C8 two tests' setup, C9 anchor off branch); gate 749, flake8 0 on `origin/task/b-034-progress`. Test gained `"unlocked": None` key — accepted, C4 added the field.
+- **Status:** cycle 2 dispatched (existing worktree); scope +`store.py` (one `student_exists` fn only — B-035 #77 also edits store.py, different lines).
+- **Review:** c1 `findings=6, rework` — **F1 forged cookie (unjoined nickname) shown as joined, met run → 500 on FK**; F2 stale cookie not cleared on /api/run 400s.
 
 ### B-035 — launcher without access log + N35 + N38 F1
 - **Scope:** `src/fce_web/__main__.py`, `app.py` (docstring), `store.py`, `tests/test_graph.py`, `docs/teacher.md`
