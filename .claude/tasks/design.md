@@ -85,13 +85,7 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 
 ## In progress
 
-### D-026 — D-025 review cleanups (N34)
-- **Scope:** `verify.py` (`_is_shipped_deliverable` + labels), `shell.css`, `tests/e2e/test_canvas_style.py`
-- **Accept:** C1 one prefix tuple, same results; C2 label renamed; C3 collapse test asserts padding shrinks, mutation red; C4 comments one line; C5 floor 739, verify red set unchanged (+N33 case).
-- **Branch / PR:** `task/d-026-d025-cleanups` — #72
-- **Status:** in review (cycle 1). Gate reproduced: 739 passed, flake8 0, verify red set = git-diff-clean x2 + bench-git-diff-clean (N33) + board-lane-fill. C3 mutation `assert 256 < 256` per coder.
-
-
+_none._
 
 ## Ready
 
@@ -136,6 +130,7 @@ and does not reflow; harvest the **cycle-4** `--tab10-x2`/`--tab10-x3` values; `
 
 One line per task. Full entries in [`archive/design.md`](archive/design.md).
 
+- **D-026** — D-025 review cleanups (N34) — #72, `153c1aa`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor **739** unchanged. C3 mutation-proven red (`assert 256 < 256`). Closes N34.
 - **D-025** — design backlog sweep (N5, N25, N26, N27, N29) — #70, `585bc1e`, 1 cycle, clean gate (`findings=5, scope=pass, verdict=approve`). Suite floor **739**. Collapsing the palette now reclaims canvas (`.frame:has(...)`), guard mutation-proven red (`assert 0 > 0`). `main` scoped. `check_git_diff` exempts all of `static/css/`. F3 (e2e-guard half of N5, policy) → N33; F1/F2/F4/F5 cleanups → N34.
 - **D-024** — deleted the `.canvas-wrap::after` spacer and the inert `.zoom-controls` `z-index: 3` — #68, `c2b7b0c`, 1 cycle, clean gate (`findings=0, scope=pass, verdict=approve`). Suite floor **738**. The scroll range now comes from F-016's `applyZoom` alone. The existing guard is mutation-proven red on the real surface. Closes N30.
 - **D-023** — zoom-controls styling ported to `shell.css` + hit-test guard in `test_canvas_style.py` — #64, **stacked: merged into `task/f-016-canvas-pan-zoom` at `4704a76`**, reaches `main` with F-016. 1 cycle, clean gate (`findings=2, scope=pass, verdict=approve`). Guard mutation-proven red. F1 (inert `z-index: 3`) → N30; F2 (stray `#}` in F-016's `shell.html:27`) → carried into F-016. Coder never corrected its false "verify.py does not exist" body line; my gate comment on #64 records the real verify run.
