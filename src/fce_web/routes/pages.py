@@ -10,7 +10,7 @@ by name only -- this module never inspects or edits them. ``index.html`` reads
 mission panel and palette gating F-020/F-021 build read from this context, not
 from a separate fetch.
 """
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -24,23 +24,20 @@ from fce_web.routes.api import _COOKIE_NAME, _mission_progress, _read_cookie
 INDEX_TITLE = "FCE-site"
 
 
-def _current_mission(missions_by_id, mission_entries) -> Optional[Dict[str, Any]]:
+def _current_mission(missions_by_id, mission_entries):
     """The mission the page should show: the first ``"open"`` one, else the
-    last ``"done"`` one, else the first mission (nothing unlocked yet is
-    unreachable in practice -- the first mission is always at least
-    ``"open"`` -- but this stays total rather than assuming it)."""
+    last ``"done"`` one. ``load_missions`` guarantees at least one mission
+    and ``_mission_progress`` guarantees the first is always at least
+    ``"open"``, so one of the two always fires."""
     ordered = sorted(missions_by_id.values(), key=lambda m: m.order)
     by_state = {entry["id"]: entry["state"] for entry in mission_entries}
     for mission in ordered:
         if by_state.get(mission.id) == "open":
             return mission
-    done = [m for m in ordered if by_state.get(m.id) == "done"]
-    return done[-1] if done else (ordered[0] if ordered else None)
+    return [m for m in ordered if by_state.get(m.id) == "done"][-1]
 
 
-def _mission_context(mission) -> Optional[Dict[str, Any]]:
-    if mission is None:
-        return None
+def _mission_context(mission) -> Dict[str, Any]:
     return {
         "id": mission.id,
         "title": mission.title,

@@ -66,9 +66,12 @@ No body -- reads the cookie only.
 }
 ```
 
-`"student"` is `null` when there is no cookie, or when the cookie names a class that no longer
-exists (purged) -- that cookie is cleared on the response and the requester is treated as not
-joined, never as an error. `"missions"` is ordered by `order`. Unlock rule: the first mission is
+`"student"` is `null` when there is no cookie, when the cookie is malformed, or when the
+`(classCode, nickname)` pair it names is not a joined student -- a purged class, or a forged/typo'd
+nickname that never joined (task B-034 cycle 2, F1: checked against the `students` table, not
+just that the class exists). That cookie is cleared on this response (and on `GET /`'s) and the
+requester is treated as not joined, never as an error -- `POST /api/run` does not clear it itself;
+see its own section. `"missions"` is ordered by `order`. Unlock rule: the first mission is
 always at least `"open"`; mission n+1 is `"open"` iff mission n is `"done"`; every other mission
 is `"locked"`. An anonymous requester (no cookie) sees the first mission `"open"` and everything
 else `"locked"`, the same as a freshly-joined student with no completions.
@@ -135,13 +138,17 @@ executes against is the mission's own `dataset` (`energy`/`detector`), never a h
 The browser also locks unavailable cards/modes in the palette (`docs/design-brief.md` §4), but
 that is a convenience only — the server is the actual gate.
 
-**Progress gating (task B-034).** The request's `fce_student` cookie (if any and if its class
-still exists) is read to check whether the requester has unlocked `missionId`, by the same rule
-as [`GET /api/progress`](#get-apiprogress): a mission whose state would be `"locked"` is a `400`
+**Progress gating (task B-034).** The request's `fce_student` cookie (if any, and if it names a
+joined `(classCode, nickname)` pair — same check as `GET /api/progress`, above) is read to check
+whether the requester has unlocked `missionId`, by the same rule as
+[`GET /api/progress`](#get-apiprogress): a mission whose state would be `"locked"` is a `400`
 with `{"error": "<student-legible message>", "nodeId": null}` — nothing is submitted. An
-anonymous request (no cookie) is allowed exactly for the first mission, the same as a
-freshly-joined student — but records no completion, since there is no student to record it
-against.
+anonymous request (no cookie, or one that fails the join check above) is allowed exactly for the
+first mission, the same as a freshly-joined student — but records no completion, since there is
+no student to record it against. **This endpoint never sets or clears the cookie itself** (task
+B-034 cycle 2, F2) — a stale or forged cookie is treated as anonymous for this request only, and
+stays on the browser until `GET /api/progress` or `GET /` (the endpoints documented to clear one)
+sees it.
 
 ### `POST /api/run` response
 
@@ -493,13 +500,13 @@ two different `objective`s.
 | `met` | boolean | no | Whether the run satisfies the mission's objective. Always `false` for a mission whose `objective.type` is `"none"` (no automatic objective yet, e.g. M-2). |
 | `value` | number | yes | The measured quantity the objective checked (e.g. the histogram's peak position, in GeV) — `null` when there is nothing to report (a `"none"`-type objective, or no histogram data yet). |
 | `message` | string | no | A student-legible outcome line — a margin note ("your peak is at 82.5 GeV") on a miss, never an error. |
-| `unlocked` | string | yes | Task B-034. The id of the mission this result just opened, or `null`. Set only when `met` is `true` **and** the run was submitted by a joined student (a cookie naming an existing class) — a completion is recorded at that point (`fce_web.store.record_completion`, idempotent — recorded once no matter how many times `/result` is re-fetched for the same job) and `unlocked` names the mission one order after this one, if any exist. `null` for `met: false`, for an anonymous run (nothing is recorded), and for the last mission. |
+| `unlocked` | string | yes | Task B-034. The id of the mission after this one, now open, or `null`. Set on **every** met run by a joined student, not only the first time this mission is completed (`fce_web.store.record_completion` is idempotent — recorded once no matter how many times `/result` is re-fetched for the same job, but `unlocked` is still reported each time). Uses the same next-in-`order` mission `GET /api/progress`'s unlock rule would name (task B-034 cycle 2, F5). `null` for `met: false`, for an anonymous run (nothing is recorded), and for the last mission. |
 
 **Page context (task B-034).** `GET /` (`fce_web.routes.pages`) renders `templates/index.html`
 with, beyond the existing `title`:
 
 | Variable | Type | Meaning |
 |---|---|---|
-| `student` | object \| `null` | `{"classCode": str, "nickname": str}` for the joined student named by the request's cookie, or `null` if not joined (including a stale, purged-class cookie, which is cleared on this response). Same shape as `GET /api/progress`'s `student`. |
+| `student` | object \| `null` | `{"classCode": str, "nickname": str}` for the joined student named by the request's cookie, or `null` if not joined (a stale, purged-class cookie, or one naming a `(classCode, nickname)` pair that never joined — either is cleared on this response). Same shape as `GET /api/progress`'s `student`. |
 | `missions` | object[] | Every mission, same shape as `GET /api/progress`'s `missions[]`: `{id, order, title, state}`. |
-| `current_mission` | object \| `null` | The mission to show by default: the first `"open"` mission, else the last `"done"` one, else the first mission. `null` only if no missions are loaded at all (unreachable in practice — `create_app` fails startup first). Shape: `{id, title, brief, hints: string[], cards: string[], observableModes: string[]}` — `cards`/`observableModes` are this mission's own palette gating (`docs/design-brief.md` §4), for the frontend to grey out everything else. |
+| `current_mission` | object | The mission to show by default: the first `"open"` mission, else the last `"done"` one. Always present — `load_missions` fails startup on zero missions, and the first mission is always at least `"open"`. Shape: `{id, title, brief, hints: string[], cards: string[], observableModes: string[]}` — `cards`/`observableModes` are this mission's own palette gating (`docs/design-brief.md` §4), for the frontend to grey out everything else. |

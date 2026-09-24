@@ -93,6 +93,18 @@ def test_join_run_unlock_progress_persists_and_purge_clears_it(env) -> None:
         rejoined = client2.post("/api/join", json={"classCode": code, "nickname": "quarkqueen"})
         assert {m["id"]: m["state"] for m in rejoined.json()["missions"]} == {"M-1": "done", "M-2": "open"}
 
+        # A forged cookie -- a real class code with a nickname nobody ever
+        # joined under -- is anonymous everywhere: `/api/progress`'s student
+        # is null, and an M-2 run (locked for an anonymous requester) is a
+        # 400, never a 500 (C10/F1).
+        with TestClient(create_app(env=env)) as forger:
+            forger.cookies.set("fce_student", f"{code}:impostor")
+            forged_progress = forger.get("/api/progress")
+            assert forged_progress.json()["student"] is None
+            forged_run = forger.post("/api/run", json={"missionId": "M-2", "graph": _graph()})
+            assert forged_run.status_code == 400
+            assert forged_run.json()["nodeId"] is None
+
         store.purge_class(code, env=env)
 
         # The old cookie names a class that no longer exists -- not joined.

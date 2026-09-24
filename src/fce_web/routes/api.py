@@ -59,15 +59,16 @@ def _read_cookie(
     request: Request, env: Optional[Mapping[str, str]]
 ) -> Tuple[Optional[Tuple[str, str]], bool]:
     """``(student, stale)`` -- *student* is ``(classCode, nickname)`` from the
-    requester's cookie, or ``None`` if there is none or its class was purged
-    (*stale* is ``True`` only in that last case, so a caller holding its own
-    response object -- e.g. a rendered template -- knows to clear the cookie,
-    B-034/C1)."""
+    requester's cookie, or ``None`` if there is none, is malformed, or does not
+    name a joined ``(classCode, nickname)`` pair (*stale* is ``True`` only in
+    that last case -- a purged class or a nickname that never joined, e.g. a
+    forged cookie -- so a caller holding its own response object -- e.g. a
+    rendered template -- knows to clear the cookie, B-034/C1, C10)."""
     raw = request.cookies.get(_COOKIE_NAME)
     if not raw or ":" not in raw:
         return None, False
     code, nickname = raw.split(":", 1)
-    if not store.class_exists(code, env=env):
+    if not store.student_exists(code, nickname, env=env):
         return None, True
     return (code, nickname), False
 
@@ -145,11 +146,16 @@ def build_router() -> APIRouter:
         return _progress_body(request.app.state.missions, student, env)
 
     @router.post("/run")
-    async def submit_run(request: Request, body: RunRequest, response: Response) -> Dict[str, Any]:
+    async def submit_run(request: Request, body: RunRequest) -> Dict[str, Any]:
         """Validate and submit *body*'s graph. Returns before the run
         completes -- ``JobRegistry.submit`` starts it on a background
         thread and returns the job's id immediately. An invalid graph
         never starts a run at all.
+
+        Does not clear a stale cookie itself (B-034 cycle 2, F2) -- a
+        gating 400 here never carries a ``Set-Cookie``. ``GET /api/progress``
+        and ``GET /`` are the endpoints documented to clear one
+        (``docs/api.md``).
         """
         mission = request.app.state.missions.get(body.missionId)
         if mission is None:
@@ -157,7 +163,7 @@ def build_router() -> APIRouter:
                 {"error": f"unknown mission: {body.missionId!r}", "nodeId": None}, status_code=400
             )
         env = request.app.state.jobs.env
-        student = _resolve_student(request, response, env)
+        student, _stale = _read_cookie(request, env)
         state = next(m["state"] for m in _mission_progress(request.app.state.missions, student, env)
                      if m["id"] == mission.id)
         if state == "locked":
@@ -205,9 +211,14 @@ def build_router() -> APIRouter:
             objective = {"missionId": job.mission_id, **evaluate(mission, payload), "unlocked": None}
             if objective["met"] and job.student:
                 env = request.app.state.jobs.env
-                store.record_completion(*job.student, job.mission_id, job.graph_json or "{}", env=env)
-                next_mission = next((m for m in missions.values() if m.order == mission.order + 1), None)
-                objective["unlocked"] = next_mission.id if next_mission else None
+                store.record_completion(*job.student, job.mission_id, job.graph_json, env=env)
+                # Same ordering `_mission_progress` uses (sorted by `.order`,
+                # next-in-list) rather than a bare `order + 1` -- the two must
+                # never be able to disagree on which mission unlocks next
+                # (B-034 cycle 2, F5).
+                ordered = sorted(missions.values(), key=lambda m: m.order)
+                idx = ordered.index(mission)
+                objective["unlocked"] = ordered[idx + 1].id if idx + 1 < len(ordered) else None
             body = {"status": "done", "cacheHit": cache_hit}
             body.update(payload)
             body["objective"] = objective

@@ -143,8 +143,6 @@ class JobRegistry:
         """
         self._env = env
         self._lock = threading.Lock()
-        # exposed read-only so routes needing `fce_web.store` (same optional-env
-        # convention) can share this app's env without `app.py` growing a second copy.
         self._jobs: Dict[str, Job] = OrderedDict()
         self._cache: Dict[str, str] = {}  # config digest -> finished job id
         # `output/hist{plot_idx}_{sample}.root` is addressed by *plot_idx*
