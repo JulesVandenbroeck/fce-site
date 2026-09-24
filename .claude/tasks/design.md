@@ -88,8 +88,8 @@ split frontend-then-design, never parallel (shared/CLAUDE.md §4).
 ### D-026 — D-025 review cleanups (N34)
 - **Scope:** `verify.py` (`_is_shipped_deliverable` + labels), `shell.css`, `tests/e2e/test_canvas_style.py`
 - **Accept:** C1 one prefix tuple, same results; C2 label renamed; C3 collapse test asserts padding shrinks, mutation red; C4 comments one line; C5 floor 739, verify red set unchanged (+N33 case).
-- **Branch / PR:** `task/d-026-d025-cleanups` — pending
-- **Status:** dispatched 2026-09-24 (cycle 1, worktree), parallel with F-019 (disjoint files)
+- **Branch / PR:** `task/d-026-d025-cleanups` — #72
+- **Status:** in review (cycle 1). Gate reproduced: 739 passed, flake8 0, verify red set = git-diff-clean x2 + bench-git-diff-clean (N33) + board-lane-fill. C3 mutation `assert 256 < 256` per coder.
 
 
 
