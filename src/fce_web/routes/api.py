@@ -19,8 +19,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
-from fce_web.graph import GraphError
+from fce_web.graph import Dataset, GraphError
 from fce_web.jobs import Job, JobRegistry
+from fce_web.missions import evaluate
 
 
 class RunRequest(BaseModel):
@@ -48,9 +49,20 @@ def build_router() -> APIRouter:
         thread and returns the job's id immediately. An invalid graph
         never starts a run at all.
         """
+        mission = request.app.state.missions.get(body.missionId)
+        if mission is None:
+            return JSONResponse(
+                {"error": f"unknown mission: {body.missionId!r}", "nodeId": None}, status_code=400
+            )
         registry: JobRegistry = request.app.state.jobs
         try:
-            job = registry.submit(body.graph, body.missionId)
+            job = registry.submit(
+                body.graph,
+                mission.id,
+                dataset=Dataset(**mission.dataset),
+                allowed_cards=mission.cards,
+                allowed_observable_modes=mission.observable_modes,
+            )
         except GraphError as exc:
             return JSONResponse({"error": str(exc), "nodeId": exc.node_id}, status_code=400)
         return {"runId": job.id, "cacheHit": job.cache_hit}
@@ -70,11 +82,18 @@ def build_router() -> APIRouter:
         if status == "running":
             return JSONResponse({"status": "running"}, status_code=202)
         if status == "done":
+            # Evaluated per job, from this job's own mission id and payload
+            # (both already correct on a cache hit -- `JobRegistry._retag_payload`)
+            # -- never copied from whichever job originally computed the
+            # cached result (B-032/C4).
+            mission = request.app.state.missions.get(job.mission_id)
+            objective = {"missionId": job.mission_id, **evaluate(mission, payload)} if mission else None
             body = {"status": "done", "cacheHit": cache_hit}
             body.update(payload)
+            body["objective"] = objective
             return body
         # "error" or "cancelled" -- a legitimate run outcome, not a bad request.
-        return {"status": status, "error": error}
+        return {"status": status, "error": error, "objective": None}
 
     @router.get("/run/{run_id}/events")
     async def stream_events(request: Request, run_id: str) -> Response:

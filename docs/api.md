@@ -6,9 +6,8 @@ The front-end codes against this file, not against the implementation. Backend: 
 *before* the frontend consumes an endpoint, and name the change in your completion report
 so the orchestrator can raise the matching frontend task.
 
-Status: the histogram, cutflow and fit payload contracts below are complete. The `Run
-progress event` (M3) and `Mission objective result` (M5) sections remain stubs, populated
-during those milestones.
+Status: the histogram, cutflow, fit, run progress event, and mission objective result payload
+contracts below are complete.
 
 ---
 
@@ -83,6 +82,16 @@ naming its node, not a run that starts and fails later. A legal graph that the l
 rejects (a translation bug, not a student mistake) is a `500` — that path should not be
 reachable from valid input.
 
+**`missionId` is validated against the missions loaded at startup (B-032).** An `missionId` not
+in `app.state.missions` is a `400` with `{"error": "unknown mission: '<id>'", "nodeId": null}` —
+nothing is submitted, no job is created. `graph` is then checked against *that* mission's own
+`cards` and `observable_modes`: a node whose `kind` is not in the mission's `cards`, or an
+`Observable` node whose `mode` is not in the mission's `observable_modes`, is a `400` naming
+that node — the same `GraphError` shape as every other rejected graph above. The dataset the run
+executes against is the mission's own `dataset` (`energy`/`detector`), never a hardcoded one.
+The browser also locks unavailable cards/modes in the palette (`docs/design-brief.md` §4), but
+that is a convenience only — the server is the actual gate.
+
 ### `POST /api/run` response
 
 `200`, immediately — before the run finishes. It executes on a background thread, owned by
@@ -109,9 +118,12 @@ Otherwise `200` (or `202` while still running) with a `status` field:
 | `status` | HTTP | Body |
 |---|---|---|
 | `"running"` | `202` | `{"status": "running"}` — poll again. |
-| `"done"` | `200` | `{"status": "done", "cacheHit": bool, ...histogram payload}` — the [histogram payload](#histogram-payload) below, spread alongside `status`/`cacheHit`. |
-| `"error"` | `200` | `{"status": "error", "error": "<student-legible message>"}` — e.g. no dataset found for this mission's detector/energy. Not a `4xx`: the request was fine, the run itself didn't produce a result. |
-| `"cancelled"` | `200` | `{"status": "cancelled", "error": "<reason>"}` — `RunContext.cancel` (a `threading.Event`, one basket of granularity) was set before or during the run. |
+| `"done"` | `200` | `{"status": "done", "cacheHit": bool, "objective": {...} | null, ...histogram payload}` — the [histogram payload](#histogram-payload) below, spread alongside `status`/`cacheHit`/`objective`. See "Mission objective result" below for `objective`'s shape. |
+| `"error"` | `200` | `{"status": "error", "error": "<student-legible message>", "objective": null}` — e.g. no dataset found for this mission's detector/energy. Not a `4xx`: the request was fine, the run itself didn't produce a result. |
+| `"cancelled"` | `200` | `{"status": "cancelled", "error": "<reason>", "objective": null}` — `RunContext.cancel` (a `threading.Event`, one basket of granularity) was set before or during the run. |
+
+`"running"`'s `202` body carries no `objective` field at all (there is nothing to evaluate yet);
+`"error"`/`"cancelled"` carry it as an explicit `null`.
 
 Cancellation itself has no endpoint yet in this task — B-021 reuses the existing
 `RunContext.cancel` seam (`fce_web.runs.RunContext`) rather than adding a new one; a future
@@ -413,4 +425,20 @@ synthesised progress sweep for a result that was already computed.
 
 ### Mission objective result
 
-_To be defined in M5._
+Task B-032. Present on a `"done"` `GET /api/run/{id}/result` (see above), as its `objective`
+field. Computed by `fce_web.missions.evaluate(mission, payload)`, from **the mission this job
+was itself submitted under, and this job's own payload** — including a cache-hit job, which
+reuses another job's engine output but always gets its own `objective`, evaluated fresh under
+its own mission. A run resolving to the same cached digest under two different missions gets
+two different `objective`s.
+
+```json
+{"missionId": "M-1", "met": true, "value": 91.4, "message": "Peak found at 91.4 GeV -- within 3 GeV of 91.19 GeV."}
+```
+
+| Field | Type | Nullable | Meaning |
+|---|---|---|---|
+| `missionId` | string | no | The mission this run was submitted under — the same id echoed in `meta.mission`. |
+| `met` | boolean | no | Whether the run satisfies the mission's objective. Always `false` for a mission whose `objective.type` is `"none"` (no automatic objective yet, e.g. M-2). |
+| `value` | number | yes | The measured quantity the objective checked (e.g. the histogram's peak position, in GeV) — `null` when there is nothing to report (a `"none"`-type objective, or no histogram data yet). |
+| `message` | string | no | A student-legible outcome line — a margin note ("your peak is at 82.5 GeV") on a miss, never an error. |
