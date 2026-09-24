@@ -34,7 +34,7 @@ def _graph(min_mass="60.0", max_mass="120.0"):
             },
             {"id": "sel1", "kind": "Selection", "config": {"name": "sel1", "exprs": ["l1.pt > 20"]}},
             {"id": "obs1", "kind": "Observable",
-             "config": {"mode": "ObsCustom", "expr": "(l1.p4 + l2.p4).mass", "label": "m(l1,l2)"}},
+             "config": {"mode": "ObsVectorSum", "expr": "(l1.p4 + l2.p4).mass", "label": "m(l1,l2)"}},
             {"id": "hist1", "kind": "Histogram", "config": {"bins": "50", "min": min_mass, "max": max_mass}},
         ],
         "edges": [["mult1", "sel1"], ["sel1", "obs1"], ["obs1", "hist1"]],
@@ -188,8 +188,8 @@ def test_reconnect_after_drain_gets_one_done_frame(client):
 
 
 def test_two_concurrent_streams_do_not_interleave(client):
-    ids = {"a": client.post("/api/run", json={"missionId": "A", "graph": _graph("0.0", "200.0")}).json()["runId"],
-           "b": client.post("/api/run", json={"missionId": "B", "graph": _graph("60.0", "120.0")}).json()["runId"]}
+    ids = {"a": client.post("/api/run", json={"missionId": "M-1", "graph": _graph("0.0", "200.0")}).json()["runId"],
+           "b": client.post("/api/run", json={"missionId": "M-2", "graph": _graph("60.0", "120.0")}).json()["runId"]}
     registry = client.app.state.jobs
     jobs = {key: registry.get(run_id) for key, run_id in ids.items()}
 

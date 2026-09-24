@@ -91,10 +91,7 @@ PALETTE_KINDS = ("Multiplicity", "Selection", "Observable", "Histogram")
 
 _OBS_MODES = ("ObsGlobal", "ObsObject", "ObsVectorSum", "ObsCustom")
 
-#: Public alias of `_OBS_MODES`, for modules outside this one (e.g.
-#: `fce_web.missions`) that need the Observable mode tuple without reaching
-#: into a private name (F4, B-031 cycle 2). Every existing `_OBS_MODES` use
-#: in this file is unaffected.
+#: Public alias of `_OBS_MODES` for modules outside this one (F4, B-031 cycle 2).
 OBSERVABLE_MODES = _OBS_MODES
 
 # ui/graph.py:1719 -- one Multiplicity node's cut is this 7-tuple, in this
@@ -410,9 +407,37 @@ def _histogram_dict(node: _Node, plot_idx: int) -> dict:
     }
 
 
-def build_run_config(payload: dict, dataset: Dataset) -> RunConfig:
+def _check_gating(nodes: Dict[str, _Node], allowed_cards, allowed_observable_modes) -> None:
+    """B-032/C3: reject a node kind the mission does not offer, or an
+    Observable mode it does not offer. The server is the guard here; the
+    browser's own gating (locking those cards in the palette) is only a
+    convenience -- this is what makes that convenience non-optional."""
+    for node in nodes.values():
+        if node.kind not in allowed_cards:
+            raise GraphError(
+                f"node {node.id!r}: {node.kind!r} is not available in this mission", node_id=node.id
+            )
+        if node.kind == "Observable":
+            mode = node.config.get("mode")
+            if mode in _OBS_MODES and mode not in allowed_observable_modes:
+                raise GraphError(
+                    f"node {node.id!r}: observable mode {mode!r} is not available in this mission",
+                    node_id=node.id,
+                )
+
+
+def build_run_config(
+    payload: dict,
+    dataset: Dataset,
+    allowed_cards=PALETTE_KINDS,
+    allowed_observable_modes=OBSERVABLE_MODES,
+) -> RunConfig:
     """Validate a student graph and translate it into the config
     :meth:`RunConfig.from_dict` accepts.
+
+    *allowed_cards*/*allowed_observable_modes* narrow the palette to what a
+    mission offers (B-032) -- default to everything the palette has, so a
+    caller with no mission in hand (existing callers, tests) is unaffected.
 
     Raises :class:`GraphError` for an illegal graph, and lets
     :class:`~fce_web.engine.runconfig.RunConfigError` propagate for a
@@ -422,6 +447,7 @@ def build_run_config(payload: dict, dataset: Dataset) -> RunConfig:
     if not isinstance(payload, dict):
         raise GraphError(f"graph payload must be an object, got {type(payload).__name__}")
     nodes = _parse_nodes(payload.get("nodes", []))
+    _check_gating(nodes, allowed_cards, allowed_observable_modes)
     edges = _parse_edges(payload.get("edges", []), nodes)
     children = _children(nodes, edges)
 

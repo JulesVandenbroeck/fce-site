@@ -52,18 +52,19 @@ from typing import Dict, Mapping, Optional
 
 from fce_web.engine.driver import run_analysis
 from fce_web.engine.runconfig import RunConfig
-from fce_web.graph import Dataset, build_run_config
+from fce_web.graph import OBSERVABLE_MODES, PALETTE_KINDS, Dataset, build_run_config
 from fce_web.paths import get_fce_home
 from fce_web.payload import build_histogram_payload
 from fce_web.runs import RunContext, RunResult
 
-# V1 ships exactly one energy/detector pair (`.claude/shared/CLAUDE.md` §5).
-# `content/missions/*.yaml` and the loader that would resolve a `missionId`
-# to its own `Dataset` do not exist yet -- that is a later M3 task, not this
-# one's file scope. `missionId` is still accepted and threaded through to
-# the payload's `meta.mission`; only the dataset lookup is hardcoded.
-# ponytail: replace with a mission lookup once missions.py exists.
-_V1_DATASET = Dataset(energy="91 GeV", detector="IDEA")
+# B-032: the real request path (`routes/api.py`) always resolves a mission
+# first and passes its own `Dataset`/cards/observable_modes into `submit`
+# explicitly -- this is only the fallback for a caller (this module's own
+# tests) that exercises the registry directly, with no mission in hand.
+# ponytail: same value `_V1_DATASET` used to hardcode, kept as a default so
+# `submit()` stays callable without first loading a mission; upgrade if the
+# registry ever needs to run with no dataset default at all.
+_DEFAULT_DATASET = Dataset(energy="91 GeV", detector="IDEA")
 
 # ponytail: process-lifetime cap on how many finished jobs the registry
 # remembers, not a real LRU -- a classroom session submits at most a few
@@ -163,12 +164,25 @@ class JobRegistry:
         # whichever `Job` the reading stream happens to hold.
         self._queue_owner: Dict[int, str] = {}
 
-    def submit(self, graph: dict, mission_id: str) -> Job:
+    def submit(
+        self,
+        graph: dict,
+        mission_id: str,
+        dataset: Optional[Dataset] = None,
+        allowed_cards=PALETTE_KINDS,
+        allowed_observable_modes=OBSERVABLE_MODES,
+    ) -> Job:
         """Validate *graph* and start (or instantly resolve, on a cache
         hit) a run. Raises :class:`fce_web.graph.GraphError` for an invalid
         graph -- before any job is created or thread started.
+
+        *dataset* is the mission's own dataset (``routes/api.py`` resolves
+        it from ``app.state.missions`` and always passes it); *allowed_cards*
+        and *allowed_observable_modes* are the mission's own palette gating
+        (B-032/C3). All three default to "everything", for a caller with no
+        mission in hand.
         """
-        config = build_run_config(graph, _V1_DATASET)
+        config = build_run_config(graph, dataset or _DEFAULT_DATASET, allowed_cards, allowed_observable_modes)
         digest = _config_digest(config)
 
         job_id = uuid.uuid4().hex

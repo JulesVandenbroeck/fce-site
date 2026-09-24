@@ -31,7 +31,7 @@ def _graph(min_mass="60.0", max_mass="120.0"):
             },
             {"id": "sel1", "kind": "Selection", "config": {"name": "sel1", "exprs": ["l1.pt > 20"]}},
             {"id": "obs1", "kind": "Observable",
-             "config": {"mode": "ObsCustom", "expr": "(l1.p4 + l2.p4).mass", "label": "m(l1,l2)"}},
+             "config": {"mode": "ObsVectorSum", "expr": "(l1.p4 + l2.p4).mass", "label": "m(l1,l2)"}},
             {"id": "hist1", "kind": "Histogram", "config": {"bins": "50", "min": min_mass, "max": max_mass}},
         ],
         "edges": [["mult1", "sel1"], ["sel1", "obs1"], ["obs1", "hist1"]],
@@ -150,6 +150,52 @@ def test_result_reaches_done_with_the_histogram_payload(client):
     # tests/fixtures/datasets/IDEA/91GeV/*.root -- guards against `samples`
     # silently going empty (see driver.py's `active_samples`).
     assert [s["name"] for s in body["samples"]] == ["X1", "X2", "X3"]
+    assert body["objective"]["missionId"] == "M-1"
+    assert isinstance(body["objective"]["met"], bool)
+
+
+# ---- B-032/C1: an unknown missionId is a 400, nothing is submitted ----
+
+def test_unknown_mission_id_is_a_400(client):
+    resp = client.post("/api/run", json={"missionId": "no-such-mission", "graph": _graph()})
+    assert resp.status_code == 400
+    body = resp.json()
+    assert "no-such-mission" in body["error"]
+    assert body["nodeId"] is None
+
+
+# ---- B-032/C3: the server is the gate on the mission's palette, not just
+# the browser -- an Observable mode the mission does not offer is a 400
+# naming that node, even though the mode itself is a real, valid mode. ----
+
+def test_locked_observable_mode_is_a_400_naming_its_node(client):
+    graph = _graph()
+    graph["nodes"][2]["config"]["mode"] = "ObsCustom"  # M-1 only offers ObsVectorSum
+    resp = client.post("/api/run", json={"missionId": "M-1", "graph": graph})
+    assert resp.status_code == 400
+    assert resp.json()["nodeId"] == "obs1"
+
+
+# ---- B-032/C4/C6: the objective is evaluated per job, from that job's own
+# mission -- never copied from the job whose result a cache hit reused. M-1
+# and M-2 share a dataset and palette, so the identical graph digests to the
+# same cache entry under both; M-1's objective is peak_position (met on this
+# fixture/graph) and M-2's is 'none' (never met) -- a registry that read the
+# objective off the *cached* job instead of the *requesting* job's own
+# mission would report M-2 as met too.
+
+def test_objective_is_per_job_not_copied_from_the_cached_job(client):
+    first = client.post("/api/run", json={"missionId": "M-1", "graph": _graph()}).json()
+    first_result = _poll_result(client, first["runId"]).json()
+    assert first_result["objective"]["met"] is True, first_result["objective"]
+
+    second = client.post("/api/run", json={"missionId": "M-2", "graph": _graph()})
+    assert second.json()["cacheHit"] is True
+    second_result = _poll_result(client, second.json()["runId"]).json()
+    assert second_result["objective"] == {
+        "missionId": "M-2", "met": False, "value": None,
+        "message": "This mission has no automatic objective yet.",
+    }
 
 
 # ---- a repeated submission is a visible cache hit ----
