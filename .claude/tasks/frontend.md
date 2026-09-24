@@ -12,8 +12,8 @@ IDs are `F-nnn`, allocated in order and never reused.
 ### F-019 — trim duplicated comment in test_graph.py (N32)
 - **Scope:** `tests/e2e/test_graph.py`
 - **Accept:** C1 comment one line, no code change; C2 floor 739.
-- **Branch / PR:** `task/f-019-test-comment-trim` — pending
-- **Status:** dispatched 2026-09-24 (cycle 1, worktree)
+- **Branch / PR:** `task/f-019-test-comment-trim` — #71
+- **Status:** in review (cycle 1). Gate: flake8 0, 739 collected, 1 file in scope; full e2e run skipped (comments only, and D-026 was using the ports).
 
 
 ## Ready
